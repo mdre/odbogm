@@ -1,0 +1,493 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package net.odbogm.proxy;
+
+import net.odbogm.SessionManager;
+import com.tinkerpop.blueprints.Direction;
+import com.tinkerpop.blueprints.Vertex;
+import com.tinkerpop.blueprints.impls.orient.OrientVertex;
+import java.util.Collection;
+import java.util.Comparator;
+import java.util.Enumeration;
+import java.util.Iterator;
+import java.util.List;
+import java.util.ListIterator;
+import java.util.Map;
+import java.util.Spliterator;
+import java.util.Vector;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
+import java.util.logging.Logger;
+import java.util.stream.Stream;
+
+/**
+ *
+ * @author SShadow
+ */
+public class VectorLazyProxy extends Vector implements ILazyCollectionCalls {
+
+    private final static Logger LOGGER = Logger.getLogger(VectorLazyProxy.class.getName());
+
+    private boolean dirty = false;
+    private boolean lazyLoad = true;
+    private SessionManager sm;
+    private OrientVertex relatedTo;
+    private String field;
+    private Class<?> fieldClass;
+
+    /**
+     * Crea un ArrayList lazy.
+     *
+     * @param sm Vínculo al SessionManager actual
+     * @param relatedTo: Vértice con el cual se relaciona la colección
+     * @param field: atributo de relación
+     * @param c: clase genérica de la colección.
+     */
+    @Override
+    public void init(SessionManager sm, OrientVertex relatedTo, String field, Class<?> c) {
+        this.sm = sm;
+        this.relatedTo = relatedTo;
+        this.field = field;
+        this.fieldClass = c;
+    }
+
+    //********************* change control **************************************
+    private Map<Object, ObjectCollectionState> listState = new ConcurrentHashMap<>();
+
+    private void lazyLoad() {
+//        LOGGER.log(Level.INFO, "Lazy Load.....");
+        this.lazyLoad = false;
+
+        // recuperar todos los elementos desde el vértice y agregarlos a la colección
+        for (Iterator<Vertex> iterator = relatedTo.getVertices(Direction.OUT, field).iterator(); iterator.hasNext();) {
+            OrientVertex next = (OrientVertex) iterator.next();
+//            LOGGER.log(Level.INFO, "loading: " + next.getId().toString());
+            Object o = sm.get(fieldClass, next.getId().toString());
+            this.add(o);
+            // se asume que todos fueron borrados
+            this.listState.put(o, ObjectCollectionState.REMOVED);
+        }
+    }
+
+    public Map<Object, ObjectCollectionState> collectionState() {
+        for (Object o : this) {
+            // actualizar el estado
+            if (this.listState.get(o) == null) {
+                // se agregó un objeto
+                this.listState.put(o, ObjectCollectionState.ADDED);
+            } else {
+                // el objeto existe. Marcarlo como sin cambio para la colección
+                this.listState.remove(o);
+            }
+        }
+        return this.listState;
+    }
+    
+    /**
+     * Vuelve  establecer el punto de verificación.
+     */
+    @Override
+    public void clearState() {
+        this.listState.clear();
+
+        for (Object o : this) {
+            if (this.listState.get(o) == null) {
+                // se asume que todos fueron borrados
+                this.listState.put(o, ObjectCollectionState.REMOVED);
+            }
+        }
+    }
+    
+    @Override
+    public boolean isDirty() {
+        return this.dirty;
+    }
+    //====================================================================================
+
+    public VectorLazyProxy(int initialCapacity, int capacityIncrement) {
+        super(initialCapacity, capacityIncrement);
+    }
+
+    public VectorLazyProxy(int initialCapacity) {
+        super(initialCapacity);
+    }
+
+    public VectorLazyProxy() {
+        super();
+    }
+
+    @Override
+    public Spliterator spliterator() {
+        if (lazyLoad)
+            this.lazyLoad();
+        return super.spliterator(); 
+    }
+
+    @Override
+    public synchronized void sort(Comparator c) {
+        if (lazyLoad)
+            this.lazyLoad();
+        super.sort(c); 
+    }
+
+    @Override
+    public synchronized void replaceAll(UnaryOperator operator) {
+        if (lazyLoad)
+            this.lazyLoad();
+        super.replaceAll(operator); 
+    }
+
+    @Override
+    public synchronized boolean removeIf(Predicate filter) {
+        if (lazyLoad)
+            this.lazyLoad();
+        return super.removeIf(filter); 
+    }
+
+    @Override
+    public synchronized void forEach(Consumer action) {
+        if (lazyLoad)
+            this.lazyLoad();
+        super.forEach(action); 
+    }
+
+    @Override
+    public synchronized Iterator iterator() {
+        if (lazyLoad)
+            this.lazyLoad();
+        return super.iterator(); 
+    }
+
+    @Override
+    public synchronized ListIterator listIterator() {
+        if (lazyLoad)
+            this.lazyLoad();
+        return super.listIterator(); 
+    }
+
+    @Override
+    public synchronized ListIterator listIterator(int index) {
+        if (lazyLoad)
+            this.lazyLoad();
+        return super.listIterator(index); 
+    }
+
+    @Override
+    protected synchronized void removeRange(int fromIndex, int toIndex) {
+        if (lazyLoad)
+            this.lazyLoad();
+        super.removeRange(fromIndex, toIndex); 
+    }
+
+    @Override
+    public synchronized List subList(int fromIndex, int toIndex) {
+        if (lazyLoad)
+            this.lazyLoad();
+        return super.subList(fromIndex, toIndex); 
+    }
+
+    @Override
+    public synchronized String toString() {
+        if (lazyLoad)
+            this.lazyLoad();
+        return super.toString(); 
+    }
+
+    @Override
+    public synchronized int hashCode() {
+        if (lazyLoad)
+            this.lazyLoad();
+        return super.hashCode(); 
+    }
+
+    @Override
+    public synchronized boolean equals(Object o) {
+        if (lazyLoad)
+            this.lazyLoad();
+        return super.equals(o); 
+    }
+
+    @Override
+    public synchronized boolean addAll(int index, Collection c) {
+        if (lazyLoad)
+            this.lazyLoad();
+        return super.addAll(index, c); 
+    }
+
+    @Override
+    public synchronized boolean retainAll(Collection c) {
+        if (lazyLoad)
+            this.lazyLoad();
+        return super.retainAll(c); 
+    }
+
+    @Override
+    public synchronized boolean removeAll(Collection c) {
+        if (lazyLoad)
+            this.lazyLoad();
+        return super.removeAll(c); 
+    }
+
+    @Override
+    public synchronized boolean addAll(Collection c) {
+        if (lazyLoad)
+            this.lazyLoad();
+        return super.addAll(c); 
+    }
+
+    @Override
+    public synchronized boolean containsAll(Collection c) {
+        if (lazyLoad)
+            this.lazyLoad();
+        return super.containsAll(c); 
+    }
+
+    @Override
+    public void clear() {
+        if (lazyLoad)
+            this.lazyLoad();
+        super.clear(); 
+    }
+
+    @Override
+    public synchronized Object remove(int index) {
+        if (lazyLoad)
+            this.lazyLoad();
+        return super.remove(index); 
+    }
+
+    @Override
+    public void add(int index, Object element) {
+        if (lazyLoad)
+            this.lazyLoad();
+        super.add(index, element); 
+    }
+
+    @Override
+    public boolean remove(Object o) {
+        if (lazyLoad)
+            this.lazyLoad();
+        return super.remove(o); 
+    }
+
+    @Override
+    public synchronized boolean add(Object e) {
+        if (lazyLoad)
+            this.lazyLoad();
+        return super.add(e); 
+    }
+
+    @Override
+    public synchronized Object set(int index, Object element) {
+        if (lazyLoad)
+            this.lazyLoad();
+        return super.set(index, element); 
+    }
+
+    @Override
+    public synchronized Object get(int index) {
+        if (lazyLoad)
+            this.lazyLoad();
+        return super.get(index); 
+    }
+
+    @Override
+    public synchronized Object[] toArray(Object[] a) {
+        if (lazyLoad)
+            this.lazyLoad();
+        return super.toArray(a); 
+    }
+
+    @Override
+    public synchronized Object[] toArray() {
+        if (lazyLoad)
+            this.lazyLoad();
+        return super.toArray(); 
+    }
+
+    @Override
+    public synchronized Object clone() {
+        if (lazyLoad)
+            this.lazyLoad();
+        return super.clone(); 
+    }
+
+    @Override
+    public synchronized void removeAllElements() {
+        if (lazyLoad)
+            this.lazyLoad();
+        super.removeAllElements(); 
+    }
+
+    @Override
+    public synchronized boolean removeElement(Object obj) {
+        if (lazyLoad)
+            this.lazyLoad();
+        return super.removeElement(obj); 
+    }
+
+    @Override
+    public synchronized void addElement(Object obj) {
+        if (lazyLoad)
+            this.lazyLoad();
+        super.addElement(obj); 
+    }
+
+    @Override
+    public synchronized void insertElementAt(Object obj, int index) {
+        if (lazyLoad)
+            this.lazyLoad();
+        super.insertElementAt(obj, index); 
+    }
+
+    @Override
+    public synchronized void removeElementAt(int index) {
+        if (lazyLoad)
+            this.lazyLoad();
+        super.removeElementAt(index); 
+    }
+
+    @Override
+    public synchronized void setElementAt(Object obj, int index) {
+        if (lazyLoad)
+            this.lazyLoad();
+        super.setElementAt(obj, index); 
+    }
+
+    @Override
+    public synchronized Object lastElement() {
+        if (lazyLoad)
+            this.lazyLoad();
+        return super.lastElement(); 
+    }
+
+    @Override
+    public synchronized Object firstElement() {
+        if (lazyLoad)
+            this.lazyLoad();
+        return super.firstElement(); 
+    }
+
+    @Override
+    public synchronized Object elementAt(int index) {
+        if (lazyLoad)
+            this.lazyLoad();
+        return super.elementAt(index); 
+    }
+
+    @Override
+    public synchronized int lastIndexOf(Object o, int index) {
+        if (lazyLoad)
+            this.lazyLoad();
+        return super.lastIndexOf(o, index); 
+    }
+
+    @Override
+    public synchronized int lastIndexOf(Object o) {
+        if (lazyLoad)
+            this.lazyLoad();
+        return super.lastIndexOf(o); 
+    }
+
+    @Override
+    public synchronized int indexOf(Object o, int index) {
+        if (lazyLoad)
+            this.lazyLoad();
+        return super.indexOf(o, index); 
+    }
+
+    @Override
+    public int indexOf(Object o) {
+        if (lazyLoad)
+            this.lazyLoad();
+        return super.indexOf(o); 
+    }
+
+    @Override
+    public boolean contains(Object o) {
+        return super.contains(o); 
+    }
+
+    @Override
+    public Enumeration elements() {
+        if (lazyLoad)
+            this.lazyLoad();
+        return super.elements(); 
+    }
+
+    @Override
+    public synchronized boolean isEmpty() {
+        if (lazyLoad)
+            this.lazyLoad();
+        return super.isEmpty(); 
+    }
+
+    @Override
+    public synchronized int size() {
+        if (lazyLoad)
+            this.lazyLoad();
+        return super.size(); 
+    }
+
+    @Override
+    public synchronized int capacity() {
+        if (lazyLoad)
+            this.lazyLoad();
+        return super.capacity(); 
+    }
+
+    @Override
+    public synchronized void setSize(int newSize) {
+        if (lazyLoad)
+            this.lazyLoad();
+        super.setSize(newSize); 
+    }
+
+    @Override
+    public synchronized void ensureCapacity(int minCapacity) {
+        if (lazyLoad)
+            this.lazyLoad();
+        super.ensureCapacity(minCapacity); 
+    }
+
+    @Override
+    public synchronized void trimToSize() {
+        if (lazyLoad)
+            this.lazyLoad();
+        super.trimToSize(); 
+    }
+
+    @Override
+    public synchronized void copyInto(Object[] anArray) {
+        if (lazyLoad)
+            this.lazyLoad();
+        super.copyInto(anArray); 
+    }
+
+    @Override
+    public Stream parallelStream() {
+        if (lazyLoad)
+            this.lazyLoad();
+        return super.parallelStream(); 
+    }
+
+    @Override
+    public Stream stream() {
+        if (lazyLoad)
+            this.lazyLoad();
+        return super.stream(); 
+    }
+
+    @Override
+    protected void finalize() throws Throwable {
+        if (lazyLoad)
+            this.lazyLoad();
+        super.finalize(); 
+    }
+    
+}

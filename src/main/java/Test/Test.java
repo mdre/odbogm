@@ -1,0 +1,317 @@
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package Test;
+
+import net.odbogm.exceptions.IncorrectRIDField;
+import net.odbogm.SessionManager;
+import net.odbogm.proxy.IObjectProxy;
+import net.odbogm.utils.ReflexionUtils;
+import com.orientechnologies.orient.core.exception.OConcurrentModificationException;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+/**
+ *
+ * @author SShadow
+ */
+public class Test {
+
+    private final static Logger LOGGER = Logger.getLogger(Test.class.getName());
+    SessionManager sm;
+
+    public ArrayList<SimpleVertex> testArrayList;
+
+    public Map<String, SimpleVertex> testHashMap;
+
+    public static void main(String[] args) {
+        new Test();
+    }
+
+    public Test() {
+//        IObjectProxy iop;
+        
+        System.out.println("Iniciando comunicación con la base....");
+        sm = new SessionManager("remote:localhost/Test", "root", "toor");
+        System.out.println("comunicación inicializada!");
+        sm.begin();
+        // correr test de store
+//        this.store();
+//        this.testUpdateLink();
+//        this.testQuery();
+        testLoop();
+        try {
+            sm.commit();
+        } catch (OConcurrentModificationException ccme) {
+
+        }
+    }
+
+    public void lab(){
+        SimpleVertexEx svex = new SimpleVertexEx();
+        svex.initInner();
+        
+        try {
+            Field f = ReflexionUtils.findField(SimpleVertexEx.class, "enumTest");
+            f.setAccessible(true);
+            System.out.println("Value: "+f.get(svex));
+            
+            
+        } catch (NoSuchFieldException ex) {
+            Logger.getLogger(Test.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IllegalArgumentException ex) {
+            Logger.getLogger(Test.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IllegalAccessException ex) {
+            Logger.getLogger(Test.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    
+    public void testQuery() {
+        
+        // test query
+        System.out.println("*******************************");
+        System.out.println("          Test Query           ");
+        System.out.println("*******************************");
+        List<SimpleVertex> svs = sm.query(SimpleVertex.class, " where s like '%inn%' ");
+        for (SimpleVertex sv : svs) {
+            System.out.println(">>>"+sv.i+"  rid: "+sm.getRID(sv));
+        }
+        
+        System.out.println("----------- prepared query -----------------");
+        List<SimpleVertexEx> svspq = sm.query(SimpleVertexEx.class, "select from SimpleVertexEx where s like ? and i=?","%wor%",1);
+        for (SimpleVertex sv : svspq) {
+            System.out.println(">>>"+sv.i+"  rid: "+sm.getRID(sv));
+        }
+        System.out.println("----------- 1 commit -----------------");
+    }
+    
+    
+    public void store() {
+        try {
+            // usuado para hacer una pausa.
+            BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+            
+            SimpleVertex svinner = new SimpleVertex();
+            SimpleVertex svinner2 = new SimpleVertex();;
+            SimpleVertexEx sv;
+            SimpleVertexEx sv1;
+            SimpleVertexEx sv2;
+
+            SimpleVertexEx svex = new SimpleVertexEx();
+            svex.initInner();
+            svex.initArrayList();
+            svex.initHashMap();
+            svex.initEnum();
+
+            // Test store
+            System.out.println("*******************************");
+            System.out.println("     Test store: agrego uno    ");
+            System.out.println("*******************************");
+            svex = sm.store(svex);
+
+            sm.flush();
+
+            System.out.println("----------- STORE commit -----------------");
+            sm.commit();
+
+            String testRID = sm.getRID(svex);
+            System.out.println("Test: RID:" + testRID);
+
+            System.out.println("*******************************");
+            System.out.println("         Test hydrate          ");
+            System.out.println("*******************************");
+
+            System.out.println("Test hydrate " + testRID);
+            sv = sm.get(SimpleVertexEx.class, testRID);
+            
+            //---------------- pausar
+            System.out.print("Enter String");
+            String s = br.readLine();
+            System.out.println("continuando...");
+            //-----------------------
+            
+            System.out.println("SVINNER.getS(): "+sv.getSvinner().getS());
+            System.out.println("Enum test:"+sv.getEnumTest());
+            
+            System.out.println("Test - List:");
+            for (Iterator<SimpleVertex> iterator = sv.getAlSV().iterator(); iterator.hasNext();) {
+                SimpleVertex next = iterator.next();
+                System.out.println(next.i);
+
+            }
+            System.out.println("Test - Map:");
+            for (Map.Entry<String, SimpleVertex> entry : sv.getHmSV().entrySet()) {
+                String key = entry.getKey();
+                SimpleVertex value = entry.getValue();
+                System.out.println("Key: " + key + " value: " + value.i);
+            }
+
+            //---------------- pausar
+            System.out.print("Enter String");
+            s = br.readLine();
+            System.out.println("continuando...");
+            //-----------------------
+
+            System.out.println("*******************************");
+            System.out.println("         Test update          ");
+            System.out.println("*******************************");
+            sv.i = 25;
+            for (Iterator<SimpleVertex> iterator = sv.getAlSV().iterator(); iterator.hasNext();) {
+                SimpleVertex next = iterator.next();
+                next.i++;
+                System.out.println(next.i);
+
+            }
+            System.out.println("Update map");
+            for (Map.Entry<String, SimpleVertex> entry : sv.getHmSV().entrySet()) {
+                String key = entry.getKey();
+                SimpleVertex value = entry.getValue();
+                value.i++;
+            }
+
+//            sv.alSV.add(new SimpleVertex());
+//            // test update
+//            sv1 = sm.get(SimpleVertexEx.class, "#13:2");
+//            sv2 = sm.get(SimpleVertexEx.class, "#13:3");
+//            System.out.println(""+sv.getS()+" i:"+sv.i+" svinner.i: "+sv.svinner.i);
+//            sv.i++;
+//            sv2.i++;
+//////             Test de eliminación de un objeto de composición mediante la asignación de null
+//            // crear el primer objeto
+//            sv1 = new SimpleVertexEx();
+//            sv2 = new SimpleVertexEx();
+//            sv1.initInner();
+//            sv2.svinner = sv1.svinner;
+//            
+//            sm.store(sv1);
+//            sm.store(sv2);
+//            
+//            System.out.println("----------- 1 commit objetos iniciales-----------------");
+//            sm.commit();
+//            
+//            System.out.println("eliminar la referencia del primero");
+//            sv1.svinner =null;
+            System.out.println("----------- 1 commit -----------------");
+            try {
+                sm.commit();
+            } catch (OConcurrentModificationException ccme) {
+
+            }
+//            System.out.println("----------- 2 commit -----------------");
+//            sm.commit();
+////            sv.svinner.i++;
+//            System.out.println("----------- 3 commit -----------------");
+//            sm.commit();
+        } catch (IncorrectRIDField | SecurityException | IllegalArgumentException ex) {
+            Logger.getLogger(Test.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IOException ex) {
+            Logger.getLogger(Test.class.getName()).log(Level.SEVERE, null, ex);
+        }
+
+    }
+
+    public void testUpdateLink() {
+        System.out.println("store objeto sin Link y luego se le agrega uno");
+        
+        SimpleVertexEx sve = new SimpleVertexEx();
+        SimpleVertexEx result = this.sm.store(sve);
+        this.sm.commit();
+        System.out.println("=========== fin primer commit ====================================");
+        
+        // actualizar el objeto administrado
+        result.initInner();
+        System.out.println("result.svinner: "+result.getSvinner().getS()+ "      toS: "+result.getSvinner().toString());
+        // bajarlo a la base
+        System.out.println("=========== inicio segundo commit <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
+        sm.commit();
+        System.out.println("=========== fin segundo commit ====================================");
+        System.out.println("result.svinner: "+result.getSvinner().getS()+ "      toS: "+result.getSvinner().toString());
+        
+        // recuperar el objeto en otra instancia
+        String rid = ((IObjectProxy)result).___getRid();
+        
+        System.out.println("============================================================================");
+        System.out.println("RID: "+rid);
+        System.out.println("============================================================================");
+        
+        
+        System.out.println("");
+        System.out.println("");
+        System.out.println("");
+        System.out.println("========= comienzo del get =================================================");
+        SimpleVertexEx expResult = sm.get(SimpleVertexEx.class, rid);
+        System.out.println("========= fin del get =================================================");
+        
+        
+        System.out.println("++++++++++++++++ result: "+result.getSvinner().toString());
+        System.out.println("++++++++++++++++ expResult: "+expResult.getSvinner().toString());
+        
+    }
+
+    public void testLoop(){
+        System.out.println("***************************************************************");
+        System.out.println("Verificar el tratamiento de objetos con loops");
+        System.out.println("***************************************************************");
+        SimpleVertexEx sve = new SimpleVertexEx();
+        sve.initInner();
+        sve.initEnum();
+        sve.initArrayList();
+        sve.initHashMap();
+        
+        SimpleVertexEx sveLoop = new SimpleVertexEx();
+        sveLoop.initInner();
+        sveLoop.initEnum();
+        sveLoop.initArrayList();
+        sveLoop.initHashMap();
+        
+        // crear el loop
+        sve.setLooptest(sveLoop);
+        sveLoop.setLooptest(sve);
+        
+        System.out.println("pre store..............................");
+        SimpleVertexEx result = this.sm.store(sve);
+        System.out.println("store ok!");
+        System.out.println("pre commit..............................");
+        
+        sm.commit();
+        System.out.println("commit ok ==============================");
+        
+        System.out.println(" inicio de los test");
+        String rid = ((IObjectProxy)result).___getRid();
+        SimpleVertexEx expResult = sm.get(SimpleVertexEx.class, rid);
+        System.out.println("1 >>>>>>>>>>>>>");
+        String looprid = ((IObjectProxy)expResult.getLooptest()).___getRid();
+        System.out.println("2 >>>>>>>>>>>>>");
+        System.out.println("");
+        System.out.println("");
+        System.out.println("Objeto almacenado en: "+rid+" loop rid: "+looprid);
+        System.out.println("");
+        System.out.println("");
+//        SimpleVertexEx expResult = sm.get(SimpleVertexEx.class, rid);
+        
+        System.out.println("");
+        System.out.println("");
+        System.out.println(" get completado. Iniciando los asserts");
+        System.out.println("");
+        System.out.println("");
+        
+        
+        // verificar que todos los valores sean iguales
+//        assertEquals(((IObjectProxy)expResult).___getRid(), ((IObjectProxy)result).___getRid());
+//        assertEquals(((IObjectProxy)expResult.getLooptest()).___getRid(), ((IObjectProxy)result.getLooptest()).___getRid());
+//        assertEquals(((IObjectProxy)expResult.getLooptest().getLooptest()).___getRid(), ((IObjectProxy)result).___getRid());
+        
+        
+        System.out.println("============================= FIN LoopTest ===============================");
+    }
+}
