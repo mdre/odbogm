@@ -1,2 +1,175 @@
 # odbogm
-OrientDB Object to Graph Mapper 
+# OrientDB Object to Graph Mapper 
+
+The idea is to make a clear Java Object to Graph Vertex to the ***OrientDB***. I really miss the DB4O database. I have not see nothing similar to that, but DB4O is dead so I want to have the same functionality over another database. I have choose OrientDB as a target so I want to make a mapper it be as noninvasive as possible to the developer.
+
+This is my first approach and is in ***experimental version***. Use it as your own risk.
+The ODBOGM work against the Graph DB API of the OrientDB. It let you to access the underlying DB if you want but it's implement the basic function to work with the database in an absolutely clear way like DB4O.
+
+To start using it you must initialize a ***SessionManager*** and set the URL to connect to the DB:
+```Java
+SessionManager sm = new SessionManager("remote:localhost/Test", "root", "toor");
+```
+After that, the SessionManager implements the method to:
+
+* ***begin***: init the communication and start the first trasaction.
+* ***store***: add a new record to the database.
+* ***get***: retrieve a record from the database.
+* ***delete***: delete the record from the database. 
+* ***commit***: process the current transaction.
+* ***rollback***: rollback the current transaction. TBD
+* ***query***: query the database.
+* ***shutdown***: shutdown the DB communication.
+
+So, for example, let say that we have this class definition:
+```Java
+public class Ex1 {
+    private final static Logger LOGGER = Logger.getLogger(Ex1.class .getName());
+    private int i = 0;
+    public int x = 10;
+    public Ex1() {
+    }
+    
+    public int inc(){
+        return ++i;
+    }
+    
+    public int test() {
+        return x + i;
+    }
+}
+```
+to store an instance you do:
+```Java
+Ex1 ex1 = new Ex1();
+sm.store(ex1);
+sm.commit();
+```
+Every primitive field type and String are stored directly to the DB including private field.
+But what happens if we have a more real object. Well, here we have to use same annotation to tell what to do with the field.
+Example:
+```Java
+public class Ex2 extends Ex1 {
+    private final static Logger LOGGER = Logger.getLogger(Ex2.class .getName());
+    
+    private Ex1 inner;
+    private String ex2String;
+    
+    
+    public Ex2() {
+        inner = new Ex1();
+        ex2String = "hola mundo";
+    }
+
+    public Ex1 getInner() {
+        return inner;
+    }
+
+    public void setInner(Ex1 inner) {
+        this.inner = inner;
+    }
+
+    public String getEx2String() {
+        return ex2String;
+    }
+
+    public void setEx2String(String ex2String) {
+        this.ex2String = ex2String;
+    }
+    
+}
+```
+Here, the field inner is not a primitive type so we must choose what to do. OrientDB let us store it as an embedded object or we can tell the ODBOGM to store it as a new vertex related to the main object.
+Currently, the embedded alternative is not implemented. Every nonprimitive field is ignored and a warning is logged.
+We must annotate the field with:
+* ***@Ignore***: to skip the field. Useful to the Logger field.
+* ***@Link***: create a link to a vertex mapped with the inner object.
+
+so, in the last class we must add this annotation to the fields:
+```Java
+public class Ex2 extends Ex1 {
+    @Ignore
+    private final static Logger LOGGER = Logger.getLogger(Ex2.class .getName());
+    
+    @Link
+    private Ex1 inner;
+    private String ex2String;
+    ….
+}
+```
+Now, the field ***inner*** will be mapped to a new vertex of class ***Ex1*** and the edge that link the current vertex with the new vertex will be labeled with the ***classname + _ + fieldname***. In this case, the resulting graph will be:
+```Java
+(Ex2)  ← Ex2_inner → (Ex1)
+```
+Where (Ex2) is a Vertex of class Ex2. The (Ex2) vertex will have one atribute called ex2String stored in it.
+
+Now, if we have a collection inside the object, every element of the collection is mapped in a vertex. To mark a collection we use ***@LinkList***.
+
+```Java
+public class Ex2 extends Ex1 {
+    @Ignore
+    private final static Logger LOGGER = Logger.getLogger(Ex2.class .getName());
+    
+    @Link
+    private Ex1 inner;
+    private String ex2String;
+   
+
+    @LinkList
+    public ArrayList<Ex1> alEX;
+
+    ….
+}
+```
+in this case, the resulting graph is:
+
+```Java
+(Ex2) ---- Ex2_alEx -- > (Ex1)
+      |--- Ex2_alEx -- > (Ex1)
+      |--- Ex2_alEx -- > (Ex1)
+       ….
+```
+If the collection is a ***Map***, the strategy is the same but the key value are stored as a field in the edge. The key could be an object to but this object must be simple.
+
+## Getting Object.
+The most simple way to retrieve an object is the use of the ***get*** method. To use it we must pass the class to map to the vertex and the vertex RID.
+Example:
+```Java
+Ex1 ex1 = sm.get(Ex1.class, "#12:123");
+```
+This will return an object with all it field filled with the data stored in the #12:123 vetex. The object load every @Link field eager and every ***@LinkList*** is lazy loaded.
+
+## Deleting Objects.
+To delete an object that was previous gettid from the DB, we call 
+```Java
+sm.delete(Object o)
+```
+Since an object could be divided into multiple vertex we must tell what to do in this case. The annotation ***@CascadeDelete*** over a field do the job.
+If the vertex holding the object have more than one reference, that indicate that the object is part of another object and if it is deleted, a referential integrity could be occurs, so an exception is throws to catch that problem.
+
+
+## Rollback
+TBD
+
+## Querying
+Al query 
+To query the database there are some custom implementations.
+A direct query:
+```Java
+sm.query(String sql);
+```
+In this case, the full string is passed to the underlying database and the result is returned.
+```Java
+sm.query(Class<T> clase);
+```
+In this case, the query will return a List with all vertex of class <T> mapped in objects. In the db is mapped as: “select from ”+clase.getSimpleName()
+```Java
+sm.query(Class<T> clase, String body);
+```
+This query is similar but let us add a body after the select-from clause.
+
+----
+
+
+Working on the rest……
+
