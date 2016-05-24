@@ -46,6 +46,10 @@ import java.util.logging.Logger;
 public class SessionManager implements Actions.Store, Actions.Get {
 
     private final static Logger LOGGER = Logger.getLogger(SessionManager.class.getName());
+    static {
+        LOGGER.setLevel(Level.INFO);
+    }
+    
     private OrientGraph graphdb;
     private OrientGraphFactory factory;
 
@@ -78,7 +82,6 @@ public class SessionManager implements Actions.Store, Actions.Get {
 //        this.url = url;
 //        this.user = user;
 //        this.passwd = passwd;
-        LOGGER.setLevel(Level.INFO);
 
         this.factory = new OrientGraphFactory(url, user, passwd).setupPool(1, 10);
 //        vertexs = new ConcurrentHashMap<>();
@@ -139,7 +142,9 @@ public class SessionManager implements Actions.Store, Actions.Get {
             OrientVertex v = graphdb.addVertex("class:" + classname, omap);
 
             proxied = ObjectProxyFactory.create(o, v, this);
-
+            // transferir todos los valores al proxy
+            ReflexionUtils.copyObject(o, proxied);
+            
             LOGGER.log(Level.FINER, "Marcando como dirty: " + proxied.getClass().getSimpleName());
             this.dirty.put(v.getId().toString(), proxied);
 
@@ -316,22 +321,21 @@ public class SessionManager implements Actions.Store, Actions.Get {
         }
 
         // bajar todos los objetos a los vértices
-//        this.commitObjectChanges();
-        System.out.println("Objetos marcados como Dirty: " + dirty.size());
+        // this.commitObjectChanges();
         // cambiar el estado a comiteando
         this.commiting = true;
+        LOGGER.log(Level.FINER, "Objetos marcados como Dirty: "+dirty.size());
         for (Map.Entry<String, Object> e : dirty.entrySet()) {
             String rid = e.getKey();
             IObjectProxy o = (IObjectProxy) e.getValue();
-
+            LOGGER.log(Level.FINER, "Commiting: "+rid+"   class: "+o.___getBaseClass());
             // actualizar todos los objetos antes de bajarlos.
             o.___commit();
-
         }
-
+        LOGGER.log(Level.FINER, "Fin persistencia. <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
         // comitear los vértices
         graphdb.commit();
-
+        
         // vaciar el caché de elementos modificados.
         this.dirty.clear();
         this.commiting = false;

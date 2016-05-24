@@ -29,15 +29,19 @@ import java.util.logging.Logger;
 import net.bytebuddy.implementation.bind.annotation.Origin;
 import net.bytebuddy.implementation.bind.annotation.RuntimeType;
 import net.bytebuddy.implementation.bind.annotation.SuperCall;
+import net.sf.cglib.proxy.MethodInterceptor;
+import net.sf.cglib.proxy.MethodProxy;
 
 /**
  *
  * @author SShadow
  */
-public class ObjectProxy implements IObjectProxy {
+public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     
     private final static Logger LOGGER = Logger.getLogger(ObjectProxy.class.getName());
-    
+    static {
+        LOGGER.setLevel(Level.INFO);
+    }
     // the real object      
     private Object ___proxyObject;
     private Class<?> ___baseClass;
@@ -61,6 +65,7 @@ public class ObjectProxy implements IObjectProxy {
         this.___sm = sm;
     }
     
+    // ByteBuddy inteceptor
     // this method will be called each time      
     // when the object proxy calls any of its methods
     @RuntimeType
@@ -113,6 +118,64 @@ public class ObjectProxy implements IObjectProxy {
         return res;
     }
 
+    
+    
+    // GCLib interceptor 
+    @Override
+    public Object intercept(Object o,
+            Method method,
+            Object[] args,
+            MethodProxy methodProxy) throws Throwable {
+        // response object
+        Object res = null;
+
+        // BEFORE
+        // measure the current time         
+//        long time1 = System.currentTimeMillis();
+//        System.out.println("intercepted: " + method.getName());
+        // modificar el llamado
+        switch (method.getName()) {
+            case "___getVertex":
+                res = this.___getVertex();
+                break;
+            case "___getRid":
+                res = this.___getRid();
+                break;
+            case "___getProxiObject":
+                res = this.___getProxiObject();
+                break;
+            case "___getBaseClass":
+                res = this.___getBaseClass();
+                break;
+            case "___isDirty":
+                res = this.___isDirty();
+                break;
+            case "___removeDirtyMark":
+                this.___removeDirtyMark();
+                break;
+            case "___commit":
+                this.___commit();
+                break;
+            default:
+                // invoke the method on the real object with the given params
+//                res = methodProxy.invoke(realObj, args);
+                res = methodProxy.invokeSuper(o, args);
+
+                // verificar si hay diferencias entre los objetos.
+                this.commitObjectChange();
+
+                break;
+        }
+
+        // AFTER
+        // print how long it took to execute the method on the proxified object
+//        System.out.println("Took: " + (System.currentTimeMillis() - time1) + " ms");
+        // return the result         
+        return res;
+    }
+    
+    
+    
     public void ___setProxyObject(Object po) {
         this.___proxyObject = po;
     }
@@ -438,11 +501,12 @@ public class ObjectProxy implements IObjectProxy {
                         Class<? extends Object> fieldClass = entry.getValue();
 
                         // f = ReflexionUtils.findField(this.realObj.getClass(), field);
+                        LOGGER.log(Level.FINER, "procesando campo: " + field + " clase: "+this.___proxyObject.getClass());
+
                         f = ReflexionUtils.findField(this.___proxyObject.getClass(), field);
                         boolean acc = f.isAccessible();
                         f.setAccessible(true);
 
-                        LOGGER.log(Level.FINER, "procesando campo: " + field);
 
                         // Object oCol = f.get(this.realObj);
                         Object oCol = f.get(this.___proxyObject);

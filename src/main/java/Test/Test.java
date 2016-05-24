@@ -47,9 +47,10 @@ public class Test {
         sm.begin();
         // correr test de store
 //        this.store();
+          this.testStoreLink();
 //        this.testUpdateLink();
 //        this.testQuery();
-        testLoop();
+//        testLoop();
         try {
             sm.commit();
         } catch (OConcurrentModificationException ccme) {
@@ -220,6 +221,53 @@ public class Test {
 
     }
 
+    public void testStoreLink() {
+        
+        System.out.println("store objeto sin Link y luego se le agrega uno");
+        
+        SimpleVertexEx sve = new SimpleVertexEx();
+        SimpleVertexEx result = this.sm.store(sve);
+        this.sm.commit();
+        System.out.println("=========== fin primer commit ====================================");
+        
+        System.out.println("result.svinner: "+result.getSvinner()+"  sve.svinner:"+ sve.getSvinner());
+        
+        // actualizar el objeto administrado
+        result.initInner();
+        System.out.println("result.svinner: "+result.getSvinner().getS()+ "      toS: "+result.getSvinner().toString());
+        // bajarlo a la base
+        System.out.println("=========== inicio segundo commit <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
+        sm.commit();
+        System.out.println("=========== fin segundo commit ====================================");
+        System.out.println("result.svinner: "+result.getSvinner().getS()+ "      toS: "+result.getSvinner().toString());
+        
+        // recuperar el objeto en otra instancia
+        String rid = ((IObjectProxy)result).___getRid();
+        
+        System.out.println("============================================================================");
+        System.out.println("RID: "+rid);
+        System.out.println("============================================================================");
+        
+        
+        System.out.println("");
+        System.out.println("");
+        System.out.println("");
+        System.out.println("========= comienzo del get =================================================");
+        SimpleVertexEx expResult = sm.get(SimpleVertexEx.class, rid);
+        System.out.println("========= fin del get =================================================");
+        
+        assertEquals(((IObjectProxy)expResult).___getRid(), rid);
+        
+        System.out.println("++++++++++++++++ result: "+result.getSvinner().toString());
+        System.out.println("++++++++++++++++ expResult: "+expResult.getSvinner().toString());
+        
+        assertEquals(expResult.getSvinner().getI(), result.getSvinner().getI());
+        assertEquals(expResult.getSvinner().getS(), result.getSvinner().getS());
+        assertEquals(expResult.getSvinner().getoB(), result.getSvinner().getoB());
+        assertEquals(expResult.getSvinner().getoF(), result.getSvinner().getoF());
+        assertEquals(expResult.getSvinner().getoI(), result.getSvinner().getoI());
+    }
+    
     public void testUpdateLink() {
         System.out.println("store objeto sin Link y luego se le agrega uno");
         
@@ -314,4 +362,86 @@ public class Test {
         
         System.out.println("============================= FIN LoopTest ===============================");
     }
+    
+    
+    
+    /**
+     * soporte desde JUnit
+     * 
+     */
+    /**
+     * Asserts that two objects are equal. If they are not, an
+     * {@link AssertionError} without a message is thrown. If
+     * <code>expected</code> and <code>actual</code> are <code>null</code>,
+     * they are considered equal.
+     *
+     * @param expected expected value
+     * @param actual the value to check against <code>expected</code>
+     */
+    static public void assertEquals(Object expected, Object actual) {
+        assertEquals(null, expected, actual);
+    }
+    
+    /**
+     * Asserts that two objects are equal. If they are not, an
+     * {@link AssertionError} is thrown with the given message. If
+     * <code>expected</code> and <code>actual</code> are <code>null</code>,
+     * they are considered equal.
+     *
+     * @param message the identifying message for the {@link AssertionError} (<code>null</code>
+     * okay)
+     * @param expected expected value
+     * @param actual actual value
+     */
+    static public void assertEquals(String message, Object expected,
+            Object actual) {
+        if (equalsRegardingNull(expected, actual)) {
+            return;
+        } else if (expected instanceof String && actual instanceof String) {
+            String cleanMessage = message == null ? "" : message;
+            System.out.println("Expected: " + expected + " - actual: " + actual);
+        } else {
+            failNotEquals(message, expected, actual);
+        }
+    }
+    
+    private static boolean equalsRegardingNull(Object expected, Object actual) {
+        if (expected == null) {
+            return actual == null;
+        }
+
+        return isEquals(expected, actual);
+    }
+    
+    private static boolean isEquals(Object expected, Object actual) {
+        return expected.equals(actual);
+    }
+    
+    static private void failNotEquals(String message, Object expected,
+            Object actual) {
+        System.out.println("ERROR: " +(format(message, expected, actual)));
+    }
+    
+    static String format(String message, Object expected, Object actual) {
+        String formatted = "";
+        if (message != null && !message.equals("")) {
+            formatted = message + " ";
+        }
+        String expectedString = String.valueOf(expected);
+        String actualString = String.valueOf(actual);
+        if (expectedString.equals(actualString)) {
+            return formatted + "expected: "
+                    + formatClassAndValue(expected, expectedString)
+                    + " but was: " + formatClassAndValue(actual, actualString);
+        } else {
+            return formatted + "expected:<" + expectedString + "> but was:<"
+                    + actualString + ">";
+        }
+    }
+    
+    private static String formatClassAndValue(Object value, String valueString) {
+        String className = value == null ? "null" : value.getClass().getName();
+        return className + "<" + valueString + ">";
+    }
+
 }

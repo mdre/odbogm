@@ -6,9 +6,7 @@
 package net.odbogm.cache;
 
 import java.util.HashMap;
-import java.util.Map;
 import java.util.logging.Logger;
-import net.sf.cglib.core.TypeUtils;
 
 /**
  * Estructura para soportar la definición de una clase.

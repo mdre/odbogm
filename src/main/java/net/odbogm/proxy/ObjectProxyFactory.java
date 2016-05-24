@@ -16,6 +16,8 @@ import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
 import net.bytebuddy.implementation.MethodDelegation;
 import static net.bytebuddy.matcher.ElementMatchers.any;
 import static net.bytebuddy.matcher.ElementMatchers.isDeclaredBy;
+import net.sf.cglib.proxy.Enhancer;
+import org.fusesource.hawtjni.runtime.Library;
 
 /**
  *
@@ -23,7 +25,24 @@ import static net.bytebuddy.matcher.ElementMatchers.isDeclaredBy;
  */
 public class ObjectProxyFactory {
     private final static Logger LOGGER = Logger.getLogger(ObjectProxyFactory.class .getName());
-
+    
+    private enum lib {CGLIB,BB};
+    private static lib library = lib.CGLIB;
+    
+    public static <T> T create(T o, OrientElement oe, SessionManager sm ) {
+        if (library == lib.BB)
+            return bbcreate(o, oe, sm);
+        else
+            return cglibcreate(o, oe, sm);
+    }
+    
+    public static <T> T create(Class<T> c, OrientElement ov, SessionManager sm ) {
+        if (library == lib.BB)
+            return bbcreate(c, ov, sm);
+        else
+          return cglibcreate(c, ov, sm);
+    }
+    
     /**
      * Devuelve un proxy a partir de un objeto existente y copia todos los valores del objeto original al 
      * nuevo objecto provisto por el proxy
@@ -33,7 +52,7 @@ public class ObjectProxyFactory {
      * @param sm
      * @return 
      */
-    public static <T> T create(T o, OrientElement oe, SessionManager sm ) {
+    public static <T> T bbcreate(T o, OrientElement oe, SessionManager sm ) {
         T po = null;
         try {
             ObjectProxy bbi = new ObjectProxy(o,oe,sm);
@@ -44,7 +63,7 @@ public class ObjectProxyFactory {
                         .method(any())
                         .intercept(MethodDelegation.to(bbi))
                     .make()
-                    .load(o.getClass().getClassLoader(), ClassLoadingStrategy.Default.INJECTION)
+                    .load(o.getClass().getClassLoader(), ClassLoadingStrategy.Default.WRAPPER)
                     .getLoaded().newInstance();
             bbi.___setProxyObject(po);
             
@@ -64,7 +83,7 @@ public class ObjectProxyFactory {
      * @param sm
      * @return 
      */
-    public static <T> T create(Class<T> c, OrientElement ov, SessionManager sm ) {
+    public static <T> T bbcreate(Class<T> c, OrientElement ov, SessionManager sm ) {
         T po = null;
         try {
             ObjectProxy bbi = new ObjectProxy(c,ov,sm);
@@ -74,9 +93,9 @@ public class ObjectProxyFactory {
                     .method(isDeclaredBy(IObjectProxy.class))
                     .intercept(MethodDelegation.to(bbi))
                     .make()
-                    .load(getSystemClassLoader(), ClassLoadingStrategy.Default.INJECTION)
+                    .load(getSystemClassLoader(), ClassLoadingStrategy.Default.WRAPPER)
                     .getLoaded().newInstance();
-
+            bbi.___setProxyObject(po);
         } catch (InstantiationException ex) {
             Logger.getLogger(ObjectProxyFactory.class.getName()).log(Level.SEVERE, null, ex);
         } catch (IllegalAccessException ex) {
@@ -84,4 +103,55 @@ public class ObjectProxyFactory {
         }
         return po;
     }
+    
+    
+    // Implementación con CGLib
+    public static <T> T cglibcreate(T o, OrientElement oe, SessionManager sm ) {
+        // this is the main cglib api entry-point
+        // this object will 'enhance' (in terms of CGLIB) with new capabilities
+        // one can treat this class as a 'Builder' for the dynamic proxy
+        Enhancer e = new Enhancer();
+
+        // the class will extend from the real class
+        e.setSuperclass(o.getClass());
+        // we have to declare the interceptor  - the class whose 'intercept'
+        // will be called when any method of the proxified object is called.
+        ObjectProxy po = new ObjectProxy(o.getClass(),oe, sm);
+        e.setCallback(po);
+        e.setInterfaces(new Class[]{IObjectProxy.class});
+
+        // now the enhancer is configured and we'll create the proxified object
+        T proxifiedObj = (T) e.create();
+        
+        po.___setProxyObject(proxifiedObj);
+        
+        // the object is ready to be used - return it
+        return proxifiedObj;
+    }
+    
+    public static <T> T cglibcreate(Class<T> c, OrientElement oe, SessionManager sm ) {
+        // this is the main cglib api entry-point
+        // this object will 'enhance' (in terms of CGLIB) with new capabilities
+        // one can treat this class as a 'Builder' for the dynamic proxy
+        Enhancer e = new Enhancer();
+
+        // the class will extend from the real class
+        e.setSuperclass(c);
+        // we have to declare the interceptor  - the class whose 'intercept'
+        // will be called when any method of the proxified object is called.
+        ObjectProxy po = new ObjectProxy(c,oe, sm);
+        e.setCallback(po);
+        e.setInterfaces(new Class[]{IObjectProxy.class});
+
+        // now the enhancer is configured and we'll create the proxified object
+        T proxifiedObj = (T) e.create();
+        
+        po.___setProxyObject(proxifiedObj);
+        
+        // the object is ready to be used - return it
+        return proxifiedObj;
+    }
+    
+    
+    
 }
