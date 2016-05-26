@@ -9,7 +9,7 @@ import net.odbogm.SessionManager;
 import Test.SimpleVertex;
 import Test.SimpleVertexEx;
 import net.odbogm.proxy.IObjectProxy;
-import com.orientechnologies.orient.core.sql.OCommandSQL;
+import java.util.ArrayList;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -338,6 +338,49 @@ public class SessionManagerTest {
         
         System.out.println("============================= FIN LoopTest ===============================");
     }
+    
+    
+    /**
+    * Verificar la correscta inicialización de los objetos en un arraylist
+    */
+    
+    @Test
+    public void testArrayList(){
+        System.out.println("***************************************************************");
+        System.out.println("Verificar el comportamiento de los ArrayLists");
+        System.out.println("***************************************************************");
+        SimpleVertexEx sve = new SimpleVertexEx();
+        
+        System.out.println("guardado del objeto limpio.");
+        SimpleVertexEx stored = sm.store(sve);
+        sm.commit();
+        
+        String rid = ((IObjectProxy)stored).___getRid();
+        
+        System.out.println("primer commit------------------------------------------------------------");
+        
+        assertNull(stored.getAlSVE());
+        
+        System.out.println("Agrego un AL nuevo");
+        ArrayList<SimpleVertexEx> nal = new ArrayList<>();
+        stored.setAlSVE(nal);
+        nal.add(new SimpleVertexEx());
+        
+        sm.commit();
+        System.out.println("segundo commit ----------------------------------------------------------");
+        SimpleVertexEx retrieved = sm.get(SimpleVertexEx.class, rid);
+        assertEquals(retrieved.getAlSVE().size(), stored.getAlSVE().size());
+        
+        System.out.println("agregamos un nuevo objeto al arraylist ya inicializado");
+        stored.getAlSVE().add(new SimpleVertexEx());
+        sm.commit();
+        System.out.println("tercer commit ----------------------------------------------------------");
+        
+        retrieved = sm.get(SimpleVertexEx.class, rid);
+        assertEquals(retrieved.getAlSVE().size(), stored.getAlSVE().size());
+        
+    }
+    
     
 //    /**
 //     * Test of setAsDirty method, of class SessionManager.

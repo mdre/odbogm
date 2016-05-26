@@ -25,11 +25,13 @@ import java.util.logging.Logger;
 public class ClassCache {
 
     private final static Logger LOGGER = Logger.getLogger(ClassCache.class.getName());
-
+    static {
+        LOGGER.setLevel(Level.WARNING);
+    }
+    
     private final HashMap<Class<?>, ClassDef> classCache = new HashMap<>();
 
     public ClassCache() {
-        LOGGER.setLevel(Level.WARNING);
     }
 
     /**
@@ -76,17 +78,19 @@ public class ClassCache {
                         f.setAccessible(true);
                         
                         // determinar si es un campo permitido
+                        // FIXME: falta considerar la posibilidad de los Embedded Object
                         LOGGER.log(Level.FINER, "Field: "+f.getName()+"  Type: "+f.getType()+(f.getType().isEnum()?"<<<<<<<<<<< ENUM":""));
                         if (PRIMITIVE_MAP.get(f.getType()) != null) {
                             cached.fields.put(f.getName(), f.getType());
                         } else if (f.getType().isEnum()) {
-                            cached.enumFields.put(f.getName(), f.getType());    
-                        } else if (f.isAnnotationPresent(Link.class)) {
-                            cached.links.put(f.getName(), f.getType());
-                        } else if ((f.isAnnotationPresent(LinkList.class)&(Primitives.LAZY_COLLECTION.get(f.getType())!=null))) {
+                            cached.enumFields.put(f.getName(), f.getType());
+                        } else if (Primitives.LAZY_COLLECTION.get(f.getType())!=null) {
+                            // FIXME: ojo que si se tratara de una extensín de AL o HM no lo vería como tal y lo vincularía con un link
                             cached.linkLists.put(f.getName(), f.getType());
                         } else {
-                            LOGGER.log(Level.WARNING, "NO PERSISTIDO: {0}.{1}", new Object[]{c.getName(), f.getName()});
+                            cached.links.put(f.getName(), f.getType());
+//                        } else {
+//                            LOGGER.log(Level.WARNING, "NO PERSISTIDO: {0}.{1}", new Object[]{c.getName(), f.getName()});
                         }
 
                         // resstablecer el campo

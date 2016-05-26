@@ -35,6 +35,10 @@ public class SimpleVertexEx extends SimpleVertex {
     @LinkList(name = "alSV")
     public ArrayList<SimpleVertex> alSV;
     
+    @LinkList(name = "alSV")
+    public ArrayList<SimpleVertexEx> alSVE;
+
+    
     @LinkList(name = "mapSV")
     public HashMap<String,SimpleVertex> hmSV;
     
@@ -48,8 +52,7 @@ public class SimpleVertexEx extends SimpleVertex {
         super();
         this.svex = "deault";
     }
-    
-    
+        
     public void initEnum() {
         this.enumTest = EnumTest.UNO;
     }
@@ -95,6 +98,14 @@ public class SimpleVertexEx extends SimpleVertex {
         return alSV;
     }
 
+    public ArrayList<SimpleVertexEx> getAlSVE() {
+        return alSVE;
+    }
+
+    public void setAlSVE(ArrayList<SimpleVertexEx> alSVE) {
+        this.alSVE = alSVE;
+    }
+    
     public HashMap<String, SimpleVertex> getHmSV() {
         return hmSV;
     }

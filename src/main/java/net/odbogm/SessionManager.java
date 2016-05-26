@@ -16,7 +16,7 @@ import net.odbogm.exceptions.UnknownRID;
 import net.odbogm.exceptions.UnmanagedObject;
 import net.odbogm.proxy.IObjectProxy;
 import net.odbogm.proxy.ObjectProxyFactory;
-import net.odbogm.utils.ReflexionUtils;
+import net.odbogm.utils.ReflectionUtils;
 import com.orientechnologies.orient.core.exception.OConcurrentModificationException;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
 import com.orientechnologies.orient.core.record.impl.ODocument;
@@ -143,7 +143,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
 
             proxied = ObjectProxyFactory.create(o, v, this);
             // transferir todos los valores al proxy
-            ReflexionUtils.copyObject(o, proxied);
+            ReflectionUtils.copyObject(o, proxied);
             
             LOGGER.log(Level.FINER, "Marcando como dirty: " + proxied.getClass().getSimpleName());
             this.dirty.put(v.getId().toString(), proxied);
@@ -511,8 +511,8 @@ public class SessionManager implements Actions.Store, Actions.Get {
             for (Map.Entry<String, Class<?>> entry : classDef.links.entrySet()) {
                 try {
                     String field = entry.getKey();
-//                    f = ReflexionUtils.findField(((IObjectProxy) toRemove).___getBaseObject().getClass(), field);
-                    f = ReflexionUtils.findField(toRemove.getClass(), field);
+//                    f = ReflectionUtils.findField(((IObjectProxy) toRemove).___getBaseObject().getClass(), field);
+                    f = ReflectionUtils.findField(toRemove.getClass(), field);
 
                     if (f.isAnnotationPresent(CascadeDelete.class)) {
                         // si se apunta a un objeto, removerlo
@@ -542,8 +542,8 @@ public class SessionManager implements Actions.Store, Actions.Get {
                     final String graphRelationName = toRemove.getClass().getSimpleName() + "_" + field;
                     Class<? extends Object> fieldClass = entry.getValue();
 
-//                    f = ReflexionUtils.findField(((IObjectProxy) toRemove).___getBaseObject().getClass(), field);
-                    f = ReflexionUtils.findField(toRemove.getClass(), field);
+//                    f = ReflectionUtils.findField(((IObjectProxy) toRemove).___getBaseObject().getClass(), field);
+                    f = ReflectionUtils.findField(toRemove.getClass(), field);
                     boolean acc = f.isAccessible();
                     f.setAccessible(true);
 

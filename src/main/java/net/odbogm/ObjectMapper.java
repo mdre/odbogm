@@ -9,7 +9,7 @@ import net.odbogm.exceptions.DuplicateLink;
 import net.odbogm.cache.ClassCache;
 import net.odbogm.cache.ClassDef;
 import net.odbogm.exceptions.CollectionNotSupported;
-import net.odbogm.utils.ReflexionUtils;
+import net.odbogm.utils.ReflectionUtils;
 import com.tinkerpop.blueprints.Direction;
 import com.tinkerpop.blueprints.Vertex;
 import com.tinkerpop.blueprints.impls.orient.OrientVertex;
@@ -84,7 +84,7 @@ public class ObjectMapper {
                 String field = entry.getKey();
                 Class<?> c = entry.getValue();
 
-                Field f = ReflexionUtils.findField(o.getClass(), field);
+                Field f = ReflectionUtils.findField(o.getClass(), field);
                 boolean acc = f.isAccessible();
                 f.setAccessible(true);
 
@@ -137,7 +137,7 @@ public class ObjectMapper {
                 String field = entry.getKey();
                 Class<?> c = entry.getValue();
 
-                Field f = ReflexionUtils.findField(o.getClass(), field);
+                Field f = ReflectionUtils.findField(o.getClass(), field);
                 boolean acc = f.isAccessible();
                 f.setAccessible(true);
                 // determinar si no es nulo
@@ -157,7 +157,7 @@ public class ObjectMapper {
                 String field = entry.getKey();
                 Class<?> c = entry.getValue();
 
-                Field f = ReflexionUtils.findField(o.getClass(), field);
+                Field f = ReflectionUtils.findField(o.getClass(), field);
                 boolean acc = f.isAccessible();
                 f.setAccessible(true);
                 // determinar si no es nulo
@@ -177,7 +177,7 @@ public class ObjectMapper {
                 String field = entry.getKey();
                 Class<?> c = entry.getValue();
 
-                Field f = ReflexionUtils.findField(o.getClass(), field);
+                Field f = ReflectionUtils.findField(o.getClass(), field);
                 boolean acc = f.isAccessible();
                 f.setAccessible(true);
                 // determinar si no es nulo
@@ -197,7 +197,7 @@ public class ObjectMapper {
                 String field = entry.getKey();
                 Class<?> c = entry.getValue();
 
-                Field f = ReflexionUtils.findField(o.getClass(), field);
+                Field f = ReflectionUtils.findField(o.getClass(), field);
                 boolean acc = f.isAccessible();
                 f.setAccessible(true);
                 // determinar si no es nulo
@@ -244,7 +244,7 @@ public class ObjectMapper {
             // obtener la clase a la que pertenece el campo
             Class<?> fc = fieldmap.get(prop);
 
-            f = ReflexionUtils.findField(c, prop);
+            f = ReflectionUtils.findField(c, prop);
 
             boolean acc = f.isAccessible();
             f.setAccessible(true);
@@ -272,7 +272,7 @@ public class ObjectMapper {
                 String graphRelationName = c.getSimpleName() + "_" + field;
                 LOGGER.log(Level.FINER, "Field: {0}   RelationName: {1}", new String[]{field, graphRelationName});
 
-                Field fLink = ReflexionUtils.findField(c, field);
+                Field fLink = ReflectionUtils.findField(c, field);
                 boolean acc = fLink.isAccessible();
                 fLink.setAccessible(true);
 
@@ -312,7 +312,7 @@ public class ObjectMapper {
                 String field = entry.getKey();
                 Class<?> fc = entry.getValue();
                 LOGGER.log(Level.FINER, "Field: {0}   Class: {1}", new String[]{field, fc.getName()});
-                Field fLink = ReflexionUtils.findField(c, field);
+                Field fLink = ReflectionUtils.findField(c, field);
                 String graphRelationName = c.getSimpleName() + "_" + field;
                 boolean acc = fLink.isAccessible();
                 fLink.setAccessible(true);
@@ -367,7 +367,7 @@ public class ObjectMapper {
                 c = o.getClass();
             }
             
-            Field fLink = ReflexionUtils.findField(c, field);
+            Field fLink = ReflectionUtils.findField(c, field);
             String graphRelationName = c.getSimpleName() + "_" + field;
             boolean acc = fLink.isAccessible();
             fLink.setAccessible(true);
@@ -426,7 +426,7 @@ public class ObjectMapper {
             Class<?> fc = fieldmap.get(prop);
 //            LOGGER.log(Level.FINER, "hidratando campo: "+prop);
 
-            f = ReflexionUtils.findField(c, prop);
+            f = ReflectionUtils.findField(c, prop);
 
             boolean acc = f.isAccessible();
             f.setAccessible(true);
@@ -439,7 +439,7 @@ public class ObjectMapper {
 
     public static void setFieldValue(Object o, String field, Object value) {
         try {
-            Field f = ReflexionUtils.findField(o.getClass(), field);
+            Field f = ReflectionUtils.findField(o.getClass(), field);
             boolean acc = f.isAccessible();
             f.setAccessible(true);
             // determinar si no es nulo

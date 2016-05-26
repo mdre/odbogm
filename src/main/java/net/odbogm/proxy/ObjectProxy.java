@@ -10,7 +10,7 @@ import net.odbogm.ObjectStruct;
 import net.odbogm.SessionManager;
 import net.odbogm.cache.ClassDef;
 import net.odbogm.exceptions.CollectionNotSupported;
-import net.odbogm.utils.ReflexionUtils;
+import net.odbogm.utils.ReflectionUtils;
 import com.tinkerpop.blueprints.Direction;
 import com.tinkerpop.blueprints.Edge;
 import com.tinkerpop.blueprints.impls.orient.OrientEdge;
@@ -343,7 +343,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                 final String graphRelationName = this.___baseClass.getSimpleName() + "_" + field;
                                 Class<? extends Object> fieldClass = entry.getValue();
 
-                                f = ReflexionUtils.findField(this.___proxyObject.getClass(), field);
+                                f = ReflectionUtils.findField(this.___proxyObject.getClass(), field);
                                 boolean acc = f.isAccessible();
                                 f.setAccessible(true);
 
@@ -384,7 +384,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             if (this.___dirty) {
                 // agregarlo a la lista de dirty para procesarlo luego
                 this.___sm.setAsDirty(this.___proxyObject);
-                System.out.println("Objeto marcado como dirty! <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
+                LOGGER.log(Level.FINER, "Objeto marcado como dirty! <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
             }
         }
     }
@@ -440,8 +440,8 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                             }
 
                             try {
-                                // f = ReflexionUtils.findField(this.realObj.getClass(), field);
-                                f = ReflexionUtils.findField(this.getClass(), field);
+                                // f = ReflectionUtils.findField(this.realObj.getClass(), field);
+                                f = ReflectionUtils.findField(this.getClass(), field);
                                 boolean acc = f.isAccessible();
                                 f.setAccessible(true);
 
@@ -500,10 +500,10 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                         final String graphRelationName = this.___baseClass.getSimpleName() + "_" + field;
                         Class<? extends Object> fieldClass = entry.getValue();
 
-                        // f = ReflexionUtils.findField(this.realObj.getClass(), field);
+                        // f = ReflectionUtils.findField(this.realObj.getClass(), field);
                         LOGGER.log(Level.FINER, "procesando campo: " + field + " clase: "+this.___proxyObject.getClass());
 
-                        f = ReflexionUtils.findField(this.___proxyObject.getClass(), field);
+                        f = ReflectionUtils.findField(this.___proxyObject.getClass(), field);
                         boolean acc = f.isAccessible();
                         f.setAccessible(true);
 
@@ -511,12 +511,15 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                         // Object oCol = f.get(this.realObj);
                         Object oCol = f.get(this.___proxyObject);
 
-                        // verificar si existe algún cambio en la colección
+                        // verificar si existe algún cambio en la coleccióne
+                        // ingresa si la colección es distinta de null y
+                        // oCol es instancia de ILazyCalls y está marcado como dirty
+                        // o oCol no es instancia de ILazyCalls, lo que significa que es una colección nueva
+                        // y debe ser procesada completamente.
                         if ((oCol != null)
-                                && ((ILazyCalls.class
-                                .isAssignableFrom(oCol.getClass()) && ((ILazyCalls) oCol).isDirty())
-                                || (!ILazyCalls.class
-                                .isAssignableFrom(oCol.getClass())))) {
+                                && ((ILazyCalls.class.isAssignableFrom(oCol.getClass()) && ((ILazyCalls) oCol).isDirty())
+                                    || (!ILazyCalls.class.isAssignableFrom(oCol.getClass())))) {
+                            
                             if (oCol instanceof List) {
                                 ILazyCollectionCalls col;
                                 // procesar la colección
@@ -528,9 +531,11 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                     // se ha asignado una colección original y se debe exportar todo
                                     // this.sm.getObjectMapper().colecctionToLazy(this.realObj, field, ov);
                                     this.___sm.getObjectMapper().colecctionToLazy(this.___proxyObject, field, ov);
+                                    
                                     //recuperar la nueva colección
                                     // Collection inter = (Collection) f.get(this.realObj);
                                     Collection inter = (Collection) f.get(this.___proxyObject);
+                                    
                                     //agregar todos los valores que existían
                                     inter.addAll((Collection) oCol);
                                     //preparar la interface para que se continúe con el acceso.
@@ -564,8 +569,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                     ObjectCollectionState colObjState = entry1.getValue();
 
                                     if (colObjState == ObjectCollectionState.REMOVED) {
-                                        if (f.isAnnotationPresent(RemoveOrphan.class
-                                        )) {
+                                        if (f.isAnnotationPresent(RemoveOrphan.class)) {
                                             this.___sm.delete(colObject);
                                         } else {
                                             // remover solo el link

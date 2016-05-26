@@ -12,9 +12,9 @@ import java.util.logging.Logger;
  *
  * @author SShadow
  */
-public class ReflexionUtils {
+public class ReflectionUtils {
 
-    private final static Logger LOGGER = Logger.getLogger(ReflexionUtils.class.getName());
+    private final static Logger LOGGER = Logger.getLogger(ReflectionUtils.class.getName());
 
     public static Field findField(Class<?> clazz, String fieldName) throws NoSuchFieldException {
         Class<?> current = clazz;

@@ -7,6 +7,7 @@
 package Test.BB;
 
 import Test.BB.Ex1;
+import java.util.ArrayList;
 import java.util.logging.Logger;
 
 /**
@@ -18,7 +19,7 @@ public class Ex2 extends Ex1 {
     
     private Ex1 inner;
     private String ex2String;
-    
+    AL alTest = new AL();
     
     public Ex2() {
         inner = new Ex1();
@@ -40,5 +41,9 @@ public class Ex2 extends Ex1 {
     public void setEx2String(String ex2String) {
         this.ex2String = ex2String;
     }
+    
+}
+
+class AL extends ArrayList {
     
 }

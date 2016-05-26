@@ -7,7 +7,7 @@ package Test.BB;
 
 import net.odbogm.proxy.BBGeneralInterceptor;
 import Test.SimpleVertexEx;
-import net.odbogm.utils.ReflexionUtils;
+import net.odbogm.utils.ReflectionUtils;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.bytebuddy.ByteBuddy;
@@ -17,6 +17,7 @@ import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.dynamic.loading.ClassReloadingStrategy;
 import net.bytebuddy.implementation.MethodDelegation;
 import net.bytebuddy.matcher.ElementMatchers;
+import static net.bytebuddy.matcher.ElementMatchers.isDeclaredBy;
 import static net.bytebuddy.matcher.ElementMatchers.isDeclaredBy;
 
 /**
@@ -85,7 +86,7 @@ public class TestBB {
                     .getLoaded().newInstance();
             
             // copiar todo 
-            ReflexionUtils.copyObject(sve, proxied1);
+            ReflectionUtils.copyObject(sve, proxied1);
 
             System.out.println("" + proxied1.getClass().getName());
             System.out.println("" + proxied1.getClass().getSuperclass().getName());
@@ -103,7 +104,7 @@ public class TestBB {
                     .getLoaded().newInstance();
             
             // copiar todo 
-            ReflexionUtils.copyObject(sve, proxied2);
+            ReflectionUtils.copyObject(sve, proxied2);
             ((ITest)proxied1).setData("test1");
             ((ITest)proxied2).setData("test2");
             System.out.println("Class: "+proxied1.getClass().getSimpleName());

@@ -8,7 +8,7 @@ package Test;
 import net.odbogm.exceptions.IncorrectRIDField;
 import net.odbogm.SessionManager;
 import net.odbogm.proxy.IObjectProxy;
-import net.odbogm.utils.ReflexionUtils;
+import net.odbogm.utils.ReflectionUtils;
 import com.orientechnologies.orient.core.exception.OConcurrentModificationException;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -63,7 +63,7 @@ public class Test {
         svex.initInner();
         
         try {
-            Field f = ReflexionUtils.findField(SimpleVertexEx.class, "enumTest");
+            Field f = ReflectionUtils.findField(SimpleVertexEx.class, "enumTest");
             f.setAccessible(true);
             System.out.println("Value: "+f.get(svex));
             

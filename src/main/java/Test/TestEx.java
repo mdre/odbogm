@@ -7,10 +7,10 @@
 package Test;
 
 import Test.BB.Ex2;
-import net.odbogm.utils.ReflexionUtils;
 import java.lang.reflect.Field;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import net.odbogm.utils.ReflectionUtils;
 
 /**
  *
@@ -20,14 +20,25 @@ public class TestEx {
     private final static Logger LOGGER = Logger.getLogger(TestEx.class .getName());
 
     public TestEx() {
-        Ex2 e2 = new Ex2();
-        System.out.println("x: "+e2.x);
-        System.out.println("Test: "+e2.test());
-        System.out.println("inc: "+e2.inc());
-        System.out.println("Test: "+e2.test());
+        try {
+            Ex2 e2 = new Ex2();
+            System.out.println("x: "+e2.x);
+            System.out.println("Test: "+e2.test());
+            System.out.println("inc: "+e2.inc());
+            System.out.println("Test: "+e2.test());
+            
+            Field f = ReflectionUtils.findField(Ex2.class, "alTest");
+            System.out.println("Tipo: "+f.getType());
+            
+        } catch (NoSuchFieldException ex) {
+            Logger.getLogger(TestEx.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
+        
     }
     
     public static void main(String[] args) {
         new TestEx();
     }
 }
+
