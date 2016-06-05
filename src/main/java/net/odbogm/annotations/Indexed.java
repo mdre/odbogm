@@ -19,4 +19,7 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.FIELD})
 public @interface Indexed {
+    public enum IndexType{UNIQUE,NOUNIQUE,FULLTEXT}
+    
+    IndexType type() default IndexType.NOUNIQUE;
 }

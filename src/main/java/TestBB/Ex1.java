@@ -4,7 +4,7 @@
  * and open the template in the editor.
  */
 
-package Test.BB;
+package TestBB;
 
 import java.util.logging.Logger;
 

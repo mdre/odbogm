@@ -13,6 +13,7 @@ import net.odbogm.annotations.RemoveOrphan;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.logging.Logger;
+import net.odbogm.annotations.FieldAttributes;
 
 /**
  *
@@ -21,6 +22,10 @@ import java.util.logging.Logger;
 public class SimpleVertexEx extends SimpleVertex {
     @Ignore
     private final static Logger LOGGER = Logger.getLogger(SimpleVertexEx.class .getName());
+
+    @FieldAttributes(
+    mandatory = FieldAttributes.Bool.TRUE
+    )
     private String svex;
 
     @Link
@@ -50,7 +55,7 @@ public class SimpleVertexEx extends SimpleVertex {
 
     public SimpleVertexEx() {
         super();
-        this.svex = "deault";
+        this.svex = "default";
     }
         
     public void initEnum() {

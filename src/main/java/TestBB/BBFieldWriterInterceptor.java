@@ -3,13 +3,15 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package Test.BB;
+
+package TestBB;
+
+import java.util.logging.Logger;
 
 /**
  *
  * @author SShadow
  */
-public interface ITest {
-    public void setData(String s);
-    public String getData();
+public class BBFieldWriterInterceptor {
+    private final static Logger LOGGER = Logger.getLogger(BBFieldWriterInterceptor.class .getName());
 }

@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package Test.BB;
+package TestBB;
 
 import net.odbogm.proxy.BBGeneralInterceptor;
 import Test.SimpleVertexEx;

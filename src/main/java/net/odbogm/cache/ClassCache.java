@@ -13,6 +13,7 @@ import net.odbogm.Primitives;
 import static net.odbogm.Primitives.PRIMITIVE_MAP;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
@@ -69,7 +70,7 @@ public class ClassCache {
             for (Field f : fields) {
                 try {
                     // determinar si se debe o no procesar el campo.
-                    if ( !(    f.isAnnotationPresent(Ignore.class)
+                    if ( !(    f.isAnnotationPresent(Ignore.class) || Modifier.isTransient(f.getModifiers())
 //                            || f.getName().startsWith("___")
 //                            || f.getName().startsWith("GCLIB")
                             )

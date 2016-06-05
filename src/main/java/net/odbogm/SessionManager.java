@@ -135,7 +135,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
             Map<String, Object> omap = oStruct.fields;
 
             // verificar que la clase existe
-            if (this.getDBClass(o.getClass()) == null) {
+            if (this.getDBClass(classname) == null) {
                 graphdb.createVertexType(classname);
             }
 
@@ -679,7 +679,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
      * @param clase
      * @return OClass o null si la clase no existe
      */
-    public OClass getDBClass(Class<?> clase) {
+    public OClass getDBClass(String clase) {
         return graphdb.getRawGraph().getMetadata().getSchema().getClass(clase);
     }
 }

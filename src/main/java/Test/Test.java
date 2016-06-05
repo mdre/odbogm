@@ -20,6 +20,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import net.odbogm.DbManager;
+import net.odbogm.annotations.FieldAttributes;
 
 /**
  *
@@ -39,6 +41,12 @@ public class Test {
     }
 
     public Test() {
+//        testSessionManager();
+        testDbManager();
+    }
+    
+    
+    public void testSessionManager() {
 //        IObjectProxy iop;
         
         System.out.println("Iniciando comunicación con la base....");
@@ -47,26 +55,39 @@ public class Test {
         sm.begin();
         // correr test de store
 //        this.store();
-          this.testStoreLink();
+//          this.testStoreLink();
 //        this.testUpdateLink();
 //        this.testQuery();
 //        testLoop();
+//        this.lab();
+        
         try {
             sm.commit();
         } catch (OConcurrentModificationException ccme) {
 
+        } finally {
+            sm.shutdown();
         }
     }
 
+    public void testDbManager() {
+        DbManager dbm = new DbManager("remote:localhost/Test", "root", "toor");
+        dbm.process(new String[]{"Test"});
+    }
+    
+    
     public void lab(){
         SimpleVertexEx svex = new SimpleVertexEx();
         svex.initInner();
         
         try {
-            Field f = ReflectionUtils.findField(SimpleVertexEx.class, "enumTest");
+            Field f = ReflectionUtils.findField(SimpleVertexEx.class, "svex");
             f.setAccessible(true);
             System.out.println("Value: "+f.get(svex));
-            
+            FieldAttributes fa = f.getAnnotation(FieldAttributes.class);
+//            System.out.println("Name: "+fa.name());
+            System.out.println("isEmpty: "+fa.defaultVal().isEmpty());
+            System.out.println("isNULL: "+(fa.defaultVal()==null));
             
         } catch (NoSuchFieldException ex) {
             Logger.getLogger(Test.class.getName()).log(Level.SEVERE, null, ex);

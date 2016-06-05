@@ -5,12 +5,14 @@
  */
 package net.odbogm;
 
+import com.orientechnologies.orient.core.metadata.schema.OType;
 import net.odbogm.proxy.ArrayListLazyProxy;
 import net.odbogm.proxy.HashMapLazyProxy;
 import net.odbogm.proxy.LinkedListLazyProxy;
 import net.odbogm.proxy.VectorLazyProxy;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.LinkedList;
@@ -35,31 +37,31 @@ public class Primitives {
         SHORT,
         BIGDECIMAL
     }
-    public static final IdentityHashMap<Class<?>, PRIMITIVE> PRIMITIVE_MAP = new IdentityHashMap<>();
+    public static final IdentityHashMap<Class<?>, OType> PRIMITIVE_MAP = new IdentityHashMap<>();
     public static final IdentityHashMap<Class<?>, Class<?>> LAZY_COLLECTION = new IdentityHashMap<>();
 
     static {
-        PRIMITIVE_MAP.put(Boolean.class, PRIMITIVE.BOOLEAN);
-        PRIMITIVE_MAP.put(Byte.class, PRIMITIVE.BYTE);
-        PRIMITIVE_MAP.put(Character.class, PRIMITIVE.CHAR);
-        PRIMITIVE_MAP.put(Double.class, PRIMITIVE.DOUBLE);
-        PRIMITIVE_MAP.put(Float.class, PRIMITIVE.FLOAT);
-        PRIMITIVE_MAP.put(Integer.class, PRIMITIVE.INT);
-        PRIMITIVE_MAP.put(Long.class, PRIMITIVE.LONG);
-        PRIMITIVE_MAP.put(Short.class, PRIMITIVE.SHORT);
+        PRIMITIVE_MAP.put(Boolean.class, OType.BOOLEAN);
+        PRIMITIVE_MAP.put(Byte.class, OType.BYTE);
+        PRIMITIVE_MAP.put(Double.class, OType.DOUBLE);
+        PRIMITIVE_MAP.put(Float.class, OType.FLOAT);
+        PRIMITIVE_MAP.put(Integer.class, OType.INTEGER);
+        PRIMITIVE_MAP.put(Long.class, OType.LONG);
+        PRIMITIVE_MAP.put(Short.class, OType.SHORT);
         
-        PRIMITIVE_MAP.put(BigDecimal.class, PRIMITIVE.BIGDECIMAL);
+        PRIMITIVE_MAP.put(BigDecimal.class, OType.DECIMAL);
 
-        PRIMITIVE_MAP.put(String.class, PRIMITIVE.STRING);
+        PRIMITIVE_MAP.put(String.class, OType.STRING);
+        
+        PRIMITIVE_MAP.put(Date.class, OType.DATETIME);
 
-        PRIMITIVE_MAP.put(Boolean.TYPE, PRIMITIVE.BOOLEAN);
-        PRIMITIVE_MAP.put(Byte.TYPE, PRIMITIVE.BYTE);
-        PRIMITIVE_MAP.put(Character.TYPE, PRIMITIVE.CHAR);
-        PRIMITIVE_MAP.put(Double.TYPE, PRIMITIVE.DOUBLE);
-        PRIMITIVE_MAP.put(Float.TYPE, PRIMITIVE.FLOAT);
-        PRIMITIVE_MAP.put(Integer.TYPE, PRIMITIVE.INT);
-        PRIMITIVE_MAP.put(Long.TYPE, PRIMITIVE.LONG);
-        PRIMITIVE_MAP.put(Short.TYPE, PRIMITIVE.SHORT);
+        PRIMITIVE_MAP.put(Boolean.TYPE, OType.BOOLEAN);
+        PRIMITIVE_MAP.put(Byte.TYPE, OType.BYTE);
+        PRIMITIVE_MAP.put(Double.TYPE, OType.DOUBLE);
+        PRIMITIVE_MAP.put(Float.TYPE, OType.FLOAT);
+        PRIMITIVE_MAP.put(Integer.TYPE, OType.INTEGER);
+        PRIMITIVE_MAP.put(Long.TYPE, OType.LONG);
+        PRIMITIVE_MAP.put(Short.TYPE, OType.SHORT);
         
         
         LAZY_COLLECTION.put(List.class,ArrayListLazyProxy.class);
@@ -68,6 +70,9 @@ public class Primitives {
         LAZY_COLLECTION.put(Vector.class,VectorLazyProxy.class);
         
         LAZY_COLLECTION.put(HashMap.class,HashMapLazyProxy.class);
+        
+        
+        
         
     }
 

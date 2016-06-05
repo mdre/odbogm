@@ -6,7 +6,7 @@
 
 package Test;
 
-import Test.BB.Ex2;
+import TestBB.Ex2;
 import java.lang.reflect.Field;
 import java.util.logging.Level;
 import java.util.logging.Logger;

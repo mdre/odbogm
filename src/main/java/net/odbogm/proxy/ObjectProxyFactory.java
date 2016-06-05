@@ -13,11 +13,11 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
+import net.bytebuddy.dynamic.loading.MultipleParentClassLoader;
 import net.bytebuddy.implementation.MethodDelegation;
 import static net.bytebuddy.matcher.ElementMatchers.any;
 import static net.bytebuddy.matcher.ElementMatchers.isDeclaredBy;
 import net.sf.cglib.proxy.Enhancer;
-import org.fusesource.hawtjni.runtime.Library;
 
 /**
  *
@@ -56,6 +56,10 @@ public class ObjectProxyFactory {
         T po = null;
         try {
             ObjectProxy bbi = new ObjectProxy(o,oe,sm);
+            ClassLoader mpcl = new MultipleParentClassLoader.Builder()
+                                                .append(IObjectProxy.class, o.getClass())
+                                                .build();
+            
             po = (T) new ByteBuddy()
                     .subclass(o.getClass())
                     .implement(IObjectProxy.class)
@@ -87,13 +91,17 @@ public class ObjectProxyFactory {
         T po = null;
         try {
             ObjectProxy bbi = new ObjectProxy(c,ov,sm);
+            ClassLoader mpcl = new MultipleParentClassLoader.Builder()
+                                                .append(IObjectProxy.class, c)
+                                                .build();
+            
             po = (T) new ByteBuddy()
                     .subclass(c)
                     .implement(IObjectProxy.class)
                     .method(isDeclaredBy(IObjectProxy.class))
                     .intercept(MethodDelegation.to(bbi))
                     .make()
-                    .load(getSystemClassLoader(), ClassLoadingStrategy.Default.WRAPPER)
+                    .load(mpcl, ClassLoadingStrategy.Default.WRAPPER)
                     .getLoaded().newInstance();
             bbi.___setProxyObject(po);
         } catch (InstantiationException ex) {
