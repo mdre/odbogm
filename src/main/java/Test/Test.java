@@ -72,7 +72,7 @@ public class Test {
 
     public void testDbManager() {
         DbManager dbm = new DbManager("remote:localhost/Test", "root", "toor");
-        dbm.process(new String[]{"Test"});
+        dbm.generateToConsole(new String[]{"Test"});
     }
     
     

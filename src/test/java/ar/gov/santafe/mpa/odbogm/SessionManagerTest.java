@@ -10,6 +10,7 @@ import Test.SimpleVertex;
 import Test.SimpleVertexEx;
 import net.odbogm.proxy.IObjectProxy;
 import java.util.ArrayList;
+import net.odbogm.proxy.ObjectProxyFactory;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -52,7 +53,7 @@ public class SessionManagerTest {
 //    /**
 //     * Test of begin method, of class SessionManager.
 //     */
-//    @Test
+//    //@Test
 //    public void testBegin() {
 //        System.out.println("begin");
 //        SessionManager instance = null;
@@ -365,10 +366,13 @@ public class SessionManagerTest {
         ArrayList<SimpleVertexEx> nal = new ArrayList<>();
         stored.setAlSVE(nal);
         nal.add(new SimpleVertexEx());
+        nal.add(new SimpleVertexEx());
         
         sm.commit();
         System.out.println("segundo commit ----------------------------------------------------------");
         SimpleVertexEx retrieved = sm.get(SimpleVertexEx.class, rid);
+        System.out.println("retrieved: "+retrieved.getAlSVE());
+        System.out.println("stored: "+stored.getAlSVE());
         assertEquals(retrieved.getAlSVE().size(), stored.getAlSVE().size());
         
         System.out.println("agregamos un nuevo objeto al arraylist ya inicializado");
@@ -385,7 +389,7 @@ public class SessionManagerTest {
 //    /**
 //     * Test of setAsDirty method, of class SessionManager.
 //     */
-//    @Test
+//    //@Test
 //    public void testSetAsDirty() {
 //        System.out.println("setAsDirty");
 //        Object o = null;
@@ -398,7 +402,7 @@ public class SessionManagerTest {
 //    /**
 //     * Test of getObjectMapper method, of class SessionManager.
 //     */
-//    @Test
+//    //@Test
 //    public void testGetObjectMapper() {
 //        System.out.println("getObjectMapper");
 //        SessionManager instance = null;
@@ -412,7 +416,7 @@ public class SessionManagerTest {
 //    /**
 //     * Test of getRID method, of class SessionManager.
 //     */
-//    @Test
+//    //@Test
 //    public void testGetRID() {
 //        System.out.println("getRID");
 //        Object o = null;
@@ -427,7 +431,7 @@ public class SessionManagerTest {
 //    /**
 //     * Test of commit method, of class SessionManager.
 //     */
-//    @Test
+//    //@Test
 //    public void testCommit() {
 //        System.out.println("commit");
 //        SessionManager instance = null;
@@ -439,7 +443,7 @@ public class SessionManagerTest {
 //    /**
 //     * Test of flush method, of class SessionManager.
 //     */
-//    @Test
+//    //@Test
 //    public void testFlush() {
 //        System.out.println("flush");
 //        SessionManager instance = null;
@@ -451,7 +455,7 @@ public class SessionManagerTest {
 //    /**
 //     * Test of rollback method, of class SessionManager.
 //     */
-//    @Test
+//    //@Test
 //    public void testRollback() {
 //        System.out.println("rollback");
 //        SessionManager instance = null;
@@ -463,7 +467,7 @@ public class SessionManagerTest {
 //    /**
 //     * Test of shutdown method, of class SessionManager.
 //     */
-//    @Test
+//    //@Test
 //    public void testShutdown() {
 //        System.out.println("shutdown");
 //        SessionManager instance = null;
@@ -475,7 +479,7 @@ public class SessionManagerTest {
 //    /**
 //     * Test of getTxConflics method, of class SessionManager.
 //     */
-//    @Test
+//    //@Test
 //    public void testGetTxConflics() {
 //        System.out.println("getTxConflics");
 //        SessionManager instance = null;
@@ -487,7 +491,7 @@ public class SessionManagerTest {
 //    /**
 //     * Test of getGraphdb method, of class SessionManager.
 //     */
-//    @Test
+//    //@Test
 //    public void testGetGraphdb() {
 //        System.out.println("getGraphdb");
 //        SessionManager instance = null;
@@ -501,7 +505,7 @@ public class SessionManagerTest {
 //    /**
 //     * Test of get method, of class SessionManager.
 //     */
-//    @Test
+//    //@Test
 //    public void testGet() {
 //        System.out.println("get");
 //        SessionManager instance = null;
@@ -515,7 +519,7 @@ public class SessionManagerTest {
 //    /**
 //     * Test of getEdgeAsObject method, of class SessionManager.
 //     */
-//    @Test
+//    //@Test
 //    public void testGetEdgeAsObject() {
 //        System.out.println("getEdgeAsObject");
 //        SessionManager instance = null;
@@ -529,7 +533,7 @@ public class SessionManagerTest {
 //    /**
 //     * Test of delete method, of class SessionManager.
 //     */
-//    @Test
+//    //@Test
 //    public void testDelete() {
 //        System.out.println("delete");
 //        Object toRemove = null;
@@ -542,7 +546,7 @@ public class SessionManagerTest {
 //    /**
 //     * Test of query method, of class SessionManager.
 //     */
-//    @Test
+//    //@Test
 //    public void testQuery_String() {
 //        System.out.println("query");
 //        String sql = "";
@@ -557,7 +561,7 @@ public class SessionManagerTest {
 //    /**
 //     * Test of query method, of class SessionManager.
 //     */
-//    @Test
+//    //@Test
 //    public void testQuery_Class() {
 //        System.out.println("query");
 //        SessionManager instance = null;
@@ -571,7 +575,7 @@ public class SessionManagerTest {
 //    /**
 //     * Test of query method, of class SessionManager.
 //     */
-//    @Test
+//    //@Test
 //    public void testQuery_Class_String() {
 //        System.out.println("query");
 //        SessionManager instance = null;
@@ -585,7 +589,7 @@ public class SessionManagerTest {
 //    /**
 //     * Test of query method, of class SessionManager.
 //     */
-//    @Test
+//    //@Test
 //    public void testQuery_3args() {
 //        System.out.println("query");
 //        SessionManager instance = null;
@@ -599,7 +603,7 @@ public class SessionManagerTest {
 //    /**
 //     * Test of getDBClass method, of class SessionManager.
 //     */
-//    @Test
+//    //@Test
 //    public void testGetDBClass() {
 //        System.out.println("getDBClass");
 //        Class clase = null;

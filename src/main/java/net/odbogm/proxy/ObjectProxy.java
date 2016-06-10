@@ -5,6 +5,7 @@
  */
 package net.odbogm.proxy;
 
+import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
 import net.odbogm.annotations.RemoveOrphan;
 import net.odbogm.ObjectStruct;
 import net.odbogm.SessionManager;
@@ -255,6 +256,8 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     }
 
     private void commitObjectChange() {
+        this.___sm.getGraphdb().getRawGraph().activateOnCurrentThread();
+        
         LOGGER.log(Level.FINER, "iniciando commit interno....");
         // si ya estaba marcado como dirty no volver a procesarlo.
         if (!___dirty) {
@@ -383,6 +386,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                 }
             if (this.___dirty) {
                 // agregarlo a la lista de dirty para procesarlo luego
+                LOGGER.log(Level.FINER, "Dirty: "+this.___proxyObject);
                 this.___sm.setAsDirty(this.___proxyObject);
                 LOGGER.log(Level.FINER, "Objeto marcado como dirty! <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
             }
@@ -401,8 +405,10 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
     @Override
     public void ___commit() {
+//        ODatabaseRecordThreadLocal.INSTANCE.set(this.___sm.getGraphdb().getRawGraph());
+//        this.___sm.getGraphdb().getRawGraph().activateOnCurrentThread();
+        
         if (this.___dirty) {
-
             // obtener la definición de la clase
             ClassDef cDef = this.___sm.getObjectMapper().getClassDef(this.___proxyObject);
 

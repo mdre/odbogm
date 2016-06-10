@@ -8,7 +8,9 @@ package net.odbogm;
 import com.tinkerpop.blueprints.impls.orient.OrientGraph;
 import com.tinkerpop.blueprints.impls.orient.OrientGraphFactory;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.lang.reflect.Field;
 import java.net.URL;
 import java.util.ArrayList;
@@ -21,6 +23,7 @@ import static net.odbogm.Primitives.PRIMITIVE_MAP;
 import net.odbogm.annotations.FieldAttributes;
 import net.odbogm.annotations.FieldAttributes.Bool;
 import net.odbogm.annotations.Ignore;
+import net.odbogm.annotations.IgnoreClass;
 import net.odbogm.annotations.Indexed;
 
 /**
@@ -48,7 +51,7 @@ public class DbManager {
     private final static Logger LOGGER = Logger.getLogger(DbManager.class.getName());
 
     static {
-        LOGGER.setLevel(Level.INFO);
+        LOGGER.setLevel(Level.FINER);
     }
 
     private OrientGraph graphdb;
@@ -70,8 +73,11 @@ public class DbManager {
         graphdb = factory.getTx();
     }
 
-    // recorrer el vector analizando todas las clases que se encuentran referenciadas
-    public void process(String[] analize) {
+    /**
+     * recorrer el vector analizando todas las clases que se encuentran referenciadas y crea
+     * las sentencias correspondientes para su creación            
+     */
+    private void process(String[] analize) {
         List<Class<?>> classes = new ArrayList<>();
         for (String clazz : analize) {
             classes.addAll(find(clazz));
@@ -80,10 +86,24 @@ public class DbManager {
         for (Class<?> clazz : classes) {
             // verificar que la clase exista en la base.
             String className = clazz.getSimpleName();
-            buildDBScript(clazz);
+            if (!clazz.isAnnotationPresent(IgnoreClass.class))
+                buildDBScript(clazz);
         }
         
+//        for (ClassStruct orderedRegisteredClas : orderedRegisteredClass) {
+//            System.out.println(orderedRegisteredClas.drop);
+//            System.out.println(orderedRegisteredClas.create);
+//            for (String property : orderedRegisteredClas.properties) {
+//                System.out.println(property);
+//            }
+//            System.out.println("");
+//        }
+    }
+
+    public void generateToConsole(String[] analize){
+        this.process(analize);
         for (ClassStruct orderedRegisteredClas : orderedRegisteredClass) {
+            System.out.println(orderedRegisteredClas.drop);
             System.out.println(orderedRegisteredClas.create);
             for (String property : orderedRegisteredClas.properties) {
                 System.out.println(property);
@@ -91,18 +111,75 @@ public class DbManager {
             System.out.println("");
         }
     }
+    
+    /**
+     * Devuelve un arraylist con todas las instrucciones necesarias para la creación de la base de datos.
+     * @param analize
+     * @return 
+     */
+    public ArrayList<String> generateDBSQL(String[] analize){
+        ArrayList<String> statements = new ArrayList<>();
+        this.process(analize);
+        for (ClassStruct orderedRegisteredClas : orderedRegisteredClass) {
+            
+            statements.add(orderedRegisteredClas.drop);
+            statements.add(orderedRegisteredClas.create);
+            for (String property : orderedRegisteredClas.properties) {
+                statements.add(property);
+            }
+        }
+        return statements;
+    }
 
+    /**
+     * Genera un archivo con las intrucciones SQL necesarias para la creación de la base
+     * @param fileName: path y nombre del archivo a crear. 
+     * @param analize: paquetes o clases a incluir.
+     */
+    public void generateDBSQL(String fileName, String[] analize){
+        this.process(analize);
+        FileWriter fw = null;
+        PrintWriter pw = null;
+        try {
+            LOGGER.log(Level.FINER, "abriendo el archivo...");
+            fw = new FileWriter(fileName);
+            LOGGER.log(Level.FINER, "preparando el printwriter...");
+            pw = new PrintWriter(fw);
+            LOGGER.log(Level.FINER, "procesando "+orderedRegisteredClass.size()+" lineas...");
+            for (ClassStruct orderedRegisteredClas : orderedRegisteredClass) {
+                pw.println(orderedRegisteredClas.drop);
+                pw.println(orderedRegisteredClas.create);
+                for (String property : orderedRegisteredClas.properties) {
+                    pw.println(property);
+                }
+                pw.println("");
+            }
+            LOGGER.log(Level.FINER, "finalizado!");
+        } catch (IOException ex) {
+            Logger.getLogger(DbManager.class.getName()).log(Level.SEVERE, null, ex);
+        } finally {
+            try {
+                fw.close();
+            } catch (IOException ex) {
+                Logger.getLogger(DbManager.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+    }
     /**
      * Verifica que el árbol de herencias de la clase esté registrado. Si no es así, lo registra desde la clase superior hacia abajo.
      *
      * @param clazz
      */
     private void buildDBScript(Class clazz) {
+        if ((clazz == null)||(clazz.isAnonymousClass())||(clazz.isEnum())||(clazz.isAnnotationPresent(IgnoreClass.class)))
+            return;
+        
+        LOGGER.log(Level.FINER, "procesando: "+clazz.getSimpleName()+"...");
         String superName = "";
         // primero procesar la superclass
         if (clazz.getSuperclass() != Object.class) {
             buildDBScript(clazz.getSuperclass());
-            superName = clazz.getSuperclass().getSimpleName();
+            superName = (clazz.getSuperclass()==null?"":clazz.getSuperclass().getSimpleName());
         } 
             
 
@@ -117,8 +194,20 @@ public class DbManager {
         ClassStruct clazzStruct = new ClassStruct(className);
         this.registeredClass.put(className, clazzStruct);
         this.orderedRegisteredClass.add(clazzStruct);
-        clazzStruct.create = "create class "+className+" extends "+(superName.isEmpty()?"V":superName);
+        // preparar orden de dropeo. Solo se ejecuta si la clase existe
+        clazzStruct.drop = "/*\n"
+                +"let exist = select from (select expand(classes) from metadata:schema) where name = '"+className+"'\n"
+                + "if ($exist.size()>0) {\n"
+                + "     delete vertex "+className+"\n"
+                + "     drop class "+className+"\n"
+                + "}\n */";
         
+        // order de create. Solo se ejecuta si no existe la clase
+        clazzStruct.create = "\n"
+                +"let exist = select from (select expand(classes) from metadata:schema) where name = '"+className+"'\n"
+                + "if ($exist.size()=0) {\n"
+                + "     create class "+className+" extends "+(superName.isEmpty()?"V":superName)
+                + "\n}\n ";
 
         // procesar todos los campos del la clase.
         Field[] fields = clazz.getDeclaredFields();
@@ -130,9 +219,18 @@ public class DbManager {
                 
                 String currentProp = className + "." + field.getName();
                 if ((PRIMITIVE_MAP.get(field.getType())!=null)||(field.getType().isEnum())) {
-                    // crear el statement para el campo
-                    clazzStruct.properties.add("create property " + currentProp + " " + (field.getType().isEnum()?" string ": PRIMITIVE_MAP.get(field.getType())));
-                
+                    // crear el statement para el campo si corresponde
+                    String statement = "\n"
+                                    +"let exist = select from "
+                                                        + "(select expand(properties) "
+                                                        + " from (select expand(classes) "
+                                                        + " from metadata:schema) "
+                                                        + " where name = '"+className+"') where name = '"+field.getName()+"'\n"
+                                    + "if ($exist.size()=0) {\n"
+                                    + "     create property " + currentProp + " " + (field.getType().isEnum()?" string ": PRIMITIVE_MAP.get(field.getType()))
+                                    + "\n}\n ";
+                    clazzStruct.properties.add(statement);
+
                     if (fa != null) {
                         if (!fa.min().isEmpty()) {
                             clazzStruct.properties.add("alter property "+currentProp+" min "+fa.min());
@@ -187,11 +285,21 @@ public class DbManager {
                     // si no es un tipo básico, se debe conectar con un Edge.
 //                    if (Primitives.LAZY_COLLECTION.get(field.getType())!=null) {
                     // FIXME: ojo que si se tratara de una extensín de AL o HM no lo vería como tal y lo vincularía con un link
-                    clazzStruct.properties.add("create class "+className+"_"+field.getName()+" extends E");
+                    clazzStruct.properties.add("\n"
+                        +"let exist = select from (select expand(classes) from metadata:schema) where name = '"+className+"_"+field.getName()+"'\n"
+                        + "if ($exist.size()=0) {\n"
+                        + "     create class "+className+"_"+field.getName()+" extends E"
+                        + "\n}\n "
+                        );
                 }
                 if (field.isAnnotationPresent(Indexed.class)) {
                     Indexed idx = field.getAnnotation(Indexed.class);
-                    clazzStruct.properties.add("create index "+currentProp+" "+idx.type());
+                    clazzStruct.properties.add("\n"
+                        +"let exist = select from(select expand(indexes) from metadata:indexmanager) where name = '"+currentProp+"'\n"
+                        + "if ($exist.size()=0) {\n"
+                        + "     create index "+currentProp+" "+idx.type()
+                        + "\n}\n "
+                        );
                 }
             }
         }
@@ -220,6 +328,7 @@ public class DbManager {
     private List<Class<?>> find(File file, String scannedPackage) {
         List<Class<?>> classes = new ArrayList<>();
         String resource = scannedPackage + PKG_SEPARATOR + file.getName();
+        LOGGER.log(Level.INFO, "resource: "+resource);
         if (file.isDirectory()) {
             for (File child : file.listFiles()) {
                 classes.addAll(find(child, resource));
@@ -235,9 +344,15 @@ public class DbManager {
         return classes;
     }
 
+    /**
+     * Clase de ayuda para crear los comandos que generan la base de datos. Genera los delete vertex y drops como comentarios
+     * para que sean desmarcados si se desea.
+     */
     class ClassStruct {
 
         public String className;
+//        public String deleteVertex;
+        public String drop;
         public String create;
         public ArrayList<String> properties = new ArrayList<>();
 //        public ArrayList<String> propertiesModifiers = new ArrayList<>();

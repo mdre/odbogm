@@ -5,6 +5,8 @@
  */
 package net.odbogm.proxy;
 
+import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
+import com.orientechnologies.orient.core.db.document.ODatabaseDocument;
 import net.odbogm.SessionManager;
 import com.tinkerpop.blueprints.Direction;
 import com.tinkerpop.blueprints.Vertex;
@@ -21,6 +23,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
@@ -31,6 +34,9 @@ import java.util.stream.Stream;
 public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCalls {
 
     private final static Logger LOGGER = Logger.getLogger(ArrayListLazyProxy.class.getName());
+    static {
+        LOGGER.setLevel(Level.INFO);
+    }
     private static final long serialVersionUID = 923118982357962428L;
 
     private boolean dirty = false;
@@ -50,21 +56,41 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
      */
     @Override
     public void init(SessionManager sm, OrientVertex relatedTo, String field, Class<?> c) {
-        this.sm = sm;
-        this.relatedTo = relatedTo;
-        this.field = field;
-        this.fieldClass = c;
+        try {
+            this.sm = sm;
+            this.relatedTo = relatedTo;
+            this.field = field;
+            this.fieldClass = c;
+            LOGGER.log(Level.FINER, "relatedTo: {0} - field: {1} - Class: {2}", new Object[]{relatedTo, field, c.getSimpleName()});
+            LOGGER.log(Level.FINER, "relatedTo.getGraph : "+relatedTo.getGraph());
+        } catch (Exception ex) {
+            Logger.getLogger(ArrayListLazyProxy.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
 
     //********************* change control **************************************
     private Map<Object, ObjectCollectionState> listState = new ConcurrentHashMap<>();
     
     private void lazyLoad() {
+        this.sm.getGraphdb().getRawGraph().activateOnCurrentThread();
+        LOGGER.log(Level.FINER, "getGraph: "+relatedTo.getGraph());
+        if (relatedTo.getGraph()==null)
+            this.sm.getGraphdb().attach(relatedTo);
+        
+        LOGGER.log(Level.FINER, "getRawGraph: "+relatedTo.getGraph().getRawGraph());
+        
+        relatedTo.getGraph().getRawGraph().activateOnCurrentThread();
+//        ODatabaseDocument database = (ODatabaseDocument) ODatabaseRecordThreadLocal.INSTANCE.get();
+//        database.activateOnCurrentThread();
+//        LOGGER.log(Level.FINER, "ODatabase: "+database+" activated");
+
 //        LOGGER.log(Level.INFO, "Lazy Load.....");
         this.lazyLoad = false;
-
+        LOGGER.log(Level.FINER, "relatedTo: {0} - field: {1} - Class: {2}", new Object[]{relatedTo, field, fieldClass.getSimpleName()});
         // recuperar todos los elementos desde el vértice y agregarlos a la colección
-        for (Iterator<Vertex> iterator = relatedTo.getVertices(Direction.OUT, field).iterator(); iterator.hasNext();) {
+        Iterable<Vertex> rt = relatedTo.getVertices(Direction.OUT, field);
+//        for (Iterator<Vertex> iterator = relatedTo.getVertices(Direction.OUT, field).iterator(); iterator.hasNext();) {
+        for (Iterator<Vertex> iterator = rt.iterator(); iterator.hasNext();) {
             OrientVertex next = (OrientVertex) iterator.next();
 //            LOGGER.log(Level.INFO, "loading: " + next.getId().toString());
             Object o = sm.get(fieldClass, next.getId().toString());

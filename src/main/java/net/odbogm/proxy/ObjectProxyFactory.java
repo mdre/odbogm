@@ -18,6 +18,7 @@ import net.bytebuddy.implementation.MethodDelegation;
 import static net.bytebuddy.matcher.ElementMatchers.any;
 import static net.bytebuddy.matcher.ElementMatchers.isDeclaredBy;
 import net.sf.cglib.proxy.Enhancer;
+import static net.bytebuddy.matcher.ElementMatchers.isDeclaredBy;
 
 /**
  *
@@ -26,21 +27,31 @@ import net.sf.cglib.proxy.Enhancer;
 public class ObjectProxyFactory {
     private final static Logger LOGGER = Logger.getLogger(ObjectProxyFactory.class .getName());
     
-    private enum lib {CGLIB,BB};
-    private static lib library = lib.CGLIB;
+    public enum proxyLibrary {CGLIB,BB};
+    private static proxyLibrary library = proxyLibrary.CGLIB;
     
     public static <T> T create(T o, OrientElement oe, SessionManager sm ) {
-        if (library == lib.BB)
+        if (library == proxyLibrary.BB)
             return bbcreate(o, oe, sm);
         else
             return cglibcreate(o, oe, sm);
     }
     
+    public static <T> T create(T o, OrientElement oe, SessionManager sm, proxyLibrary proxyLibrary ) {
+        library = proxyLibrary;
+        return create(o,oe,sm);
+    }
+    
     public static <T> T create(Class<T> c, OrientElement ov, SessionManager sm ) {
-        if (library == lib.BB)
+        if (library == proxyLibrary.BB)
             return bbcreate(c, ov, sm);
         else
           return cglibcreate(c, ov, sm);
+    }
+    
+    public static <T> T create(Class<T> c, OrientElement ov, SessionManager sm, proxyLibrary proxyLibrary ) {
+        library = proxyLibrary;
+        return create(c,ov,sm);
     }
     
     /**
@@ -59,6 +70,7 @@ public class ObjectProxyFactory {
             ClassLoader mpcl = new MultipleParentClassLoader.Builder()
                                                 .append(IObjectProxy.class, o.getClass())
                                                 .build();
+            //mpcl = o.getClass().getClassLoader();
             
             po = (T) new ByteBuddy()
                     .subclass(o.getClass())
@@ -67,7 +79,7 @@ public class ObjectProxyFactory {
                         .method(any())
                         .intercept(MethodDelegation.to(bbi))
                     .make()
-                    .load(o.getClass().getClassLoader(), ClassLoadingStrategy.Default.WRAPPER)
+                    .load(mpcl, ClassLoadingStrategy.Default.WRAPPER)
                     .getLoaded().newInstance();
             bbi.___setProxyObject(po);
             
@@ -94,7 +106,7 @@ public class ObjectProxyFactory {
             ClassLoader mpcl = new MultipleParentClassLoader.Builder()
                                                 .append(IObjectProxy.class, c)
                                                 .build();
-            
+            // mpcl = c.getClassLoader();
             po = (T) new ByteBuddy()
                     .subclass(c)
                     .implement(IObjectProxy.class)

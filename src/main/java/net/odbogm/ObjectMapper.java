@@ -226,7 +226,9 @@ public class ObjectMapper {
      */
     public <T> T hydrate(Class<T> c, OrientVertex v) throws InstantiationException, IllegalAccessException, NoSuchFieldException, CollectionNotSupported {
 //        T o = c.newInstance();
-
+        // activar la base de datos en el hilo actual.
+        v.getGraph().getRawGraph().activateOnCurrentThread();
+        
         // crear un proxy sobre el objeto y devolverlo
         T oproxied = ObjectProxyFactory.create(c, v, sessionManager);
 

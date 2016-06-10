@@ -17,9 +17,6 @@ import java.lang.annotation.Target;
  */
 
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ElementType.FIELD})
-public @interface Indexed {
-    public enum IndexType{UNIQUE,NOTUNIQUE,FULLTEXT}
-    
-    IndexType type() default IndexType.NOTUNIQUE;
+@Target({ElementType.TYPE})
+public @interface IgnoreClass {
 }

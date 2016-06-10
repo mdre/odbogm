@@ -28,23 +28,17 @@ public class SimpleVertexEx extends SimpleVertex {
     )
     private String svex;
 
-    @Link
     private SimpleVertexEx looptest;
     
     public EnumTest enumTest;
     
     @RemoveOrphan
-    @Link
     public SimpleVertex svinner; 
     
-    @LinkList(name = "alSV")
     public ArrayList<SimpleVertex> alSV;
     
-    @LinkList(name = "alSV")
     public ArrayList<SimpleVertexEx> alSVE;
-
     
-    @LinkList(name = "mapSV")
     public HashMap<String,SimpleVertex> hmSV;
     
     public SimpleVertexEx(String svex, String s, int i, float f, boolean b, Integer oI, Float oF, Boolean oB) {

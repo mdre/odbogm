@@ -5,6 +5,7 @@
  */
 package net.odbogm;
 
+import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
 import net.odbogm.annotations.CascadeDelete;
 import net.odbogm.exceptions.NoOpenTx;
 import net.odbogm.exceptions.IncorrectRIDField;
@@ -24,6 +25,7 @@ import com.orientechnologies.orient.core.sql.OCommandSQL;
 import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery;
 import com.tinkerpop.blueprints.Direction;
 import com.tinkerpop.blueprints.Vertex;
+import com.tinkerpop.blueprints.impls.orient.OrientConfigurableGraph;
 import com.tinkerpop.blueprints.impls.orient.OrientEdge;
 import com.tinkerpop.blueprints.impls.orient.OrientGraph;
 import com.tinkerpop.blueprints.impls.orient.OrientGraphFactory;
@@ -86,7 +88,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
         this.factory = new OrientGraphFactory(url, user, passwd).setupPool(1, 10);
 //        vertexs = new ConcurrentHashMap<>();
 //        edges = new HashMap<>();
-
+//        this.factory.setThreadMode(OrientConfigurableGraph.THREAD_MODE.ALWAYS_AUTOSET);
         this.objectMapper = new ObjectMapper(this);
     }
 
@@ -103,6 +105,9 @@ public class SessionManager implements Actions.Store, Actions.Get {
      */
     public void begin() {
         graphdb = factory.getTx();
+        graphdb.getRawGraph().activateOnCurrentThread();
+//        graphdb.setThreadMode(OrientConfigurableGraph.THREAD_MODE.ALWAYS_AUTOSET);
+//        ODatabaseRecordThreadLocal.INSTANCE.set(graphdb.getRawGraph());
     }
 
     /**
@@ -113,6 +118,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
      */
     @Override
     public <T> T store(T o) throws IncorrectRIDField, NoOpenTx {
+        graphdb.getRawGraph().activateOnCurrentThread();
         T proxied = null;
         try {
             // si no hay una tx abierta, disparar una excepción
@@ -278,6 +284,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
      * @param o
      */
     public void setAsDirty(Object o) throws UnmanagedObject {
+        graphdb.getRawGraph().activateOnCurrentThread();
         if (o instanceof IObjectProxy) {
             String rid = ((IObjectProxy) o).___getVertex().getId().toString();
             LOGGER.log(Level.FINER, "Marcando como dirty: " + o.getClass().getSimpleName() + " - " + o.toString());
@@ -319,7 +326,8 @@ public class SessionManager implements Actions.Store, Actions.Get {
         if (graphdb == null) {
             throw new NoOpenTx();
         }
-
+        this.graphdb.getRawGraph().activateOnCurrentThread();
+        
         // bajar todos los objetos a los vértices
         // this.commitObjectChanges();
         // cambiar el estado a comiteando
