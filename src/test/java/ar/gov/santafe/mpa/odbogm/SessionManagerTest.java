@@ -10,7 +10,7 @@ import Test.SimpleVertex;
 import Test.SimpleVertexEx;
 import net.odbogm.proxy.IObjectProxy;
 import java.util.ArrayList;
-import net.odbogm.proxy.ObjectProxyFactory;
+import java.util.List;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -39,6 +39,7 @@ public class SessionManagerTest {
     @Before
     public void setUp() {
         sm = new SessionManager("remote:localhost/Test", "root", "toor");
+        this.sm.setDeclaredClasses("Test");
         this.sm.begin();
         // borrar todos los vértices 
 //        this.sm.getGraphdb().command(new OCommandSQL("delete vertex V")).execute();
@@ -67,8 +68,10 @@ public class SessionManagerTest {
      */
     @Test
     public void testStoreSimple() {
-        
+        System.out.println("\n\n\n");
+        System.out.println("***************************************************************");
         System.out.println("store objeto simple (SimpleVertex)");
+        System.out.println("***************************************************************");
         
         SimpleVertex sv = new SimpleVertex();
         SimpleVertex expResult = sv;
@@ -101,8 +104,10 @@ public class SessionManagerTest {
     
     @Test
     public void testStoreExtendedObject() {
-        
+        System.out.println("\n\n\n");
+        System.out.println("***************************************************************");
         System.out.println("store objeto Extendido (SimpleVertexEx)");
+        System.out.println("***************************************************************");
         
         SimpleVertexEx sve = new SimpleVertexEx();
         SimpleVertexEx result = this.sm.store(sve);
@@ -140,7 +145,10 @@ public class SessionManagerTest {
     
     @Test
     public void testStoreFullObject() {
+        System.out.println("\n\n\n");
+        System.out.println("***************************************************************");
         System.out.println("Verificar un objecto completamente inicializado y almacenado.");
+        System.out.println("***************************************************************");
         SimpleVertexEx sve = new SimpleVertexEx();
         sve.initInner();
         sve.initEnum();
@@ -198,8 +206,10 @@ public class SessionManagerTest {
     
     @Test
     public void testStoreLink() {
-        
+        System.out.println("\n\n\n");
+        System.out.println("***************************************************************");
         System.out.println("store objeto sin Link y luego se le agrega uno");
+        System.out.println("***************************************************************");
         
         SimpleVertexEx sve = new SimpleVertexEx();
         SimpleVertexEx result = this.sm.store(sve);
@@ -248,7 +258,10 @@ public class SessionManagerTest {
     
     @Test
     public void testUpdateObject() {
+        System.out.println("\n\n\n");
+        System.out.println("***************************************************************");
         System.out.println("Verificación de update de un objeto administrado.");
+        System.out.println("***************************************************************");
         SimpleVertexEx sve = new SimpleVertexEx();
         sve.initInner();
         sve.initEnum();
@@ -282,6 +295,7 @@ public class SessionManagerTest {
     
     @Test
     public void testLoop(){
+        System.out.println("\n\n\n");
         System.out.println("***************************************************************");
         System.out.println("Verificar el tratamiento de objetos con loops");
         System.out.println("***************************************************************");
@@ -347,6 +361,7 @@ public class SessionManagerTest {
     
     @Test
     public void testArrayList(){
+        System.out.println("\n\n\n");
         System.out.println("***************************************************************");
         System.out.println("Verificar el comportamiento de los ArrayLists");
         System.out.println("***************************************************************");
@@ -385,6 +400,51 @@ public class SessionManagerTest {
         
     }
     
+    /**
+     * Verificar que un query simple basado en una clase devueve el listado correcto
+     * de objetos.
+     */
+    @Test
+    public void testSimpleQuery() {
+        System.out.println("\n\n\n");
+        System.out.println("***************************************************************");
+        System.out.println("Query basado en la clase: verificar que devuelve la clase y los");
+        System.out.println("subtipos de la misma");
+        System.out.println("***************************************************************");
+        SimpleVertexEx sve = new SimpleVertexEx();
+        sve.initEnum();
+        sve.initInner();
+        sve.initArrayList();
+        sve.initHashMap();
+        
+        System.out.println("guardado del objeto limpio.");
+        SimpleVertexEx stored = sm.store(sve);
+        sm.commit();
+        
+        System.out.println("consultando por SimpleVertex....");
+        List list = sm.query(SimpleVertex.class);
+        int isv = 0;
+        int isve = 0;
+        for (Object object : list) {
+            if (object instanceof SimpleVertexEx)
+                isve++;
+            else
+                if (object instanceof SimpleVertex)
+                    isv++;
+                else
+                    System.out.println("ERROR:  "+object.getClass()+" !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+                     
+            System.out.println("Query: "+object.getClass()+" - toString: "+object.getClass().getSimpleName());
+        }
+        assertTrue(isv>0);
+        assertTrue(isve>0);
+        
+        
+        System.out.println("***************************************************************");
+        System.out.println("Fin SimpleQuery");
+        System.out.println("***************************************************************");
+    }
+
     
 //    /**
 //     * Test of setAsDirty method, of class SessionManager.
