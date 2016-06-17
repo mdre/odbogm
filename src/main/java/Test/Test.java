@@ -8,20 +8,22 @@ package Test;
 import net.odbogm.exceptions.IncorrectRIDField;
 import net.odbogm.SessionManager;
 import net.odbogm.proxy.IObjectProxy;
-import net.odbogm.utils.ReflectionUtils;
 import com.orientechnologies.orient.core.exception.OConcurrentModificationException;
+import com.tinkerpop.blueprints.impls.orient.OrientVertex;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
+import static java.util.stream.Collectors.toList;
 import net.odbogm.DbManager;
-import net.odbogm.annotations.FieldAttributes;
+import org.reflections.Reflections;
 
 /**
  *
@@ -41,18 +43,23 @@ public class Test {
     }
 
     public Test() {
+        initSession();
 //        testSessionManager();
-        testDbManager();
+//        testDbManager();
+        lab();
     }
     
     
-    public void testSessionManager() {
-//        IObjectProxy iop;
-        
+    public void initSession(){
         System.out.println("Iniciando comunicación con la base....");
         sm = new SessionManager("remote:localhost/Test", "root", "toor");
         System.out.println("comunicación inicializada!");
         sm.begin();
+    }
+    
+    public void testSessionManager() {
+//        IObjectProxy iop;
+        
         // correr test de store
 //        this.store();
 //          this.testStoreLink();
@@ -77,25 +84,39 @@ public class Test {
     
     
     public void lab(){
-        SimpleVertexEx svex = new SimpleVertexEx();
-        svex.initInner();
-        
-        try {
-            Field f = ReflectionUtils.findField(SimpleVertexEx.class, "svex");
-            f.setAccessible(true);
-            System.out.println("Value: "+f.get(svex));
-            FieldAttributes fa = f.getAnnotation(FieldAttributes.class);
-//            System.out.println("Name: "+fa.name());
-            System.out.println("isEmpty: "+fa.defaultVal().isEmpty());
-            System.out.println("isNULL: "+(fa.defaultVal()==null));
-            
-        } catch (NoSuchFieldException ex) {
-            Logger.getLogger(Test.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (IllegalArgumentException ex) {
-            Logger.getLogger(Test.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (IllegalAccessException ex) {
-            Logger.getLogger(Test.class.getName()).log(Level.SEVERE, null, ex);
-        }
+        OrientVertex ov = sm.getGraphdb().getVertex("12:1177");
+        System.out.println(""+ov.getType().getCustom("javaClass"));
+        String jc = ov.getType().getCustom("javaClass");
+        System.out.println(""+jc.replaceAll("[\'\"]", ""));
+//        System.out.println(""+ov.getGraph().getVertexBaseType().getCustom("javaClass"));
+
+//        SimpleVertexEx svex = new SimpleVertexEx();
+//        svex.initInner();
+//        
+//        try {
+//            Field f = ReflectionUtils.findField(SimpleVertexEx.class, "svex");
+//            f.setAccessible(true);
+//            System.out.println("Value: "+f.get(svex));
+//            FieldAttributes fa = f.getAnnotation(FieldAttributes.class);
+////            System.out.println("Name: "+fa.name());
+//            System.out.println("isEmpty: "+fa.defaultVal().isEmpty());
+//            System.out.println("isNULL: "+(fa.defaultVal()==null));
+//
+//            
+//        } catch (NoSuchFieldException ex) {
+//            Logger.getLogger(Test.class.getName()).log(Level.SEVERE, null, ex);
+//        } catch (IllegalArgumentException ex) {
+//            Logger.getLogger(Test.class.getName()).log(Level.SEVERE, null, ex);
+//        } catch (IllegalAccessException ex) {
+//            Logger.getLogger(Test.class.getName()).log(Level.SEVERE, null, ex);
+//        }
+//        Reflections reflections = new Reflections(SimpleVertex.class.getPackage());
+//        Set<Class<? extends SimpleVertex>> r = reflections.getSubTypesOf(SimpleVertex.class);
+//        r.stream()
+//                .filter(className->className.getSimpleName().equals("SimpleVertexEx"))
+//                .collect(Collectors.toList());
+//        System.out.println("r: "+r);
+
     }
     
     public void testQuery() {

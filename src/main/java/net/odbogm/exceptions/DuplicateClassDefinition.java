@@ -12,14 +12,12 @@ import java.util.logging.Logger;
  *
  * @author SShadow
  */
-public class UnknownRID extends RuntimeException {
-    private final static Logger LOGGER = Logger.getLogger(UnknownRID.class .getName());
-    private static final long serialVersionUID = 5098816851596315463L;
+public class DuplicateClassDefinition extends RuntimeException{
+    private final static Logger LOGGER = Logger.getLogger(DuplicateClassDefinition.class .getName());
+    private static final long serialVersionUID = 1860115031339031353L;
 
-    public UnknownRID() {
-    }
-
-    public UnknownRID(String message) {
+    public DuplicateClassDefinition(String message) {
         super(message);
     }
+
 }

@@ -317,6 +317,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                 // se ha eliminado el objeto y debe ser removido el Vértice o el Edge correspondiente
                                 // marcar el objeto como dirty
                                 this.___dirty = true;
+                                LOGGER.log(Level.FINER, "Dirty: se ha eliminado un link");
                             }
                         } else {
                             Object innerO = oStruct.links.get(field);
@@ -329,6 +330,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                 // si el objeto existía y no existía el eje
                                 // o bien no existía el objeto
                                 this.___dirty = true;
+                                LOGGER.log(Level.FINER, "Dirty: se agregó un link");
                             }
                         }
                     }
@@ -361,6 +363,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                         // se ha eliminado el objeto y debe ser removido el Vértice o el Edge correspondiente
                                         // marcar el objeto como dirty
                                         this.___dirty = true;
+                                        LOGGER.log(Level.FINER, "Dirty: se ha eliminado un linklist");
                                     }
                                 } else {
                                     Object innerO = oStruct.linkLists.get(field);
@@ -373,6 +376,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                         // si el objeto existía y no existía el eje
                                         // o bien no existía el objeto
                                         this.___dirty = true;
+                                        LOGGER.log(Level.FINER, "Dirty: se ha agregado un linklist");
                                     }
                                 }
 
@@ -411,7 +415,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         if (this.___dirty) {
             // obtener la definición de la clase
             ClassDef cDef = this.___sm.getObjectMapper().getClassDef(this.___proxyObject);
-
+            
             // obtener un mapa actualizado del objeto contenido
             ObjectStruct oStruct = this.___sm.getObjectMapper().objectStruct(this.___proxyObject);
             Map<String, Object> omap = oStruct.fields;
@@ -447,7 +451,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
                             try {
                                 // f = ReflectionUtils.findField(this.realObj.getClass(), field);
-                                f = ReflectionUtils.findField(this.getClass(), field);
+                                f = ReflectionUtils.findField(this.___baseClass, field);
                                 boolean acc = f.isAccessible();
                                 f.setAccessible(true);
 
@@ -484,6 +488,8 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                             // se debe verificar si el eje entre los dos objetos ya existía.
                             if (ov.countEdges(Direction.OUT, graphRelationName) == 0) {
                                 // No existe un eje. Se debe crear
+                                LOGGER.log(Level.FINER, "Agregar un link entre dos objetos existentes.");
+                                LOGGER.log(Level.FINER, ""+ov.getId().toString()+" --> "+((IObjectProxy) innerO).___getVertex().getId().toString());
                                 this.___sm.getGraphdb().addEdge("", ov, ((IObjectProxy) innerO).___getVertex(), graphRelationName);
                             }
                         } else {

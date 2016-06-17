@@ -206,8 +206,10 @@ public class DbManager {
         clazzStruct.create = "\n"
                 +"let exist = select from (select expand(classes) from metadata:schema) where name = '"+className+"'\n"
                 + "if ($exist.size()=0) {\n"
-                + "     create class "+className+" extends "+(superName.isEmpty()?"V":superName)
-                + "\n}\n ";
+                + "     create class "+className+(superName.isEmpty()?" extends V":" extends "+superName)
+                + "\n}\n "
+                + "alter class "+className+" custom javaClass='"+clazz.getCanonicalName()+"'\n"
+                + (superName.isEmpty()?" ":"alter class "+className+" superclass "+superName+"\n");
 
         // procesar todos los campos del la clase.
         Field[] fields = clazz.getDeclaredFields();

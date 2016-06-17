@@ -24,7 +24,7 @@ public class ReflectionUtils {
             } catch (Exception e) {
             }
         } while ((current = current.getSuperclass()) != null);
-        throw new NoSuchFieldException();
+        throw new NoSuchFieldException(fieldName);
     }
 
     /**

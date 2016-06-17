@@ -40,7 +40,10 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
     private static final long serialVersionUID = 923118982357962428L;
 
     private boolean dirty = false;
+    
     private boolean lazyLoad = true;
+    private boolean lazyLoading = false;
+    
     private SessionManager sm;
     private OrientVertex relatedTo;
     private String field;
@@ -86,6 +89,7 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
 
 //        LOGGER.log(Level.INFO, "Lazy Load.....");
         this.lazyLoad = false;
+        this.lazyLoading = true;
         LOGGER.log(Level.FINER, "relatedTo: {0} - field: {1} - Class: {2}", new Object[]{relatedTo, field, fieldClass.getSimpleName()});
         // recuperar todos los elementos desde el vértice y agregarlos a la colección
         Iterable<Vertex> rt = relatedTo.getVertices(Direction.OUT, field);
@@ -98,6 +102,7 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
             // se asume que todos fueron borrados
             this.listState.put(o, ObjectCollectionState.REMOVED);
         }
+        this.lazyLoading = false;
     }
 
     public Map<Object, ObjectCollectionState> collectionState() {
@@ -217,7 +222,7 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
         if (lazyLoad) {
             this.lazyLoad();
         }
-        this.dirty = true;
+        if(!this.lazyLoading) this.dirty = true;
         super.replaceAll(operator);
     }
 
@@ -228,7 +233,7 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
         }
         boolean removed = super.removeIf(filter);
         if (removed)
-            this.dirty = true;
+            if(!this.lazyLoading) this.dirty = true;
         return removed;
     }
 
@@ -287,7 +292,7 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
         }
         boolean changeDetected = super.retainAll(c);
         if (changeDetected)
-            this.dirty = true;
+            if(!this.lazyLoading) this.dirty = true;
         return changeDetected;
     }
 
@@ -298,7 +303,7 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
         }
         boolean changeDetected = super.removeAll(c);
         if (changeDetected)
-            this.dirty = true;
+            if(!this.lazyLoading) this.dirty = true;
         return changeDetected;
     }
 
@@ -307,7 +312,7 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
         if (lazyLoad) {
             this.lazyLoad();
         }
-        this.dirty = true;
+        if(!this.lazyLoading) this.dirty = true;
         super.removeRange(fromIndex, toIndex);
     }
 
@@ -316,7 +321,7 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
         if (lazyLoad) {
             this.lazyLoad();
         }
-        this.dirty = true;
+        if(!this.lazyLoading) this.dirty = true;
         return super.addAll(index, c);
     }
 
@@ -325,7 +330,7 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
         if (lazyLoad) {
             this.lazyLoad();
         }
-        this.dirty = true;
+        if(!this.lazyLoading) this.dirty = true;
         return super.addAll(c);
     }
 
@@ -334,7 +339,7 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
         if (lazyLoad) {
             this.lazyLoad();
         }
-        this.dirty = true;
+        if(!this.lazyLoading) this.dirty = true;
         super.clear();
     }
 
@@ -346,7 +351,7 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
         
         boolean changeDetected = super.remove(o);
         if (changeDetected)
-            this.dirty = true;
+            if(!this.lazyLoading) this.dirty = true;
         return changeDetected;
     }
 
@@ -355,7 +360,7 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
         if (lazyLoad) {
             this.lazyLoad();
         }
-        this.dirty = true;
+        if(!this.lazyLoading) this.dirty = true;
         return super.remove(index);
     }
 
@@ -382,7 +387,7 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
         if (lazyLoad) {
             this.lazyLoad();
         }
-        this.dirty = true;
+        if(!this.lazyLoading) this.dirty = true;
         return super.set(index, element);
     }
 

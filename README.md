@@ -46,7 +46,9 @@ sm.store(ex1);
 sm.commit();
 ```
 Every primitive field type and String are stored directly to the DB including private field.
-But what happens if we have a more real object. Well, here we have to use same annotation to tell what to do with the field.
+Every Object is mapped to a Vertex and an Edge is created with a label <Class>_<field>. The field will not be
+created as a part of the class.
+
 Example:
 ```Java
 public class Ex2 extends Ex1 {
@@ -78,8 +80,9 @@ public class Ex2 extends Ex1 {
     }
     
 }
+
 ```
-Here, the field inner is not a primitive type so we must choose what to do. OrientDB let us store it as an embedded object or we can tell the ODBOGM to store it as a new vertex related to the main object.
+Here, the field inner is not a primitive type. OrientDB let us store it as an embedded object or we can tell the ODBOGM to store it as a new vertex related to the main object.
 Currently, the embedded alternative is not implemented. Every nonprimitive field is ignored and a warning is logged.
 We must annotate the field with:
 * ***@Ignore***: to skip the field. Useful to the Logger field.
@@ -91,7 +94,6 @@ public class Ex2 extends Ex1 {
     @Ignore
     private final static Logger LOGGER = Logger.getLogger(Ex2.class .getName());
     
-    @Link
     private Ex1 inner;
     private String ex2String;
     ….

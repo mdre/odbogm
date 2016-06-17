@@ -8,6 +8,7 @@ package net.odbogm;
 import net.odbogm.exceptions.IncorrectRIDField;
 import net.odbogm.exceptions.UnknownRID;
 import com.tinkerpop.blueprints.impls.orient.OrientEdge;
+import net.odbogm.exceptions.VertexJavaClassNotFound;
 
 /**
  *
@@ -35,7 +36,8 @@ public interface Actions {
     
     public interface Get {
         // load a single object of Class type, with id id
-        <T> T get(Class<T> type, String  rid) throws UnknownRID ;
+        Object get(String rid) throws UnknownRID; 
+        <T> T get(Class<T> type, String  rid) throws UnknownRID, VertexJavaClassNotFound ;
         public <T> T getEdgeAsObject(Class<T> type, OrientEdge e);
     }
     

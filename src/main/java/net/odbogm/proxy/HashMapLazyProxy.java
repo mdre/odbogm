@@ -33,7 +33,10 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
     private final static Logger LOGGER = Logger.getLogger(HashMapLazyProxy.class.getName());
 
     private boolean dirty = true;
+    
     private boolean lazyLoad = true;
+    private boolean lazyLoading = true;
+    
     private SessionManager sm;
     private OrientVertex relatedTo;
     private String field;
@@ -65,6 +68,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
     private void lazyLoad() {
 //        LOGGER.log(Level.INFO, "Lazy Load.....");
         this.lazyLoad = false;
+        this.lazyLoading = true;
 
         // recuperar todos los elementos desde el vértice y agregarlos a la colección
         for (Iterator<Vertex> iterator = relatedTo.getVertices(Direction.OUT, field).iterator(); iterator.hasNext();) {
@@ -100,6 +104,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
                 this.entitiesState.put(o, ObjectCollectionState.REMOVED);
             }
         }
+        this.lazyLoading = false;
     }
 
     /**
@@ -214,7 +219,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        this.dirty = true;
+        if(!this.lazyLoading) this.dirty = true;
         super.replaceAll(function); //To change body of generated methods, choose Tools | Templates.
     }
 
@@ -231,7 +236,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        this.dirty = true;
+        if(!this.lazyLoading) this.dirty = true;
         return super.merge(key, value, remappingFunction); //To change body of generated methods, choose Tools | Templates.
     }
 
@@ -264,7 +269,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        this.dirty = true;
+        if(!this.lazyLoading) this.dirty = true;
         return super.replace(key, value); //To change body of generated methods, choose Tools | Templates.
     }
 
@@ -273,7 +278,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        this.dirty = true;
+        if(!this.lazyLoading) this.dirty = true;
         return super.replace(key, oldValue, newValue); //To change body of generated methods, choose Tools | Templates.
     }
 
@@ -282,7 +287,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        this.dirty = true;
+        if(!this.lazyLoading) this.dirty = true;
         return super.remove(key, value); //To change body of generated methods, choose Tools | Templates.
     }
 

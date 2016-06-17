@@ -5,7 +5,6 @@
  */
 package net.odbogm;
 
-import com.orientechnologies.orient.core.db.ODatabaseRecordThreadLocal;
 import net.odbogm.annotations.CascadeDelete;
 import net.odbogm.exceptions.NoOpenTx;
 import net.odbogm.exceptions.IncorrectRIDField;
@@ -25,7 +24,6 @@ import com.orientechnologies.orient.core.sql.OCommandSQL;
 import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery;
 import com.tinkerpop.blueprints.Direction;
 import com.tinkerpop.blueprints.Vertex;
-import com.tinkerpop.blueprints.impls.orient.OrientConfigurableGraph;
 import com.tinkerpop.blueprints.impls.orient.OrientEdge;
 import com.tinkerpop.blueprints.impls.orient.OrientGraph;
 import com.tinkerpop.blueprints.impls.orient.OrientGraphFactory;
@@ -40,6 +38,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import net.odbogm.exceptions.ClassToVertexNotFound;
+import net.odbogm.exceptions.VertexJavaClassNotFound;
+import org.reflections.Reflections;
 
 /**
  *
@@ -48,10 +49,11 @@ import java.util.logging.Logger;
 public class SessionManager implements Actions.Store, Actions.Get {
 
     private final static Logger LOGGER = Logger.getLogger(SessionManager.class.getName());
+
     static {
-        LOGGER.setLevel(Level.INFO);
+        LOGGER.setLevel(Level.FINER);
     }
-    
+
     private OrientGraph graphdb;
     private OrientGraphFactory factory;
 
@@ -66,7 +68,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
 
     private ConcurrentHashMap<String, Object> dirty = new ConcurrentHashMap<>();
 //    private ConcurrentHashMap<Object, String> entitiesToRid = new ConcurrentHashMap<>();
-    
+
     // se utiliza para guardar los objetos recuperados durante un get a fin de evitar los loops
     private int getTransactionCount = 0;
     ConcurrentHashMap<String, Object> getTransactionCache = new ConcurrentHashMap<>();
@@ -80,6 +82,8 @@ public class SessionManager implements Actions.Store, Actions.Get {
 
     int newObjectCount = 0;
 
+    private Reflections declaredClasses;
+
     public SessionManager(String url, String user, String passwd) {
 //        this.url = url;
 //        this.user = user;
@@ -90,6 +94,33 @@ public class SessionManager implements Actions.Store, Actions.Get {
 //        edges = new HashMap<>();
 //        this.factory.setThreadMode(OrientConfigurableGraph.THREAD_MODE.ALWAYS_AUTOSET);
         this.objectMapper = new ObjectMapper(this);
+    }
+
+    /**
+     * Crea una mapa con todas las clases de referencia que se encuentran en los paquetes que se pasan como parámetro.
+     *
+     * @param ref
+     */
+    public void setDeclaredClasses(Object... ref) {
+        declaredClasses = new Reflections(ref);
+//        if (LOGGER.getLevel() == Level.FINER) {
+//            LOGGER.log(Level.FINER, "**********************************************************************");
+//            LOGGER.log(Level.FINER, "* Clases escaneadas");
+//            LOGGER.log(Level.FINER, "**********************************************************************");
+//            Set<String> dc = declaredClasses.getAllTypes();
+//            LOGGER.log(Level.FINER, "Clases: "+dc.size());
+//            dc.forEach(clazz->LOGGER.log(Level.FINER, ""+clazz));
+//            LOGGER.log(Level.FINER, "------ FIN CLASES escaneadas------");
+//        }
+    }
+
+    /**
+     * Devuelve el listado de las clases que se cargaron como referecia.
+     *
+     * @return
+     */
+    public Reflections getDeclaredClasses() {
+        return declaredClasses;
     }
 
     private void init() {
@@ -117,7 +148,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
      * @param o
      */
     @Override
-    public <T> T store(T o) throws IncorrectRIDField, NoOpenTx {
+    public <T> T store(T o) throws IncorrectRIDField, NoOpenTx, ClassToVertexNotFound {
         graphdb.getRawGraph().activateOnCurrentThread();
         T proxied = null;
         try {
@@ -142,7 +173,9 @@ public class SessionManager implements Actions.Store, Actions.Get {
 
             // verificar que la clase existe
             if (this.getDBClass(classname) == null) {
-                graphdb.createVertexType(classname);
+                // arrojar una excepción en caso contrario.
+                throw new ClassToVertexNotFound("No se ha encontrado la definición de la clase "+classname+" en la base!");
+                //graphdb.createVertexType(classname);
             }
 
             OrientVertex v = graphdb.addVertex("class:" + classname, omap);
@@ -150,7 +183,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
             proxied = ObjectProxyFactory.create(o, v, this);
             // transferir todos los valores al proxy
             ReflectionUtils.copyObject(o, proxied);
-            
+
             LOGGER.log(Level.FINER, "Marcando como dirty: " + proxied.getClass().getSimpleName());
             this.dirty.put(v.getId().toString(), proxied);
 
@@ -236,7 +269,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
                         public void accept(Object imk, Object imV) {
                             // para cada entrada, verificar la existencia del objeto y crear un Edge.
                             IObjectProxy ioproxied;
-                            
+
                             // verificar si ya no se había guardardo
                             Object imO = commitedObject.get(imV);
                             // si no es así, recuperar el valor del campo
@@ -327,23 +360,23 @@ public class SessionManager implements Actions.Store, Actions.Get {
             throw new NoOpenTx();
         }
         this.graphdb.getRawGraph().activateOnCurrentThread();
-        
+
         // bajar todos los objetos a los vértices
         // this.commitObjectChanges();
         // cambiar el estado a comiteando
         this.commiting = true;
-        LOGGER.log(Level.FINER, "Objetos marcados como Dirty: "+dirty.size());
+        LOGGER.log(Level.FINER, "Objetos marcados como Dirty: " + dirty.size());
         for (Map.Entry<String, Object> e : dirty.entrySet()) {
             String rid = e.getKey();
             IObjectProxy o = (IObjectProxy) e.getValue();
-            LOGGER.log(Level.FINER, "Commiting: "+rid+"   class: "+o.___getBaseClass());
+            LOGGER.log(Level.FINER, "Commiting: " + rid + "   class: " + o.___getBaseClass());
             // actualizar todos los objetos antes de bajarlos.
             o.___commit();
         }
         LOGGER.log(Level.FINER, "Fin persistencia. <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
         // comitear los vértices
         graphdb.commit();
-        
+
         // vaciar el caché de elementos modificados.
         this.dirty.clear();
         this.commiting = false;
@@ -410,6 +443,48 @@ public class SessionManager implements Actions.Store, Actions.Get {
     }
 
     /**
+     * Retorna la cantidad de objetos marcados como Dirty.
+     * Utilizado para los test
+     */
+    public int getDirtyCount() {
+        return this.dirty.size();
+    }
+    
+    
+    /**
+     * Recupera un objecto desde la base a partir del RID del Vértice.
+     * 
+     * @param rid: ID del vértice a recupear
+     * @return: Retorna un objeto de la clase javaClass del vértice.
+     */
+    @Override
+    public Object get(String rid) throws UnknownRID, VertexJavaClassNotFound {
+        try {
+            Object ret=null;
+            if (this.graphdb == null) {
+                throw new NoOpenTx();
+            }
+            if (rid == null) {
+                throw new UnknownRID();
+            }
+            OrientVertex v = graphdb.getVertex(rid);
+            if (v==null) {
+                throw new UnknownRID(rid);
+            }
+            String javaClass = v.getType().getCustom("javaClass");
+            if (javaClass==null) {
+                throw new VertexJavaClassNotFound("La clase del Vértice no tiene la propiedad javaClass");
+            }
+            javaClass=javaClass.replaceAll("[\'\"]", "");
+            Class<?> c = Class.forName(javaClass);
+            return this.get(c, rid);
+        } catch (ClassNotFoundException ex) {
+            Logger.getLogger(SessionManager.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return null;
+    }
+    
+    /**
      * Recupera un objeto a partir de la clase y el RID correspondiente.
      *
      * @param <T>
@@ -429,13 +504,13 @@ public class SessionManager implements Actions.Store, Actions.Get {
         // para impedir que un único get entre en un loop cuando un objeto
         // tiene referencias a su padre.
         getTransactionCount++;
-        
+
         LOGGER.log(Level.FINER, "Obteniendo objeto type: " + type.getSimpleName() + " en RID: " + rid);
         T o = null;
-        
+
         // verificar si ya no se ha cargado
         o = (T) this.getTransactionCache.get(rid);
-        
+
         if (o == null) {
             // recuperar el vértice solicitado
             OrientVertex v = graphdb.getVertex(rid);
@@ -451,8 +526,9 @@ public class SessionManager implements Actions.Store, Actions.Get {
             LOGGER.log(Level.FINER, "Objeto recuperado del dirty cache! : " + o.getClass().getSimpleName());
         }
         getTransactionCount--;
-        if (getTransactionCount==0)
+        if (getTransactionCount == 0) {
             this.getTransactionCache.clear();
+        }
         return o;
     }
 
@@ -631,6 +707,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
 
         for (Vertex verticesOfClas : graphdb.getVerticesOfClass(clase.getSimpleName())) {
             ret.add(this.get(clase, verticesOfClas.getId().toString()));
+            LOGGER.log(Level.FINER, "vertex: " + verticesOfClas.getId().toString() + "  class: " + ((OrientVertex) verticesOfClas).getType().getName());
         }
 
         return ret;

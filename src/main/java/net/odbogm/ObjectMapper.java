@@ -19,12 +19,17 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import com.tinkerpop.blueprints.impls.orient.OrientEdge;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+import net.odbogm.exceptions.DuplicateClassDefinition;
 import net.odbogm.proxy.ILazyCollectionCalls;
 import net.odbogm.proxy.ILazyMapCalls;
 import net.odbogm.proxy.IObjectProxy;
 import net.odbogm.proxy.ObjectProxyFactory;
+import org.reflections.Reflections;
 
 /**
  *
@@ -33,8 +38,9 @@ import net.odbogm.proxy.ObjectProxyFactory;
 public class ObjectMapper {
 
     private final static Logger LOGGER = Logger.getLogger(ObjectMapper.class.getName());
+
     static {
-        LOGGER.setLevel(Level.INFO);
+        LOGGER.setLevel(Level.FINER);
     }
 //    private static int newObjectCounter = 0;
 
@@ -62,8 +68,7 @@ public class ObjectMapper {
             return classCache.get(o.getClass());
         }
     }
-    
-    
+
     /**
      * Devuelve un mapeo rápido del Objeto. No procesa los link o linklist. Simplemente devuelve todos los atributos del objeto en un map
      *
@@ -224,44 +229,97 @@ public class ObjectMapper {
      * @throws IllegalAccessException
      * @throws NoSuchFieldException
      */
-    public <T> T hydrate(Class<T> c, OrientVertex v) throws InstantiationException, IllegalAccessException, NoSuchFieldException, CollectionNotSupported {
+    public <T> T hydrate(Class<T> c, OrientVertex v) throws DuplicateClassDefinition, InstantiationException, IllegalAccessException, NoSuchFieldException, CollectionNotSupported {
 //        T o = c.newInstance();
         // activar la base de datos en el hilo actual.
         v.getGraph().getRawGraph().activateOnCurrentThread();
+
+        Class<?> toHydrate = c;
+        String vertexClass = (v.getType().getName() == "V" ? c.getSimpleName() : v.getType().getName());
         
+        // validar que el Vertex sea instancia de la clase solicitada
+        // o que la clase solicitada sea su superclass
+        if (!c.getSimpleName().equals(vertexClass)) {
+            LOGGER.log(Level.FINER, "Tipos distintos. {0} <> {1}", new Object[]{c.getSimpleName(), vertexClass});
+            String javaClass = v.getType().getCustom("javaClass");
+            
+            if (javaClass != null) {
+                try {
+                    // validar que sea un super de la clase del vértice
+                    javaClass=javaClass.replaceAll("[\'\"]", "");
+                    toHydrate = Class.forName(javaClass);
+
+                } catch (ClassNotFoundException ex) {
+                    Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            } else {
+                throw new InstantiationException("ERROR de Instanciación! \n"
+                        + "El vértice no coincide con la clase que se está intentando instanciar\n"
+                        + "y no tiene definido la propiedad javaClass.");
+            }
+        }
+
         // crear un proxy sobre el objeto y devolverlo
-        T oproxied = ObjectProxyFactory.create(c, v, sessionManager);
+        Object oproxied = ObjectProxyFactory.create(toHydrate, v, sessionManager);
 
         LOGGER.log(Level.FINER, "**************************************************");
-        LOGGER.log(Level.FINER, "Hydratando: {0}", c.getName());
+        LOGGER.log(Level.FINER, "Hydratando: {0} - Class: {1}", new Object[]{c.getName(), toHydrate});
         LOGGER.log(Level.FINER, "**************************************************");
         // recuperar la definición de la clase desde el caché
-        ClassDef classdef = classCache.get(c);
+        ClassDef classdef = classCache.get(toHydrate);
         Map<String, Class<?>> fieldmap = classdef.fields;
 
         Field f;
-        for (String prop : v.getPropertyKeys()) {
-            Object value = v.getProperty(prop);
+        for (Map.Entry<String, Class<?>> entry : fieldmap.entrySet()) {
+            String prop = entry.getKey();
+            Class<? extends Object> fieldClazz = entry.getValue();
+
             LOGGER.log(Level.FINER, "Buscando campo {0} ....", new String[]{prop});
-            // obtener la clase a la que pertenece el campo
-            Class<?> fc = fieldmap.get(prop);
+            Object value = v.getProperty(prop);
+            if (value != null) {
+                // obtener la clase a la que pertenece el campo
+                Class<?> fc = fieldmap.get(prop);
 
-            f = ReflectionUtils.findField(c, prop);
+                f = ReflectionUtils.findField(toHydrate, prop);
 
-            boolean acc = f.isAccessible();
-            f.setAccessible(true);
-            if (f.getType().isEnum()) {
-                LOGGER.log(Level.FINER, "Enum field: " + f.getName() + " type: " + f.getType() + "  value: " + value + "   Enum val: " + Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString()));
-                f.set(oproxied, Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString()));
-            } else {
-                f.set(oproxied, value);
+                boolean acc = f.isAccessible();
+                f.setAccessible(true);
+                if (f.getType().isEnum()) {
+                    LOGGER.log(Level.FINER, "Enum field: " + f.getName() + " type: " + f.getType() + "  value: " + value + "   Enum val: " + Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString()));
+                    f.set(oproxied, Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString()));
+                } else {
+                    f.set(oproxied, value);
+                }
+                LOGGER.log(Level.FINER, "hidratado campo: " + prop + "=" + value);
+                f.setAccessible(acc);
             }
-            LOGGER.log(Level.FINER, "hidratado campo: " + prop + "=" + value);
-            f.setAccessible(acc);
         }
         // insertar el objeto en el getTransactionCache
         this.sessionManager.getTransactionCache.put(v.getId().toString(), oproxied);
-        
+
+        // procesar los enum
+        for (Map.Entry<String, Class<?>> entry : classdef.enumFields.entrySet()) {
+            String prop = entry.getKey();
+            Class<? extends Object> fieldClazz = entry.getValue();
+
+            LOGGER.log(Level.FINER, "Buscando campo {0} ....", new String[]{prop});
+            Object value = v.getProperty(prop);
+            if (value != null) {
+                // obtener la clase a la que pertenece el campo
+                Class<?> fc = fieldmap.get(prop);
+
+                f = ReflectionUtils.findField(toHydrate, prop);
+
+                boolean acc = f.isAccessible();
+                f.setAccessible(true);
+                LOGGER.log(Level.FINER, "Enum field: " + f.getName() + " type: " + f.getType() + "  value: " + value + "   Enum val: " + Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString()));
+                f.set(oproxied, Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString()));
+
+                LOGGER.log(Level.FINER, "hidratado campo: " + prop + "=" + value);
+                f.setAccessible(acc);
+            }
+        }
+
         LOGGER.log(Level.FINER, "Procesando los Links......... ");
 
         // hidratar los atributos @links
@@ -271,10 +329,10 @@ public class ObjectMapper {
             try {
                 String field = entry.getKey();
                 Class<?> fc = entry.getValue();
-                String graphRelationName = c.getSimpleName() + "_" + field;
+                String graphRelationName = toHydrate.getSimpleName() + "_" + field;
                 LOGGER.log(Level.FINER, "Field: {0}   RelationName: {1}", new String[]{field, graphRelationName});
 
-                Field fLink = ReflectionUtils.findField(c, field);
+                Field fLink = ReflectionUtils.findField(toHydrate, field);
                 boolean acc = fLink.isAccessible();
                 fLink.setAccessible(true);
 
@@ -314,8 +372,8 @@ public class ObjectMapper {
                 String field = entry.getKey();
                 Class<?> fc = entry.getValue();
                 LOGGER.log(Level.FINER, "Field: {0}   Class: {1}", new String[]{field, fc.getName()});
-                Field fLink = ReflectionUtils.findField(c, field);
-                String graphRelationName = c.getSimpleName() + "_" + field;
+                Field fLink = ReflectionUtils.findField(toHydrate, field);
+                String graphRelationName = toHydrate.getSimpleName() + "_" + field;
                 boolean acc = fLink.isAccessible();
                 fLink.setAccessible(true);
 
@@ -335,7 +393,7 @@ public class ObjectMapper {
 
 //        LOGGER.log(Level.FINER, "Objeto hydratado: " + oproxied.toString());
         LOGGER.log(Level.FINER, "******************* FIN HYDRATE *******************");
-        return oproxied;
+        return (T) oproxied;
     }
 
     public void colecctionToLazy(Object o, String field, OrientVertex v) {
@@ -368,14 +426,14 @@ public class ObjectMapper {
             } else {
                 c = o.getClass();
             }
-            
+
             Field fLink = ReflectionUtils.findField(c, field);
             String graphRelationName = c.getSimpleName() + "_" + field;
             boolean acc = fLink.isAccessible();
             fLink.setAccessible(true);
 
             Class<?> lazyClass = Primitives.LAZY_COLLECTION.get(fc);
-            LOGGER.log(Level.FINER, "lazyClass: "+lazyClass.getName());
+            LOGGER.log(Level.FINER, "lazyClass: " + lazyClass.getName());
             Object col = lazyClass.newInstance();
             // dependiendo de si la clase hereda de Map o List, inicalizar
             if (col instanceof List) {

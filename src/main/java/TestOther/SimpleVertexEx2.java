@@ -4,8 +4,9 @@
  * and open the template in the editor.
  */
 
-package Test;
+package TestOther;
 
+import Test.*;
 import net.odbogm.annotations.Ignore;
 import net.odbogm.annotations.Link;
 import net.odbogm.annotations.LinkList;
@@ -19,14 +20,16 @@ import net.odbogm.annotations.FieldAttributes;
  *
  * @author SShadow
  */
-public class SimpleVertexEx extends SimpleVertex {
+public class SimpleVertexEx2 extends SimpleVertex {
     @Ignore
-    private final static Logger LOGGER = Logger.getLogger(SimpleVertexEx.class .getName());
+    private final static Logger LOGGER = Logger.getLogger(SimpleVertexEx2.class .getName());
 
-    @FieldAttributes(mandatory = FieldAttributes.Bool.TRUE)
+    @FieldAttributes(
+    mandatory = FieldAttributes.Bool.TRUE
+    )
     private String svex;
 
-    private SimpleVertexEx looptest;
+    private SimpleVertexEx2 looptest;
     
     public EnumTest enumTest;
     
@@ -35,17 +38,17 @@ public class SimpleVertexEx extends SimpleVertex {
     
     public ArrayList<SimpleVertex> alSV;
     
-    public ArrayList<SimpleVertexEx> alSVE;
+    public ArrayList<SimpleVertexEx2> alSVE;
     
     public HashMap<String,SimpleVertex> hmSV;
     
-    public SimpleVertexEx(String svex, String s, int i, float f, boolean b, Integer oI, Float oF, Boolean oB) {
+    public SimpleVertexEx2(String svex, String s, int i, float f, boolean b, Integer oI, Float oF, Boolean oB) {
         super(s, i, f, b, oI, oF, oB);
         this.svex = svex;
         this.enumTest = EnumTest.UNO;
     }
 
-    public SimpleVertexEx() {
+    public SimpleVertexEx2() {
         super();
         this.svex = "default";
     }
@@ -79,10 +82,6 @@ public class SimpleVertexEx extends SimpleVertex {
         System.out.println("in SVEx");
     }
 
-    public void setSvinner(SimpleVertex svinner) {
-        this.svinner = svinner;
-    }
-
     public String getSvex() {
         return svex;
     }
@@ -99,11 +98,11 @@ public class SimpleVertexEx extends SimpleVertex {
         return alSV;
     }
 
-    public ArrayList<SimpleVertexEx> getAlSVE() {
+    public ArrayList<SimpleVertexEx2> getAlSVE() {
         return alSVE;
     }
 
-    public void setAlSVE(ArrayList<SimpleVertexEx> alSVE) {
+    public void setAlSVE(ArrayList<SimpleVertexEx2> alSVE) {
         this.alSVE = alSVE;
     }
     
@@ -111,11 +110,11 @@ public class SimpleVertexEx extends SimpleVertex {
         return hmSV;
     }
 
-    public SimpleVertexEx getLooptest() {
+    public SimpleVertexEx2 getLooptest() {
         return looptest;
     }
 
-    public void setLooptest(SimpleVertexEx looptest) {
+    public void setLooptest(SimpleVertexEx2 looptest) {
         this.looptest = looptest;
     }
 
