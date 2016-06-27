@@ -10,8 +10,8 @@ import Test.SimpleVertex;
 import Test.SimpleVertexEx;
 import net.odbogm.proxy.IObjectProxy;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import java.util.logging.Level;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -40,7 +40,6 @@ public class SessionManagerTest {
     @Before
     public void setUp() {
         sm = new SessionManager("remote:localhost/Test", "root", "toor");
-        this.sm.setDeclaredClasses("Test");
         this.sm.begin();
         // borrar todos los vértices 
 //        this.sm.getGraphdb().command(new OCommandSQL("delete vertex V")).execute();
@@ -199,10 +198,10 @@ public class SessionManagerTest {
         // recuperar nuevamente
         System.out.println("Recupearndo el objeto vinculado...");
         SimpleVertexEx completo = sm.get(SimpleVertexEx.class, sveRid);
-        System.out.println("c.svinner: "+completo.svinner);
-        assertNotNull(completo.svinner);
-        System.out.println("c.svinner: "+sm.getRID(completo.svinner)+" <---> "+svRid);
-        assertEquals(sm.getRID(completo.svinner), svRid);
+        System.out.println("c.svinner: "+completo.getSvinner());
+        assertNotNull(completo.getSvinner());
+        System.out.println("c.svinner: "+sm.getRID(completo.getSvinner())+" <---> "+svRid);
+        assertEquals(sm.getRID(completo.getSvinner()), svRid);
         
         System.out.println("*******************************************************************");
         System.out.println("\n\n\n");
@@ -212,9 +211,9 @@ public class SessionManagerTest {
     @Test
     public void testStoreFullObject() {
         System.out.println("\n\n\n");
-        System.out.println("***************************************************************");
-        System.out.println("Verificar un objecto completamente inicializado y almacenado.");
-        System.out.println("***************************************************************");
+        System.out.println("******************************************************************************");
+        System.out.println("StoreFullObject: Verificar un objecto completamente inicializado y almacenado.");
+        System.out.println("******************************************************************************");
         SimpleVertexEx sve = new SimpleVertexEx();
         sve.initInner();        // 1 objeto
         sve.initEnum();
@@ -250,24 +249,23 @@ public class SessionManagerTest {
         
         
         // verificar que todos los valores sean iguales
-        assertEquals(((IObjectProxy)expResult).___getRid(), ((IObjectProxy)result).___getRid());
+        assertEquals("verificando rids...",((IObjectProxy)expResult).___getRid(), ((IObjectProxy)result).___getRid());
         
-        assertEquals(expResult.getI(), sve.getI());
+        assertEquals("verificando int...",expResult.getI(), sve.getI());
 //        assertEquals((float)expResult.getF(), (float)sv.getF());
-        assertEquals(expResult.getS(), sve.getS());
-        assertEquals(expResult.getoB(), sve.getoB());
-        assertEquals(expResult.getoF(), sve.getoF());
-        assertEquals(expResult.getoI(), sve.getoI());
-        assertEquals(expResult.getSvex(), sve.getSvex());
-        assertEquals(expResult.getEnumTest(), sve.getEnumTest());
+        assertEquals("verificando strings...",expResult.getS(), sve.getS());
+        assertEquals("verificando booleans...",expResult.getoB(), sve.getoB());
+        assertEquals("verificando float...",expResult.getoF(), sve.getoF());
+        assertEquals("verificando Integer...",expResult.getoI(), sve.getoI());
+        assertEquals("verificando SVEX...",expResult.getSvex(), sve.getSvex());
+        assertEquals("verificando ENUM...",expResult.getEnumTest(), sve.getEnumTest());
 
         System.out.println("sve: "+sve.getSvinner().getS());
         System.out.println("expResult: "+expResult.getSvinner().getS());
         
-        assertEquals(expResult.getSvinner().getS(), sve.getSvinner().getS());
-        assertEquals(expResult.getAlSV().size(), sve.getAlSV().size());
-        assertEquals(expResult.getHmSV().size(), sve.getHmSV().size());
-        assertEquals(expResult.getEnumTest(), sve.getEnumTest());
+        assertEquals("verificando svinner.string ...",expResult.getSvinner().getS(), sve.getSvinner().getS());
+        assertEquals("verificando AL.size()...",expResult.getAlSV().size(), sve.getAlSV().size());
+        assertEquals("verificando HM.size()...",expResult.getHmSV().size(), sve.getHmSV().size());
         
         System.out.println("============================= FIN testStoreFullObject ===============================");
     }
@@ -450,7 +448,7 @@ public class SessionManagerTest {
         
         String rid = ((IObjectProxy)stored).___getRid();
         
-        System.out.println("primer commit------------------------------------------------------------");
+        System.out.println("primer commit finalizado. RID: "+rid+" ------------------------------------------------------------");
         
         assertNull(stored.getAlSVE());
         
@@ -460,22 +458,89 @@ public class SessionManagerTest {
         nal.add(new SimpleVertexEx());
         nal.add(new SimpleVertexEx());
         
+        System.out.println("\ninicio segundo commit ----------------------------------------------------------");
         sm.commit();
-        System.out.println("segundo commit ----------------------------------------------------------");
-        SimpleVertexEx retrieved = sm.get(SimpleVertexEx.class, rid);
-        System.out.println("retrieved: "+retrieved.getAlSVE());
-        System.out.println("stored: "+stored.getAlSVE());
-        assertEquals(retrieved.getAlSVE().size(), stored.getAlSVE().size());
+        System.out.println("segundo commit finalizado ----------------------------------------------------------\n");
         
-        System.out.println("agregamos un nuevo objeto al arraylist ya inicializado");
+        SimpleVertexEx retrieved = sm.get(SimpleVertexEx.class, rid);
+        System.out.println("retrieved: "+retrieved+" : "+retrieved.getAlSVE());
+        System.out.println("stored: "+stored+" : "+stored.getAlSVE()+"\n\n");
+        int iretSize = retrieved.getAlSVE().size();
+        int istoredSize = stored.getAlSVE().size();
+        assertEquals(iretSize,istoredSize);
+        
+        System.out.println("\nagregamos un nuevo objeto al arraylist ya inicializado");
         stored.getAlSVE().add(new SimpleVertexEx());
+        System.out.println("\ninicio tercer commit ----------------------------------------------------------");
         sm.commit();
-        System.out.println("tercer commit ----------------------------------------------------------");
+        System.out.println("tercer commit ----------------------------------------------------------\n");
         
         retrieved = sm.get(SimpleVertexEx.class, rid);
+        
+        System.out.println("retrieved: "+retrieved+" : "+retrieved.getAlSVE());
+        System.out.println("stored: "+stored+" : "+stored.getAlSVE());
+        
         assertEquals(retrieved.getAlSVE().size(), stored.getAlSVE().size());
         
     }
+    
+    
+    @Test
+    public void testHashMap(){
+        System.out.println("\n\n\n");
+        System.out.println("***************************************************************");
+        System.out.println("Verificar el comportamiento de los HashMap simples");
+        System.out.println("***************************************************************");
+        SimpleVertexEx sve = new SimpleVertexEx();
+        
+        System.out.println("guardado del objeto limpio.");
+        SimpleVertexEx stored = sm.store(sve);
+        sm.commit();
+        
+        String rid = ((IObjectProxy)stored).___getRid();
+        
+        System.out.println("primer commit finalizado. RID: "+rid+" ------------------------------------------------------------");
+        
+        assertNull(stored.getHmSVE());
+        
+        System.out.println("Agrego un HM nuevo");
+        HashMap<String,SimpleVertexEx> nhm = new HashMap<String, SimpleVertexEx>();
+        stored.setHmSVE(nhm);
+        nhm.put("key1",new SimpleVertexEx());
+        nhm.put("key2",new SimpleVertexEx());
+        
+        System.out.println("\ninicio segundo commit ----------------------------------------------------------");
+        sm.commit();
+        System.out.println("segundo commit finalizado ----------------------------------------------------------\n");
+        
+        SimpleVertexEx retrieved = sm.get(SimpleVertexEx.class, rid);
+        System.out.println("retrieved: "+retrieved+" : "+retrieved.getHmSVE());
+        System.out.println("stored: "+stored+" : "+stored.getHmSVE()+"\n\n");
+        int iretSize = retrieved.getHmSVE().size();
+        int istoredSize = stored.getHmSVE().size();
+        assertEquals(iretSize,istoredSize);
+
+        SimpleVertexEx hmsveGetted = retrieved.getHmSVE().get("key1");
+        System.out.println("key1: "+(hmsveGetted==null?" NULL!":"Ok."));
+        assertNotNull(hmsveGetted);
+        
+        System.out.println("\nagregamos un nuevo objeto al arraylist ya inicializado");
+        stored.getHmSVE().put("key3",new SimpleVertexEx());
+        System.out.println("\ninicio tercer commit ----------------------------------------------------------");
+        sm.commit();
+        System.out.println("tercer commit ----------------------------------------------------------\n");
+        
+        retrieved = sm.get(SimpleVertexEx.class, rid);
+        
+        System.out.println("retrieved: "+retrieved+" : "+retrieved.getHmSVE());
+        System.out.println("stored: "+stored+" : "+stored.getHmSVE());
+        
+        assertEquals(retrieved.getHmSVE().size(), stored.getHmSVE().size());
+        
+    }
+    
+    
+    
     
     @Test
     public void testGet() {
@@ -543,7 +608,7 @@ public class SessionManagerTest {
         System.out.println("Fin SimpleQuery");
         System.out.println("***************************************************************");
     }
-
+    
     
 //    /**
 //     * Test of setAsDirty method, of class SessionManager.

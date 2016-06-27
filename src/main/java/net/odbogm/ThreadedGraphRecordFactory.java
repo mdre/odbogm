@@ -21,7 +21,7 @@ public class ThreadedGraphRecordFactory implements ODatabaseThreadLocalFactory {
     private final static Logger LOGGER = Logger.getLogger(ThreadedGraphRecordFactory.class.getName());
 
     static {
-        LOGGER.setLevel(Level.INFO);
+        LOGGER.setLevel(LogginProperties.ThreadedGraphRecordFactory);
     }
 
     private String url;

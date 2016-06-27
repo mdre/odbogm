@@ -15,7 +15,7 @@ import java.util.Map;
  * @author SShadow
  */
 public interface ILazyMapCalls extends ILazyCalls {
-    public void init(SessionManager sm, OrientVertex relatedTo, String field, Class<?> keyClass, Class<?> valueClass);
+    public void init(SessionManager sm, OrientVertex relatedTo, IObjectProxy parent, String field, Class<?> keyClass, Class<?> valueClass);
     public Map<Object,ObjectCollectionState> collectionState();
     
     

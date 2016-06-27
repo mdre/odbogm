@@ -5,13 +5,11 @@
  */
 package net.odbogm;
 
-import net.odbogm.exceptions.DuplicateLink;
 import net.odbogm.cache.ClassCache;
 import net.odbogm.cache.ClassDef;
 import net.odbogm.exceptions.CollectionNotSupported;
 import net.odbogm.utils.ReflectionUtils;
 import com.tinkerpop.blueprints.Direction;
-import com.tinkerpop.blueprints.Vertex;
 import com.tinkerpop.blueprints.impls.orient.OrientVertex;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
@@ -19,17 +17,13 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import com.tinkerpop.blueprints.impls.orient.OrientEdge;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 import net.odbogm.exceptions.DuplicateClassDefinition;
 import net.odbogm.proxy.ILazyCollectionCalls;
 import net.odbogm.proxy.ILazyMapCalls;
 import net.odbogm.proxy.IObjectProxy;
 import net.odbogm.proxy.ObjectProxyFactory;
-import org.reflections.Reflections;
 
 /**
  *
@@ -40,7 +34,7 @@ public class ObjectMapper {
     private final static Logger LOGGER = Logger.getLogger(ObjectMapper.class.getName());
 
     static {
-        LOGGER.setLevel(Level.FINER);
+        LOGGER.setLevel(LogginProperties.ObjectMapper);
     }
 //    private static int newObjectCounter = 0;
 
@@ -77,8 +71,12 @@ public class ObjectMapper {
      */
     public Map<String, Object> simpleMap(Object o) {
         HashMap<String, Object> data = new HashMap<>();
-        ClassDef classmap = classCache.get(o.getClass());
-        simpleFastMap(o, classmap, data);
+        if (Primitives.PRIMITIVE_MAP.containsKey(o.getClass())) {
+            data.put("key", o);
+        } else {
+            ClassDef classmap = classCache.get(o.getClass());
+            simpleFastMap(o, classmap, data);
+        }
         return data;
     }
 
@@ -294,8 +292,8 @@ public class ObjectMapper {
                 f.setAccessible(acc);
             }
         }
-        // insertar el objeto en el getTransactionCache
-        this.sessionManager.getTransactionCache.put(v.getId().toString(), oproxied);
+        // insertar el objeto en el transactionCache
+        this.sessionManager.transactionCache.put(v.getId().toString(), oproxied);
 
         // procesar los enum
         for (Map.Entry<String, Class<?>> entry : classdef.enumFields.entrySet()) {
@@ -320,47 +318,46 @@ public class ObjectMapper {
             }
         }
 
-        LOGGER.log(Level.FINER, "Procesando los Links......... ");
-
-        // hidratar los atributos @links
-        // procesar todos los links
-        for (Map.Entry<String, Class<?>> entry : classdef.links.entrySet()) {
-//        classdef.links.entrySet().stream().forEach((entry) -> {
-            try {
-                String field = entry.getKey();
-                Class<?> fc = entry.getValue();
-                String graphRelationName = toHydrate.getSimpleName() + "_" + field;
-                LOGGER.log(Level.FINER, "Field: {0}   RelationName: {1}", new String[]{field, graphRelationName});
-
-                Field fLink = ReflectionUtils.findField(toHydrate, field);
-                boolean acc = fLink.isAccessible();
-                fLink.setAccessible(true);
-
-                // recuperar de la base el vértice correspondiente
-                boolean duplicatedLinkGuard = false;
-                for (Vertex vertice : v.getVertices(Direction.OUT, graphRelationName)) {
-                    LOGGER.log(Level.FINER, "hydrate innerO: " + vertice.getId());
-
-                    if (!duplicatedLinkGuard) {
-//                        Object innerO = this.hydrate(fc, vertice);
-                        /* FIXME: esto genera una dependencia cruzada. Habría que revisar
-                           como solucionarlo. Esta llamada se hace para que quede el objeto
-                           mapeado 
-                         */
-                        Object innerO = this.sessionManager.get(fc, vertice.getId().toString());
-                        LOGGER.log(Level.FINER, "Inner object " + field + ": " + (innerO == null ? "NULL" : "" + innerO.toString()) + "  FC: " + fc.getSimpleName() + "   innerO.class: " + innerO.getClass().getSimpleName());
-                        fLink.set(oproxied, fc.cast(innerO));
-                        duplicatedLinkGuard = true;
-                    } else if (false) {
-                        throw new DuplicateLink();
-                    }
-                }
-                fLink.setAccessible(acc);
-
-            } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
-                Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
+//        LOGGER.log(Level.FINER, "Procesando los Links......... ");
+//        // hidratar los atributos @links
+//        // procesar todos los links
+//        for (Map.Entry<String, Class<?>> entry : classdef.links.entrySet()) {
+////        classdef.links.entrySet().stream().forEach((entry) -> {
+//            try {
+//                String field = entry.getKey();
+//                Class<?> fc = entry.getValue();
+//                String graphRelationName = toHydrate.getSimpleName() + "_" + field;
+//                LOGGER.log(Level.FINER, "Field: {0}   RelationName: {1}", new String[]{field, graphRelationName});
+//
+//                Field fLink = ReflectionUtils.findField(toHydrate, field);
+//                boolean acc = fLink.isAccessible();
+//                fLink.setAccessible(true);
+//
+//                // recuperar de la base el vértice correspondiente
+//                boolean duplicatedLinkGuard = false;
+//                for (Vertex vertice : v.getVertices(Direction.OUT, graphRelationName)) {
+//                    LOGGER.log(Level.FINER, "hydrate innerO: " + vertice.getId());
+//
+//                    if (!duplicatedLinkGuard) {
+////                        Object innerO = this.hydrate(fc, vertice);
+//                        /* FIXME: esto genera una dependencia cruzada. Habría que revisar
+//                           como solucionarlo. Esta llamada se hace para que quede el objeto
+//                           mapeado 
+//                         */
+//                        Object innerO = this.sessionManager.get(fc, vertice.getId().toString());
+//                        LOGGER.log(Level.FINER, "Inner object " + field + ": " + (innerO == null ? "NULL" : "" + innerO.toString()) + "  FC: " + fc.getSimpleName() + "   innerO.class: " + innerO.getClass().getSimpleName());
+//                        fLink.set(oproxied, fc.cast(innerO));
+//                        duplicatedLinkGuard = true;
+//                    } else if (false) {
+//                        throw new DuplicateLink();
+//                    }
+//                }
+//                fLink.setAccessible(acc);
+//
+//            } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
+//                Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
+//            }
+//        }
 
         // hidratar las colecciones
         // procesar todos los linkslist
@@ -440,7 +437,7 @@ public class ObjectMapper {
                 ParameterizedType listType = (ParameterizedType) fLink.getGenericType();
                 Class<?> listClass = (Class<?>) listType.getActualTypeArguments()[0];
                 // inicializar la colección
-                ((ILazyCollectionCalls) col).init(sessionManager, v, graphRelationName, listClass);
+                ((ILazyCollectionCalls) col).init(sessionManager, v, (IObjectProxy)o, graphRelationName, listClass);
 
 //                LOGGER.log(Level.FINER, "col: "+col.getDBClass());
             } else if (col instanceof Map) {
@@ -448,7 +445,7 @@ public class ObjectMapper {
                 Class<?> keyClass = (Class<?>) listType.getActualTypeArguments()[0];
                 Class<?> valClass = (Class<?>) listType.getActualTypeArguments()[1];
                 // inicializar la colección
-                ((ILazyMapCalls) col).init(sessionManager, v, graphRelationName, keyClass, valClass);
+                ((ILazyMapCalls) col).init(sessionManager, v, (IObjectProxy)o, graphRelationName, keyClass, valClass);
             } else {
                 throw new CollectionNotSupported();
             }

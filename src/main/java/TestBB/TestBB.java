@@ -92,7 +92,7 @@ public class TestBB {
             System.out.println("" + proxied1.getClass().getSuperclass().getName());
             System.out.println("" + proxied1.getS());
             System.out.println("" + proxied1.getSvex().toString());
-            System.out.println("" + proxied1.svinner.toString());
+            System.out.println("" + proxied1.getSvinner().toString());
             bbi = new BBGeneralInterceptor();
             SimpleVertexEx proxied2 = new ByteBuddy()
                             .subclass(SimpleVertexEx.class)

@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import net.odbogm.LogginProperties;
 
 /**
  *
@@ -27,7 +28,7 @@ public class ClassCache {
 
     private final static Logger LOGGER = Logger.getLogger(ClassCache.class.getName());
     static {
-        LOGGER.setLevel(Level.WARNING);
+        LOGGER.setLevel(LogginProperties.ClassCache);
     }
     
     private final HashMap<Class<?>, ClassDef> classCache = new HashMap<>();
@@ -98,7 +99,8 @@ public class ClassCache {
                         f.setAccessible(acc);
                         
                     } else {
-                        LOGGER.log(Level.WARNING, "Ignorado: {0}", f.getName());
+                        if (!(f.isAnnotationPresent(Ignore.class)))
+                            LOGGER.log(Level.WARNING, "Ignorado: {0}", f.getName());
                     }
 
                 } catch (IllegalArgumentException ex) {

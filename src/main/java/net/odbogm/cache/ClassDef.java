@@ -15,7 +15,7 @@ import java.util.logging.Logger;
 public class ClassDef {
 
     private final static Logger LOGGER = Logger.getLogger(ClassDef.class.getName());
-
+    
     /**
      * Mapa de atributos básicos
      */

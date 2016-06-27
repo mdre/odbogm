@@ -9,6 +9,7 @@ import net.odbogm.SessionManager;
 import com.tinkerpop.blueprints.Direction;
 import com.tinkerpop.blueprints.Vertex;
 import com.tinkerpop.blueprints.impls.orient.OrientVertex;
+import java.lang.ref.WeakReference;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.Iterator;
@@ -21,6 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
@@ -33,14 +35,19 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
     private final static Logger LOGGER = Logger.getLogger(LinkedListLazyProxy.class.getName());
 
     private boolean dirty = false;
+    
     private boolean lazyLoad = true;
+    private boolean lazyLoading = false;
+    
     private SessionManager sm;
     private OrientVertex relatedTo;
     private String field;
     private Class<?> fieldClass;
-
+    
+    // referencia debil al objeto padre. Se usa para notificar al padre que la colección ha cambiado.
+    private WeakReference<IObjectProxy> parent;
     /**
-     * Crea un LinkedList lazy.
+     * Crea un ArrayList lazy.
      *
      * @param sm Vínculo al SessionManager actual
      * @param relatedTo: Vértice con el cual se relaciona la colección
@@ -48,22 +55,44 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
      * @param c: clase genérica de la colección.
      */
     @Override
-    public void init(SessionManager sm, OrientVertex relatedTo, String field, Class<?> c) {
-        this.sm = sm;
-        this.relatedTo = relatedTo;
-        this.field = field;
-        this.fieldClass = c;
+    public void init(SessionManager sm, OrientVertex relatedTo, IObjectProxy parent, String field, Class<?> c) {
+        try {
+            this.sm = sm;
+            this.relatedTo = relatedTo;
+            this.parent = new WeakReference<>(parent);
+            this.field = field;
+            this.fieldClass = c;
+            LOGGER.log(Level.FINER, "relatedTo: {0} - field: {1} - Class: {2}", new Object[]{relatedTo, field, c.getSimpleName()});
+            LOGGER.log(Level.FINER, "relatedTo.getGraph : "+relatedTo.getGraph());
+        } catch (Exception ex) {
+            Logger.getLogger(LinkedListLazyProxy.class.getName()).log(Level.SEVERE, null, ex);
+        }
     }
 
     //********************* change control **************************************
     private Map<Object, ObjectCollectionState> listState = new ConcurrentHashMap<>();
-
+    
     private void lazyLoad() {
+        this.sm.getGraphdb().getRawGraph().activateOnCurrentThread();
+        LOGGER.log(Level.FINER, "getGraph: "+relatedTo.getGraph());
+        if (relatedTo.getGraph()==null)
+            this.sm.getGraphdb().attach(relatedTo);
+        
+        LOGGER.log(Level.FINER, "getRawGraph: "+relatedTo.getGraph().getRawGraph());
+        
+        relatedTo.getGraph().getRawGraph().activateOnCurrentThread();
+//        ODatabaseDocument database = (ODatabaseDocument) ODatabaseRecordThreadLocal.INSTANCE.get();
+//        database.activateOnCurrentThread();
+//        LOGGER.log(Level.FINER, "ODatabase: "+database+" activated");
+
 //        LOGGER.log(Level.INFO, "Lazy Load.....");
         this.lazyLoad = false;
-
+        this.lazyLoading = true;
+        LOGGER.log(Level.FINER, "relatedTo: {0} - field: {1} - Class: {2}", new Object[]{relatedTo, field, fieldClass.getSimpleName()});
         // recuperar todos los elementos desde el vértice y agregarlos a la colección
-        for (Iterator<Vertex> iterator = relatedTo.getVertices(Direction.OUT, field).iterator(); iterator.hasNext();) {
+        Iterable<Vertex> rt = relatedTo.getVertices(Direction.OUT, field);
+//        for (Iterator<Vertex> iterator = relatedTo.getVertices(Direction.OUT, field).iterator(); iterator.hasNext();) {
+        for (Iterator<Vertex> iterator = rt.iterator(); iterator.hasNext();) {
             OrientVertex next = (OrientVertex) iterator.next();
 //            LOGGER.log(Level.INFO, "loading: " + next.getId().toString());
             Object o = sm.get(fieldClass, next.getId().toString());
@@ -71,27 +100,35 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
             // se asume que todos fueron borrados
             this.listState.put(o, ObjectCollectionState.REMOVED);
         }
+        this.lazyLoading = false;
     }
 
     public Map<Object, ObjectCollectionState> collectionState() {
-        for (Object o : this) {
-            // actualizar el estado
-            if (this.listState.get(o) == null) {
-                // se agregó un objeto
-                this.listState.put(o, ObjectCollectionState.ADDED);
-            } else {
-                // el objeto existe. Marcarlo como sin cambio para la colección
-                this.listState.remove(o);
+        // si se ha hecho referencia al contenido de la colección, realizar la verificación
+        if (!this.lazyLoad) {
+            for (Object o : this) {
+                // actualizar el estado
+                if (this.listState.get(o) == null) {
+                    // se agregó un objeto
+                    this.listState.put(o, ObjectCollectionState.ADDED);
+                } else {
+                    // el objeto existe. Removerlo para que solo queden los que se agregaron o eliminaron 
+                    this.listState.remove(o);
+                    // el objeto existe. Marcarlo como sin cambio para la colección
+//                    this.listState.replace(o, ObjectCollectionState.NOCHANGE);
+                }
             }
         }
         return this.listState;
     }
     
     /**
-     * Vuelve  establecer el punto de verificación.
+     * Vuelve establecer el punto de verificación.
      */
     @Override
     public void clearState() {
+        this.dirty = false;
+        
         this.listState.clear();
 
         for (Object o : this) {
@@ -102,6 +139,14 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         }
     }
     
+    private void setDirty() {
+        LOGGER.log(Level.FINER, "Colección marcada como Dirty. Avisar al padre.");
+        this.dirty = true;
+        LOGGER.log(Level.FINER, "weak:"+this.parent.get());
+        // si el padre no está marcado como garbage, notificarle el cambio de la colección.
+        if (this.parent.get()!=null)
+            this.parent.get().___setDirty();
+    }
     
     @Override
     public boolean isDirty() {
@@ -167,6 +212,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
+        this.setDirty();
         return super.removeLastOccurrence(o); 
     }
 
@@ -175,6 +221,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
+        this.setDirty();
         return super.removeFirstOccurrence(o); 
     }
 
@@ -183,6 +230,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
+        this.setDirty();
         return super.pop(); 
     }
 
@@ -191,6 +239,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
+        this.setDirty();
         super.push(e); 
     }
 
@@ -199,6 +248,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
+        this.setDirty();
         return super.pollLast(); 
     }
 
@@ -207,6 +257,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
+        this.setDirty();
         return super.pollFirst(); 
     }
 
@@ -231,6 +282,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
+        this.setDirty();
         return super.offerLast(e); 
     }
 
@@ -239,6 +291,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
+        this.setDirty();
         return super.offerFirst(e); 
     }
 
@@ -247,6 +300,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
+        this.setDirty();
         return super.offer(e); 
     }
 
@@ -255,6 +309,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
+        this.setDirty();
         return super.remove(); 
     }
 
@@ -303,6 +358,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
+        this.setDirty();
         return super.remove(index); 
     }
 
@@ -311,6 +367,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
+        this.setDirty();
         super.add(index, element); 
     }
 
@@ -319,6 +376,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
+        this.setDirty();
         return super.set(index, element); 
     }
 
@@ -335,6 +393,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
+        this.setDirty();
         super.clear(); 
     }
 
@@ -343,6 +402,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
+        this.setDirty();
         return super.addAll(index, c); 
     }
 
@@ -351,6 +411,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
+        this.setDirty();
         return super.addAll(c); 
     }
 
@@ -359,6 +420,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
+        this.setDirty();
         return super.remove(o); 
     }
 
@@ -367,6 +429,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
+        if(!this.lazyLoading) this.setDirty();
         return super.add(e); 
     }
 
@@ -391,6 +454,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
+        this.setDirty();
         super.addLast(e); 
     }
 
@@ -399,6 +463,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
+        this.setDirty();
         super.addFirst(e); 
     }
 
@@ -407,6 +472,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
+        this.setDirty();
         return super.removeLast(); 
     }
 
@@ -415,6 +481,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
+        this.setDirty();
         return super.removeFirst(); 
     }
 
@@ -447,6 +514,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
+        this.setDirty();
         super.removeRange(fromIndex, toIndex); 
     }
 
@@ -495,6 +563,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
+        this.setDirty();
         super.replaceAll(operator); 
     }
 
@@ -511,6 +580,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
+        this.setDirty();
         return super.retainAll(c); 
     }
 
@@ -519,6 +589,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
+        this.setDirty();
         return super.removeAll(c); 
     }
 
@@ -559,6 +630,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
+        this.setDirty();
         return super.removeIf(filter); 
     }
 

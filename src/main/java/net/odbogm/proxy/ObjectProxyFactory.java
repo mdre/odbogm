@@ -19,6 +19,7 @@ import static net.bytebuddy.matcher.ElementMatchers.any;
 import static net.bytebuddy.matcher.ElementMatchers.isDeclaredBy;
 import net.sf.cglib.proxy.Enhancer;
 import static net.bytebuddy.matcher.ElementMatchers.isDeclaredBy;
+import net.odbogm.LogginProperties;
 
 /**
  *
@@ -26,6 +27,9 @@ import static net.bytebuddy.matcher.ElementMatchers.isDeclaredBy;
  */
 public class ObjectProxyFactory {
     private final static Logger LOGGER = Logger.getLogger(ObjectProxyFactory.class .getName());
+    static {
+        LOGGER.setLevel(LogginProperties.ObjectProxyFactory);
+    }
     
     public enum proxyLibrary {CGLIB,BB};
     private static proxyLibrary library = proxyLibrary.CGLIB;

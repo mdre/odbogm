@@ -51,7 +51,7 @@ public class DbManager {
     private final static Logger LOGGER = Logger.getLogger(DbManager.class.getName());
 
     static {
-        LOGGER.setLevel(Level.FINER);
+        LOGGER.setLevel(LogginProperties.DbManager);
     }
 
     private OrientGraph graphdb;

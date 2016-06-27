@@ -40,7 +40,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.exceptions.ClassToVertexNotFound;
 import net.odbogm.exceptions.VertexJavaClassNotFound;
-import org.reflections.Reflections;
 
 /**
  *
@@ -51,7 +50,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
     private final static Logger LOGGER = Logger.getLogger(SessionManager.class.getName());
 
     static {
-        LOGGER.setLevel(Level.FINER);
+        LOGGER.setLevel(LogginProperties.SessionManager);
     }
 
     private OrientGraph graphdb;
@@ -71,7 +70,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
 
     // se utiliza para guardar los objetos recuperados durante un get a fin de evitar los loops
     private int getTransactionCount = 0;
-    ConcurrentHashMap<String, Object> getTransactionCache = new ConcurrentHashMap<>();
+    ConcurrentHashMap<String, Object> transactionCache = new ConcurrentHashMap<>();
 
     // Los RIDs temporales deben ser convertidos a los permanentes en el proceso de commit
     List<String> newrids = new ArrayList<>();
@@ -81,8 +80,6 @@ public class SessionManager implements Actions.Store, Actions.Get {
     private ConcurrentHashMap<Object, Object> commitedObject = new ConcurrentHashMap<>();
 
     int newObjectCount = 0;
-
-    private Reflections declaredClasses;
 
     public SessionManager(String url, String user, String passwd) {
 //        this.url = url;
@@ -94,33 +91,6 @@ public class SessionManager implements Actions.Store, Actions.Get {
 //        edges = new HashMap<>();
 //        this.factory.setThreadMode(OrientConfigurableGraph.THREAD_MODE.ALWAYS_AUTOSET);
         this.objectMapper = new ObjectMapper(this);
-    }
-
-    /**
-     * Crea una mapa con todas las clases de referencia que se encuentran en los paquetes que se pasan como parámetro.
-     *
-     * @param ref
-     */
-    public void setDeclaredClasses(Object... ref) {
-        declaredClasses = new Reflections(ref);
-//        if (LOGGER.getLevel() == Level.FINER) {
-//            LOGGER.log(Level.FINER, "**********************************************************************");
-//            LOGGER.log(Level.FINER, "* Clases escaneadas");
-//            LOGGER.log(Level.FINER, "**********************************************************************");
-//            Set<String> dc = declaredClasses.getAllTypes();
-//            LOGGER.log(Level.FINER, "Clases: "+dc.size());
-//            dc.forEach(clazz->LOGGER.log(Level.FINER, ""+clazz));
-//            LOGGER.log(Level.FINER, "------ FIN CLASES escaneadas------");
-//        }
-    }
-
-    /**
-     * Devuelve el listado de las clases que se cargaron como referecia.
-     *
-     * @return
-     */
-    public Reflections getDeclaredClasses() {
-        return declaredClasses;
     }
 
     private void init() {
@@ -163,10 +133,10 @@ public class SessionManager implements Actions.Store, Actions.Get {
             } else {
                 classname = o.getClass().getSimpleName();
             }
+            LOGGER.log(Level.FINER, "STORE: guardando objeto de la clase "+classname);
 
             // Recuperar la definición de clase del objeto.
             ClassDef oClassDef = this.objectMapper.getClassDef(o);
-
             // Obtener un map del objeto.
             ObjectStruct oStruct = objectMapper.objectStruct(o);
             Map<String, Object> omap = oStruct.fields;
@@ -205,6 +175,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
                 Object innerO = this.commitedObject.get(link.getValue());
                 // si no es así, recuperar el valor del campo
                 if (innerO == null) {
+                    LOGGER.log(Level.FINER, field+": No existe el objeto en el cache de objetos creados.");
                     innerO = link.getValue();
                 }
 
@@ -306,7 +277,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
         } catch (IllegalArgumentException ex) {
             Logger.getLogger(SessionManager.class.getName()).log(Level.SEVERE, null, ex);
         }
-
+        LOGGER.log(Level.FINER, "FIN del Store ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
         return proxied;
     }
 
@@ -509,7 +480,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
         T o = null;
 
         // verificar si ya no se ha cargado
-        o = (T) this.getTransactionCache.get(rid);
+        o = (T) this.transactionCache.get(rid);
 
         if (o == null) {
             // recuperar el vértice solicitado
@@ -527,11 +498,35 @@ public class SessionManager implements Actions.Store, Actions.Get {
         }
         getTransactionCount--;
         if (getTransactionCount == 0) {
-            this.getTransactionCache.clear();
+            LOGGER.log(Level.FINER, "Fin de la transacción. Reseteando el cache.....................");
+            this.transactionCache.clear();
         }
+        LOGGER.log(Level.FINER, "Fin get -------------------------------------\n");
         return o;
     }
-
+    /**
+     * Agrega si no existe un objeto al cache de la transacción acutal a fin de evitar los loops
+     * cuando se comletan los links dentro del ObjectProxy
+     * @param rid
+     * @param o 
+     */
+    public void addToTransactionCache(String rid, Object o){
+        getTransactionCount++;
+        if (this.transactionCache.get(rid)==null) {
+            LOGGER.log(Level.FINER, "Forzando el agregado al TransactionCache de "+rid);
+            this.transactionCache.put(rid,o);
+        }
+    }
+    
+    /**
+     * invocado desde ObjectProxy al completar los links.
+     */
+    public void decreseTransactionCache(){
+        getTransactionCount--;
+        if (getTransactionCount==0)
+            transactionCache.clear();
+    }
+    
     @Override
     public <T> T getEdgeAsObject(Class<T> type, OrientEdge e) {
         if (this.graphdb == null) {

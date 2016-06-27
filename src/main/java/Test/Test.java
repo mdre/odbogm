@@ -23,7 +23,8 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import static java.util.stream.Collectors.toList;
 import net.odbogm.DbManager;
-import org.reflections.Reflections;
+import net.odbogm.proxy.ArrayListLazyProxy;
+import net.odbogm.proxy.ILazyCalls;
 
 /**
  *
@@ -43,10 +44,11 @@ public class Test {
     }
 
     public Test() {
-        initSession();
+//        initSession();
 //        testSessionManager();
 //        testDbManager();
         lab();
+//        store();
     }
     
     
@@ -84,10 +86,10 @@ public class Test {
     
     
     public void lab(){
-        OrientVertex ov = sm.getGraphdb().getVertex("12:1177");
-        System.out.println(""+ov.getType().getCustom("javaClass"));
-        String jc = ov.getType().getCustom("javaClass");
-        System.out.println(""+jc.replaceAll("[\'\"]", ""));
+//        OrientVertex ov = sm.getGraphdb().getVertex("12:1177");
+//        System.out.println(""+ov.getType().getCustom("javaClass"));
+//        String jc = ov.getType().getCustom("javaClass");
+//        System.out.println(""+jc.replaceAll("[\'\"]", ""));
 //        System.out.println(""+ov.getGraph().getVertexBaseType().getCustom("javaClass"));
 
 //        SimpleVertexEx svex = new SimpleVertexEx();
@@ -116,6 +118,9 @@ public class Test {
 //                .filter(className->className.getSimpleName().equals("SimpleVertexEx"))
 //                .collect(Collectors.toList());
 //        System.out.println("r: "+r);
+
+        ArrayListLazyProxy allp = new ArrayListLazyProxy();
+        System.out.println("IL: "+(allp instanceof ILazyCalls));
 
     }
     
@@ -161,7 +166,8 @@ public class Test {
             System.out.println("     Test store: agrego uno    ");
             System.out.println("*******************************");
             svex = sm.store(svex);
-
+            System.out.println("idNew: "+((IObjectProxy)svex).___getVertex().getIdentity().isNew());
+            System.out.println("idTemporary: "+((IObjectProxy)svex).___getVertex().getIdentity().isTemporary());
             sm.flush();
 
             System.out.println("----------- STORE commit -----------------");

@@ -7,10 +7,9 @@
 package Test;
 
 import net.odbogm.annotations.Ignore;
-import net.odbogm.annotations.Link;
-import net.odbogm.annotations.LinkList;
 import net.odbogm.annotations.RemoveOrphan;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.logging.Logger;
 import net.odbogm.annotations.FieldAttributes;
@@ -31,13 +30,17 @@ public class SimpleVertexEx extends SimpleVertex {
     public EnumTest enumTest;
     
     @RemoveOrphan
-    public SimpleVertex svinner; 
+    private SimpleVertex svinner; 
     
     public ArrayList<SimpleVertex> alSV;
     
     public ArrayList<SimpleVertexEx> alSVE;
     
     public HashMap<String,SimpleVertex> hmSV;
+    
+    public HashMap<String ,SimpleVertexEx> hmSVE;
+    
+    public HashMap<EdgeAttrib,SimpleVertexEx> ohmSVE;
     
     public SimpleVertexEx(String svex, String s, int i, float f, boolean b, Integer oI, Float oF, Boolean oB) {
         super(s, i, f, b, oI, oF, oB);
@@ -67,6 +70,22 @@ public class SimpleVertexEx extends SimpleVertex {
         this.hmSV.put("key1", sv);
         this.hmSV.put("key2", sv);
         this.hmSV.put("key3", new SimpleVertex());
+    }
+
+    public HashMap<String, SimpleVertexEx> getHmSVE() {
+        return hmSVE;
+    }
+
+    public void setHmSVE(HashMap<String, SimpleVertexEx> hmSVE) {
+        this.hmSVE = hmSVE;
+    }
+
+    public HashMap<EdgeAttrib, SimpleVertexEx> getOhmSVE() {
+        return ohmSVE;
+    }
+
+    public void setOhmSVE(HashMap<EdgeAttrib, SimpleVertexEx> ohmSVE) {
+        this.ohmSVE = ohmSVE;
     }
     
     
@@ -120,4 +139,31 @@ public class SimpleVertexEx extends SimpleVertex {
     }
 
         
+}
+
+class EdgeAttrib {
+    String nota;
+    Date fecha;
+
+    public EdgeAttrib(String nota, Date fecha) {
+        this.nota = nota;
+        this.fecha = fecha;
+    }
+
+    public String getNota() {
+        return nota;
+    }
+
+    public void setNota(String nota) {
+        this.nota = nota;
+    }
+
+    public Date getFecha() {
+        return fecha;
+    }
+
+    public void setFecha(Date fecha) {
+        this.fecha = fecha;
+    }
+    
 }

@@ -22,8 +22,12 @@ public interface IObjectProxy {
     
     public Class<?> ___getBaseClass();
     public Object ___getProxiObject();
+    
+    public void ___setDirty();
     public  boolean ___isDirty() ;
     public void ___removeDirtyMark();
+    
     public void ___commit();
     public void ___rollback();
+    public void ___loadLazyLinks();
 }

@@ -7,6 +7,7 @@ package net.odbogm.utils;
 
 import java.lang.reflect.Field;
 import java.util.logging.Logger;
+import net.odbogm.LogginProperties;
 
 /**
  *
@@ -15,7 +16,10 @@ import java.util.logging.Logger;
 public class ReflectionUtils {
 
     private final static Logger LOGGER = Logger.getLogger(ReflectionUtils.class.getName());
-
+    static {
+        LOGGER.setLevel(LogginProperties.ReflectionUtils);
+    }
+    
     public static Field findField(Class<?> clazz, String fieldName) throws NoSuchFieldException {
         Class<?> current = clazz;
         do {

@@ -12,6 +12,7 @@ import com.tinkerpop.blueprints.Edge;
 import com.tinkerpop.blueprints.Vertex;
 import com.tinkerpop.blueprints.impls.orient.OrientEdge;
 import com.tinkerpop.blueprints.impls.orient.OrientVertex;
+import java.lang.ref.WeakReference;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -23,6 +24,7 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import net.odbogm.LogginProperties;
 
 /**
  *
@@ -31,7 +33,10 @@ import java.util.logging.Logger;
 public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMapCalls {
 
     private final static Logger LOGGER = Logger.getLogger(HashMapLazyProxy.class.getName());
-
+    static {
+        LOGGER.setLevel(LogginProperties.HashMapLazyProxy);
+    }
+    
     private boolean dirty = true;
     
     private boolean lazyLoad = true;
@@ -43,6 +48,9 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
     private Class<?> keyClass;
     private Class<?> valueClass;
 
+    // referencia debil al objeto padre. Se usa para notificar al padre que la colección ha cambiado.
+    private WeakReference<IObjectProxy> parent;
+    
     /**
      * Crea un ArrayList lazy.
      *
@@ -52,9 +60,10 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
      * @param c: clase genérica de la colección.
      */
     @Override
-    public void init(SessionManager sm, OrientVertex relatedTo, String field, Class<?> k, Class<?> v) {
+    public void init(SessionManager sm, OrientVertex relatedTo, IObjectProxy parent, String field, Class<?> k, Class<?> v) {
         this.sm = sm;
         this.relatedTo = relatedTo;
+        this.parent = new WeakReference<>(parent);
         this.field = field;
         this.keyClass = k;
         this.valueClass = v;
@@ -66,14 +75,14 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
     private Map<Object, OrientEdge> keyToEdge = new ConcurrentHashMap<>();
 
     private void lazyLoad() {
-//        LOGGER.log(Level.INFO, "Lazy Load.....");
+//        LOGGER.log(Level.FINER, "Lazy Load.....");
         this.lazyLoad = false;
         this.lazyLoading = true;
 
         // recuperar todos los elementos desde el vértice y agregarlos a la colección
         for (Iterator<Vertex> iterator = relatedTo.getVertices(Direction.OUT, field).iterator(); iterator.hasNext();) {
             OrientVertex next = (OrientVertex) iterator.next();
-//            LOGGER.log(Level.INFO, "loading: " + next.getId().toString());
+//            LOGGER.log(Level.FINER, "loading: " + next.getId().toString());
 
             Object o = sm.get(valueClass, next.getId().toString());
 
@@ -81,15 +90,15 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
             for (Edge edge : relatedTo.getEdges(next, Direction.OUT, field)) {
                 OrientEdge oe = (OrientEdge) edge;
                 Object k = null;
-                LOGGER.log(Level.INFO, "edge keyclass: "+this.keyClass+"  OE RID:"+oe.getId().toString());
+                LOGGER.log(Level.FINER, "edge keyclass: "+this.keyClass+"  OE RID:"+oe.getId().toString());
                 // si el keyClass no es de tipo nativo, hidratar un objeto.
                 if (Primitives.PRIMITIVE_MAP.containsKey(this.keyClass)) {
-                    LOGGER.log(Level.INFO, "primitive!!");
+                    LOGGER.log(Level.FINER, "primitive!!");
                     for (String prop : oe.getPropertyKeys()) {
                         k = oe.getProperty(prop);
                     }
                 } else {
-                    LOGGER.log(Level.INFO, "clase como key");
+                    LOGGER.log(Level.FINER, "clase como key");
                     k = this.sm.getEdgeAsObject(keyClass, oe);
                 }
                 this.put(k, o);
@@ -181,6 +190,14 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         return keyToEdge;
     }
     
+    private void setDirty() {
+        LOGGER.log(Level.FINER, "Colección marcada como Dirty. Avisar al padre.");
+        this.dirty = true;
+        LOGGER.log(Level.FINER, "weak:"+this.parent.get());
+        // si el padre no está marcado como garbage, notificarle el cambio de la colección.
+        if (this.parent.get()!=null)
+            this.parent.get().___setDirty();
+    }
     
     @Override
     public boolean isDirty() {
@@ -219,7 +236,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        if(!this.lazyLoading) this.dirty = true;
+        if(!this.lazyLoading) this.setDirty();
         super.replaceAll(function); //To change body of generated methods, choose Tools | Templates.
     }
 
@@ -236,7 +253,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        if(!this.lazyLoading) this.dirty = true;
+        if(!this.lazyLoading) this.setDirty();
         return super.merge(key, value, remappingFunction); //To change body of generated methods, choose Tools | Templates.
     }
 
@@ -269,7 +286,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        if(!this.lazyLoading) this.dirty = true;
+        if(!this.lazyLoading) this.setDirty();
         return super.replace(key, value); //To change body of generated methods, choose Tools | Templates.
     }
 
@@ -278,7 +295,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        if(!this.lazyLoading) this.dirty = true;
+        if(!this.lazyLoading) this.setDirty();
         return super.replace(key, oldValue, newValue); //To change body of generated methods, choose Tools | Templates.
     }
 
@@ -287,7 +304,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        if(!this.lazyLoading) this.dirty = true;
+        if(!this.lazyLoading) this.setDirty();
         return super.remove(key, value); //To change body of generated methods, choose Tools | Templates.
     }
 
@@ -298,7 +315,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         }
         Object res = super.putIfAbsent(key, value); //To change body of generated methods, choose Tools | Templates.
         if (res!=null)
-            this.dirty=true;
+            this.setDirty();
         return res;
     }
 
@@ -347,7 +364,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        this.dirty=true;
+        this.setDirty();
         super.clear(); //To change body of generated methods, choose Tools | Templates.
     }
 
@@ -356,7 +373,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        this.dirty=true;
+        this.setDirty();
         return super.remove(key); //To change body of generated methods, choose Tools | Templates.
     }
 
@@ -365,7 +382,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        this.dirty=true;
+        this.setDirty();
         super.putAll(m); //To change body of generated methods, choose Tools | Templates.
     }
 
@@ -374,7 +391,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        this.dirty=true;
+        this.setDirty();
         return super.put(key, value); //To change body of generated methods, choose Tools | Templates.
     }
 
