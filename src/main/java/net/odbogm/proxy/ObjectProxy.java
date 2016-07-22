@@ -57,7 +57,10 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     private boolean ___dirty = false;
     // determina si ya se han cargado los links o no
     private boolean ___loadLazyLinks = true;
-
+    // determina si el objeto ya ha sido completamente inicializado.
+    // sirve para impedir que se invoquen a los métodos durante el setup inicial del construtor.
+    private boolean ___objectReady = false;
+    
     // constructor - the supplied parameter is an
     // object whose proxy we would like to create     
     public ObjectProxy(Object obj, OrientElement e, SessionManager sm) {
@@ -88,41 +91,41 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         // modificar el llamado
         switch (method.getName()) {
             case "___getVertex":
-                res = this.___getVertex();
+                if (this.___objectReady) res = this.___getVertex();
                 break;
             case "___getRid":
-                res = this.___getRid();
+                if (this.___objectReady) res = this.___getRid();
                 break;
             case "___getProxiObject":
-                res = this.___getProxiObject();
+                if (this.___objectReady) res = this.___getProxiObject();
                 break;
             case "___getBaseClass":
-                res = this.___getBaseClass();
+                if (this.___objectReady) res = this.___getBaseClass();
                 break;
             case "___isDirty":
-                res = this.___isDirty();
+                if (this.___objectReady) res = this.___isDirty();
                 break;
             case "___setDirty":
-                this.___setDirty();
+                if (this.___objectReady) this.___setDirty();
                 break;
             case "___removeDirtyMark":
-                this.___removeDirtyMark();
+                if (this.___objectReady) this.___removeDirtyMark();
                 break;
             case "___commit":
-
-                this.___commit();
+                if (this.___objectReady) this.___commit();
                 break;
             default:
                 // antes de invocar cualquier método, asegurarse de cargar los lazyLinks
-                if (this.___loadLazyLinks) {
-                    LOGGER.log(Level.FINER, "\n\nCargar los lazyLinks!....\n\n");
-                    this.___loadLazyLinks();
+                if (this.___objectReady) {
+                    if (this.___loadLazyLinks) {
+                        LOGGER.log(Level.FINER, "\n\nCargar los lazyLinks!....\n\n");
+                        this.___loadLazyLinks();
+                    }
                 }
-
                 // invoke the method on the real object with the given params
                 res = zuper.call();
                 // verificar si hay diferencias entre los objetos.
-                this.commitObjectChange();
+                if (this.___objectReady) this.commitObjectChange();
 
                 break;
         }
@@ -154,46 +157,50 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         // modificar el llamado
         switch (method.getName()) {
             case "___getVertex":
-                res = this.___getVertex();
+                if (this.___objectReady) res = this.___getVertex();
                 break;
             case "___getRid":
-                res = this.___getRid();
+                if (this.___objectReady) res = this.___getRid();
                 break;
             case "___getProxiObject":
-                res = this.___getProxiObject();
+                if (this.___objectReady) res = this.___getProxiObject();
                 break;
             case "___getBaseClass":
-                res = this.___getBaseClass();
+                if (this.___objectReady) res = this.___getBaseClass();
                 break;
             case "___isDirty":
-                res = this.___isDirty();
+                if (this.___objectReady) res = this.___isDirty();
                 break;
             case "___setDirty":
-                this.___setDirty();
+                if (this.___objectReady) this.___setDirty();
                 break;
             case "___removeDirtyMark":
-                this.___removeDirtyMark();
+                if (this.___objectReady) this.___removeDirtyMark();
                 break;
             case "___commit":
                 /**
                  * FIXME: se podría evitar si se controlara si los links se han cargado o no al momento de hacer el commit para evitar realizar el
                  * load sin necesidad.
                  */
-                if (this.___loadLazyLinks) {
-                    this.___loadLazyLinks();
+                if (this.___objectReady) {
+                    if (this.___loadLazyLinks) {
+                        this.___loadLazyLinks();
+                    }
+                    this.___commit();
                 }
-                this.___commit();
                 break;
             default:
                 // invoke the method on the real object with the given params
 //                res = methodProxy.invoke(realObj, args);
-                if (this.___loadLazyLinks) {
-                    this.___loadLazyLinks();
+                if (this.___objectReady) {
+                    if (this.___loadLazyLinks) {
+                        this.___loadLazyLinks();
+                    }
                 }
                 res = methodProxy.invokeSuper(o, args);
 
                 // verificar si hay diferencias entre los objetos.
-                this.commitObjectChange();
+                if (this.___objectReady) this.commitObjectChange();
 
                 break;
         }
@@ -205,8 +212,13 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         return res;
     }
 
+    /**7
+     * Establece el objeto base sobre el que trabaja el proxy
+     * @param po 
+     */
     public void ___setProxyObject(Object po) {
         this.___proxyObject = po;
+        this.___objectReady = true;
     }
 
     /**
@@ -310,7 +322,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                     Field fLink = ReflectionUtils.findField(___baseClass, field);
                     boolean acc = fLink.isAccessible();
                     fLink.setAccessible(true);
-
+                    
                     // recuperar de la base el vértice correspondiente
                     boolean duplicatedLinkGuard = false;
                     for (Vertex vertice : ov.getVertices(Direction.OUT, graphRelationName)) {
@@ -345,7 +357,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     }
 
     private void commitObjectChange() {
-        this.___sm.getGraphdb().getRawGraph().activateOnCurrentThread();
+//        this.___sm.getGraphdb().getRawGraph().activateOnCurrentThread();
 
         LOGGER.log(Level.FINER, "iniciando commit interno.... (dirty mark:" + ___dirty + ")");
         // si ya estaba marcado como dirty no volver a procesarlo.
@@ -520,6 +532,11 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 //        this.___sm.getGraphdb().getRawGraph().activateOnCurrentThread();
 
         if (this.___dirty) {
+            // asegurarse que está atachado
+//            if (this.___baseElement.getGraph()==null)
+//                this.___sm.getGraphdb().attach(this.___baseElement);
+            
+            
             // obtener la definición de la clase
             ClassDef cDef = this.___sm.getObjectMapper().getClassDef(this.___proxyObject);
 

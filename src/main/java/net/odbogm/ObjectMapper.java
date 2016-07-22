@@ -284,9 +284,11 @@ public class ObjectMapper {
                 f.setAccessible(true);
                 if (f.getType().isEnum()) {
                     LOGGER.log(Level.FINER, "Enum field: " + f.getName() + " type: " + f.getType() + "  value: " + value + "   Enum val: " + Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString()));
-                    f.set(oproxied, Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString()));
+//                    f.set(oproxied, Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString()));
+                    this.setFieldValue(oproxied, prop, Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString()));
                 } else {
-                    f.set(oproxied, value);
+//                    f.set(oproxied, value);
+                    this.setFieldValue(oproxied, prop, value);
                 }
                 LOGGER.log(Level.FINER, "hidratado campo: " + prop + "=" + value);
                 f.setAccessible(acc);
@@ -305,16 +307,17 @@ public class ObjectMapper {
             if (value != null) {
                 // obtener la clase a la que pertenece el campo
                 Class<?> fc = fieldmap.get(prop);
-
+                // FIXME: este código se puede mejorar. Tratar de usar solo setFieldValue()
                 f = ReflectionUtils.findField(toHydrate, prop);
-
-                boolean acc = f.isAccessible();
-                f.setAccessible(true);
+//
+//                boolean acc = f.isAccessible();
+//                f.setAccessible(true);
                 LOGGER.log(Level.FINER, "Enum field: " + f.getName() + " type: " + f.getType() + "  value: " + value + "   Enum val: " + Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString()));
-                f.set(oproxied, Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString()));
+//                f.set(oproxied, Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString()));
+                this.setFieldValue(oproxied, prop, Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString()));
 
                 LOGGER.log(Level.FINER, "hidratado campo: " + prop + "=" + value);
-                f.setAccessible(acc);
+//                f.setAccessible(acc);
             }
         }
 
@@ -499,8 +502,11 @@ public class ObjectMapper {
             Field f = ReflectionUtils.findField(o.getClass(), field);
             boolean acc = f.isAccessible();
             f.setAccessible(true);
+            
             // determinar si no es nulo
             f.set(o, value);
+            
+            
             f.setAccessible(acc);
         } catch (NoSuchFieldException | IllegalArgumentException | IllegalAccessException ex) {
             Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);

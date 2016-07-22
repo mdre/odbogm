@@ -35,7 +35,8 @@ public class Primitives {
         INT,
         LONG,
         SHORT,
-        BIGDECIMAL
+        BIGDECIMAL,
+        DATE
     }
     public static final IdentityHashMap<Class<?>, OType> PRIMITIVE_MAP = new IdentityHashMap<>();
     public static final IdentityHashMap<Class<?>, Class<?>> LAZY_COLLECTION = new IdentityHashMap<>();

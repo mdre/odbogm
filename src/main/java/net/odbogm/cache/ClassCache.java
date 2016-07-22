@@ -70,8 +70,11 @@ public class ClassCache {
             Field[] fields = c.getDeclaredFields();
             for (Field f : fields) {
                 try {
-                    // determinar si se debe o no procesar el campo.
-                    if ( !(    f.isAnnotationPresent(Ignore.class) || Modifier.isTransient(f.getModifiers())
+                    // determinar si se debe o no procesar el campo. No se aceptan los trascient y static final
+                    if ( !(    f.isAnnotationPresent(Ignore.class) 
+                            || Modifier.isTransient(f.getModifiers())
+                            || (Modifier.isStatic(f.getModifiers()) && Modifier.isFinal(f.getModifiers())
+                            )
 //                            || f.getName().startsWith("___")
 //                            || f.getName().startsWith("GCLIB")
                             )

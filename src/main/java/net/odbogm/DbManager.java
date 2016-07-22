@@ -12,6 +12,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
@@ -65,10 +66,21 @@ public class DbManager {
     private ArrayList<ClassStruct> orderedRegisteredClass = new ArrayList<>();
     private ConcurrentHashMap<String, ClassStruct> registeredClass = new ConcurrentHashMap<>();
 
+    /** determina si se genera la cadena de drops como comentarios o no */
+    private boolean withDrops = false;
+    
     public DbManager(String url, String user, String passwd) {
-        this.factory = new OrientGraphFactory(url, user, passwd).setupPool(1, 10);
+        this.init(url, user, passwd);
     }
 
+    public DbManager(String url, String user, String passwd, boolean withDrops) {
+        this.init(url, user, passwd);
+        this.withDrops = withDrops;
+    }
+
+    private void init(String url, String user, String passwd){
+        this.factory = new OrientGraphFactory(url, user, passwd).setupPool(1, 10);
+    }
     public void begin() {
         graphdb = factory.getTx();
     }
@@ -195,12 +207,13 @@ public class DbManager {
         this.registeredClass.put(className, clazzStruct);
         this.orderedRegisteredClass.add(clazzStruct);
         // preparar orden de dropeo. Solo se ejecuta si la clase existe
-        clazzStruct.drop = "/*\n"
+        clazzStruct.drop = (!this.withDrops?"/*\n":"\n")
                 +"let exist = select from (select expand(classes) from metadata:schema) where name = '"+className+"'\n"
                 + "if ($exist.size()>0) {\n"
                 + "     delete vertex "+className+"\n"
                 + "     drop class "+className+"\n"
-                + "}\n */";
+                + "}"
+                + (!this.withDrops?"\n */":"\n");
         
         // order de create. Solo se ejecuta si no existe la clase
         clazzStruct.create = "\n"
@@ -216,7 +229,10 @@ public class DbManager {
         for (Field field : fields) {
             field.setAccessible(true);
             
-            if (!field.isAnnotationPresent(Ignore.class)) {
+            if (!(  field.isAnnotationPresent(Ignore.class) 
+                            || Modifier.isTransient(field.getModifiers())
+                            || (Modifier.isStatic(field.getModifiers()) && Modifier.isFinal(field.getModifiers()))
+                    )) {
                 FieldAttributes fa = field.getAnnotation(FieldAttributes.class);
                 
                 String currentProp = className + "." + field.getName();
