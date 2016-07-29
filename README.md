@@ -22,6 +22,7 @@ After that, the SessionManager implements the method to:
 * ***shutdown***: shutdown the DB communication.
 
 So, for example, let say that we have this class definition:
+
 ```Java
 public class Ex1 {
     private final static Logger LOGGER = Logger.getLogger(Ex1.class .getName());
@@ -39,15 +40,19 @@ public class Ex1 {
     }
 }
 ```
+
 to store an instance you do:
+
 ```Java
 Ex1 ex1 = new Ex1();
 sm.store(ex1);
 sm.commit();
 ```
+
 Every primitive field type and String are stored directly to the DB including private field.
 Every Object is mapped to a Vertex and an Edge is created with a label <Class>_<field>. The field will not be
 created as a part of the class.
+The ***final static*** fields are ignored so take care about this.
 
 Example:
 ```Java
@@ -82,16 +87,15 @@ public class Ex2 extends Ex1 {
 }
 
 ```
-Here, the field inner is not a primitive type. OrientDB let us store it as an embedded object or we can tell the ODBOGM to store it as a new vertex related to the main object.
-Currently, the embedded alternative is not implemented. Every nonprimitive field is ignored and a warning is logged.
+Here, the field ***inner*** is not a primitive type. OrientDB let us store it as an embedded object or we can tell the ODBOGM to store it as a new vertex related to the main object.
+Currently, the embedded alternative is not implemented. Every nonprimitive field is mapped as a Vertex except it is annotated with @Ignore.
 We must annotate the field with:
 * ***@Ignore***: to skip the field. Useful to the Logger field.
-* ***@Link***: create a link to a vertex mapped with the inner object.
 
 so, in the last class we must add this annotation to the fields:
 ```Java
 public class Ex2 extends Ex1 {
-    @Ignore
+    @Ignore // final static field are ignored in any case but a warning is throw if it not annotaded.
     private final static Logger LOGGER = Logger.getLogger(Ex2.class .getName());
     
     private Ex1 inner;
@@ -105,19 +109,17 @@ Now, the field ***inner*** will be mapped to a new vertex of class ***Ex1*** and
 ```
 Where (Ex2) is a Vertex of class Ex2. The (Ex2) vertex will have one atribute called ex2String stored in it.
 
-Now, if we have a collection inside the object, every element of the collection is mapped in a vertex. To mark a collection we use ***@LinkList***.
+Now, if we have a collection inside the object, every element of the collection is mapped in a vertex and in the same way, a Edge is created for every related element.
 
 ```Java
 public class Ex2 extends Ex1 {
     @Ignore
     private final static Logger LOGGER = Logger.getLogger(Ex2.class .getName());
     
-    @Link
     private Ex1 inner;
     private String ex2String;
    
 
-    @LinkList
     public ArrayList<Ex1> alEX;
 
     ….
@@ -139,19 +141,22 @@ Example:
 ```Java
 Ex1 ex1 = sm.get(Ex1.class, "#12:123");
 ```
-This will return an object with all it field filled with the data stored in the #12:123 vetex. The object load every @Link field eager and every ***@LinkList*** is lazy loaded.
+This will return an object with all it field filled with the data stored in the #12:123 vetex. The object load every field and ***@LinkList*** lazy.
 
 ## Deleting Objects.
-To delete an object that was previous gettid from the DB, we call 
+To delete an object that was ***previous retrieved*** from the DB, we call 
 ```Java
-sm.delete(Object o)
+sm.delete(Object o);
 ```
 Since an object could be divided into multiple vertex we must tell what to do in this case. The annotation ***@CascadeDelete*** over a field do the job.
 If the vertex holding the object have more than one reference, that indicate that the object is part of another object and if it is deleted, a referential integrity could be occurs, so an exception is throws to catch that problem.
 
 
 ## Rollback
-TBD
+Once we have connected to the DB, a transaction is open. Every modification since the previous commit is rolledback.
+```Java
+sm.rollback();
+```
 
 ## Querying
 Al query 
