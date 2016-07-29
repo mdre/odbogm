@@ -157,6 +157,15 @@ public class VectorLazyProxy extends Vector implements ILazyCollectionCalls {
     public boolean isDirty() {
         return this.dirty;
     }
+
+    @Override
+    public void rollback() {
+        //FIXME: Analizar si se puede implementar una versión que no borre todos los elementos
+        this.clear();
+        this.listState.clear();
+        this.dirty = false;
+        this.lazyLoad = true;
+    }
     
     //====================================================================================
 

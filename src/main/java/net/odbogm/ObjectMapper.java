@@ -380,9 +380,9 @@ public class ObjectMapper {
                 if (v.countEdges(Direction.OUT, graphRelationName) > 0) {
                     this.colecctionToLazy(oproxied, field, fc, v);
                 }
-
+                
                 fLink.setAccessible(acc);
-
+                
             } catch (NoSuchFieldException ex) {
                 Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
             } catch (IllegalArgumentException ex) {

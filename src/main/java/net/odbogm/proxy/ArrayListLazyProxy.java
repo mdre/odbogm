@@ -26,18 +26,19 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 import net.odbogm.LogginProperties;
+import net.odbogm.exceptions.RelatedToNullException;
 
 /**
  *
  * @author SShadow
  */
 public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCalls {
+    private static final long serialVersionUID = -3396834078126983330L;
 
     private final static Logger LOGGER = Logger.getLogger(ArrayListLazyProxy.class.getName());
     static {
         LOGGER.setLevel(LogginProperties.ArrayListLazyProxy);
     }
-    private static final long serialVersionUID = 923118982357962428L;
 
     private boolean dirty = false;
     
@@ -62,6 +63,8 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
     @Override
     public void init(SessionManager sm, OrientVertex relatedTo, IObjectProxy parent, String field, Class<?> c) {
         try {
+            if (relatedTo==null)
+                throw new RelatedToNullException("Se ha detectado un ArraylistLazyProxy sin relación con un vértice!\n field: "+field+" Class: "+c.getSimpleName());
             this.sm = sm;
             this.relatedTo = relatedTo;
             this.parent = new WeakReference<>(parent);
@@ -80,12 +83,11 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
     private void lazyLoad() {
         this.sm.getGraphdb().getRawGraph().activateOnCurrentThread();
         LOGGER.log(Level.FINER, "getGraph: "+relatedTo.getGraph());
-        if (relatedTo.getGraph()==null)
-            this.sm.getGraphdb().attach(relatedTo);
+//        if (relatedTo.getGraph()==null)
+//            this.sm.getGraphdb().attach(relatedTo);
         
-        LOGGER.log(Level.FINER, "getRawGraph: "+relatedTo.getGraph().getRawGraph());
+//        LOGGER.log(Level.FINER, "getRawGraph: "+relatedTo.getGraph().getRawGraph());
         
-        relatedTo.getGraph().getRawGraph().activateOnCurrentThread();
 //        ODatabaseDocument database = (ODatabaseDocument) ODatabaseRecordThreadLocal.INSTANCE.get();
 //        database.activateOnCurrentThread();
 //        LOGGER.log(Level.FINER, "ODatabase: "+database+" activated");
@@ -157,6 +159,16 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
     public boolean isDirty() {
         return this.dirty;
     }
+
+    @Override
+    public void rollback() {
+        //FIXME: Analizar si se puede implementar una versión que no borre todos los elementos
+        this.clear();
+        this.listState.clear();
+        this.dirty = false;
+        this.lazyLoad = true;
+    }
+    
     
     //====================================================================================
 

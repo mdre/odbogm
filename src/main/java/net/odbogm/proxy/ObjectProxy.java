@@ -60,7 +60,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     // determina si el objeto ya ha sido completamente inicializado.
     // sirve para impedir que se invoquen a los métodos durante el setup inicial del construtor.
     private boolean ___objectReady = false;
-    
+
     // constructor - the supplied parameter is an
     // object whose proxy we would like to create     
     public ObjectProxy(Object obj, OrientElement e, SessionManager sm) {
@@ -91,28 +91,49 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         // modificar el llamado
         switch (method.getName()) {
             case "___getVertex":
-                if (this.___objectReady) res = this.___getVertex();
+                if (this.___objectReady) {
+                    res = this.___getVertex();
+                }
                 break;
             case "___getRid":
-                if (this.___objectReady) res = this.___getRid();
+                if (this.___objectReady) {
+                    res = this.___getRid();
+                }
                 break;
             case "___getProxiObject":
-                if (this.___objectReady) res = this.___getProxiObject();
+                if (this.___objectReady) {
+                    res = this.___getProxiObject();
+                }
                 break;
             case "___getBaseClass":
-                if (this.___objectReady) res = this.___getBaseClass();
+                if (this.___objectReady) {
+                    res = this.___getBaseClass();
+                }
                 break;
             case "___isDirty":
-                if (this.___objectReady) res = this.___isDirty();
+                if (this.___objectReady) {
+                    res = this.___isDirty();
+                }
                 break;
             case "___setDirty":
-                if (this.___objectReady) this.___setDirty();
+                if (this.___objectReady) {
+                    this.___setDirty();
+                }
                 break;
             case "___removeDirtyMark":
-                if (this.___objectReady) this.___removeDirtyMark();
+                if (this.___objectReady) {
+                    this.___removeDirtyMark();
+                }
                 break;
             case "___commit":
-                if (this.___objectReady) this.___commit();
+                if (this.___objectReady) {
+                    this.___commit();
+                }
+                break;
+            case "___rollback":
+                if (this.___objectReady) {
+                    this.___rollback();
+                }
                 break;
             default:
                 // antes de invocar cualquier método, asegurarse de cargar los lazyLinks
@@ -125,7 +146,9 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                 // invoke the method on the real object with the given params
                 res = zuper.call();
                 // verificar si hay diferencias entre los objetos.
-                if (this.___objectReady) this.commitObjectChange();
+                if (this.___objectReady) {
+                    this.commitObjectChange();
+                }
 
                 break;
         }
@@ -157,25 +180,39 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         // modificar el llamado
         switch (method.getName()) {
             case "___getVertex":
-                if (this.___objectReady) res = this.___getVertex();
+                if (this.___objectReady) {
+                    res = this.___getVertex();
+                }
                 break;
             case "___getRid":
-                if (this.___objectReady) res = this.___getRid();
+                if (this.___objectReady) {
+                    res = this.___getRid();
+                }
                 break;
             case "___getProxiObject":
-                if (this.___objectReady) res = this.___getProxiObject();
+                if (this.___objectReady) {
+                    res = this.___getProxiObject();
+                }
                 break;
             case "___getBaseClass":
-                if (this.___objectReady) res = this.___getBaseClass();
+                if (this.___objectReady) {
+                    res = this.___getBaseClass();
+                }
                 break;
             case "___isDirty":
-                if (this.___objectReady) res = this.___isDirty();
+                if (this.___objectReady) {
+                    res = this.___isDirty();
+                }
                 break;
             case "___setDirty":
-                if (this.___objectReady) this.___setDirty();
+                if (this.___objectReady) {
+                    this.___setDirty();
+                }
                 break;
             case "___removeDirtyMark":
-                if (this.___objectReady) this.___removeDirtyMark();
+                if (this.___objectReady) {
+                    this.___removeDirtyMark();
+                }
                 break;
             case "___commit":
                 /**
@@ -189,6 +226,11 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                     this.___commit();
                 }
                 break;
+            case "___rollback":
+                if (this.___objectReady) {
+                    this.___rollback();
+                }
+                break;
             default:
                 // invoke the method on the real object with the given params
 //                res = methodProxy.invoke(realObj, args);
@@ -200,7 +242,9 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                 res = methodProxy.invokeSuper(o, args);
 
                 // verificar si hay diferencias entre los objetos.
-                if (this.___objectReady) this.commitObjectChange();
+                if (this.___objectReady) {
+                    this.commitObjectChange();
+                }
 
                 break;
         }
@@ -212,9 +256,11 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         return res;
     }
 
-    /**7
+    /**
+     * 7
      * Establece el objeto base sobre el que trabaja el proxy
-     * @param po 
+     *
+     * @param po
      */
     public void ___setProxyObject(Object po) {
         this.___proxyObject = po;
@@ -322,7 +368,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                     Field fLink = ReflectionUtils.findField(___baseClass, field);
                     boolean acc = fLink.isAccessible();
                     fLink.setAccessible(true);
-                    
+
                     // recuperar de la base el vértice correspondiente
                     boolean duplicatedLinkGuard = false;
                     for (Vertex vertice : ov.getVertices(Direction.OUT, graphRelationName)) {
@@ -357,7 +403,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     }
 
     private void commitObjectChange() {
-//        this.___sm.getGraphdb().getRawGraph().activateOnCurrentThread();
+        this.___sm.getGraphdb().getRawGraph().activateOnCurrentThread();
 
         LOGGER.log(Level.FINER, "iniciando commit interno.... (dirty mark:" + ___dirty + ")");
         // si ya estaba marcado como dirty no volver a procesarlo.
@@ -529,14 +575,14 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     @Override
     public void ___commit() {
 //        ODatabaseRecordThreadLocal.INSTANCE.set(this.___sm.getGraphdb().getRawGraph());
-//        this.___sm.getGraphdb().getRawGraph().activateOnCurrentThread();
 
         if (this.___dirty) {
+            this.___sm.getGraphdb().getRawGraph().activateOnCurrentThread();
             // asegurarse que está atachado
-//            if (this.___baseElement.getGraph()==null)
-//                this.___sm.getGraphdb().attach(this.___baseElement);
-            
-            
+            if (this.___baseElement.getGraph() == null) {
+                this.___sm.getGraphdb().attach(this.___baseElement);
+            }
+
             // obtener la definición de la clase
             ClassDef cDef = this.___sm.getObjectMapper().getClassDef(this.___proxyObject);
 
@@ -698,7 +744,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                     }
                                 }
                                 // procesar los removidos solo si está el anotation en el campo
-                                
+
                                 for (Map.Entry<Object, ObjectCollectionState> entry1 : colState.entrySet()) {
                                     Object colObject = entry1.getKey();
                                     ObjectCollectionState colObjState = entry1.getValue();
@@ -725,7 +771,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                 // procesar la colección
 
                                 if (ILazyMapCalls.class.isAssignableFrom(oCol.getClass())) {
-                                    innerMap = (Map)oCol;
+                                    innerMap = (Map) oCol;
                                 } else {
                                     // se ha asignado una colección original y se debe exportar todo
                                     // this.sm.getObjectMapper().colecctionToLazy(this.realObj, field, ov);
@@ -814,9 +860,126 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         }
     }
 
+    /**
+     * Revierte el objeto al estado que tiene el Vertex original.
+     */
     @Override
     public void ___rollback() {
+        // restaurar los atributos al estado original.
+        ClassDef classdef = this.___sm.getObjectMapper().getClassDef(___proxyObject);
+        Map<String, Class<?>> fieldmap = classdef.fields;
 
+        Field f;
+        for (Map.Entry<String, Class<?>> entry : fieldmap.entrySet()) {
+            String prop = entry.getKey();
+            Class<? extends Object> fieldClazz = entry.getValue();
+
+            LOGGER.log(Level.FINER, "Rollingback field {0} ....", new String[]{prop});
+            Object value = this.___baseElement.getProperty(prop);
+            try {
+                // obtener la clase a la que pertenece el campo
+                Class<?> fc = fieldmap.get(prop);
+
+                f = ReflectionUtils.findField(this.___baseClass, prop);
+
+                boolean acc = f.isAccessible();
+                f.setAccessible(true);
+                f.set(___proxyObject, value);
+                LOGGER.log(Level.FINER, "hidratado campo: " + prop + "=" + value);
+                f.setAccessible(acc);
+            } catch (NoSuchFieldException ex) {
+                Logger.getLogger(ObjectProxy.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (IllegalArgumentException ex) {
+                Logger.getLogger(ObjectProxy.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (IllegalAccessException ex) {
+                Logger.getLogger(ObjectProxy.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+
+        // procesar los enum
+        for (Map.Entry<String, Class<?>> entry : classdef.enumFields.entrySet()) {
+            String prop = entry.getKey();
+            Class<? extends Object> fieldClazz = entry.getValue();
+
+            LOGGER.log(Level.FINER, "Buscando campo {0} ....", new String[]{prop});
+            Object value = this.___baseElement.getProperty(prop);
+            try {
+                // obtener la clase a la que pertenece el campo
+                Class<?> fc = fieldmap.get(prop);
+                // FIXME: este código se puede mejorar. Tratar de usar solo setFieldValue()
+                f = ReflectionUtils.findField(this.___baseClass, prop);
+
+                boolean acc = f.isAccessible();
+                f.setAccessible(true);
+
+                if (value!=null)
+                    f.set(this.___proxyObject, Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString()));
+                else
+                    f.set(this.___proxyObject,null);
+                
+                LOGGER.log(Level.FINER, "hidratado campo: " + prop + "=" + value);
+                f.setAccessible(acc);
+            } catch (NoSuchFieldException ex) {
+                Logger.getLogger(ObjectProxy.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (IllegalArgumentException ex) {
+                Logger.getLogger(ObjectProxy.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (IllegalAccessException ex) {
+                Logger.getLogger(ObjectProxy.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+
+        LOGGER.log(Level.FINER, "Revirtiendo los Links......... ");
+        // hidratar los atributos @links
+        // procesar todos los links
+        for (Map.Entry<String, Class<?>> entry : classdef.links.entrySet()) {
+//        classdef.links.entrySet().stream().forEach((entry) -> {
+            try {
+                String field = entry.getKey();
+                Class<?> fc = entry.getValue();
+
+                Field fLink = ReflectionUtils.findField(this.___baseClass, field);
+                boolean acc = fLink.isAccessible();
+                fLink.setAccessible(true);
+                
+                fLink.set(this.___proxyObject, null);
+                fLink.setAccessible(acc);
+
+            } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
+                Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+        // volver a activar la carga de los links
+        this.___loadLazyLinks = true;
+        
+        // revertir las colecciones
+        // procesar todos los linkslist
+        LOGGER.log(Level.FINER, "Revirtiendo las colecciones...");
+        for (Map.Entry<String, Class<?>> entry : classdef.linkLists.entrySet()) {
+
+            try {
+                // FIXME: se debería considerar agregar una annotation EAGER!
+                String field = entry.getKey();
+                Class<?> fc = entry.getValue();
+                LOGGER.log(Level.FINER, "Field: {0}   Class: {1}", new String[]{field, fc.getName()});
+                Field fLink = ReflectionUtils.findField(this.___baseClass, field);
+                boolean acc = fLink.isAccessible();
+                fLink.setAccessible(true);
+
+                ILazyCalls lc = (ILazyCalls)fLink.get(___proxyObject);
+                if (lc!=null)
+                    lc.rollback();
+
+                fLink.setAccessible(acc);
+
+            } catch (NoSuchFieldException ex) {
+                Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (IllegalArgumentException ex) {
+                Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (IllegalAccessException ex) {
+                Logger.getLogger(ObjectProxy.class.getName()).log(Level.SEVERE, null, ex);
+            }
+
+        }
     }
 
 }

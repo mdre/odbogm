@@ -37,10 +37,10 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         LOGGER.setLevel(LogginProperties.HashMapLazyProxy);
     }
     
-    private boolean dirty = true;
+    private boolean dirty = false;
     
     private boolean lazyLoad = true;
-    private boolean lazyLoading = true;
+    private boolean lazyLoading = false;
     
     private SessionManager sm;
     private OrientVertex relatedTo;
@@ -143,7 +143,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
             
         }
         this.keyToEdge = newOE;
-        
+        this.dirty = false;
     }
     
     /**
@@ -202,6 +202,17 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
     @Override
     public boolean isDirty() {
         return this.dirty;
+    }
+    
+    @Override
+    public void rollback() {
+        //FIXME: Analizar si se puede implementar una versión que no borre todos los elementos
+        this.clear();
+        this.entitiesState.clear();
+        this.keyToEdge.clear();
+        this.keyState.clear();
+        this.dirty = false;
+        this.lazyLoad = true;
     }
     
     //====================================================================================

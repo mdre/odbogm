@@ -110,6 +110,10 @@ public class SimpleVertexEx extends SimpleVertex {
         return enumTest;
     }
 
+    public void setEnumTest(EnumTest e) {
+        this.enumTest = e;
+    }
+    
     public SimpleVertex getSvinner() {
         return svinner;
     }

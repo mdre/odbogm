@@ -9,7 +9,6 @@ import net.odbogm.exceptions.IncorrectRIDField;
 import net.odbogm.SessionManager;
 import net.odbogm.proxy.IObjectProxy;
 import com.orientechnologies.orient.core.exception.OConcurrentModificationException;
-import com.tinkerpop.blueprints.impls.orient.OrientVertex;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -17,14 +16,9 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
-import static java.util.stream.Collectors.toList;
 import net.odbogm.DbManager;
-import net.odbogm.proxy.ArrayListLazyProxy;
-import net.odbogm.proxy.ILazyCalls;
 
 /**
  *
@@ -119,8 +113,8 @@ public class Test {
 //                .collect(Collectors.toList());
 //        System.out.println("r: "+r);
 
-        ArrayListLazyProxy allp = new ArrayListLazyProxy();
-        System.out.println("IL: "+(allp instanceof ILazyCalls));
+//        ArrayListLazyProxy allp = new ArrayListLazyProxy();
+//        System.out.println("IL: "+(allp instanceof ILazyCalls));
 
     }
     

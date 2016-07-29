@@ -5,6 +5,7 @@
  */
 package ar.gov.santafe.mpa.odbogm;
 
+import Test.EnumTest;
 import net.odbogm.SessionManager;
 import Test.SimpleVertex;
 import Test.SimpleVertexEx;
@@ -610,233 +611,143 @@ public class SessionManagerTest {
     }
     
     
-//    /**
-//     * Test of setAsDirty method, of class SessionManager.
-//     */
-//    //@Test
-//    public void testSetAsDirty() {
-//        System.out.println("setAsDirty");
-//        Object o = null;
-//        SessionManager instance = null;
-//        instance.setAsDirty(o);
-//        // TODO review the generated test code and remove the default call to fail.
-//        fail("The test case is a prototype.");
-//    }
-//
-//    /**
-//     * Test of getObjectMapper method, of class SessionManager.
-//     */
-//    //@Test
-//    public void testGetObjectMapper() {
-//        System.out.println("getObjectMapper");
-//        SessionManager instance = null;
-//        ObjectMapper expResult = null;
-//        ObjectMapper result = instance.getObjectMapper();
-//        assertEquals(expResult, result);
-//        // TODO review the generated test code and remove the default call to fail.
-//        fail("The test case is a prototype.");
-//    }
-//
-//    /**
-//     * Test of getRID method, of class SessionManager.
-//     */
-//    //@Test
-//    public void testGetRID() {
-//        System.out.println("getRID");
-//        Object o = null;
-//        SessionManager instance = null;
-//        String expResult = "";
-//        String result = instance.getRID(o);
-//        assertEquals(expResult, result);
-//        // TODO review the generated test code and remove the default call to fail.
-//        fail("The test case is a prototype.");
-//    }
-//
-//    /**
-//     * Test of commit method, of class SessionManager.
-//     */
-//    //@Test
-//    public void testCommit() {
-//        System.out.println("commit");
-//        SessionManager instance = null;
-//        instance.commit();
-//        // TODO review the generated test code and remove the default call to fail.
-//        fail("The test case is a prototype.");
-//    }
-//
-//    /**
-//     * Test of flush method, of class SessionManager.
-//     */
-//    //@Test
-//    public void testFlush() {
-//        System.out.println("flush");
-//        SessionManager instance = null;
-//        instance.flush();
-//        // TODO review the generated test code and remove the default call to fail.
-//        fail("The test case is a prototype.");
-//    }
-//
-//    /**
-//     * Test of rollback method, of class SessionManager.
-//     */
-//    //@Test
-//    public void testRollback() {
-//        System.out.println("rollback");
-//        SessionManager instance = null;
-//        instance.rollback();
-//        // TODO review the generated test code and remove the default call to fail.
-//        fail("The test case is a prototype.");
-//    }
-//
-//    /**
-//     * Test of shutdown method, of class SessionManager.
-//     */
-//    //@Test
-//    public void testShutdown() {
-//        System.out.println("shutdown");
-//        SessionManager instance = null;
-//        instance.shutdown();
-//        // TODO review the generated test code and remove the default call to fail.
-//        fail("The test case is a prototype.");
-//    }
-//
-//    /**
-//     * Test of getTxConflics method, of class SessionManager.
-//     */
-//    //@Test
-//    public void testGetTxConflics() {
-//        System.out.println("getTxConflics");
-//        SessionManager instance = null;
-//        instance.getTxConflics();
-//        // TODO review the generated test code and remove the default call to fail.
-//        fail("The test case is a prototype.");
-//    }
-//
-//    /**
-//     * Test of getGraphdb method, of class SessionManager.
-//     */
-//    //@Test
-//    public void testGetGraphdb() {
-//        System.out.println("getGraphdb");
-//        SessionManager instance = null;
-//        OrientGraph expResult = null;
-//        OrientGraph result = instance.getGraphdb();
-//        assertEquals(expResult, result);
-//        // TODO review the generated test code and remove the default call to fail.
-//        fail("The test case is a prototype.");
-//    }
-//
-//    /**
-//     * Test of get method, of class SessionManager.
-//     */
-//    //@Test
-//    public void testGet() {
-//        System.out.println("get");
-//        SessionManager instance = null;
-//        Object expResult = null;
-//        Object result = instance.get(null);
-//        assertEquals(expResult, result);
-//        // TODO review the generated test code and remove the default call to fail.
-//        fail("The test case is a prototype.");
-//    }
-//
-//    /**
-//     * Test of getEdgeAsObject method, of class SessionManager.
-//     */
-//    //@Test
-//    public void testGetEdgeAsObject() {
-//        System.out.println("getEdgeAsObject");
-//        SessionManager instance = null;
-//        Object expResult = null;
-//        Object result = instance.getEdgeAsObject(null);
-//        assertEquals(expResult, result);
-//        // TODO review the generated test code and remove the default call to fail.
-//        fail("The test case is a prototype.");
-//    }
-//
-//    /**
-//     * Test of delete method, of class SessionManager.
-//     */
-//    //@Test
-//    public void testDelete() {
-//        System.out.println("delete");
-//        Object toRemove = null;
-//        SessionManager instance = null;
-//        instance.delete(toRemove);
-//        // TODO review the generated test code and remove the default call to fail.
-//        fail("The test case is a prototype.");
-//    }
-//
-//    /**
-//     * Test of query method, of class SessionManager.
-//     */
-//    //@Test
-//    public void testQuery_String() {
-//        System.out.println("query");
-//        String sql = "";
-//        SessionManager instance = null;
-//        Object expResult = null;
-//        Object result = instance.query(sql);
-//        assertEquals(expResult, result);
-//        // TODO review the generated test code and remove the default call to fail.
-//        fail("The test case is a prototype.");
-//    }
-//
-//    /**
-//     * Test of query method, of class SessionManager.
-//     */
-//    //@Test
-//    public void testQuery_Class() {
-//        System.out.println("query");
-//        SessionManager instance = null;
-//        List expResult = null;
-//        List result = instance.query(null);
-//        assertEquals(expResult, result);
-//        // TODO review the generated test code and remove the default call to fail.
-//        fail("The test case is a prototype.");
-//    }
-//
-//    /**
-//     * Test of query method, of class SessionManager.
-//     */
-//    //@Test
-//    public void testQuery_Class_String() {
-//        System.out.println("query");
-//        SessionManager instance = null;
-//        List expResult = null;
-//        List result = instance.query(null);
-//        assertEquals(expResult, result);
-//        // TODO review the generated test code and remove the default call to fail.
-//        fail("The test case is a prototype.");
-//    }
-//
-//    /**
-//     * Test of query method, of class SessionManager.
-//     */
-//    //@Test
-//    public void testQuery_3args() {
-//        System.out.println("query");
-//        SessionManager instance = null;
-//        List expResult = null;
-//        List result = instance.query(null);
-//        assertEquals(expResult, result);
-//        // TODO review the generated test code and remove the default call to fail.
-//        fail("The test case is a prototype.");
-//    }
-//
-//    /**
-//     * Test of getDBClass method, of class SessionManager.
-//     */
-//    //@Test
-//    public void testGetDBClass() {
-//        System.out.println("getDBClass");
-//        Class clase = null;
-//        SessionManager instance = null;
-//        OClass expResult = null;
-//        OClass result = instance.getDBClass(clase);
-//        assertEquals(expResult, result);
-//        // TODO review the generated test code and remove the default call to fail.
-//        fail("The test case is a prototype.");
-//    }
-//    
+    /**
+     * Rollback simple de los atributos
+     * 
+     */
+    @Test
+    public void testRollbackSimple() {
+        System.out.println("\n\n\n");
+        System.out.println("***************************************************************");
+        System.out.println("Rollback simple. Solo se restablecen los atributos directos.");
+        System.out.println("***************************************************************");
+        SimpleVertexEx sve = new SimpleVertexEx();
+//        sve.initEnum();
+//        sve.initInner();
+//        sve.initArrayList();
+//        sve.initHashMap();
+        
+        sve.setI(1);
+        sve.setF(1.0f);
+        sve.setB(true);
+        sve.setS("init rollback");
+        sve.setoI(10);
+        sve.setoF(1.5f);
+
+        System.out.println("guardado del objeto limpio.");
+        SimpleVertexEx stored = sm.store(sve);
+        sm.commit();
+        
+        String rid = sm.getRID(stored);
+        
+        // modificar los campos.
+        stored.setI(42);
+        stored.setF(3.0f);
+        stored.setB(false);
+        stored.setS("rollbak");
+        stored.setoI(45);
+        stored.setoF(4.5f);
+        
+        sm.rollback();
+        
+        assertEquals(sve.getI(), stored.getI());
+        assertEquals(sve.getF(), stored.getF(),0.0002);
+        assertEquals(sve.isB(), stored.isB());
+        assertEquals(sve.getoI(), stored.getoI());
+        assertEquals(sve.getoF(), stored.getoF(),0.0002);
+    }
+    
+    
+    @Test
+    public void testRollbackEnum() {
+        System.out.println("\n\n\n");
+        System.out.println("***************************************************************");
+        System.out.println("Rollback Enum. Se restablecen los atributos Enum.");
+        System.out.println("***************************************************************");
+        SimpleVertexEx sve = new SimpleVertexEx();
+        sve.initEnum();
+//        sve.initInner();
+//        sve.initArrayList();
+//        sve.initHashMap();
+        
+        sve.setEnumTest(EnumTest.UNO);
+
+        System.out.println("guardado del objeto.");
+        SimpleVertexEx stored = sm.store(sve);
+        sm.commit();
+        
+        String rid = sm.getRID(stored);
+        
+        // modificar los campos.
+        stored.setEnumTest(EnumTest.DOS);
+        
+        sm.rollback();
+        
+        assertEquals(sve.getEnumTest(), stored.getEnumTest());
+    }
+    
+    
+    @Test
+    public void testRollbackCollections() {
+        System.out.println("\n\n\n");
+        System.out.println("***************************************************************");
+        System.out.println("Rollback Collections. Se restablecen los atributos que hereden de Collection.");
+        System.out.println("***************************************************************");
+        SimpleVertexEx sve = new SimpleVertexEx();
+//        sve.initEnum();
+//        sve.initInner();
+//        sve.initArrayList();
+//        sve.initHashMap();
+        sve.alSV = new ArrayList<SimpleVertex>();
+        sve.alSV.add(new SimpleVertex());
+        sve.alSV.add(new SimpleVertex());
+        sve.alSV.add(new SimpleVertex());
+
+        System.out.println("guardando el objeto con 3 elementos en el AL.");
+        SimpleVertexEx stored = sm.store(sve);
+        sm.commit();
+        
+        String rid = sm.getRID(stored);
+        
+        // modificar los campos.
+        stored.alSV.add(new SimpleVertex());
+        
+        sm.rollback();
+        
+        assertEquals(sve.alSV.size(), stored.alSV.size());
+    }
+    
+    
+    @Test
+    public void testRollbackMaps() {
+        System.out.println("\n\n\n");
+        System.out.println("***************************************************************");
+        System.out.println("Rollback Maps. Se restablecen los atributos que hereden de Collection.");
+        System.out.println("***************************************************************");
+        SimpleVertexEx sve = new SimpleVertexEx();
+//        sve.initEnum();
+//        sve.initInner();
+//        sve.initArrayList();
+//        sve.initHashMap();
+        sve.hmSV = new HashMap<String, SimpleVertex>();
+        SimpleVertex sv = new SimpleVertex();
+        sve.hmSV.put("key1", sv);
+        sve.hmSV.put("key2", sv);
+        sve.hmSV.put("key3", new SimpleVertex());
+        
+        System.out.println("guardando el objeto con 3 elementos en el HM.");
+        SimpleVertexEx stored = sm.store(sve);
+        sm.commit();
+        
+        String rid = sm.getRID(stored);
+        
+        // modificar los campos.
+        stored.hmSV.put("key rollback",new SimpleVertex());
+        
+        sm.rollback();
+        
+        assertEquals(sve.hmSV.size(), stored.hmSV.size());
+    }
+    
+    
 }

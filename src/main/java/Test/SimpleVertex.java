@@ -94,6 +94,30 @@ public class SimpleVertex {
     public String toString() {
         return this.s + " - " + this.b +  " - " + this.i +  " - " + this.f;
     }
+
+    public void setI(int i) {
+        this.i = i;
+    }
+
+    public void setF(float f) {
+        this.f = f;
+    }
+
+    public void setB(boolean b) {
+        this.b = b;
+    }
+
+    public void setoI(Integer oI) {
+        this.oI = oI;
+    }
+
+    public void setoF(Float oF) {
+        this.oF = oF;
+    }
+
+    public void setoB(Boolean oB) {
+        this.oB = oB;
+    }
     
     
 }
