@@ -89,6 +89,8 @@ public class Ex2 extends Ex1 {
 ```
 Here, the field ***inner*** is not a primitive type. OrientDB let us store it as an embedded object or we can tell the ODBOGM to store it as a new vertex related to the main object.
 Currently, the embedded alternative is not implemented. Every nonprimitive field is mapped as a Vertex except it is annotated with @Ignore.
+***Collencions*** and ***Map*** have been subclassed to allow the communication to the DB in a transparent way. At this time only ***ArrayList***, ***Vector***, ***LinkedList*** and ***HashMap*** are implemented.  
+
 We must annotate the field with:
 * ***@Ignore***: to skip the field. Useful to the Logger field.
 
@@ -134,6 +136,7 @@ in this case, the resulting graph is:
        ….
 ```
 If the collection is a ***Map***, the strategy is the same but the key value are stored as a field in the edge. The key could be an object to but this object must be simple.
+At this time only ***HashMap*** is implemented.
 
 ## Getting Object.
 The most simple way to retrieve an object is the use of the ***get*** method. To use it we must pass the class to map to the vertex and the vertex RID.
