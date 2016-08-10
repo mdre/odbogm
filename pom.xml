@@ -46,6 +46,12 @@
             <version>1.3</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.arshadow</groupId>
+            <artifactId>UtilityLib</artifactId>
+            <version>1.0-SNAPSHOT</version>
+            <type>jar</type>
+        </dependency>
 <!--        <dependency>
             <groupId>org.reflections</groupId>
             <artifactId>reflections</artifactId>

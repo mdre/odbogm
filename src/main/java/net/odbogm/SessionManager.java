@@ -120,7 +120,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
      * @param o
      */
     @Override
-    public <T> T store(T o) throws IncorrectRIDField, NoOpenTx, ClassToVertexNotFound {
+    public synchronized <T> T store(T o) throws IncorrectRIDField, NoOpenTx, ClassToVertexNotFound {
 //        graphdb.getRawGraph().activateOnCurrentThread();
         T proxied = null;
         try {
@@ -289,7 +289,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
      * @param rid
      * @param o
      */
-    public void setAsDirty(Object o) throws UnmanagedObject {
+    public synchronized void setAsDirty(Object o) throws UnmanagedObject {
 //        graphdb.getRawGraph().activateOnCurrentThread();
         if (o instanceof IObjectProxy) {
             String rid = ((IObjectProxy) o).___getVertex().getId().toString();
@@ -328,7 +328,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
      *
      * @throws NoOpenTx
      */
-    public void commit() throws NoOpenTx, OConcurrentModificationException {
+    public synchronized void commit() throws NoOpenTx, OConcurrentModificationException {
         if (graphdb == null) {
             throw new NoOpenTx();
         }
@@ -359,7 +359,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
     /**
      * Transfiere todos los cambios de los objetos a las estructuras subyacentes.
      */
-    public void flush() {
+    public synchronized void flush() {
         if (graphdb == null) {
             throw new NoOpenTx();
         }
@@ -367,7 +367,8 @@ public class SessionManager implements Actions.Store, Actions.Get {
             String rid = e.getKey();
             IObjectProxy o = (IObjectProxy) e.getValue();
 
-            // actualizar todos los objetos antes de bajarlos.
+            // actualizar todos los objetos a nivel de cache de la base sin proceder a 
+            // bajarlos efectívamente.
             o.___commit();
 
         }
@@ -376,7 +377,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
     /**
      * realiza un rollback sobre la transacción activa.
      */
-    public void rollback() {
+    public synchronized void rollback() {
         if (graphdb == null) {
             throw new NoOpenTx();
         }

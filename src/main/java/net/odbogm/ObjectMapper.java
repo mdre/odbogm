@@ -320,48 +320,8 @@ public class ObjectMapper {
 //                f.setAccessible(acc);
             }
         }
-
-//        LOGGER.log(Level.FINER, "Procesando los Links......... ");
-//        // hidratar los atributos @links
-//        // procesar todos los links
-//        for (Map.Entry<String, Class<?>> entry : classdef.links.entrySet()) {
-////        classdef.links.entrySet().stream().forEach((entry) -> {
-//            try {
-//                String field = entry.getKey();
-//                Class<?> fc = entry.getValue();
-//                String graphRelationName = toHydrate.getSimpleName() + "_" + field;
-//                LOGGER.log(Level.FINER, "Field: {0}   RelationName: {1}", new String[]{field, graphRelationName});
-//
-//                Field fLink = ReflectionUtils.findField(toHydrate, field);
-//                boolean acc = fLink.isAccessible();
-//                fLink.setAccessible(true);
-//
-//                // recuperar de la base el vértice correspondiente
-//                boolean duplicatedLinkGuard = false;
-//                for (Vertex vertice : v.getVertices(Direction.OUT, graphRelationName)) {
-//                    LOGGER.log(Level.FINER, "hydrate innerO: " + vertice.getId());
-//
-//                    if (!duplicatedLinkGuard) {
-////                        Object innerO = this.hydrate(fc, vertice);
-//                        /* FIXME: esto genera una dependencia cruzada. Habría que revisar
-//                           como solucionarlo. Esta llamada se hace para que quede el objeto
-//                           mapeado 
-//                         */
-//                        Object innerO = this.sessionManager.get(fc, vertice.getId().toString());
-//                        LOGGER.log(Level.FINER, "Inner object " + field + ": " + (innerO == null ? "NULL" : "" + innerO.toString()) + "  FC: " + fc.getSimpleName() + "   innerO.class: " + innerO.getClass().getSimpleName());
-//                        fLink.set(oproxied, fc.cast(innerO));
-//                        duplicatedLinkGuard = true;
-//                    } else if (false) {
-//                        throw new DuplicateLink();
-//                    }
-//                }
-//                fLink.setAccessible(acc);
-//
-//            } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
-//                Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
-//            }
-//        }
-
+        
+        
         // hidratar las colecciones
         // procesar todos los linkslist
         LOGGER.log(Level.FINER, "preparando las colecciones...");
@@ -377,7 +337,8 @@ public class ObjectMapper {
                 boolean acc = fLink.isAccessible();
                 fLink.setAccessible(true);
 
-                if (v.countEdges(Direction.OUT, graphRelationName) > 0) {
+                // si hay Vértices conectados o si el constructor del objeto ha inicializado los vectores, convertirlos
+                if ((v.countEdges(Direction.OUT, graphRelationName) > 0)||(fLink.get(oproxied)!=null)) {
                     this.colecctionToLazy(oproxied, field, fc, v);
                 }
                 

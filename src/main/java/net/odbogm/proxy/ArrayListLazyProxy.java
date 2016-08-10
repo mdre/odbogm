@@ -5,6 +5,7 @@
  */
 package net.odbogm.proxy;
 
+import com.arshadow.utilitylib.ThreadHelper;
 import net.odbogm.SessionManager;
 import com.tinkerpop.blueprints.Direction;
 import com.tinkerpop.blueprints.Vertex;
@@ -61,7 +62,7 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
      * @param c: clase genérica de la colección.
      */
     @Override
-    public void init(SessionManager sm, OrientVertex relatedTo, IObjectProxy parent, String field, Class<?> c) {
+    public synchronized void init(SessionManager sm, OrientVertex relatedTo, IObjectProxy parent, String field, Class<?> c) {
         try {
             if (relatedTo==null)
                 throw new RelatedToNullException("Se ha detectado un ArraylistLazyProxy sin relación con un vértice!\n field: "+field+" Class: "+c.getSimpleName());
@@ -80,11 +81,11 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
     //********************* change control **************************************
     private Map<Object, ObjectCollectionState> listState = new ConcurrentHashMap<>();
     
-    private void lazyLoad() {
+    private synchronized void lazyLoad() {
         this.sm.getGraphdb().getRawGraph().activateOnCurrentThread();
         LOGGER.log(Level.FINER, "getGraph: "+relatedTo.getGraph());
-//        if (relatedTo.getGraph()==null)
-//            this.sm.getGraphdb().attach(relatedTo);
+        if (relatedTo.getGraph()==null)
+            this.sm.getGraphdb().attach(relatedTo);
         
 //        LOGGER.log(Level.FINER, "getRawGraph: "+relatedTo.getGraph().getRawGraph());
         
@@ -110,7 +111,7 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
         this.lazyLoading = false;
     }
 
-    public Map<Object, ObjectCollectionState> collectionState() {
+    public synchronized Map<Object, ObjectCollectionState> collectionState() {
         // si se ha hecho referencia al contenido de la colección, realizar la verificación
         if (!this.lazyLoad) {
             for (Object o : this) {
@@ -133,7 +134,7 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
      * Vuelve establecer el punto de verificación.
      */
     @Override
-    public void clearState() {
+    public synchronized void clearState() {
         this.dirty = false;
         
         this.listState.clear();
@@ -146,22 +147,25 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
         }
     }
     
-    private void setDirty() {
+    private synchronized void setDirty() {
         LOGGER.log(Level.FINER, "Colección marcada como Dirty. Avisar al padre.");
         this.dirty = true;
         LOGGER.log(Level.FINER, "weak:"+this.parent.get());
         // si el padre no está marcado como garbage, notificarle el cambio de la colección.
-        if (this.parent.get()!=null)
+        if (this.parent.get()!=null) {
             this.parent.get().___setDirty();
+            
+            LOGGER.log(Level.FINER, ThreadHelper.getCurrentStackTrace());
+        }
     }
     
     @Override
-    public boolean isDirty() {
+    public synchronized boolean isDirty() {
         return this.dirty;
     }
 
     @Override
-    public void rollback() {
+    public synchronized void rollback() {
         //FIXME: Analizar si se puede implementar una versión que no borre todos los elementos
         this.clear();
         this.listState.clear();

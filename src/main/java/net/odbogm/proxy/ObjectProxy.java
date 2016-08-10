@@ -530,7 +530,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                     } else if (!(innerO instanceof ILazyCalls)) {
                                         // es una colección nueva.
                                         this.___setDirty();
-                                        LOGGER.log(Level.FINER, "Dirty: se ha agregado una colección nueva");
+                                        LOGGER.log(Level.FINER, "Dirty ("+graphRelationName+"): se ha agregado una colección nueva.");
                                     }
                                 }
 
@@ -692,7 +692,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                         // Object oCol = f.get(this.realObj);
                         Object oCol = f.get(this.___proxyObject);
 
-                        // verificar si existe algún cambio en la coleccióne
+                        // verificar si existe algún cambio en la colecciones
                         // ingresa si la colección es distinta de null y
                         // oCol es instancia de ILazyCalls y está marcado como dirty
                         // o oCol no es instancia de ILazyCalls, lo que significa que es una colección nueva
@@ -700,7 +700,10 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                         if ((oCol != null)
                                 && ((ILazyCalls.class.isAssignableFrom(oCol.getClass()) && ((ILazyCalls) oCol).isDirty())
                                 || (!ILazyCalls.class.isAssignableFrom(oCol.getClass())))) {
-
+                            LOGGER.log(Level.FINER, (!ILazyCalls.class.isAssignableFrom(oCol.getClass()))?
+                                                                "No es instancia de ILazyCalls":
+                                                                "Es instancia de Lazy y está marcado como DIRTY");    
+                            
                             if (oCol instanceof List) {
                                 ILazyCollectionCalls col;
                                 // procesar la colección
