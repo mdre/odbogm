@@ -14,7 +14,7 @@ import java.util.logging.Level;
 public class LogginProperties {
 
     public static Level ArrayListLazyProxy = Level.INFO;
-    public static Level ClassCache = Level.INFO;
+    public static Level ClassCache = Level.FINER;
     public static Level ClassDef = Level.INFO;
     public static Level DbManager = Level.INFO;
     public static Level HashMapLazyProxy = Level.INFO;

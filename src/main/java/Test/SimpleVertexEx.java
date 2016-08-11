@@ -32,6 +32,10 @@ public class SimpleVertexEx extends SimpleVertex {
     @RemoveOrphan
     private SimpleVertex svinner; 
     
+    public ArrayList<String> alString;
+    
+    public HashMap<String,String> hmString;
+    
     public ArrayList<SimpleVertex> alSV;
     
     public ArrayList<SimpleVertexEx> alSVE;
@@ -57,6 +61,21 @@ public class SimpleVertexEx extends SimpleVertex {
         this.enumTest = EnumTest.UNO;
     }
 
+    public void initArrayListString() {
+        this.alString = new ArrayList<>();
+        this.alString.add("String 1");
+        this.alString.add("String 2");
+        this.alString.add("String 3");
+    }
+    
+    public void initHashMapString() {
+        this.hmString = new HashMap<>();
+        this.hmString.put("hmString 1", "hmString 1");
+        this.hmString.put("hmString 1", "hmString 2");
+        this.hmString.put("hmString 1", "hmString 3");
+    }
+    
+    
     public void initArrayList(){
         this.alSV = new ArrayList<SimpleVertex>();
         this.alSV.add(new SimpleVertex());

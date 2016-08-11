@@ -19,6 +19,8 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.DbManager;
+import net.odbogm.cache.ClassCache;
+import net.odbogm.cache.ClassDef;
 
 /**
  *
@@ -38,11 +40,12 @@ public class Test {
     }
 
     public Test() {
-//        initSession();
+        initSession();
 //        testSessionManager();
 //        testDbManager();
         lab();
 //        store();
+        sm.shutdown();
     }
     
     
@@ -81,6 +84,31 @@ public class Test {
     
     public void lab(){
 //        OrientVertex ov = sm.getGraphdb().getVertex("12:1177");
+//        
+//        ArrayList<Integer> testal = new ArrayList<>();
+//        testal.add(1);
+//        testal.add(2);
+//        testal.add(3);
+//        
+//        HashMap<String,Object> hmTest = new HashMap<>();
+//        hmTest.put("hmalI", testal);
+//        
+//        ov.setProperties(hmTest);
+//        
+//        ArrayList<Integer> restAL= (ArrayList)ov.getProperty("hmalI");
+//        System.out.println(""+restAL.size());
+//        sm.getGraphdb().commit();
+//        
+        
+        ClassCache cc = new ClassCache();
+        SimpleVertexEx sve = new SimpleVertexEx();
+        sve.initArrayListString();
+        sve.initHashMapString();
+        
+        ClassDef cd = cc.get(SimpleVertexEx.class);
+        
+        System.out.println(""+cd.fields);
+        
 //        System.out.println(""+ov.getType().getCustom("javaClass"));
 //        String jc = ov.getType().getCustom("javaClass");
 //        System.out.println(""+jc.replaceAll("[\'\"]", ""));

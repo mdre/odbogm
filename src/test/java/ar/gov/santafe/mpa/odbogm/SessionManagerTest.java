@@ -110,6 +110,54 @@ public class SessionManagerTest {
     }
 
     
+    
+//    @Test
+    public void testStorePrimitiveCol() {
+        System.out.println("\n\n\n");
+        System.out.println("***************************************************************");
+        System.out.println("store objeto con colecciones de primitivas");
+        System.out.println("***************************************************************");
+        
+        SimpleVertexEx sve = new SimpleVertexEx();
+        sve.initArrayListString();
+        sve.initHashMapString();
+        
+        SimpleVertexEx expResult = sve;
+        
+        assertEquals(0, sm.getDirtyCount());
+        
+        SimpleVertexEx result = sm.store(sve);
+        
+        assertEquals(1, sm.getDirtyCount());
+        assertTrue(result instanceof IObjectProxy);
+        
+        // verificar que sean iguales antes de comitear
+        assertEquals(expResult.alString.size(), result.alString.size());
+        assertEquals(expResult.hmString.size(), result.hmString.size());
+        
+        this.sm.commit();
+        assertEquals(0, sm.getDirtyCount());
+
+        System.out.println("Recuperar el objeto de la base");
+        String rid = ((IObjectProxy)result).___getRid();
+        expResult = this.sm.get(SimpleVertexEx.class, rid);
+
+        assertEquals(0, sm.getDirtyCount());
+        
+        // verificar que el resultado implemente la interface 
+        assertTrue(expResult instanceof IObjectProxy);
+        
+        // verificar que todos los valores sean iguales
+        assertEquals(((IObjectProxy)expResult).___getRid(), ((IObjectProxy)result).___getRid());
+        
+        // verificar que sean iguales después de realizar el commit
+        assertEquals(expResult.alString.size(), result.alString.size());
+        assertEquals(expResult.hmString.size(), result.hmString.size());
+    }
+    
+    
+    
+    
     @Test
     public void testStoreExtendedObject() {
         System.out.println("\n\n\n");

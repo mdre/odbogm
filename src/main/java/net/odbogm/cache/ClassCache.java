@@ -6,15 +6,14 @@
 package net.odbogm.cache;
 
 import net.odbogm.annotations.Ignore;
-import net.odbogm.annotations.Link;
-import net.odbogm.annotations.LinkList;
 import net.odbogm.ObjectMapper;
 import net.odbogm.Primitives;
 import static net.odbogm.Primitives.PRIMITIVE_MAP;
-import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.ParameterizedType;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -90,8 +89,44 @@ public class ClassCache {
                         } else if (f.getType().isEnum()) {
                             cached.enumFields.put(f.getName(), f.getType());
                         } else if (Primitives.LAZY_COLLECTION.get(f.getType())!=null) {
-                            // FIXME: ojo que si se tratara de una extensín de AL o HM no lo vería como tal y lo vincularía con un link
-                            cached.linkLists.put(f.getName(), f.getType());
+                            // FIXME: ojo que si se tratara de una extensión de AL o HM 
+                            // no lo vería como tal y lo vincularía con un link
+                            
+                            // primero verificar si se trata de una colección de objeto primitivos
+                            // ej: ArrayList<String> ... 
+                            // En este caso, no correspondería crear Edges. La colección completa
+                            // se va a guardar embebida en el Vertex.
+                            LOGGER.log(Level.FINER, "Colección detectada: "+f.getName());
+                            boolean setAsEmbedded = false;
+                            if (List.class.isAssignableFrom(f.getType())) {
+                                LOGGER.log(Level.FINER, "se trata de una Lista...");
+                                // se trata de una lista. Verificar el subtipo
+                                ParameterizedType listType = (ParameterizedType) f.getGenericType();
+                                Class<?> listClass = (Class<?>) listType.getActualTypeArguments()[0];
+                                if (Primitives.PRIMITIVE_MAP.get(listClass)!=null) {
+                                    LOGGER.log(Level.FINER, "Es una colección de primitivas: "+listClass.getSimpleName());
+                                    setAsEmbedded = true;
+                                }
+                            } else if (Map.class.isAssignableFrom(f.getType())) {
+                                // si se trata de un Map, verificar que el tipo del valor almacenado
+                                // sea una primitiva
+                                LOGGER.log(Level.FINER, "se trata de un Map...");
+                                ParameterizedType listType = (ParameterizedType) f.getGenericType();
+                                Class<?> keyClass = (Class<?>) listType.getActualTypeArguments()[0];
+                                Class<?> valClass = (Class<?>) listType.getActualTypeArguments()[1];
+                                if (Primitives.PRIMITIVE_MAP.get(valClass)!=null) {
+                                    LOGGER.log(Level.FINER, "Es una colección de primitivas: "+valClass.getSimpleName());
+                                    setAsEmbedded = true;
+                                }
+                            }
+                            if (setAsEmbedded) {
+                                // es una colección de primitivas. Tratarla como un field común
+                                cached.fields.put(f.getName(), f.getType());
+                            } else {
+                                // es una colección de objetos.
+                                LOGGER.log(Level.FINER, "Es una colección de objetos que genera Vértices y Ejes.");
+                                cached.linkLists.put(f.getName(), f.getType());
+                            }
                         } else {
                             cached.links.put(f.getName(), f.getType());
 //                        } else {
