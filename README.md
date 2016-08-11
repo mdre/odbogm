@@ -49,7 +49,8 @@ sm.store(ex1);
 sm.commit();
 ```
 
-Every primitive field type and String are stored directly to the DB including private field.
+Every primitive field type and String are stored directly to the DB including private field in a Vertex.
+If the object has List or Maps of primitive type, they are mapped as a embedded list/maps.
 Every Object is mapped to a Vertex and an Edge is created with a label <Class>_<field>. The field will not be
 created as a part of the class.
 The ***final static*** fields are ignored so take care about this.
