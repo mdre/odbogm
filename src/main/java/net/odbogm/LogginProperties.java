@@ -14,17 +14,17 @@ import java.util.logging.Level;
 public class LogginProperties {
 
     public static Level ArrayListLazyProxy = Level.INFO;
-    public static Level ClassCache = Level.FINER;
+    public static Level ClassCache = Level.INFO;
     public static Level ClassDef = Level.INFO;
     public static Level DbManager = Level.INFO;
     public static Level HashMapLazyProxy = Level.INFO;
     public static Level LinkedListLazyProxy = Level.INFO;
     public static Level ObjectMapper = Level.INFO;
-    public static Level ObjectProxy = Level.INFO;
+    public static Level ObjectProxy = Level.FINER;
     public static Level ObjectProxyFactory = Level.INFO;
     public static Level ObjectStruct = Level.INFO;
     public static Level ReflectionUtils = Level.INFO;
-    public static Level SessionManager = Level.INFO;
+    public static Level SessionManager = Level.FINER;
     public static Level VectorLazyProxy = Level.INFO;
     public static Level ThreadedGraphRecordFactory = Level.INFO;
     

@@ -5,22 +5,23 @@
  */
 package Test;
 
+import com.arshadow.utilitylib.DateHelper;
 import net.odbogm.exceptions.IncorrectRIDField;
 import net.odbogm.SessionManager;
 import net.odbogm.proxy.IObjectProxy;
 import com.orientechnologies.orient.core.exception.OConcurrentModificationException;
+import com.tinkerpop.blueprints.impls.orient.OrientVertex;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.DbManager;
-import net.odbogm.cache.ClassCache;
-import net.odbogm.cache.ClassDef;
 
 /**
  *
@@ -41,38 +42,37 @@ public class Test {
 
     public Test() {
         initSession();
-//        testSessionManager();
+        testSessionManager();
 //        testDbManager();
-        lab();
+//        lab();
+//        testQuery();
 //        store();
         sm.shutdown();
     }
-    
-    
-    public void initSession(){
+
+    public void initSession() {
         System.out.println("Iniciando comunicación con la base....");
         sm = new SessionManager("remote:localhost/Test", "root", "toor");
         System.out.println("comunicación inicializada!");
         sm.begin();
     }
-    
+
     public void testSessionManager() {
 //        IObjectProxy iop;
-        
+
         // correr test de store
 //        this.store();
 //          this.testStoreLink();
 //        this.testUpdateLink();
 //        this.testQuery();
 //        testLoop();
-//        this.lab();
-        
+        this.lab();
+
         try {
             sm.commit();
         } catch (OConcurrentModificationException ccme) {
 
         } finally {
-            sm.shutdown();
         }
     }
 
@@ -80,10 +80,31 @@ public class Test {
         DbManager dbm = new DbManager("remote:localhost/Test", "root", "toor");
         dbm.generateToConsole(new String[]{"Test"});
     }
-    
-    
-    public void lab(){
-//        OrientVertex ov = sm.getGraphdb().getVertex("12:1177");
+
+    public void lab() {
+        OrientVertex ov = sm.getGraphdb().getVertex("12:1177");
+
+        // test de fechas.
+//        LocalDate ld = LocalDate.now();
+//        Date d = new Date(2016, 7, 29);
+        Date dt = new Date(2016, 7, 29, 12, 0);
+
+//        Calendar cal = Calendar.getInstance();
+//        cal.set(Calendar.YEAR, 2016);
+//        cal.set(Calendar.MONTH, 7);
+//        cal.set(Calendar.DAY_OF_MONTH, 29);
+//        
+//        Date d = new Date(cal.getTimeInMillis());
+        
+        Date d = DateHelper.getDate(2016, 8, 29);
+        ov.setProperty("DateHelper", d);
+//        ov.setProperty("datetime", dt);
+
+
+
+        ov.setProperty("date", d);
+
+//        sm.commit();
 //        
 //        ArrayList<Integer> testal = new ArrayList<>();
 //        testal.add(1);
@@ -99,21 +120,18 @@ public class Test {
 //        System.out.println(""+restAL.size());
 //        sm.getGraphdb().commit();
 //        
-        
-        ClassCache cc = new ClassCache();
-        SimpleVertexEx sve = new SimpleVertexEx();
-        sve.initArrayListString();
-        sve.initHashMapString();
-        
-        ClassDef cd = cc.get(SimpleVertexEx.class);
-        
-        System.out.println(""+cd.fields);
-        
+//        ClassCache cc = new ClassCache();
+//        SimpleVertexEx sve = new SimpleVertexEx();
+//        sve.initArrayListString();
+//        sve.initHashMapString();
+//        
+//        ClassDef cd = cc.get(SimpleVertexEx.class);
+//        
+//        System.out.println(""+cd.fields);
 //        System.out.println(""+ov.getType().getCustom("javaClass"));
 //        String jc = ov.getType().getCustom("javaClass");
 //        System.out.println(""+jc.replaceAll("[\'\"]", ""));
 //        System.out.println(""+ov.getGraph().getVertexBaseType().getCustom("javaClass"));
-
 //        SimpleVertexEx svex = new SimpleVertexEx();
 //        svex.initInner();
 //        
@@ -140,37 +158,38 @@ public class Test {
 //                .filter(className->className.getSimpleName().equals("SimpleVertexEx"))
 //                .collect(Collectors.toList());
 //        System.out.println("r: "+r);
-
 //        ArrayListLazyProxy allp = new ArrayListLazyProxy();
 //        System.out.println("IL: "+(allp instanceof ILazyCalls));
+    }
+
+    public void testQuery() {
+
+        // test query
+//        System.out.println("*******************************");
+//        System.out.println("          Test Query           ");
+//        System.out.println("*******************************");
+//        List<SimpleVertex> svs = sm.query(SimpleVertex.class, " where s like '%inn%' ");
+//        for (SimpleVertex sv : svs) {
+//            System.out.println(">>>"+sv.i+"  rid: "+sm.getRID(sv));
+//        }
+//        
+//        System.out.println("----------- prepared query -----------------");
+//        List<SimpleVertexEx> svspq = sm.query(SimpleVertexEx.class, "select from SimpleVertexEx where s like ? and i=?","%wor%",1);
+//        for (SimpleVertex sv : svspq) {
+//            System.out.println(">>>"+sv.i+"  rid: "+sm.getRID(sv));
+//        }
+//        System.out.println("----------- 1 commit -----------------");
+        long i = sm.query("select count(*) as size from SimpleVertexEx ", null);
+
+        System.out.println("res: " + i);
 
     }
-    
-    public void testQuery() {
-        
-        // test query
-        System.out.println("*******************************");
-        System.out.println("          Test Query           ");
-        System.out.println("*******************************");
-        List<SimpleVertex> svs = sm.query(SimpleVertex.class, " where s like '%inn%' ");
-        for (SimpleVertex sv : svs) {
-            System.out.println(">>>"+sv.i+"  rid: "+sm.getRID(sv));
-        }
-        
-        System.out.println("----------- prepared query -----------------");
-        List<SimpleVertexEx> svspq = sm.query(SimpleVertexEx.class, "select from SimpleVertexEx where s like ? and i=?","%wor%",1);
-        for (SimpleVertex sv : svspq) {
-            System.out.println(">>>"+sv.i+"  rid: "+sm.getRID(sv));
-        }
-        System.out.println("----------- 1 commit -----------------");
-    }
-    
-    
+
     public void store() {
         try {
             // usuado para hacer una pausa.
             BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-            
+
             SimpleVertex svinner = new SimpleVertex();
             SimpleVertex svinner2 = new SimpleVertex();;
             SimpleVertexEx sv;
@@ -188,8 +207,8 @@ public class Test {
             System.out.println("     Test store: agrego uno    ");
             System.out.println("*******************************");
             svex = sm.store(svex);
-            System.out.println("idNew: "+((IObjectProxy)svex).___getVertex().getIdentity().isNew());
-            System.out.println("idTemporary: "+((IObjectProxy)svex).___getVertex().getIdentity().isTemporary());
+            System.out.println("idNew: " + ((IObjectProxy) svex).___getVertex().getIdentity().isNew());
+            System.out.println("idTemporary: " + ((IObjectProxy) svex).___getVertex().getIdentity().isTemporary());
             sm.flush();
 
             System.out.println("----------- STORE commit -----------------");
@@ -204,16 +223,16 @@ public class Test {
 
             System.out.println("Test hydrate " + testRID);
             sv = sm.get(SimpleVertexEx.class, testRID);
-            
+
             //---------------- pausar
             System.out.print("Enter String");
             String s = br.readLine();
             System.out.println("continuando...");
             //-----------------------
-            
-            System.out.println("SVINNER.getS(): "+sv.getSvinner().getS());
-            System.out.println("Enum test:"+sv.getEnumTest());
-            
+
+            System.out.println("SVINNER.getS(): " + sv.getSvinner().getS());
+            System.out.println("Enum test:" + sv.getEnumTest());
+
             System.out.println("Test - List:");
             for (Iterator<SimpleVertex> iterator = sv.getAlSV().iterator(); iterator.hasNext();) {
                 SimpleVertex next = iterator.next();
@@ -292,91 +311,88 @@ public class Test {
     }
 
     public void testStoreLink() {
-        
+
         System.out.println("store objeto sin Link y luego se le agrega uno");
-        
+
         SimpleVertexEx sve = new SimpleVertexEx();
         SimpleVertexEx result = this.sm.store(sve);
         this.sm.commit();
         System.out.println("=========== fin primer commit ====================================");
-        
-        System.out.println("result.svinner: "+result.getSvinner()+"  sve.svinner:"+ sve.getSvinner());
-        
+
+        System.out.println("result.svinner: " + result.getSvinner() + "  sve.svinner:" + sve.getSvinner());
+
         // actualizar el objeto administrado
         result.initInner();
-        System.out.println("result.svinner: "+result.getSvinner().getS()+ "      toS: "+result.getSvinner().toString());
+        System.out.println("result.svinner: " + result.getSvinner().getS() + "      toS: " + result.getSvinner().toString());
         // bajarlo a la base
         System.out.println("=========== inicio segundo commit <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
         sm.commit();
         System.out.println("=========== fin segundo commit ====================================");
-        System.out.println("result.svinner: "+result.getSvinner().getS()+ "      toS: "+result.getSvinner().toString());
-        
+        System.out.println("result.svinner: " + result.getSvinner().getS() + "      toS: " + result.getSvinner().toString());
+
         // recuperar el objeto en otra instancia
-        String rid = ((IObjectProxy)result).___getRid();
-        
+        String rid = ((IObjectProxy) result).___getRid();
+
         System.out.println("============================================================================");
-        System.out.println("RID: "+rid);
+        System.out.println("RID: " + rid);
         System.out.println("============================================================================");
-        
-        
+
         System.out.println("");
         System.out.println("");
         System.out.println("");
         System.out.println("========= comienzo del get =================================================");
         SimpleVertexEx expResult = sm.get(SimpleVertexEx.class, rid);
         System.out.println("========= fin del get =================================================");
-        
-        assertEquals(((IObjectProxy)expResult).___getRid(), rid);
-        
-        System.out.println("++++++++++++++++ result: "+result.getSvinner().toString());
-        System.out.println("++++++++++++++++ expResult: "+expResult.getSvinner().toString());
-        
+
+        assertEquals(((IObjectProxy) expResult).___getRid(), rid);
+
+        System.out.println("++++++++++++++++ result: " + result.getSvinner().toString());
+        System.out.println("++++++++++++++++ expResult: " + expResult.getSvinner().toString());
+
         assertEquals(expResult.getSvinner().getI(), result.getSvinner().getI());
         assertEquals(expResult.getSvinner().getS(), result.getSvinner().getS());
         assertEquals(expResult.getSvinner().getoB(), result.getSvinner().getoB());
         assertEquals(expResult.getSvinner().getoF(), result.getSvinner().getoF());
         assertEquals(expResult.getSvinner().getoI(), result.getSvinner().getoI());
     }
-    
+
     public void testUpdateLink() {
         System.out.println("store objeto sin Link y luego se le agrega uno");
-        
+
         SimpleVertexEx sve = new SimpleVertexEx();
         SimpleVertexEx result = this.sm.store(sve);
         this.sm.commit();
         System.out.println("=========== fin primer commit ====================================");
-        
+
         // actualizar el objeto administrado
         result.initInner();
-        System.out.println("result.svinner: "+result.getSvinner().getS()+ "      toS: "+result.getSvinner().toString());
+        System.out.println("result.svinner: " + result.getSvinner().getS() + "      toS: " + result.getSvinner().toString());
         // bajarlo a la base
         System.out.println("=========== inicio segundo commit <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
         sm.commit();
         System.out.println("=========== fin segundo commit ====================================");
-        System.out.println("result.svinner: "+result.getSvinner().getS()+ "      toS: "+result.getSvinner().toString());
-        
+        System.out.println("result.svinner: " + result.getSvinner().getS() + "      toS: " + result.getSvinner().toString());
+
         // recuperar el objeto en otra instancia
-        String rid = ((IObjectProxy)result).___getRid();
-        
+        String rid = ((IObjectProxy) result).___getRid();
+
         System.out.println("============================================================================");
-        System.out.println("RID: "+rid);
+        System.out.println("RID: " + rid);
         System.out.println("============================================================================");
-        
-        
+
         System.out.println("");
         System.out.println("");
         System.out.println("");
         System.out.println("========= comienzo del get =================================================");
         SimpleVertexEx expResult = sm.get(SimpleVertexEx.class, rid);
         System.out.println("========= fin del get =================================================");
-        
-        
-        System.out.println("++++++++++++++++ result: "+result.getSvinner().toString());
-        System.out.println("++++++++++++++++ expResult: "+expResult.getSvinner().toString());
-        
+
+        System.out.println("++++++++++++++++ result: " + result.getSvinner().toString());
+        System.out.println("++++++++++++++++ expResult: " + expResult.getSvinner().toString());
+
     }
 
-    public void testLoop(){
+    public void testLoop() {
         System.out.println("***************************************************************");
         System.out.println("Verificar el tratamiento de objetos con loops");
         System.out.println("***************************************************************");
@@ -385,65 +401,58 @@ public class Test {
         sve.initEnum();
         sve.initArrayList();
         sve.initHashMap();
-        
+
         SimpleVertexEx sveLoop = new SimpleVertexEx();
         sveLoop.initInner();
         sveLoop.initEnum();
         sveLoop.initArrayList();
         sveLoop.initHashMap();
-        
+
         // crear el loop
         sve.setLooptest(sveLoop);
         sveLoop.setLooptest(sve);
-        
+
         System.out.println("pre store..............................");
         SimpleVertexEx result = this.sm.store(sve);
         System.out.println("store ok!");
         System.out.println("pre commit..............................");
-        
+
         sm.commit();
         System.out.println("commit ok ==============================");
-        
+
         System.out.println(" inicio de los test");
-        String rid = ((IObjectProxy)result).___getRid();
+        String rid = ((IObjectProxy) result).___getRid();
         SimpleVertexEx expResult = sm.get(SimpleVertexEx.class, rid);
         System.out.println("1 >>>>>>>>>>>>>");
-        String looprid = ((IObjectProxy)expResult.getLooptest()).___getRid();
+        String looprid = ((IObjectProxy) expResult.getLooptest()).___getRid();
         System.out.println("2 >>>>>>>>>>>>>");
         System.out.println("");
         System.out.println("");
-        System.out.println("Objeto almacenado en: "+rid+" loop rid: "+looprid);
+        System.out.println("Objeto almacenado en: " + rid + " loop rid: " + looprid);
         System.out.println("");
         System.out.println("");
 //        SimpleVertexEx expResult = sm.get(SimpleVertexEx.class, rid);
-        
+
         System.out.println("");
         System.out.println("");
         System.out.println(" get completado. Iniciando los asserts");
         System.out.println("");
         System.out.println("");
-        
-        
+
         // verificar que todos los valores sean iguales
 //        assertEquals(((IObjectProxy)expResult).___getRid(), ((IObjectProxy)result).___getRid());
 //        assertEquals(((IObjectProxy)expResult.getLooptest()).___getRid(), ((IObjectProxy)result.getLooptest()).___getRid());
 //        assertEquals(((IObjectProxy)expResult.getLooptest().getLooptest()).___getRid(), ((IObjectProxy)result).___getRid());
-        
-        
         System.out.println("============================= FIN LoopTest ===============================");
     }
-    
-    
-    
+
     /**
      * soporte desde JUnit
-     * 
+     *
      */
     /**
-     * Asserts that two objects are equal. If they are not, an
-     * {@link AssertionError} without a message is thrown. If
-     * <code>expected</code> and <code>actual</code> are <code>null</code>,
-     * they are considered equal.
+     * Asserts that two objects are equal. If they are not, an {@link AssertionError} without a message is thrown. If <code>expected</code> and
+     * <code>actual</code> are <code>null</code>, they are considered equal.
      *
      * @param expected expected value
      * @param actual the value to check against <code>expected</code>
@@ -451,15 +460,12 @@ public class Test {
     static public void assertEquals(Object expected, Object actual) {
         assertEquals(null, expected, actual);
     }
-    
+
     /**
-     * Asserts that two objects are equal. If they are not, an
-     * {@link AssertionError} is thrown with the given message. If
-     * <code>expected</code> and <code>actual</code> are <code>null</code>,
-     * they are considered equal.
+     * Asserts that two objects are equal. If they are not, an {@link AssertionError} is thrown with the given message. If <code>expected</code> and
+     * <code>actual</code> are <code>null</code>, they are considered equal.
      *
-     * @param message the identifying message for the {@link AssertionError} (<code>null</code>
-     * okay)
+     * @param message the identifying message for the {@link AssertionError} (<code>null</code> okay)
      * @param expected expected value
      * @param actual actual value
      */
@@ -474,7 +480,7 @@ public class Test {
             failNotEquals(message, expected, actual);
         }
     }
-    
+
     private static boolean equalsRegardingNull(Object expected, Object actual) {
         if (expected == null) {
             return actual == null;
@@ -482,16 +488,16 @@ public class Test {
 
         return isEquals(expected, actual);
     }
-    
+
     private static boolean isEquals(Object expected, Object actual) {
         return expected.equals(actual);
     }
-    
+
     static private void failNotEquals(String message, Object expected,
             Object actual) {
-        System.out.println("ERROR: " +(format(message, expected, actual)));
+        System.out.println("ERROR: " + (format(message, expected, actual)));
     }
-    
+
     static String format(String message, Object expected, Object actual) {
         String formatted = "";
         if (message != null && !message.equals("")) {
@@ -508,7 +514,7 @@ public class Test {
                     + actualString + ">";
         }
     }
-    
+
     private static String formatClassAndValue(Object value, String valueString) {
         String className = value == null ? "null" : value.getClass().getName();
         return className + "<" + valueString + ">";

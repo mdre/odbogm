@@ -6,6 +6,7 @@
 
 package Test;
 
+import java.util.Date;
 import net.odbogm.annotations.Ignore;
 import java.util.logging.Logger;
 
@@ -22,7 +23,16 @@ public class SimpleVertex {
     public int i;
     private float f;
     private boolean b;
+    private Date fecha;
 
+    public Date getFecha() {
+        return fecha;
+    }
+
+    public void setFecha(Date fecha) {
+        this.fecha = fecha;
+    }
+    
     public int getI() {
         return i;
     }

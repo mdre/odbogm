@@ -11,6 +11,7 @@ import Test.SimpleVertex;
 import Test.SimpleVertexEx;
 import net.odbogm.proxy.IObjectProxy;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import org.junit.After;
@@ -110,6 +111,29 @@ public class SessionManagerTest {
     }
 
     
+    
+    @Test
+    public void testDates() {
+        System.out.println("\n\n\n");
+        System.out.println("***************************************************************");
+        System.out.println("escritura/lectura de objectos con campos Date");
+        System.out.println("***************************************************************");
+        
+        SimpleVertex sv = new SimpleVertex();
+        sv.setFecha(new Date(2016, 8, 26));
+        SimpleVertex expResult = sv;
+        
+        SimpleVertex result = sm.store(sv);
+        
+        assertEquals(expResult.getFecha(), result.getFecha());
+        sm.commit();
+        assertEquals(expResult.getFecha(), result.getFecha());
+        String rid = sm.getRID(result);
+        
+        SimpleVertex ret = sm.get(SimpleVertex.class,rid);
+        assertEquals(expResult.getFecha(), ret.getFecha());
+        
+    }
     
 //    @Test
     public void testStorePrimitiveCol() {

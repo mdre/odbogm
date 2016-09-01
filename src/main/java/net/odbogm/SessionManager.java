@@ -25,6 +25,7 @@ import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery;
 import com.tinkerpop.blueprints.Direction;
 import com.tinkerpop.blueprints.Vertex;
 import com.tinkerpop.blueprints.impls.orient.OrientConfigurableGraph;
+import com.tinkerpop.blueprints.impls.orient.OrientDynaElementIterable;
 import com.tinkerpop.blueprints.impls.orient.OrientEdge;
 import com.tinkerpop.blueprints.impls.orient.OrientGraph;
 import com.tinkerpop.blueprints.impls.orient.OrientGraphFactory;
@@ -686,6 +687,32 @@ public class SessionManager implements Actions.Store, Actions.Get {
 
         OCommandSQL osql = new OCommandSQL(sql);
         return graphdb.command(osql).execute();
+    }
+    
+    /**
+     * Ejecuta un comando que devuelve un número. El valor devuelto será el primero que se 
+     * encuentre en la lista de resultado.
+     *
+     * @param <T>
+     * @param sql   comando a ejecutar
+     * @param retVal    nombre de la propiedad a devolver
+     * @return  retorna el valor de la propiedad indacada obtenida de la ejecución de la consulta
+     * 
+     * ejemplo: 
+     * int size = sm.query("select count(*) as size from TestData","size");
+     */
+    public long query(String sql,String retVal) {
+        if (graphdb == null) {
+            throw new NoOpenTx();
+        }
+        this.flush();
+
+        OCommandSQL osql = new OCommandSQL(sql);
+        OrientVertex ov = (OrientVertex)((OrientDynaElementIterable)graphdb.command(osql).execute()).iterator().next();
+        if (retVal==null)
+            retVal = ov.getProperties().keySet().iterator().next();
+        
+        return ov.getProperty(retVal);
     }
 
     /**

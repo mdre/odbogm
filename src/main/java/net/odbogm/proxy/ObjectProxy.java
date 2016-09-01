@@ -33,6 +33,7 @@ import net.bytebuddy.implementation.bind.annotation.SuperCall;
 import net.odbogm.LogginProperties;
 import net.odbogm.ObjectMapper;
 import net.odbogm.exceptions.DuplicateLink;
+import net.odbogm.utils.VertexUtils;
 import net.sf.cglib.proxy.MethodInterceptor;
 import net.sf.cglib.proxy.MethodProxy;
 
@@ -475,7 +476,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                 // separada y asociado con el objeto principal, se puede dar el caso
                                 // de que el objeto principal tiene RID y el agregado no.
                                 if (((innerO instanceof IObjectProxy)
-                                        && (ov.countEdges(Direction.OUT, graphRelationName) == 0))
+                                        && (!VertexUtils.isConectedTo(ov, ((IObjectProxy)innerO).___getVertex(), field)))   //ov.countEdges(Direction.OUT, graphRelationName)
                                         || (!(innerO instanceof IObjectProxy))) {
                                     // si el objeto existía y no existía el eje
                                     // o bien no existía el objeto
