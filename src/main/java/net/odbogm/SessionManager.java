@@ -665,7 +665,8 @@ public class SessionManager implements Actions.Store, Actions.Get {
             ovToRemove.remove();
             // si tengo un RID, proceder a removerlo de las colecciones.
             this.dirty.remove(((IObjectProxy) toRemove).___getVertex().getId().toString());
-
+            // invalidar el objeto
+            ((IObjectProxy) toRemove).___setDeletedMark();
         } else {
             throw new UnknownObject();
         }

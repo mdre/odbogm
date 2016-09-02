@@ -10,6 +10,7 @@ import com.tinkerpop.blueprints.Edge;
 import com.tinkerpop.blueprints.impls.orient.OrientVertex;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import net.odbogm.LogginProperties;
 
 /**
  *
@@ -20,7 +21,7 @@ public class VertexUtils {
     private final static Logger LOGGER = Logger.getLogger(VertexUtils.class.getName());
 
     static {
-        LOGGER.setLevel(Level.INFO);
+        LOGGER.setLevel(LogginProperties.VertexUtil);
     }
 
     /**
@@ -53,9 +54,11 @@ public class VertexUtils {
      */
     public static boolean isConectedTo(OrientVertex v1, OrientVertex v2, String edgeLabel) {
         boolean connected = false;
+        LOGGER.log(Level.FINER, "Verificando edges entre "+v1.getId()+" y "+v2.getId()+ " a través de la realción "+edgeLabel);
         if ((v1 != null)&&(v2 != null)) {
             Iterable<Edge> result = v1.getEdges(v2, Direction.OUT, edgeLabel==null?"E":edgeLabel);
             for (Edge e : result) {
+                LOGGER.log(Level.FINER, "Conectados por el edge: "+e.getId());
                 connected = true;
                 break;
             }

@@ -13,6 +13,8 @@ import com.tinkerpop.blueprints.impls.orient.OrientVertex;
  * @author SShadow
  */
 public interface IObjectProxy {
+    public void ___setDeletedMark();
+    
     public OrientVertex ___getVertex();
     public String ___getRid();
     public void ___setVertex(OrientVertex v);

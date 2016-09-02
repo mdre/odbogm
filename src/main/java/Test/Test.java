@@ -10,6 +10,8 @@ import net.odbogm.exceptions.IncorrectRIDField;
 import net.odbogm.SessionManager;
 import net.odbogm.proxy.IObjectProxy;
 import com.orientechnologies.orient.core.exception.OConcurrentModificationException;
+import com.tinkerpop.blueprints.Direction;
+import com.tinkerpop.blueprints.Edge;
 import com.tinkerpop.blueprints.impls.orient.OrientVertex;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -22,6 +24,7 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.DbManager;
+import net.odbogm.LogginProperties;
 
 /**
  *
@@ -30,6 +33,9 @@ import net.odbogm.DbManager;
 public class Test {
 
     private final static Logger LOGGER = Logger.getLogger(Test.class.getName());
+    static {
+        LOGGER.setLevel(Level.FINER);
+    }
     SessionManager sm;
 
     public ArrayList<SimpleVertex> testArrayList;
@@ -62,11 +68,11 @@ public class Test {
 
         // correr test de store
 //        this.store();
-//          this.testStoreLink();
+          this.testStoreLink();
 //        this.testUpdateLink();
 //        this.testQuery();
 //        testLoop();
-        this.lab();
+//        this.lab();
 
         try {
             sm.commit();
@@ -82,12 +88,21 @@ public class Test {
     }
 
     public void lab() {
-        OrientVertex ov = sm.getGraphdb().getVertex("12:1177");
-
+        OrientVertex v1 = sm.getGraphdb().getVertex("12:3360");
+        OrientVertex v2 = sm.getGraphdb().getVertex("23:6275");
+        String edgeLabel = "SimpleVertexEx_svinner";
+        boolean connected=false;
+        Iterable<Edge> result = v1.getEdges(v2, Direction.OUT, edgeLabel==null?"E":edgeLabel);
+            for (Edge e : result) {
+                LOGGER.log(Level.FINER, "Conectados por el edge: "+e.getId());
+                connected = true;
+                break;
+            }
+        System.out.println("Conectados: "+connected);
         // test de fechas.
 //        LocalDate ld = LocalDate.now();
 //        Date d = new Date(2016, 7, 29);
-        Date dt = new Date(2016, 7, 29, 12, 0);
+//        Date dt = new Date(2016, 7, 29, 12, 0);
 
 //        Calendar cal = Calendar.getInstance();
 //        cal.set(Calendar.YEAR, 2016);
@@ -96,13 +111,13 @@ public class Test {
 //        
 //        Date d = new Date(cal.getTimeInMillis());
         
-        Date d = DateHelper.getDate(2016, 8, 29);
-        ov.setProperty("DateHelper", d);
+//        Date d = DateHelper.getDate(2016, 8, 29);
+//        ov.setProperty("DateHelper", d);
 //        ov.setProperty("datetime", dt);
 
 
 
-        ov.setProperty("date", d);
+//        ov.setProperty("date", d);
 
 //        sm.commit();
 //        
@@ -189,9 +204,9 @@ public class Test {
         try {
             // usuado para hacer una pausa.
             BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-
+            LOGGER.log(Level.FINER, "Test finer");
             SimpleVertex svinner = new SimpleVertex();
-            SimpleVertex svinner2 = new SimpleVertex();;
+            SimpleVertex svinner2 = new SimpleVertex();
             SimpleVertexEx sv;
             SimpleVertexEx sv1;
             SimpleVertexEx sv2;
@@ -269,28 +284,6 @@ public class Test {
                 value.i++;
             }
 
-//            sv.alSV.add(new SimpleVertex());
-//            // test update
-//            sv1 = sm.get(SimpleVertexEx.class, "#13:2");
-//            sv2 = sm.get(SimpleVertexEx.class, "#13:3");
-//            System.out.println(""+sv.getS()+" i:"+sv.i+" svinner.i: "+sv.svinner.i);
-//            sv.i++;
-//            sv2.i++;
-//////             Test de eliminación de un objeto de composición mediante la asignación de null
-//            // crear el primer objeto
-//            sv1 = new SimpleVertexEx();
-//            sv2 = new SimpleVertexEx();
-//            sv1.initInner();
-//            sv2.svinner = sv1.svinner;
-//            
-//            sm.store(sv1);
-//            sm.store(sv2);
-//            
-//            System.out.println("----------- 1 commit objetos iniciales-----------------");
-//            sm.commit();
-//            
-//            System.out.println("eliminar la referencia del primero");
-//            sv1.svinner =null;
             System.out.println("----------- 1 commit -----------------");
             try {
                 sm.commit();
@@ -311,44 +304,54 @@ public class Test {
     }
 
     public void testStoreLink() {
-
+        System.out.println("\n\n\n");
+        System.out.println("***************************************************************");
         System.out.println("store objeto sin Link y luego se le agrega uno");
+        System.out.println("***************************************************************");
 
         SimpleVertexEx sve = new SimpleVertexEx();
         SimpleVertexEx result = this.sm.store(sve);
+        assertEquals(1, sm.getDirtyCount());
         this.sm.commit();
+        assertEquals(0, sm.getDirtyCount());
         System.out.println("=========== fin primer commit ====================================");
-
-        System.out.println("result.svinner: " + result.getSvinner() + "  sve.svinner:" + sve.getSvinner());
-
+        
+        assertEquals(result.getSvinner(), sve.getSvinner());
+        
         // actualizar el objeto administrado
         result.initInner();
-        System.out.println("result.svinner: " + result.getSvinner().getS() + "      toS: " + result.getSvinner().toString());
+        assertEquals(1, sm.getDirtyCount());
+        System.out.println("result.svinner: "+result.getSvinner().getS()+ "      toS: "+result.getSvinner().toString());
         // bajarlo a la base
         System.out.println("=========== inicio segundo commit <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
         sm.commit();
+        assertEquals(0, sm.getDirtyCount());
         System.out.println("=========== fin segundo commit ====================================");
-        System.out.println("result.svinner: " + result.getSvinner().getS() + "      toS: " + result.getSvinner().toString());
-
+        System.out.println("result.svinner: "+result.getSvinner().getS()+ "      toS: "+result.getSvinner().toString());
+        assertEquals(0, sm.getDirtyCount());
+        
         // recuperar el objeto en otra instancia
-        String rid = ((IObjectProxy) result).___getRid();
-
+        String rid = ((IObjectProxy)result).___getRid();
+        
         System.out.println("============================================================================");
-        System.out.println("RID: " + rid);
+        System.out.println("RID: "+rid);
         System.out.println("============================================================================");
-
+        assertEquals(0, sm.getDirtyCount());
+        
+        
         System.out.println("");
         System.out.println("");
         System.out.println("");
         System.out.println("========= comienzo del get =================================================");
         SimpleVertexEx expResult = sm.get(SimpleVertexEx.class, rid);
+        assertEquals(0, sm.getDirtyCount());
         System.out.println("========= fin del get =================================================");
-
-        assertEquals(((IObjectProxy) expResult).___getRid(), rid);
-
-        System.out.println("++++++++++++++++ result: " + result.getSvinner().toString());
-        System.out.println("++++++++++++++++ expResult: " + expResult.getSvinner().toString());
-
+        
+        assertEquals(((IObjectProxy)expResult).___getRid(), rid);
+        
+        System.out.println("\n\n\n++++++++++++++++ result: "+result.getSvinner().toString());
+        System.out.println("++++++++++++++++ expResult: "+expResult.getSvinner().toString());
+        
         assertEquals(expResult.getSvinner().getI(), result.getSvinner().getI());
         assertEquals(expResult.getSvinner().getS(), result.getSvinner().getS());
         assertEquals(expResult.getSvinner().getoB(), result.getSvinner().getoB());

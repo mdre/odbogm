@@ -33,6 +33,7 @@ import net.bytebuddy.implementation.bind.annotation.SuperCall;
 import net.odbogm.LogginProperties;
 import net.odbogm.ObjectMapper;
 import net.odbogm.exceptions.DuplicateLink;
+import net.odbogm.exceptions.ObjectMarkedAsDeleted;
 import net.odbogm.utils.VertexUtils;
 import net.sf.cglib.proxy.MethodInterceptor;
 import net.sf.cglib.proxy.MethodProxy;
@@ -62,6 +63,10 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     // sirve para impedir que se invoquen a los métodos durante el setup inicial del construtor.
     private boolean ___objectReady = false;
 
+    // si esta marca está activa indica que el objeto ha sido eliminado de la base de datos 
+    // y toda comunicación con el mismo debe ser abortada
+    private boolean ___deletedMark = false;
+
     // constructor - the supplied parameter is an
     // object whose proxy we would like to create     
     public ObjectProxy(Object obj, OrientElement e, SessionManager sm) {
@@ -90,70 +95,76 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         // long time1 = System.currentTimeMillis();
         // LOGGER.log(Level.FINER, "method intercepted: "+method.getName());
         // modificar el llamado
-        switch (method.getName()) {
-            case "___getVertex":
-                if (this.___objectReady) {
-                    res = this.___getVertex();
-                }
-                break;
-            case "___getRid":
-                if (this.___objectReady) {
-                    res = this.___getRid();
-                }
-                break;
-            case "___getProxiObject":
-                if (this.___objectReady) {
-                    res = this.___getProxiObject();
-                }
-                break;
-            case "___getBaseClass":
-                if (this.___objectReady) {
-                    res = this.___getBaseClass();
-                }
-                break;
-            case "___isDirty":
-                if (this.___objectReady) {
-                    res = this.___isDirty();
-                }
-                break;
-            case "___setDirty":
-                if (this.___objectReady) {
-                    this.___setDirty();
-                }
-                break;
-            case "___removeDirtyMark":
-                if (this.___objectReady) {
-                    this.___removeDirtyMark();
-                }
-                break;
-            case "___commit":
-                if (this.___objectReady) {
-                    this.___commit();
-                }
-                break;
-            case "___rollback":
-                if (this.___objectReady) {
-                    this.___rollback();
-                }
-                break;
-            default:
-                // antes de invocar cualquier método, asegurarse de cargar los lazyLinks
-                if (this.___objectReady) {
-                    if (this.___loadLazyLinks) {
-                        LOGGER.log(Level.FINER, "\n\nCargar los lazyLinks!....\n\n");
-                        this.___loadLazyLinks();
+        if (!this.___deletedMark) {
+            switch (method.getName()) {
+                case "___getVertex":
+                    if (this.___objectReady) {
+                        res = this.___getVertex();
                     }
-                }
-                // invoke the method on the real object with the given params
-                res = zuper.call();
-                // verificar si hay diferencias entre los objetos.
-                if (this.___objectReady) {
-                    this.commitObjectChange();
-                }
+                    break;
+                case "___getRid":
+                    if (this.___objectReady) {
+                        res = this.___getRid();
+                    }
+                    break;
+                case "___getProxiObject":
+                    if (this.___objectReady) {
+                        res = this.___getProxiObject();
+                    }
+                    break;
+                case "___getBaseClass":
+                    if (this.___objectReady) {
+                        res = this.___getBaseClass();
+                    }
+                    break;
+                case "___isDirty":
+                    if (this.___objectReady) {
+                        res = this.___isDirty();
+                    }
+                    break;
+                case "___setDirty":
+                    if (this.___objectReady) {
+                        this.___setDirty();
+                    }
+                    break;
+                case "___removeDirtyMark":
+                    if (this.___objectReady) {
+                        this.___removeDirtyMark();
+                    }
+                    break;
+                case "___commit":
+                    if (this.___objectReady) {
+                        this.___commit();
+                    }
+                    break;
+                case "___rollback":
+                    if (this.___objectReady) {
+                        this.___rollback();
+                    }
+                    break;
+                case "___setDeletedMark":
+                    this.___setDeletedMark();
+                    break;
+                default:
+                    // antes de invocar cualquier método, asegurarse de cargar los lazyLinks
+                    if (this.___objectReady) {
+                        if (this.___loadLazyLinks) {
+                            LOGGER.log(Level.FINER, "\n\nCargar los lazyLinks!....\n\n");
+                            this.___loadLazyLinks();
+                        }
+                    }
+                    // invoke the method on the real object with the given params
+                    res = zuper.call();
+                    // verificar si hay diferencias entre los objetos.
+                    if (this.___objectReady) {
+                        this.commitObjectChange();
+                    }
 
-                break;
+                    break;
+            }
+        } else {
+            throw new ObjectMarkedAsDeleted("The object " + this.___baseElement.getId().toString() + " was deleted from the database.");
         }
-
         // AFTER
         // print how long it took to execute the method on the proxified object
         // System.out.println("Took: " + (System.currentTimeMillis() - time1) + " ms");
@@ -179,77 +190,83 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 //        long time1 = System.currentTimeMillis();
 //        System.out.println("intercepted: " + method.getName());
         // modificar el llamado
-        switch (method.getName()) {
-            case "___getVertex":
-                if (this.___objectReady) {
-                    res = this.___getVertex();
-                }
-                break;
-            case "___getRid":
-                if (this.___objectReady) {
-                    res = this.___getRid();
-                }
-                break;
-            case "___getProxiObject":
-                if (this.___objectReady) {
-                    res = this.___getProxiObject();
-                }
-                break;
-            case "___getBaseClass":
-                if (this.___objectReady) {
-                    res = this.___getBaseClass();
-                }
-                break;
-            case "___isDirty":
-                if (this.___objectReady) {
-                    res = this.___isDirty();
-                }
-                break;
-            case "___setDirty":
-                if (this.___objectReady) {
-                    this.___setDirty();
-                }
-                break;
-            case "___removeDirtyMark":
-                if (this.___objectReady) {
-                    this.___removeDirtyMark();
-                }
-                break;
-            case "___commit":
-                /**
-                 * FIXME: se podría evitar si se controlara si los links se han cargado o no al momento de hacer el commit para evitar realizar el
-                 * load sin necesidad.
-                 */
-                if (this.___objectReady) {
-                    if (this.___loadLazyLinks) {
-                        this.___loadLazyLinks();
+        if (!this.___deletedMark) {
+            switch (method.getName()) {
+                case "___getVertex":
+                    if (this.___objectReady) {
+                        res = this.___getVertex();
                     }
-                    this.___commit();
-                }
-                break;
-            case "___rollback":
-                if (this.___objectReady) {
-                    this.___rollback();
-                }
-                break;
-            default:
-                // invoke the method on the real object with the given params
+                    break;
+                case "___getRid":
+                    if (this.___objectReady) {
+                        res = this.___getRid();
+                    }
+                    break;
+                case "___getProxiObject":
+                    if (this.___objectReady) {
+                        res = this.___getProxiObject();
+                    }
+                    break;
+                case "___getBaseClass":
+                    if (this.___objectReady) {
+                        res = this.___getBaseClass();
+                    }
+                    break;
+                case "___isDirty":
+                    if (this.___objectReady) {
+                        res = this.___isDirty();
+                    }
+                    break;
+                case "___setDirty":
+                    if (this.___objectReady) {
+                        this.___setDirty();
+                    }
+                    break;
+                case "___removeDirtyMark":
+                    if (this.___objectReady) {
+                        this.___removeDirtyMark();
+                    }
+                    break;
+                case "___commit":
+                    /**
+                     * FIXME: se podría evitar si se controlara si los links se han cargado o no al momento de hacer el commit para evitar realizar el
+                     * load sin necesidad.
+                     */
+                    if (this.___objectReady) {
+                        if (this.___loadLazyLinks) {
+                            this.___loadLazyLinks();
+                        }
+                        this.___commit();
+                    }
+                    break;
+                case "___rollback":
+                    if (this.___objectReady) {
+                        this.___rollback();
+                    }
+                    break;
+                case "___setDeletedMark":
+                    this.___setDeletedMark();
+                    break;
+                default:
+                    // invoke the method on the real object with the given params
 //                res = methodProxy.invoke(realObj, args);
-                if (this.___objectReady) {
-                    if (this.___loadLazyLinks) {
-                        this.___loadLazyLinks();
+                    if (this.___objectReady) {
+                        if (this.___loadLazyLinks) {
+                            this.___loadLazyLinks();
+                        }
                     }
-                }
-                res = methodProxy.invokeSuper(o, args);
+                    res = methodProxy.invokeSuper(o, args);
 
-                // verificar si hay diferencias entre los objetos.
-                if (this.___objectReady) {
-                    this.commitObjectChange();
-                }
+                    // verificar si hay diferencias entre los objetos.
+                    if (this.___objectReady) {
+                        this.commitObjectChange();
+                    }
 
-                break;
+                    break;
+            }
+        } else {
+            throw new ObjectMarkedAsDeleted("The object " + this.___baseElement.getId().toString() + " was deleted from the database.");
         }
-
         // AFTER
         // print how long it took to execute the method on the proxified object
 //        System.out.println("Took: " + (System.currentTimeMillis() - time1) + " ms");
@@ -342,6 +359,11 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         return this.___baseClass;
     }
 
+    @Override
+    public void ___setDeletedMark(){
+        this.___deletedMark = true;
+    }
+    
     /**
      * Carga todos los links del objeto
      */
@@ -405,8 +427,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
     private void commitObjectChange() {
         this.___sm.getGraphdb().getRawGraph().activateOnCurrentThread();
-
-        LOGGER.log(Level.FINER, "iniciando commit interno.... (dirty mark:" + ___dirty + ")");
+        LOGGER.log(Level.FINER, "iniciando commit interno " + this.___baseElement.getId() + ".... (dirty mark:" + ___dirty + ")");
         // si ya estaba marcado como dirty no volver a procesarlo.
         if (!___dirty) {
             // FIXME: debería pasar este map como propiedad para optimizar la velocidad?
@@ -475,11 +496,15 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                 // verificar si ya está en el contexto. Si fue creado en forma 
                                 // separada y asociado con el objeto principal, se puede dar el caso
                                 // de que el objeto principal tiene RID y el agregado no.
-                                if (((innerO instanceof IObjectProxy)
-                                        && (!VertexUtils.isConectedTo(ov, ((IObjectProxy)innerO).___getVertex(), field)))   //ov.countEdges(Direction.OUT, graphRelationName)
-                                        || (!(innerO instanceof IObjectProxy))) {
-                                    // si el objeto existía y no existía el eje
-                                    // o bien no existía el objeto
+                                if (innerO instanceof IObjectProxy) {
+                                    // el objeto ya está en el contexto. 
+                                    // verificar que exista una realación establecida entre ambos. Si no es así, marcarlo
+                                    if (!VertexUtils.isConectedTo(ov, ((IObjectProxy) innerO).___getVertex(), graphRelationName)) {
+                                        this.___setDirty();
+                                        LOGGER.log(Level.FINER, "Dirty: modificó el link. Nueva relación a un vértice existente");
+                                    }
+                                } else {
+                                    // no existía el objeto
                                     this.___setDirty();
                                     LOGGER.log(Level.FINER, "Dirty: se agregó un link");
                                 }
@@ -531,7 +556,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                     } else if (!(innerO instanceof ILazyCalls)) {
                                         // es una colección nueva.
                                         this.___setDirty();
-                                        LOGGER.log(Level.FINER, "Dirty ("+graphRelationName+"): se ha agregado una colección nueva.");
+                                        LOGGER.log(Level.FINER, "Dirty (" + graphRelationName + "): se ha agregado una colección nueva.");
                                     }
                                 }
 
@@ -618,34 +643,8 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                             OrientEdge removeEdge = null;
                             for (Edge edge : ov.getEdges(Direction.OUT, graphRelationName)) {
                                 removeEdge = (OrientEdge) edge;
-                            }
 
-                            try {
-                                // f = ReflectionUtils.findField(this.realObj.getClass(), field);
-                                f = ReflectionUtils.findField(this.___baseClass, field);
-                                boolean acc = f.isAccessible();
-                                f.setAccessible(true);
-
-                                if (f.isAnnotationPresent(RemoveOrphan.class
-                                )) {
-
-                                    // eliminar el objecto
-                                    // this.sm.delete(f.get(realObj));
-                                    this.___sm.delete(f.get(this));
-
-                                } else {
-                                    // solo eliminar el Edge y mantener el objeto
-                                    removeEdge.remove();
-                                }
-                                f.setAccessible(acc);
-
-                            } catch (SecurityException | IllegalArgumentException | NoSuchFieldException ex) {
-                                Logger.getLogger(SessionManager.class
-                                        .getName()).log(Level.SEVERE, null, ex);
-
-                            } catch (IllegalAccessException ex) {
-                                Logger.getLogger(ObjectProxy.class
-                                        .getName()).log(Level.SEVERE, null, ex);
+                                this.removeEdge(removeEdge, field);
                             }
 
                         }
@@ -657,18 +656,48 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                         if (innerO instanceof IObjectProxy) {
                             // el objeto existía.
                             // se debe verificar si el eje entre los dos objetos ya existía.
-                            if (ov.countEdges(Direction.OUT, graphRelationName) == 0) {
+                            if (!VertexUtils.isConectedTo(ov, ((IObjectProxy) innerO).___getVertex(), graphRelationName)) {
                                 // No existe un eje. Se debe crear
+                                LOGGER.log(Level.FINER, "Los objetos no están conectados. (" + ov.getId() + " |--|" + ((IObjectProxy) innerO).___getVertex().getId());
+
+                                // primero verificar si no existía una relación previa con otro objeto para removerla.
+                                if (ov.countEdges(Direction.OUT, graphRelationName) > 0) {
+                                    LOGGER.log(Level.FINER, "Existía una relación previa. Se debe eliminar.");
+                                    // existé una relación. Elimnarla antes de proceder a establecer la nueva.
+                                    OrientEdge removeEdge = null;
+                                    for (Edge edge : ov.getEdges(Direction.OUT, graphRelationName)) {
+                                        removeEdge = (OrientEdge) edge;
+                                        LOGGER.log(Level.FINER, "Eliminar relación previa a " + removeEdge.getInVertex());
+                                        this.removeEdge(removeEdge, field);
+                                    }
+
+                                }
                                 LOGGER.log(Level.FINER, "Agregar un link entre dos objetos existentes.");
                                 LOGGER.log(Level.FINER, "" + ov.getId().toString() + " --> " + ((IObjectProxy) innerO).___getVertex().getId().toString());
                                 this.___sm.getGraphdb().addEdge("", ov, ((IObjectProxy) innerO).___getVertex(), graphRelationName);
                             }
                         } else {
+                            // el objeto es nuevo
+                            // primero verificar si no existía una relación previa con otro objeto para removerla.
+                            if (ov.countEdges(Direction.OUT, graphRelationName) > 0) {
+                                LOGGER.log(Level.FINER, "Existía una relación previa. Se debe eliminar.");
+                                // existé una relación. Elimnarla antes de proceder a establecer la nueva.
+                                OrientEdge removeEdge = null;
+                                for (Edge edge : ov.getEdges(Direction.OUT, graphRelationName)) {
+                                    removeEdge = (OrientEdge) edge;
+                                    LOGGER.log(Level.FINER, "Eliminar relación previa a " + removeEdge.getOutVertex());
+                                    this.removeEdge(removeEdge, field);
+                                }
+
+                            }
+
+                            // crear la nueva relación
                             LOGGER.log(Level.FINER, "innerO nuevo. Crear un vértice y un link");
                             innerO = this.___sm.store(innerO);
 //                            this.sm.getObjectMapper().setFieldValue(realObj, field, innerO);
                             this.___sm.getObjectMapper().setFieldValue(this.___proxyObject, field, innerO);
                             this.___sm.getGraphdb().addEdge("", ov, ((IObjectProxy) innerO).___getVertex(), graphRelationName);
+                            LOGGER.log(Level.FINER, "" + ov.getId().toString() + " --> " + ((IObjectProxy) innerO).___getVertex().getId().toString());
                         }
                     }
                 }
@@ -701,10 +730,10 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                         if ((oCol != null)
                                 && ((ILazyCalls.class.isAssignableFrom(oCol.getClass()) && ((ILazyCalls) oCol).isDirty())
                                 || (!ILazyCalls.class.isAssignableFrom(oCol.getClass())))) {
-                            LOGGER.log(Level.FINER, (!ILazyCalls.class.isAssignableFrom(oCol.getClass()))?
-                                                                "No es instancia de ILazyCalls":
-                                                                "Es instancia de Lazy y está marcado como DIRTY");    
-                            
+                            LOGGER.log(Level.FINER, (!ILazyCalls.class.isAssignableFrom(oCol.getClass()))
+                                    ? "No es instancia de ILazyCalls"
+                                    : "Es instancia de Lazy y está marcado como DIRTY");
+
                             if (oCol instanceof List) {
                                 ILazyCollectionCalls col;
                                 // procesar la colección
@@ -865,6 +894,43 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     }
 
     /**
+     * Función de uso interno para remover un eje
+     *
+     * @param edgeToRemove
+     * @param field
+     */
+    private void removeEdge(OrientEdge edgeToRemove, String field) {
+
+        try {
+            // f = ReflectionUtils.findField(this.realObj.getClass(), field);
+            Field f = ReflectionUtils.findField(this.___baseClass, field);
+            boolean acc = f.isAccessible();
+            f.setAccessible(true);
+
+            // remover primero el eje
+            edgeToRemove.remove();
+
+            // si corresponde
+            if (f.isAnnotationPresent(RemoveOrphan.class)) {
+
+                // eliminar el objecto
+                // this.sm.delete(f.get(realObj));
+                this.___sm.delete(f.get(this.___proxyObject));
+            }
+
+            f.setAccessible(acc);
+
+        } catch (SecurityException | IllegalArgumentException | NoSuchFieldException ex) {
+            Logger.getLogger(SessionManager.class
+                    .getName()).log(Level.SEVERE, null, ex);
+
+        } catch (IllegalAccessException ex) {
+            Logger.getLogger(ObjectProxy.class
+                    .getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+
+    /**
      * Revierte el objeto al estado que tiene el Vertex original.
      */
     @Override
@@ -916,11 +982,12 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                 boolean acc = f.isAccessible();
                 f.setAccessible(true);
 
-                if (value!=null)
+                if (value != null) {
                     f.set(this.___proxyObject, Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString()));
-                else
-                    f.set(this.___proxyObject,null);
-                
+                } else {
+                    f.set(this.___proxyObject, null);
+                }
+
                 LOGGER.log(Level.FINER, "hidratado campo: " + prop + "=" + value);
                 f.setAccessible(acc);
             } catch (NoSuchFieldException ex) {
@@ -944,7 +1011,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                 Field fLink = ReflectionUtils.findField(this.___baseClass, field);
                 boolean acc = fLink.isAccessible();
                 fLink.setAccessible(true);
-                
+
                 fLink.set(this.___proxyObject, null);
                 fLink.setAccessible(acc);
 
@@ -954,7 +1021,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         }
         // volver a activar la carga de los links
         this.___loadLazyLinks = true;
-        
+
         // revertir las colecciones
         // procesar todos los linkslist
         LOGGER.log(Level.FINER, "Revirtiendo las colecciones...");
@@ -969,9 +1036,10 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                 boolean acc = fLink.isAccessible();
                 fLink.setAccessible(true);
 
-                ILazyCalls lc = (ILazyCalls)fLink.get(___proxyObject);
-                if (lc!=null)
+                ILazyCalls lc = (ILazyCalls) fLink.get(___proxyObject);
+                if (lc != null) {
                     lc.rollback();
+                }
 
                 fLink.setAccessible(acc);
 
