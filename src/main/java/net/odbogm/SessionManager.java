@@ -740,11 +740,11 @@ public class SessionManager implements Actions.Store, Actions.Get {
     }
 
     /**
-     * Devuelve todos los registros a partir de una clase base, filtrando los datos por lo que se agregue en el body.
+     * Devuelve todos los registros a partir de una clase base en una lista, filtrando los datos por lo que se agregue en el body.
      *
-     * @param <T>
-     * @param sql
-     * @return
+     * @param <T> clase base que se utilizará para el armado de la lista
+     * @param body cuerpo a agregar a la sentencia select. Ej: "where ...."
+     * @return Lista con todos los objetos recuperados.
      */
     public <T> List<T> query(Class<T> clase, String body) {
         if (graphdb == null) {
