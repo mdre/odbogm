@@ -45,7 +45,7 @@ import net.odbogm.annotations.Indexed;
  * @IgnoreProperty: ignora el campo en la definición de la clase. Sin embargo se persistirá si el campo es distinto de null cuando se realice un store
  * del objeto.
  *
- * @author SShadow
+ * @author Marcelo D. Ré <marcelo.re@gmail.com>
  */
 public class DbManager {
 

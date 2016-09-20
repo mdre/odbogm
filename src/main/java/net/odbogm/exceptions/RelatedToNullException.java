@@ -8,7 +8,7 @@ package net.odbogm.exceptions;
 
 /**
  *
- * @author SShadow
+ * @author Marcelo D. Ré <marcelo.re@gmail.com>
  */
 public class RelatedToNullException extends RuntimeException{
     private static final long serialVersionUID = -6340905386895250014L;

@@ -21,7 +21,7 @@ import java.util.Vector;
 
 /**
  *
- * @author SShadow
+ * @author Marcelo D. Ré <marcelo.re@gmail.com>
  */
 public class Primitives {
     public enum PRIMITIVE {

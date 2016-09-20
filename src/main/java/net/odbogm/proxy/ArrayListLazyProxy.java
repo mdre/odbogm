@@ -31,7 +31,7 @@ import net.odbogm.exceptions.RelatedToNullException;
 
 /**
  *
- * @author SShadow
+ * @author Marcelo D. Ré <marcelo.re@gmail.com>
  */
 public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCalls {
     private static final long serialVersionUID = -3396834078126983330L;

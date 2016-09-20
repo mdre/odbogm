@@ -7,7 +7,7 @@ package net.odbogm.proxy;
 
 /**
  *
- * @author SShadow
+ * @author Marcelo D. Ré <marcelo.re@gmail.com>
  */
 public interface ILazyCalls {
     public boolean isDirty();

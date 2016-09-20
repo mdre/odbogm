@@ -43,6 +43,7 @@ public class SessionManagerTest {
     public void setUp() {
         sm = new SessionManager("remote:localhost/Test", "root", "toor");
         this.sm.begin();
+        this.sm.setAuditOnUser("userAuditado");
         // borrar todos los vértices 
 //        this.sm.getGraphdb().command(new OCommandSQL("delete vertex V")).execute();
         

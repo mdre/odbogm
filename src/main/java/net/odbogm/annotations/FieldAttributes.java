@@ -30,7 +30,7 @@ import java.util.Date;
  *          DEFAULT (Since 2.1) set the default value. Default value can be a value or a function. See below for examples
  * 
  * 
- * @author SShadow
+ * @author Marcelo D. Ré <marcelo.re@gmail.com>
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD) //on class level

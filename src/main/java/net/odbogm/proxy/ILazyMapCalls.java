@@ -12,7 +12,7 @@ import java.util.Map;
 
 /**
  *
- * @author SShadow
+ * @author Marcelo D. Ré <marcelo.re@gmail.com>
  */
 public interface ILazyMapCalls extends ILazyCalls {
     public void init(SessionManager sm, OrientVertex relatedTo, IObjectProxy parent, String field, Class<?> keyClass, Class<?> valueClass);

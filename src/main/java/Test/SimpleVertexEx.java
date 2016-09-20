@@ -12,12 +12,14 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.logging.Logger;
+import net.odbogm.annotations.Audit;
 import net.odbogm.annotations.FieldAttributes;
 
 /**
  *
- * @author SShadow
+ * @author Marcelo D. Ré <marcelo.re@gmail.com>
  */
+@Audit(log = Audit.AuditType.ALL)
 public class SimpleVertexEx extends SimpleVertex {
     @Ignore
     private final static Logger LOGGER = Logger.getLogger(SimpleVertexEx.class .getName());

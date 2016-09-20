@@ -3,14 +3,16 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package net.odbogm.proxy;
+package net.odbogm.auditory;
+
+import net.odbogm.proxy.IObjectProxy;
 
 /**
  *
  * @author Marcelo D. Ré <marcelo.re@gmail.com>
  */
-public enum ObjectCollectionState {
-ADDED,
-REMOVED,
-NOCHANGE
+public interface IAuditor {
+    public void auditLog(IObjectProxy o, int at, String label, Object data);
+
+    public void commit();
 }

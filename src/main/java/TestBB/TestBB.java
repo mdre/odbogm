@@ -22,7 +22,7 @@ import static net.bytebuddy.matcher.ElementMatchers.isDeclaredBy;
 
 /**
  *
- * @author SShadow
+ * @author Marcelo D. Ré <marcelo.re@gmail.com>
  */
 public class TestBB {
 

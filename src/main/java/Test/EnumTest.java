@@ -7,7 +7,7 @@ package Test;
 
 /**
  *
- * @author SShadow
+ * @author Marcelo D. Ré <marcelo.re@gmail.com>
  */
 public enum EnumTest {
     UNO,

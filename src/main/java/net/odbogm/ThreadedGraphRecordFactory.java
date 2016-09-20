@@ -14,7 +14,7 @@ import java.util.logging.Logger;
 
 /**
  *
- * @author SShadow
+ * @author Marcelo D. Ré <marcelo.re@gmail.com>
  */
 public class ThreadedGraphRecordFactory implements ODatabaseThreadLocalFactory {
 

@@ -23,7 +23,7 @@ import net.odbogm.LogginProperties;
 
 /**
  *
- * @author SShadow
+ * @author Marcelo D. Ré <marcelo.re@gmail.com>
  */
 public class ObjectProxyFactory {
     private final static Logger LOGGER = Logger.getLogger(ObjectProxyFactory.class .getName());

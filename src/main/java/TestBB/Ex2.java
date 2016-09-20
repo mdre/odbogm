@@ -12,7 +12,7 @@ import net.odbogm.annotations.FieldAttributes;
 
 /**
  *
- * @author SShadow
+ * @author Marcelo D. Ré <marcelo.re@gmail.com>
  */
 public class Ex2 extends Ex1 {
     private final static Logger LOGGER = Logger.getLogger(Ex2.class .getName());

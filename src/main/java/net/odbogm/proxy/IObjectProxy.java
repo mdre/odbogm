@@ -10,7 +10,7 @@ import com.tinkerpop.blueprints.impls.orient.OrientVertex;
 
 /**
  *
- * @author SShadow
+ * @author Marcelo D. Ré <marcelo.re@gmail.com>
  */
 public interface IObjectProxy {
     public void ___setDeletedMark();

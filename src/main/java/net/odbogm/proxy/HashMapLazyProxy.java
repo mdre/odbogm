@@ -28,7 +28,7 @@ import net.odbogm.LogginProperties;
 
 /**
  *
- * @author SShadow
+ * @author Marcelo D. Ré <marcelo.re@gmail.com>
  */
 public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMapCalls {
 

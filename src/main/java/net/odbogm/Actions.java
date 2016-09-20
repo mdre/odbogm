@@ -12,7 +12,7 @@ import net.odbogm.exceptions.VertexJavaClassNotFound;
 
 /**
  *
- * @author SShadow
+ * @author Marcelo D. Ré <marcelo.re@gmail.com>
  */
 public interface Actions {
     public interface Store {

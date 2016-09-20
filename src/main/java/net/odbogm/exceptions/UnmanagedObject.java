@@ -10,7 +10,7 @@ import java.util.logging.Logger;
 
 /**
  *
- * @author SShadow
+ * @author Marcelo D. Ré <marcelo.re@gmail.com>
  */
 public class UnmanagedObject extends RuntimeException{
     private final static Logger LOGGER = Logger.getLogger(UnmanagedObject.class .getName());

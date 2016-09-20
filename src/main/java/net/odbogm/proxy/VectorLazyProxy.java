@@ -30,7 +30,7 @@ import net.odbogm.LogginProperties;
 
 /**
  *
- * @author SShadow
+ * @author Marcelo D. Ré <marcelo.re@gmail.com>
  */
 public class VectorLazyProxy extends Vector implements ILazyCollectionCalls {
 

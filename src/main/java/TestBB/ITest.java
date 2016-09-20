@@ -7,7 +7,7 @@ package TestBB;
 
 /**
  *
- * @author SShadow
+ * @author Marcelo D. Ré <marcelo.re@gmail.com>
  */
 public interface ITest {
     public void setData(String s);

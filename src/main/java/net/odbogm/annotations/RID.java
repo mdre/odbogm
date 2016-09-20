@@ -13,7 +13,7 @@ import java.lang.annotation.Target;
 
 /**
  * Establece una vinculación entre dos objetos
- * @author SShadow
+ * @author Marcelo D. Ré <marcelo.re@gmail.com>
  */
 
 @Retention(RetentionPolicy.RUNTIME)

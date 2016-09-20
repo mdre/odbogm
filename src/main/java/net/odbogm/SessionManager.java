@@ -40,12 +40,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import net.odbogm.annotations.Audit;
+import net.odbogm.auditory.Auditor;
 import net.odbogm.exceptions.ClassToVertexNotFound;
 import net.odbogm.exceptions.VertexJavaClassNotFound;
 
 /**
  *
- * @author SShadow
+ * @author Marcelo D. Ré <marcelo.re@gmail.com>
  */
 public class SessionManager implements Actions.Store, Actions.Get {
 
@@ -82,6 +84,9 @@ public class SessionManager implements Actions.Store, Actions.Get {
     private ConcurrentHashMap<Object, Object> commitedObject = new ConcurrentHashMap<>();
 
     int newObjectCount = 0;
+
+    // usuario a registrar en la tabla de auditoría.
+    private Auditor auditor;
 
     public SessionManager(String url, String user, String passwd) {
 //        this.url = url;
@@ -136,7 +141,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
             } else {
                 classname = o.getClass().getSimpleName();
             }
-            LOGGER.log(Level.FINER, "STORE: guardando objeto de la clase "+classname);
+            LOGGER.log(Level.FINER, "STORE: guardando objeto de la clase " + classname);
 
             // Recuperar la definición de clase del objeto.
             ClassDef oClassDef = this.objectMapper.getClassDef(o);
@@ -147,16 +152,19 @@ public class SessionManager implements Actions.Store, Actions.Get {
             // verificar que la clase existe
             if (this.getDBClass(classname) == null) {
                 // arrojar una excepción en caso contrario.
-                throw new ClassToVertexNotFound("No se ha encontrado la definición de la clase "+classname+" en la base!");
+                throw new ClassToVertexNotFound("No se ha encontrado la definición de la clase " + classname + " en la base!");
                 //graphdb.createVertexType(classname);
             }
 
             OrientVertex v = graphdb.addVertex("class:" + classname, omap);
 
             proxied = ObjectProxyFactory.create(o, v, this);
+
             // transferir todos los valores al proxy
             ReflectionUtils.copyObject(o, proxied);
-
+            if (this.isAuditing()) {
+                this.auditLog((IObjectProxy) proxied, Audit.AuditType.WRITE, "STORE", omap);
+            }
             LOGGER.log(Level.FINER, "Marcando como dirty: " + proxied.getClass().getSimpleName());
             this.dirty.put(v.getId().toString(), proxied);
 
@@ -178,7 +186,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
                 Object innerO = this.commitedObject.get(link.getValue());
                 // si no es así, recuperar el valor del campo
                 if (innerO == null) {
-                    LOGGER.log(Level.FINER, field+": No existe el objeto en el cache de objetos creados.");
+                    LOGGER.log(Level.FINER, field + ": No existe el objeto en el cache de objetos creados.");
                     innerO = link.getValue();
                 }
 
@@ -192,7 +200,10 @@ public class SessionManager implements Actions.Store, Actions.Get {
 //                    innerRID = ((IObjectProxy)innerO).___getVertex().getId().toString();
                 }
                 // crear un link entre los dos objetos.
-                this.graphdb.addEdge("", v, ((IObjectProxy) innerO).___getVertex(), graphRelationName);
+                OrientEdge oe = this.graphdb.addEdge("", v, ((IObjectProxy) innerO).___getVertex(), graphRelationName);
+                if (this.isAuditing()) {
+                    this.auditLog((IObjectProxy) proxied, Audit.AuditType.WRITE, "STORE: " + graphRelationName, oe);
+                }
             }
 
             /* 
@@ -201,6 +212,8 @@ public class SessionManager implements Actions.Store, Actions.Get {
             deben ser creados.
              */
             LOGGER.log(Level.FINER, "Procesando los LinkList");
+            final T finalProxied = proxied;
+
             for (Map.Entry<String, Object> link : oStruct.linkLists.entrySet()) {
                 String field = link.getKey();
                 Object value = link.getValue();
@@ -231,7 +244,10 @@ public class SessionManager implements Actions.Store, Actions.Get {
 
                         // crear un link entre los dos objetos.
                         LOGGER.log(Level.FINE, "-----> agregando un LinkList!");
-                        this.graphdb.addEdge("", v, ioproxied.___getVertex(), graphRelationName);
+                        OrientEdge oe = this.graphdb.addEdge("", v, ioproxied.___getVertex(), graphRelationName);
+                        if (this.isAuditing()) {
+                            this.auditLog((IObjectProxy) proxied, Audit.AuditType.WRITE, "STORE: " + graphRelationName, oe);
+                        }
                     }
                 } else if (value instanceof Map) {
                     HashMap innerMap = (HashMap) value;
@@ -259,7 +275,9 @@ public class SessionManager implements Actions.Store, Actions.Get {
                             // crear un link entre los dos objetos.
                             LOGGER.log(Level.FINER, "-----> agregando el edges de " + v.getId().toString() + " para " + ioproxied.___getVertex().toString() + " key: " + imk);
                             OrientEdge oe = SessionManager.this.graphdb.addEdge("", v, ioproxied.___getVertex(), graphRelationName);
-
+                            if (isAuditing()) {
+                                auditLog((IObjectProxy) finalProxied, Audit.AuditType.WRITE, "STORE: " + graphRelationName, oe);
+                            }
                             // agragar la key como atributo.
                             if (Primitives.PRIMITIVE_MAP.get(imk.getClass()) != null) {
                                 LOGGER.log(Level.FINER, "la prop del edge es primitiva");
@@ -351,6 +369,11 @@ public class SessionManager implements Actions.Store, Actions.Get {
         // comitear los vértices
         graphdb.commit();
 
+        // si se está en modalidad audit, grabar los logs
+        if (this.isAuditing()) {
+            this.auditor.commit();
+            graphdb.commit();
+        }
         // vaciar el caché de elementos modificados.
         this.dirty.clear();
         this.commiting = false;
@@ -418,24 +441,22 @@ public class SessionManager implements Actions.Store, Actions.Get {
     }
 
     /**
-     * Retorna la cantidad de objetos marcados como Dirty.
-     * Utilizado para los test
+     * Retorna la cantidad de objetos marcados como Dirty. Utilizado para los test
      */
     public int getDirtyCount() {
         return this.dirty.size();
     }
-    
-    
+
     /**
      * Recupera un objecto desde la base a partir del RID del Vértice.
-     * 
+     *
      * @param rid: ID del vértice a recupear
      * @return: Retorna un objeto de la clase javaClass del vértice.
      */
     @Override
     public Object get(String rid) throws UnknownRID, VertexJavaClassNotFound {
         try {
-            Object ret=null;
+            Object ret = null;
             if (this.graphdb == null) {
                 throw new NoOpenTx();
             }
@@ -443,14 +464,14 @@ public class SessionManager implements Actions.Store, Actions.Get {
                 throw new UnknownRID();
             }
             OrientVertex v = graphdb.getVertex(rid);
-            if (v==null) {
+            if (v == null) {
                 throw new UnknownRID(rid);
             }
             String javaClass = v.getType().getCustom("javaClass");
-            if (javaClass==null) {
+            if (javaClass == null) {
                 throw new VertexJavaClassNotFound("La clase del Vértice no tiene la propiedad javaClass");
             }
-            javaClass=javaClass.replaceAll("[\'\"]", "");
+            javaClass = javaClass.replaceAll("[\'\"]", "");
             Class<?> c = Class.forName(javaClass);
             return this.get(c, rid);
         } catch (ClassNotFoundException ex) {
@@ -458,7 +479,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
         }
         return null;
     }
-    
+
     /**
      * Recupera un objeto a partir de la clase y el RID correspondiente.
      *
@@ -494,6 +515,9 @@ public class SessionManager implements Actions.Store, Actions.Get {
             try {
                 o = objectMapper.hydrate(type, v);
 //                entities.put(rid, o);
+                if (isAuditing()) {
+                    auditLog((IObjectProxy) o, Audit.AuditType.READ, "READ", "");
+                }
             } catch (InstantiationException | IllegalAccessException | NoSuchFieldException ex) {
                 Logger.getLogger(SessionManager.class.getName()).log(Level.SEVERE, null, ex);
             }
@@ -508,29 +532,31 @@ public class SessionManager implements Actions.Store, Actions.Get {
         LOGGER.log(Level.FINER, "Fin get -------------------------------------\n");
         return o;
     }
+
     /**
-     * Agrega si no existe un objeto al cache de la transacción acutal a fin de evitar los loops
-     * cuando se comletan los links dentro del ObjectProxy
+     * Agrega si no existe un objeto al cache de la transacción acutal a fin de evitar los loops cuando se comletan los links dentro del ObjectProxy
+     *
      * @param rid
-     * @param o 
+     * @param o
      */
-    public void addToTransactionCache(String rid, Object o){
+    public void addToTransactionCache(String rid, Object o) {
         getTransactionCount++;
-        if (this.transactionCache.get(rid)==null) {
-            LOGGER.log(Level.FINER, "Forzando el agregado al TransactionCache de "+rid);
-            this.transactionCache.put(rid,o);
+        if (this.transactionCache.get(rid) == null) {
+            LOGGER.log(Level.FINER, "Forzando el agregado al TransactionCache de " + rid);
+            this.transactionCache.put(rid, o);
         }
     }
-    
+
     /**
      * invocado desde ObjectProxy al completar los links.
      */
-    public void decreseTransactionCache(){
+    public void decreseTransactionCache() {
         getTransactionCount--;
-        if (getTransactionCount==0)
+        if (getTransactionCount == 0) {
             transactionCache.clear();
+        }
     }
-    
+
     @Override
     public <T> T getEdgeAsObject(Class<T> type, OrientEdge e) {
         if (this.graphdb == null) {
@@ -662,6 +688,9 @@ public class SessionManager implements Actions.Store, Actions.Get {
 
             }
 
+            if (isAuditing()) {
+                auditLog((IObjectProxy) ovToRemove, Audit.AuditType.DELETE, "DELETE", "");
+            }
             ovToRemove.remove();
             // si tengo un RID, proceder a removerlo de las colecciones.
             this.dirty.remove(((IObjectProxy) toRemove).___getVertex().getId().toString());
@@ -689,30 +718,29 @@ public class SessionManager implements Actions.Store, Actions.Get {
         OCommandSQL osql = new OCommandSQL(sql);
         return graphdb.command(osql).execute();
     }
-    
+
     /**
-     * Ejecuta un comando que devuelve un número. El valor devuelto será el primero que se 
-     * encuentre en la lista de resultado.
+     * Ejecuta un comando que devuelve un número. El valor devuelto será el primero que se encuentre en la lista de resultado.
      *
      * @param <T>
-     * @param sql   comando a ejecutar
-     * @param retVal    nombre de la propiedad a devolver
-     * @return  retorna el valor de la propiedad indacada obtenida de la ejecución de la consulta
-     * 
-     * ejemplo: 
-     * int size = sm.query("select count(*) as size from TestData","size");
+     * @param sql comando a ejecutar
+     * @param retVal nombre de la propiedad a devolver
+     * @return retorna el valor de la propiedad indacada obtenida de la ejecución de la consulta
+     *
+     * ejemplo: int size = sm.query("select count(*) as size from TestData","size");
      */
-    public long query(String sql,String retVal) {
+    public long query(String sql, String retVal) {
         if (graphdb == null) {
             throw new NoOpenTx();
         }
         this.flush();
 
         OCommandSQL osql = new OCommandSQL(sql);
-        OrientVertex ov = (OrientVertex)((OrientDynaElementIterable)graphdb.command(osql).execute()).iterator().next();
-        if (retVal==null)
+        OrientVertex ov = (OrientVertex) ((OrientDynaElementIterable) graphdb.command(osql).execute()).iterator().next();
+        if (retVal == null) {
             retVal = ov.getProperties().keySet().iterator().next();
-        
+        }
+
         return ov.getProperty(retVal);
     }
 
@@ -792,5 +820,37 @@ public class SessionManager implements Actions.Store, Actions.Get {
      */
     public OClass getDBClass(String clase) {
         return graphdb.getRawGraph().getMetadata().getSchema().getClass(clase);
+    }
+
+    /**
+     * Comienza a auditar los objetos y los persiste con el nombre de usuario.
+     *
+     */
+    public void setAuditOnUser(String user) {
+        if (graphdb == null) {
+            throw new NoOpenTx();
+        }
+        this.auditor = new Auditor(this, user);
+
+    }
+
+    /**
+     * realiza una auditoría a partir del objeto indicado.
+     *
+     * @param o IOBjectProxy a auditar
+     * @param at AuditType
+     * @param data objeto a loguear con un toString
+     */
+    public void auditLog(IObjectProxy o, int at, String label, Object data) {
+        if (this.isAuditing()) {
+            auditor.auditLog(o, at, label, data);
+        }
+    }
+
+    /**
+     * determina si se está guardando un log de auditoría
+     */
+    public boolean isAuditing() {
+        return this.auditor != null;
     }
 }

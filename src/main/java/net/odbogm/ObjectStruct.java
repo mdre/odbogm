@@ -9,7 +9,7 @@ import java.util.HashMap;
 
 /**
  * Estructura para soportar los valores de un objeto.
- * @author SShadow
+ * @author Marcelo D. Ré <marcelo.re@gmail.com>
  */
 public class ObjectStruct {
 

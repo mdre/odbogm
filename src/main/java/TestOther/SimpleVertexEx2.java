@@ -18,7 +18,7 @@ import net.odbogm.annotations.FieldAttributes;
 
 /**
  *
- * @author SShadow
+ * @author Marcelo D. Ré <marcelo.re@gmail.com>
  */
 public class SimpleVertexEx2 extends SimpleVertex {
     @Ignore
