@@ -200,7 +200,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
 //                    innerRID = ((IObjectProxy)innerO).___getVertex().getId().toString();
                 }
                 // crear un link entre los dos objetos.
-                OrientEdge oe = this.graphdb.addEdge("", v, ((IObjectProxy) innerO).___getVertex(), graphRelationName);
+                OrientEdge oe = this.graphdb.addEdge("class:"+graphRelationName, v, ((IObjectProxy) innerO).___getVertex(), graphRelationName);
                 if (this.isAuditing()) {
                     this.auditLog((IObjectProxy) proxied, Audit.AuditType.WRITE, "STORE: " + graphRelationName, oe);
                 }
@@ -245,7 +245,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
 
                         // crear un link entre los dos objetos.
                         LOGGER.log(Level.FINE, "-----> agregando un edge a: "+ioproxied.___getVertex().getId());
-                        OrientEdge oe = this.graphdb.addEdge("", v, ioproxied.___getVertex(), graphRelationName);
+                        OrientEdge oe = this.graphdb.addEdge("class:"+graphRelationName, v, ioproxied.___getVertex(), graphRelationName);
                         if (this.isAuditing()) {
                             this.auditLog((IObjectProxy) proxied, Audit.AuditType.WRITE, "STORE: " + graphRelationName, oe);
                         }
@@ -275,7 +275,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
                             }
                             // crear un link entre los dos objetos.
                             LOGGER.log(Level.FINER, "-----> agregando el edges de " + v.getId().toString() + " para " + ioproxied.___getVertex().toString() + " key: " + imk);
-                            OrientEdge oe = SessionManager.this.graphdb.addEdge("", v, ioproxied.___getVertex(), graphRelationName);
+                            OrientEdge oe = SessionManager.this.graphdb.addEdge("class:"+graphRelationName, v, ioproxied.___getVertex(), graphRelationName);
                             if (isAuditing()) {
                                 auditLog((IObjectProxy) finalProxied, Audit.AuditType.WRITE, "STORE: " + graphRelationName, oe);
                             }

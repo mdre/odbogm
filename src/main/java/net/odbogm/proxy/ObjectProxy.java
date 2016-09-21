@@ -702,7 +702,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
                                 }
                                 LOGGER.log(Level.FINER, "Agregar un link entre dos objetos existentes.");
-                                OrientEdge oe = this.___sm.getGraphdb().addEdge("", ov, ((IObjectProxy) innerO).___getVertex(), graphRelationName);
+                                OrientEdge oe = this.___sm.getGraphdb().addEdge("class:"+graphRelationName, ov, ((IObjectProxy) innerO).___getVertex(), graphRelationName);
                                 if (this.___sm.isAuditing()) {
                                     this.___sm.auditLog(this, AuditType.WRITE,"ADD LINK: "+graphRelationName ,oe);
                                 }
@@ -731,7 +731,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 //                            this.sm.getObjectMapper().setFieldValue(realObj, field, innerO);
                             this.___sm.getObjectMapper().setFieldValue(this.___proxyObject, field, innerO);
 
-                            OrientEdge oe = this.___sm.getGraphdb().addEdge("", ov, ((IObjectProxy) innerO).___getVertex(), graphRelationName);
+                            OrientEdge oe = this.___sm.getGraphdb().addEdge("class:"+graphRelationName, ov, ((IObjectProxy) innerO).___getVertex(), graphRelationName);
                             if (this.___sm.isAuditing()) {
                                 this.___sm.auditLog(this, AuditType.WRITE, "ADD LINK: "+graphRelationName,oe);
                             }
@@ -810,7 +810,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                         }
 
                                         // vincular el nodo
-                                        OrientEdge oe = this.___sm.getGraphdb().addEdge("", this.___getVertex(), ((IObjectProxy) colObject).___getVertex(), graphRelationName);
+                                        OrientEdge oe = this.___sm.getGraphdb().addEdge("class:"+graphRelationName, this.___getVertex(), ((IObjectProxy) colObject).___getVertex(), graphRelationName);
 
                                         if (this.___sm.isAuditing()) {
                                             this.___sm.auditLog(this, AuditType.WRITE, "LINKLIST ADD: "+graphRelationName,oe);
@@ -893,7 +893,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                             // crear un link entre los dos objetos.
                                             LOGGER.log(Level.FINER, "-----> agregando un LinkList al Map!");
                                             //                                        oe = SessionManager.this.graphdb.addEdge("", fVertexs.get(frid), fVertexs.get(llRID), ffield);
-                                            oe = this.___sm.getGraphdb().addEdge("", (OrientVertex) this.___baseElement, ((IObjectProxy) linkedO).___getVertex(), graphRelationName);
+                                            oe = this.___sm.getGraphdb().addEdge("class:"+graphRelationName, (OrientVertex) this.___baseElement, ((IObjectProxy) linkedO).___getVertex(), graphRelationName);
                                             // actualizar el edge con los datos de la key.
                                             oe.setProperties(this.___sm.getObjectMapper().simpleMap(imk));
 
