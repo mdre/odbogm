@@ -369,7 +369,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
      * Carga todos los links del objeto
      */
     @Override
-    public void ___loadLazyLinks() {
+    public synchronized void ___loadLazyLinks() {
         LOGGER.log(Level.FINER, "iniciando loadLazyLinks...");
         // marcar que ya se han incorporado todo los links
         this.___loadLazyLinks = false;
@@ -426,18 +426,20 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
     }
 
-    private void commitObjectChange() {
+    private synchronized void commitObjectChange() {
         this.___sm.getGraphdb().getRawGraph().activateOnCurrentThread();
         LOGGER.log(Level.FINER, "iniciando commit interno " + this.___baseElement.getId() + ".... (dirty mark:" + ___dirty + ")");
         // si ya estaba marcado como dirty no volver a procesarlo.
         if (!___dirty) {
             // FIXME: debería pasar este map como propiedad para optimizar la velocidad?
-            HashMap<String, Object> vmap = new HashMap<>();
-            this.___baseElement.getPropertyKeys().stream().forEach((prop) -> {
-                // LOGGER.log(Level.FINER, "VERTEX PROP: {0} <-----------------------------------------------",new String[]{prop});
-                Object vvalue = this.___baseElement.getProperty(prop);
-                vmap.put(prop, vvalue);
-            });
+            Map<String, Object> vmap = this.___baseElement.getProperties();
+            
+//            HashMap<String, Object> vmap = new HashMap<>();
+//            this.___baseElement.getPropertyKeys().stream().forEach((prop) -> {
+//                // LOGGER.log(Level.FINER, "VERTEX PROP: {0} <-----------------------------------------------",new String[]{prop});
+//                Object vvalue = this.___baseElement.getProperty(prop);
+//                vmap.put(prop, vvalue);
+//            });
 
             // obtener la definición de la clase
             LOGGER.log(Level.FINER, "**********************************");
@@ -449,7 +451,19 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             Map<String, Object> omap = oStruct.fields;
 
             // si los mapas no son iguales, entonces eso implica que el objeto cambió
-            if (!vmap.equals(omap)) {
+            boolean eqMaps = true;
+            for (Map.Entry<String, Object> entry : omap.entrySet()) {
+                String key = entry.getKey();
+                Object value = entry.getValue();
+                
+                Object vval = vmap.get(key);
+                if (!value.equals(vval)) {
+                    eqMaps = false;
+                    break;
+                }
+            }
+            
+            if (!eqMaps) {
                 // transferir el bojeto al vértice en cuestión
                 LOGGER.log(Level.FINER, "cambio detectado: " + this.___baseElement.getId());
                 LOGGER.log(Level.FINER, "vmap:" + vmap);
@@ -600,7 +614,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     }
 
     @Override
-    public void ___commit() {
+    public synchronized void ___commit() {
 //        ODatabaseRecordThreadLocal.INSTANCE.set(this.___sm.getGraphdb().getRawGraph());
 
         if (this.___dirty) {
@@ -940,7 +954,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
      * @param edgeToRemove
      * @param field
      */
-    private void removeEdge(OrientEdge edgeToRemove, String field) {
+    private synchronized void removeEdge(OrientEdge edgeToRemove, String field) {
 
         try {
             // f = ReflectionUtils.findField(this.realObj.getClass(), field);
@@ -979,7 +993,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
      * Revierte el objeto al estado que tiene el Vertex original.
      */
     @Override
-    public void ___rollback() {
+    public synchronized void ___rollback() {
         // restaurar los atributos al estado original.
         ClassDef classdef = this.___sm.getObjectMapper().getClassDef(___proxyObject);
         Map<String, Class<?>> fieldmap = classdef.fields;

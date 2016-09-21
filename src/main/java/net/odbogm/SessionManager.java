@@ -218,13 +218,14 @@ public class SessionManager implements Actions.Store, Actions.Get {
                 String field = link.getKey();
                 Object value = link.getValue();
                 final String graphRelationName = classname + "_" + field;
-
+                
                 if (value instanceof List) {
                     // crear un objeto de la colección correspondiente para poder trabajarlo
 //                Class<?> oColection = oClassDef.linkLists.get(field);
                     Collection innerCol = (Collection) value;
 
                     // recorrer la colección verificando el estado de cada objeto.
+                    LOGGER.log(Level.FINER, "Nueva lista: "+graphRelationName+": "+innerCol.size()+" elementos");
                     for (Object llObject : innerCol) {
                         IObjectProxy ioproxied;
                         // verificar si ya está en el contexto
@@ -243,7 +244,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
                         }
 
                         // crear un link entre los dos objetos.
-                        LOGGER.log(Level.FINE, "-----> agregando un LinkList!");
+                        LOGGER.log(Level.FINE, "-----> agregando un edge a: "+ioproxied.___getVertex().getId());
                         OrientEdge oe = this.graphdb.addEdge("", v, ioproxied.___getVertex(), graphRelationName);
                         if (this.isAuditing()) {
                             this.auditLog((IObjectProxy) proxied, Audit.AuditType.WRITE, "STORE: " + graphRelationName, oe);

@@ -234,17 +234,17 @@ public class ObjectMapper {
 
         Class<?> toHydrate = c;
         String vertexClass = (v.getType().getName() == "V" ? c.getSimpleName() : v.getType().getName());
-        
+
         // validar que el Vertex sea instancia de la clase solicitada
         // o que la clase solicitada sea su superclass
         if (!c.getSimpleName().equals(vertexClass)) {
             LOGGER.log(Level.FINER, "Tipos distintos. {0} <> {1}", new Object[]{c.getSimpleName(), vertexClass});
             String javaClass = v.getType().getCustom("javaClass");
-            
+
             if (javaClass != null) {
                 try {
                     // validar que sea un super de la clase del vértice
-                    javaClass=javaClass.replaceAll("[\'\"]", "");
+                    javaClass = javaClass.replaceAll("[\'\"]", "");
                     toHydrate = Class.forName(javaClass);
 
                 } catch (ClassNotFoundException ex) {
@@ -320,8 +320,7 @@ public class ObjectMapper {
 //                f.setAccessible(acc);
             }
         }
-        
-        
+
         // hidratar las colecciones
         // procesar todos los linkslist
         LOGGER.log(Level.FINER, "preparando las colecciones...");
@@ -338,12 +337,12 @@ public class ObjectMapper {
                 fLink.setAccessible(true);
 
                 // si hay Vértices conectados o si el constructor del objeto ha inicializado los vectores, convertirlos
-                if ((v.countEdges(Direction.OUT, graphRelationName) > 0)||(fLink.get(oproxied)!=null)) {
+                if ((v.countEdges(Direction.OUT, graphRelationName) > 0) || (fLink.get(oproxied) != null)) {
                     this.colecctionToLazy(oproxied, field, fc, v);
                 }
-                
+
                 fLink.setAccessible(acc);
-                
+
             } catch (NoSuchFieldException ex) {
                 Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
             } catch (IllegalArgumentException ex) {
@@ -401,7 +400,7 @@ public class ObjectMapper {
                 ParameterizedType listType = (ParameterizedType) fLink.getGenericType();
                 Class<?> listClass = (Class<?>) listType.getActualTypeArguments()[0];
                 // inicializar la colección
-                ((ILazyCollectionCalls) col).init(sessionManager, v, (IObjectProxy)o, graphRelationName, listClass);
+                ((ILazyCollectionCalls) col).init(sessionManager, v, (IObjectProxy) o, graphRelationName, listClass);
 
 //                LOGGER.log(Level.FINER, "col: "+col.getDBClass());
             } else if (col instanceof Map) {
@@ -409,7 +408,7 @@ public class ObjectMapper {
                 Class<?> keyClass = (Class<?>) listType.getActualTypeArguments()[0];
                 Class<?> valClass = (Class<?>) listType.getActualTypeArguments()[1];
                 // inicializar la colección
-                ((ILazyMapCalls) col).init(sessionManager, v, (IObjectProxy)o, graphRelationName, keyClass, valClass);
+                ((ILazyMapCalls) col).init(sessionManager, v, (IObjectProxy) o, graphRelationName, keyClass, valClass);
             } else {
                 throw new CollectionNotSupported();
             }
@@ -446,13 +445,16 @@ public class ObjectMapper {
             // obtener la clase a la que pertenece el campo
             Class<?> fc = fieldmap.get(prop);
 //            LOGGER.log(Level.FINER, "hidratando campo: "+prop);
+            // puede darse el caso que la base cree un atributo sobre los registros (ej: @rid) 
+            // y la clave podría no corresponderse con un campo.
+            if (fc != null) {
+                f = ReflectionUtils.findField(c, prop);
 
-            f = ReflectionUtils.findField(c, prop);
-
-            boolean acc = f.isAccessible();
-            f.setAccessible(true);
-            f.set(oproxied, value);
-            f.setAccessible(acc);
+                boolean acc = f.isAccessible();
+                f.setAccessible(true);
+                f.set(oproxied, value);
+                f.setAccessible(acc);
+            }
         }
 
         return oproxied;
@@ -463,11 +465,10 @@ public class ObjectMapper {
             Field f = ReflectionUtils.findField(o.getClass(), field);
             boolean acc = f.isAccessible();
             f.setAccessible(true);
-            
+
             // determinar si no es nulo
             f.set(o, value);
-            
-            
+
             f.setAccessible(acc);
         } catch (NoSuchFieldException | IllegalArgumentException | IllegalAccessException ex) {
             Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
