@@ -636,7 +636,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
             // guardar log de auditoría si corresponde.
             if (this.___sm.isAuditing()) {
-                this.___sm.auditLog(this, AuditType.WRITE, "DATA",omap);
+                this.___sm.auditLog(this, AuditType.WRITE, "UPDATE",omap);
             }
 
             // si se trata de un Vértice
