@@ -5,6 +5,7 @@
  */
 package net.odbogm.proxy;
 
+import Test.SimpleVertexEx;
 import net.odbogm.annotations.RemoveOrphan;
 import net.odbogm.ObjectStruct;
 import net.odbogm.SessionManager;
@@ -21,7 +22,6 @@ import java.lang.reflect.Field;
 
 import java.lang.reflect.Method;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -256,8 +256,18 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                             this.___loadLazyLinks();
                         }
                     }
-                    res = methodProxy.invokeSuper(o, args);
 
+                    if (method.getName().equals("toString")) {
+                        try {
+                            ReflectionUtils.findMethod(this.___baseClass, "toString", (Class<?>[]) null);
+                            res = methodProxy.invokeSuper(o, args);
+                        } catch (NoSuchMethodException nsme) {
+                            res = this.___baseElement.getId().toString();
+                        }
+                    } else {
+                            res = methodProxy.invokeSuper(o, args);
+                    }
+                    
                     // verificar si hay diferencias entre los objetos.
                     if (this.___objectReady) {
                         this.commitObjectChange();
@@ -433,14 +443,13 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         if (!___dirty) {
             // FIXME: debería pasar este map como propiedad para optimizar la velocidad?
             Map<String, Object> vmap = this.___baseElement.getProperties();
-            
+
 //            HashMap<String, Object> vmap = new HashMap<>();
 //            this.___baseElement.getPropertyKeys().stream().forEach((prop) -> {
 //                // LOGGER.log(Level.FINER, "VERTEX PROP: {0} <-----------------------------------------------",new String[]{prop});
 //                Object vvalue = this.___baseElement.getProperty(prop);
 //                vmap.put(prop, vvalue);
 //            });
-
             // obtener la definición de la clase
             LOGGER.log(Level.FINER, "**********************************");
             ClassDef cDef = this.___sm.getObjectMapper().getClassDef(this.___proxyObject);
@@ -455,14 +464,14 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             for (Map.Entry<String, Object> entry : omap.entrySet()) {
                 String key = entry.getKey();
                 Object value = entry.getValue();
-                
+
                 Object vval = vmap.get(key);
                 if (!value.equals(vval)) {
                     eqMaps = false;
                     break;
                 }
             }
-            
+
             if (!eqMaps) {
                 // transferir el bojeto al vértice en cuestión
                 LOGGER.log(Level.FINER, "cambio detectado: " + this.___baseElement.getId());
@@ -636,7 +645,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
             // guardar log de auditoría si corresponde.
             if (this.___sm.isAuditing()) {
-                this.___sm.auditLog(this, AuditType.WRITE, "UPDATE",omap);
+                this.___sm.auditLog(this, AuditType.WRITE, "UPDATE", omap);
             }
 
             // si se trata de un Vértice
@@ -665,7 +674,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                 removeEdge = (OrientEdge) edge;
 
                                 if (this.___sm.isAuditing()) {
-                                    this.___sm.auditLog(this, AuditType.WRITE,"REMOVE LINK: "+graphRelationName, removeEdge);
+                                    this.___sm.auditLog(this, AuditType.WRITE, "REMOVE LINK: " + graphRelationName, removeEdge);
                                 }
                                 this.removeEdge(removeEdge, field);
                             }
@@ -693,7 +702,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                         LOGGER.log(Level.FINER, "Eliminar relación previa a " + removeEdge.getInVertex());
 
                                         if (this.___sm.isAuditing()) {
-                                            this.___sm.auditLog(this, AuditType.WRITE, "REMOVE LINK: "+graphRelationName,removeEdge);
+                                            this.___sm.auditLog(this, AuditType.WRITE, "REMOVE LINK: " + graphRelationName, removeEdge);
                                         }
 
                                         this.removeEdge(removeEdge, field);
@@ -702,9 +711,9 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
                                 }
                                 LOGGER.log(Level.FINER, "Agregar un link entre dos objetos existentes.");
-                                OrientEdge oe = this.___sm.getGraphdb().addEdge("class:"+graphRelationName, ov, ((IObjectProxy) innerO).___getVertex(), graphRelationName);
+                                OrientEdge oe = this.___sm.getGraphdb().addEdge("class:" + graphRelationName, ov, ((IObjectProxy) innerO).___getVertex(), graphRelationName);
                                 if (this.___sm.isAuditing()) {
-                                    this.___sm.auditLog(this, AuditType.WRITE,"ADD LINK: "+graphRelationName ,oe);
+                                    this.___sm.auditLog(this, AuditType.WRITE, "ADD LINK: " + graphRelationName, oe);
                                 }
                             }
                         } else {
@@ -718,7 +727,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                     removeEdge = (OrientEdge) edge;
                                     LOGGER.log(Level.FINER, "Eliminar relación previa a " + removeEdge.getOutVertex());
                                     if (this.___sm.isAuditing()) {
-                                        this.___sm.auditLog(this, AuditType.WRITE, "REMOVE LINK: "+graphRelationName,removeEdge);
+                                        this.___sm.auditLog(this, AuditType.WRITE, "REMOVE LINK: " + graphRelationName, removeEdge);
                                     }
                                     this.removeEdge(removeEdge, field);
                                 }
@@ -731,9 +740,9 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 //                            this.sm.getObjectMapper().setFieldValue(realObj, field, innerO);
                             this.___sm.getObjectMapper().setFieldValue(this.___proxyObject, field, innerO);
 
-                            OrientEdge oe = this.___sm.getGraphdb().addEdge("class:"+graphRelationName, ov, ((IObjectProxy) innerO).___getVertex(), graphRelationName);
+                            OrientEdge oe = this.___sm.getGraphdb().addEdge("class:" + graphRelationName, ov, ((IObjectProxy) innerO).___getVertex(), graphRelationName);
                             if (this.___sm.isAuditing()) {
-                                this.___sm.auditLog(this, AuditType.WRITE, "ADD LINK: "+graphRelationName,oe);
+                                this.___sm.auditLog(this, AuditType.WRITE, "ADD LINK: " + graphRelationName, oe);
                             }
                         }
                     }
@@ -810,10 +819,10 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                         }
 
                                         // vincular el nodo
-                                        OrientEdge oe = this.___sm.getGraphdb().addEdge("class:"+graphRelationName, this.___getVertex(), ((IObjectProxy) colObject).___getVertex(), graphRelationName);
+                                        OrientEdge oe = this.___sm.getGraphdb().addEdge("class:" + graphRelationName, this.___getVertex(), ((IObjectProxy) colObject).___getVertex(), graphRelationName);
 
                                         if (this.___sm.isAuditing()) {
-                                            this.___sm.auditLog(this, AuditType.WRITE, "LINKLIST ADD: "+graphRelationName,oe);
+                                            this.___sm.auditLog(this, AuditType.WRITE, "LINKLIST ADD: " + graphRelationName, oe);
                                         }
                                     }
                                 }
@@ -826,15 +835,15 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                     if (colObjState == ObjectCollectionState.REMOVED) {
                                         if (f.isAnnotationPresent(RemoveOrphan.class)) {
                                             if (this.___sm.isAuditing()) {
-                                                this.___sm.auditLog(this, AuditType.DELETE, "LINKLIST DELETE: "+graphRelationName,colObject);
+                                                this.___sm.auditLog(this, AuditType.DELETE, "LINKLIST DELETE: " + graphRelationName, colObject);
                                             }
                                             this.___sm.delete(colObject);
                                         } else {
                                             // remover solo el link
-                                            
+
                                             for (Edge edge : ((OrientVertex) this.___baseElement).getEdges(((IObjectProxy) colObject).___getVertex(), Direction.OUT, graphRelationName)) {
                                                 if (this.___sm.isAuditing()) {
-                                                    this.___sm.auditLog(this, AuditType.WRITE, "LINKLIST REMOVE: "+graphRelationName,edge);
+                                                    this.___sm.auditLog(this, AuditType.WRITE, "LINKLIST REMOVE: " + graphRelationName, edge);
                                                 }
                                                 edge.remove();
                                             }
@@ -893,12 +902,12 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                             // crear un link entre los dos objetos.
                                             LOGGER.log(Level.FINER, "-----> agregando un LinkList al Map!");
                                             //                                        oe = SessionManager.this.graphdb.addEdge("", fVertexs.get(frid), fVertexs.get(llRID), ffield);
-                                            oe = this.___sm.getGraphdb().addEdge("class:"+graphRelationName, (OrientVertex) this.___baseElement, ((IObjectProxy) linkedO).___getVertex(), graphRelationName);
+                                            oe = this.___sm.getGraphdb().addEdge("class:" + graphRelationName, (OrientVertex) this.___baseElement, ((IObjectProxy) linkedO).___getVertex(), graphRelationName);
                                             // actualizar el edge con los datos de la key.
                                             oe.setProperties(this.___sm.getObjectMapper().simpleMap(imk));
 
                                             if (this.___sm.isAuditing()) {
-                                                this.___sm.auditLog(this, AuditType.WRITE, "LINKLIST ADD: "+graphRelationName,oe);
+                                                this.___sm.auditLog(this, AuditType.WRITE, "LINKLIST ADD: " + graphRelationName, oe);
                                             }
                                             break;
 
@@ -914,14 +923,14 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                                 if (entitiesState.get(imk) == ObjectCollectionState.REMOVED) {
                                                     this.___sm.delete(entitiesState.get(imk));
                                                     if (this.___sm.isAuditing()) {
-                                                        this.___sm.auditLog(this, AuditType.DELETE, "LINKLIST REMOVE: "+graphRelationName,imk);
+                                                        this.___sm.auditLog(this, AuditType.DELETE, "LINKLIST REMOVE: " + graphRelationName, imk);
                                                     }
                                                 }
                                             }
                                             // quitar el Edge
                                             OrientEdge oeRemove = keyToEdge.get(imk);
                                             if (this.___sm.isAuditing()) {
-                                                this.___sm.auditLog(this, AuditType.WRITE, "LINKLIST REMOVE: "+graphRelationName,oeRemove);
+                                                this.___sm.auditLog(this, AuditType.WRITE, "LINKLIST REMOVE: " + graphRelationName, oeRemove);
                                             }
                                             oeRemove.remove();
                                             break;
@@ -970,7 +979,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
                 //auditar
                 if (this.___sm.isAuditing()) {
-                    this.___sm.auditLog(this, AuditType.DELETE, "LINKLIST DELETE: ",f.get(this.___proxyObject));
+                    this.___sm.auditLog(this, AuditType.DELETE, "LINKLIST DELETE: ", f.get(this.___proxyObject));
                 }
                 // eliminar el objecto
                 // this.sm.delete(f.get(realObj));

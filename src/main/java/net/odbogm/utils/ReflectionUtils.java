@@ -6,6 +6,7 @@
 package net.odbogm.utils;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.logging.Logger;
 import net.odbogm.LogginProperties;
 
@@ -29,6 +30,17 @@ public class ReflectionUtils {
             }
         } while ((current = current.getSuperclass()) != null);
         throw new NoSuchFieldException(fieldName);
+    }
+    
+    public static Method findMethod(Class<?> clazz, String methodName, Class<?> ...paramType) throws NoSuchMethodException {
+        Class<?> current = clazz;
+        do {
+            try {
+                return current.getDeclaredMethod(methodName, paramType);
+            } catch (Exception e) {
+            }
+        } while ((current = current.getSuperclass()) != Object.class);
+        throw new NoSuchMethodException(methodName);
     }
 
     /**

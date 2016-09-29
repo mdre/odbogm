@@ -25,6 +25,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.DbManager;
 import net.odbogm.LogginProperties;
+import net.odbogm.utils.ReflectionUtils;
 
 /**
  *
@@ -48,9 +49,9 @@ public class Test {
 
     public Test() {
         initSession();
-        testSessionManager();
+//        testSessionManager();
 //        testDbManager();
-//        lab();
+        lab();
 //        testQuery();
 //        store();
         sm.shutdown();
@@ -88,17 +89,29 @@ public class Test {
     }
 
     public void lab() {
-        OrientVertex v1 = sm.getGraphdb().getVertex("12:3360");
-        OrientVertex v2 = sm.getGraphdb().getVertex("23:6275");
-        String edgeLabel = "SimpleVertexEx_svinner";
-        boolean connected=false;
-        Iterable<Edge> result = v1.getEdges(v2, Direction.OUT, edgeLabel==null?"E":edgeLabel);
-            for (Edge e : result) {
-                LOGGER.log(Level.FINER, "Conectados por el edge: "+e.getId());
-                connected = true;
-                break;
-            }
-        System.out.println("Conectados: "+connected);
+        
+        SimpleVertexEx sv1 = sm.get(SimpleVertexEx.class, "12:1177");
+        SimpleVertexEx sv2 = sm.get(SimpleVertexEx.class, "12:1177");
+        
+        
+        try {
+            System.out.println(ReflectionUtils.findMethod(SimpleVertexEx.class, "toString", (Class<?>[]) null));
+        } catch (NoSuchMethodException ex) {
+            Logger.getLogger(Test.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
+        System.out.println(""+sv2.toString());
+//        OrientVertex v1 = sm.getGraphdb().getVertex("12:3360");
+//        OrientVertex v2 = sm.getGraphdb().getVertex("23:6275");
+//        String edgeLabel = "SimpleVertexEx_svinner";
+//        boolean connected=false;
+//        Iterable<Edge> result = v1.getEdges(v2, Direction.OUT, edgeLabel==null?"E":edgeLabel);
+//            for (Edge e : result) {
+//                LOGGER.log(Level.FINER, "Conectados por el edge: "+e.getId());
+//                connected = true;
+//                break;
+//            }
+//        System.out.println("Conectados: "+connected);
         // test de fechas.
 //        LocalDate ld = LocalDate.now();
 //        Date d = new Date(2016, 7, 29);
