@@ -49,9 +49,9 @@ public class Test {
 
     public Test() {
         initSession();
-//        testSessionManager();
+        testSessionManager();
 //        testDbManager();
-        lab();
+//        lab();
 //        testQuery();
 //        store();
         sm.shutdown();
@@ -62,6 +62,7 @@ public class Test {
         sm = new SessionManager("remote:localhost/Test", "root", "toor");
         System.out.println("comunicación inicializada!");
         sm.begin();
+        sm.setAuditOnUser("userAuditado");
     }
 
     public void testSessionManager() {
@@ -69,10 +70,10 @@ public class Test {
 
         // correr test de store
 //        this.store();
-          this.testStoreLink();
+//          this.testStoreLink();
 //        this.testUpdateLink();
 //        this.testQuery();
-//        testLoop();
+        testLoop();
 //        this.lab();
 
         try {
@@ -456,9 +457,12 @@ public class Test {
         System.out.println("");
 
         // verificar que todos los valores sean iguales
-//        assertEquals(((IObjectProxy)expResult).___getRid(), ((IObjectProxy)result).___getRid());
-//        assertEquals(((IObjectProxy)expResult.getLooptest()).___getRid(), ((IObjectProxy)result.getLooptest()).___getRid());
-//        assertEquals(((IObjectProxy)expResult.getLooptest().getLooptest()).___getRid(), ((IObjectProxy)result).___getRid());
+        System.out.println("-1-");
+        assertEquals(((IObjectProxy)expResult).___getRid(), ((IObjectProxy)result).___getRid());
+        System.out.println("-2-");
+        assertEquals(((IObjectProxy)expResult.getLooptest()).___getRid(), ((IObjectProxy)result.getLooptest()).___getRid());
+        System.out.println("-3-");
+        assertEquals(((IObjectProxy)expResult.getLooptest().getLooptest()).___getRid(), ((IObjectProxy)result).___getRid());
         System.out.println("============================= FIN LoopTest ===============================");
     }
 

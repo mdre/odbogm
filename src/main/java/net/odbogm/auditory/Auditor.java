@@ -8,13 +8,17 @@ package net.odbogm.auditory;
 
 import com.arshadow.utilitylib.DateHelper;
 import com.orientechnologies.orient.core.metadata.schema.OType;
+import com.orientechnologies.orient.core.sql.OCommandSQL;
+import com.tinkerpop.blueprints.Vertex;
 import com.tinkerpop.blueprints.impls.orient.OrientVertex;
 import com.tinkerpop.blueprints.impls.orient.OrientVertexType;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import net.odbogm.LogginProperties;
 import net.odbogm.SessionManager;
 import net.odbogm.annotations.Audit;
 import net.odbogm.proxy.IObjectProxy;
@@ -26,7 +30,7 @@ import net.odbogm.proxy.IObjectProxy;
 public class Auditor implements IAuditor {
     private final static Logger LOGGER = Logger.getLogger(Auditor.class .getName());
     static {
-        LOGGER.setLevel(Level.INFO);
+        LOGGER.setLevel(LogginProperties.Auditor);
     }
 
     private SessionManager sm;
@@ -78,8 +82,12 @@ public class Auditor implements IAuditor {
     
     @Override
     public void commit() {
+        // crear un UUDI para todo el log a comitear.
+        String ovLogID = UUID.randomUUID().toString();
+        
         for (LogData logData : logdata) {
             Map<String, Object> ologData = new HashMap<>();
+            ologData.put("transactionID",ovLogID);
             ologData.put("rid", logData.source.___getRid());
             ologData.put("timestamp", DateHelper.getCurrentDateTime());
             ologData.put("user", this.auditUser);

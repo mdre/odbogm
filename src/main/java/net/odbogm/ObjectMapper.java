@@ -271,15 +271,15 @@ public class ObjectMapper {
         for (Map.Entry<String, Class<?>> entry : fieldmap.entrySet()) {
             String prop = entry.getKey();
             Class<? extends Object> fieldClazz = entry.getValue();
-
+            
             LOGGER.log(Level.FINER, "Buscando campo {0} ....", new String[]{prop});
             Object value = v.getProperty(prop);
             if (value != null) {
                 // obtener la clase a la que pertenece el campo
                 Class<?> fc = fieldmap.get(prop);
-
+                
                 f = ReflectionUtils.findField(toHydrate, prop);
-
+                
                 boolean acc = f.isAccessible();
                 f.setAccessible(true);
                 if (f.getType().isEnum()) {

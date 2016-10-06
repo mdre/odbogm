@@ -43,7 +43,7 @@ public class SessionManagerTest {
     public void setUp() {
         sm = new SessionManager("remote:localhost/Test", "root", "toor");
         this.sm.begin();
-//        this.sm.setAuditOnUser("userAuditado");
+        this.sm.setAuditOnUser("userAuditado");
 
         // borrar todos los vértices 
 //        this.sm.getGraphdb().command(new OCommandSQL("delete vertex V")).execute();
@@ -494,8 +494,9 @@ public class SessionManagerTest {
         
         // verificar que todos los valores sean iguales
         assertEquals(((IObjectProxy)expResult).___getRid(), ((IObjectProxy)result).___getRid());
+        System.out.println("-1-");
         assertEquals(((IObjectProxy)expResult.getLooptest()).___getRid(), ((IObjectProxy)result.getLooptest()).___getRid());
-        
+        System.out.println("-2-");
         String expRid = ((IObjectProxy)expResult.getLooptest().getLooptest()).___getRid();
         String rrid = ((IObjectProxy)result).___getRid();
         
@@ -599,7 +600,7 @@ public class SessionManagerTest {
         System.out.println("key1: "+(hmsveGetted==null?" NULL!":"Ok."));
         assertNotNull(hmsveGetted);
         
-        System.out.println("\nagregamos un nuevo objeto al arraylist ya inicializado");
+        System.out.println("\nagregamos un nuevo objeto al hashmap ya inicializado");
         stored.getHmSVE().put("key3",new SimpleVertexEx());
         System.out.println("\ninicio tercer commit ----------------------------------------------------------");
         sm.commit();

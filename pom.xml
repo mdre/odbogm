@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>net.odbogm</groupId>
     <artifactId>odbogm</artifactId>
-    <version>0.5-SNAPSHOT</version>
+    <version>0.6</version>
     <packaging>jar</packaging>
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

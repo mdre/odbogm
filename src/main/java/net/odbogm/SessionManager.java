@@ -5,6 +5,7 @@
  */
 package net.odbogm;
 
+import com.arshadow.utilitylib.ThreadHelper;
 import net.odbogm.annotations.CascadeDelete;
 import net.odbogm.exceptions.NoOpenTx;
 import net.odbogm.exceptions.IncorrectRIDField;
@@ -30,10 +31,12 @@ import com.tinkerpop.blueprints.impls.orient.OrientEdge;
 import com.tinkerpop.blueprints.impls.orient.OrientGraph;
 import com.tinkerpop.blueprints.impls.orient.OrientGraphFactory;
 import com.tinkerpop.blueprints.impls.orient.OrientVertex;
+import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -65,12 +68,12 @@ public class SessionManager implements Actions.Store, Actions.Get {
 //    private String user;
 //    private String passwd;
 //    
-    // Working objects
-//    private ConcurrentHashMap<String, OrientVertex> vertexs = new ConcurrentHashMap<>();
-//    private ConcurrentHashMap<String, OrientEdge> edges = new ConcurrentHashMap<>();
+
+    // cache de los objetos recuperados de la base. Si se encuentra en el caché en un get, se recupera desde 
+    // acá. En caso contrario se recupera desde la base.
+    private ConcurrentHashMap<String, WeakReference<Object>> objectCache = new ConcurrentHashMap<>();
 
     private ConcurrentHashMap<String, Object> dirty = new ConcurrentHashMap<>();
-//    private ConcurrentHashMap<Object, String> entitiesToRid = new ConcurrentHashMap<>();
 
     // se utiliza para guardar los objetos recuperados durante un get a fin de evitar los loops
     private int getTransactionCount = 0;
@@ -101,11 +104,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
     }
 
     private void init() {
-//        vertexs.clear();
-//        edges.clear();
-
         dirty.clear();
-//        entitiesToRid.clear();
     }
 
     /**
@@ -157,9 +156,12 @@ public class SessionManager implements Actions.Store, Actions.Get {
             }
 
             OrientVertex v = graphdb.addVertex("class:" + classname, omap);
-
+            
             proxied = ObjectProxyFactory.create(o, v, this);
-
+            
+            // registrar el rid temporal para futuras referencias.
+            newrids.add(v.getId().toString());
+            
             // transferir todos los valores al proxy
             ReflectionUtils.copyObject(o, proxied);
             if (this.isAuditing()) {
@@ -168,7 +170,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
             LOGGER.log(Level.FINER, "Marcando como dirty: " + proxied.getClass().getSimpleName());
             this.dirty.put(v.getId().toString(), proxied);
 
-            // si se está en proceso de commit, registrar el objeto junto con el proxi para 
+            // si se está en proceso de commit, registrar el objeto junto con el proxy para 
             // que no se genere un loop con objetos internos que lo referencien.
             this.commitedObject.put(o, proxied);
 
@@ -198,9 +200,12 @@ public class SessionManager implements Actions.Store, Actions.Get {
                     ObjectMapper.setFieldValue(proxied, field, innerO);
 
 //                    innerRID = ((IObjectProxy)innerO).___getVertex().getId().toString();
+                } else {
+                    ObjectMapper.setFieldValue(proxied, field, innerO);
                 }
+                
                 // crear un link entre los dos objetos.
-                OrientEdge oe = this.graphdb.addEdge("class:"+graphRelationName, v, ((IObjectProxy) innerO).___getVertex(), graphRelationName);
+                OrientEdge oe = this.graphdb.addEdge("class:" + graphRelationName, v, ((IObjectProxy) innerO).___getVertex(), graphRelationName);
                 if (this.isAuditing()) {
                     this.auditLog((IObjectProxy) proxied, Audit.AuditType.WRITE, "STORE: " + graphRelationName, oe);
                 }
@@ -218,14 +223,14 @@ public class SessionManager implements Actions.Store, Actions.Get {
                 String field = link.getKey();
                 Object value = link.getValue();
                 final String graphRelationName = classname + "_" + field;
-                
+
                 if (value instanceof List) {
                     // crear un objeto de la colección correspondiente para poder trabajarlo
 //                Class<?> oColection = oClassDef.linkLists.get(field);
                     Collection innerCol = (Collection) value;
 
                     // recorrer la colección verificando el estado de cada objeto.
-                    LOGGER.log(Level.FINER, "Nueva lista: "+graphRelationName+": "+innerCol.size()+" elementos");
+                    LOGGER.log(Level.FINER, "Nueva lista: " + graphRelationName + ": " + innerCol.size() + " elementos");
                     for (Object llObject : innerCol) {
                         IObjectProxy ioproxied;
                         // verificar si ya está en el contexto
@@ -244,8 +249,8 @@ public class SessionManager implements Actions.Store, Actions.Get {
                         }
 
                         // crear un link entre los dos objetos.
-                        LOGGER.log(Level.FINE, "-----> agregando un edge a: "+ioproxied.___getVertex().getId());
-                        OrientEdge oe = this.graphdb.addEdge("class:"+graphRelationName, v, ioproxied.___getVertex(), graphRelationName);
+                        LOGGER.log(Level.FINE, "-----> agregando un edge a: " + ioproxied.___getVertex().getId());
+                        OrientEdge oe = this.graphdb.addEdge("class:" + graphRelationName, v, ioproxied.___getVertex(), graphRelationName);
                         if (this.isAuditing()) {
                             this.auditLog((IObjectProxy) proxied, Audit.AuditType.WRITE, "STORE: " + graphRelationName, oe);
                         }
@@ -275,7 +280,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
                             }
                             // crear un link entre los dos objetos.
                             LOGGER.log(Level.FINER, "-----> agregando el edges de " + v.getId().toString() + " para " + ioproxied.___getVertex().toString() + " key: " + imk);
-                            OrientEdge oe = SessionManager.this.graphdb.addEdge("class:"+graphRelationName, v, ioproxied.___getVertex(), graphRelationName);
+                            OrientEdge oe = SessionManager.this.graphdb.addEdge("class:" + graphRelationName, v, ioproxied.___getVertex(), graphRelationName);
                             if (isAuditing()) {
                                 auditLog((IObjectProxy) finalProxied, Audit.AuditType.WRITE, "STORE: " + graphRelationName, oe);
                             }
@@ -296,9 +301,14 @@ public class SessionManager implements Actions.Store, Actions.Get {
                 // convertir la colección a Lazy para futuras referencias.
                 this.objectMapper.colecctionToLazy(proxied, field, v);
             }
+
+            // guardar el objeto en el cache. Se usa el RID como clave
+            objectCache.put(v.getId().toString(), new WeakReference<>(proxied));
+
         } catch (IllegalArgumentException ex) {
             Logger.getLogger(SessionManager.class.getName()).log(Level.SEVERE, null, ex);
         }
+
         LOGGER.log(Level.FINER, "FIN del Store ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
         return proxied;
     }
@@ -314,6 +324,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
         if (o instanceof IObjectProxy) {
             String rid = ((IObjectProxy) o).___getVertex().getId().toString();
             LOGGER.log(Level.FINER, "Marcando como dirty: " + o.getClass().getSimpleName() + " - " + o.toString());
+            LOGGER.log(Level.FINEST, ThreadHelper.getCurrentStackTrace());
             this.dirty.put(rid, o);
         } else {
             throw new UnmanagedObject();
@@ -379,8 +390,26 @@ public class SessionManager implements Actions.Store, Actions.Get {
         this.dirty.clear();
         this.commiting = false;
         this.commitedObject.clear();
+        
+//        // refrescar las referencias del caché
+//        String newRid;
+//        for (Iterator<String> iterator = newrids.iterator(); iterator.hasNext();) {
+//            String tempRid = iterator.next();
+//            if (objectCache.get(tempRid).get()!=null) {
+//                // reemplazar el rid con el que le asignó la base luego de persistir el objeto
+//                Object o = objectCache.get(tempRid).get();
+//                objectCache.remove(tempRid);
+//                newRid = this.getRID(o);
+//                objectCache.put(newRid, new WeakReference<>(o));
+//            }
+//        }
+        // se opta por eliminar el caché de objetos recuperados de la base en un commit o rollback
+        // por lo que futuros pedidos a la base fuera de la transacción devolverá una nueva instancia
+        // del objeto.
+        this.objectCache.clear();
+        newrids.clear();
     }
-
+    
     /**
      * Transfiere todos los cambios de los objetos a las estructuras subyacentes.
      */
@@ -415,7 +444,12 @@ public class SessionManager implements Actions.Store, Actions.Get {
             IObjectProxy value = (IObjectProxy) entry.getValue();
             value.___rollback();
         }
-
+        
+        // se opta por eliminar el caché de objetos recuperados de la base en un commit o rollback
+        // por lo que futuros pedidos a la base fuera de la transacción devolverá una nueva instancia
+        // del objeto.
+        this.objectCache.clear();
+        
         // limpiar el caché de objetos modificados
         this.dirty.clear();
     }
@@ -457,24 +491,38 @@ public class SessionManager implements Actions.Store, Actions.Get {
     @Override
     public Object get(String rid) throws UnknownRID, VertexJavaClassNotFound {
         try {
-            Object ret = null;
             if (this.graphdb == null) {
                 throw new NoOpenTx();
             }
             if (rid == null) {
                 throw new UnknownRID();
             }
-            OrientVertex v = graphdb.getVertex(rid);
-            if (v == null) {
-                throw new UnknownRID(rid);
+            Object ret = null;
+
+            if (objectCache.get(rid) != null) {
+                ret = objectCache.get(rid).get();
             }
-            String javaClass = v.getType().getCustom("javaClass");
-            if (javaClass == null) {
-                throw new VertexJavaClassNotFound("La clase del Vértice no tiene la propiedad javaClass");
+
+            // si ret == null, recuperar el objeto desde la base, en caso contrario devolver el objeto desde el caché
+            if (ret == null) {
+                objectCache.remove(rid);
+                
+                OrientVertex v = graphdb.getVertex(rid);
+                if (v == null) {
+                    throw new UnknownRID(rid);
+                }
+                String javaClass = v.getType().getCustom("javaClass");
+                if (javaClass == null) {
+                    throw new VertexJavaClassNotFound("La clase del Vértice no tiene la propiedad javaClass");
+                }
+                javaClass = javaClass.replaceAll("[\'\"]", "");
+                Class<?> c = Class.forName(javaClass);
+                ret = this.get(c, rid);
+            } else {
+                LOGGER.log(Level.FINER, "Objeto Recupeardo del caché.");
             }
-            javaClass = javaClass.replaceAll("[\'\"]", "");
-            Class<?> c = Class.forName(javaClass);
-            return this.get(c, rid);
+            return ret;
+            
         } catch (ClassNotFoundException ex) {
             Logger.getLogger(SessionManager.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -497,6 +545,17 @@ public class SessionManager implements Actions.Store, Actions.Get {
         if (rid == null) {
             throw new UnknownRID();
         }
+
+        // si está en el caché, devolver la referencia desde ahí.
+        if (objectCache.get(rid) != null) {
+            if (objectCache.get(rid).get() != null) {
+                LOGGER.log(Level.FINER, "Objeto Recupeardo del caché.");
+                return (T)objectCache.get(rid).get();
+            } else {
+                objectCache.remove(rid);
+            }
+        }
+        
         // iniciar el conteo de gets. Todos los gets se guardan en un mapa 
         // para impedir que un único get entre en un loop cuando un objeto
         // tiene referencias a su padre.
@@ -530,6 +589,10 @@ public class SessionManager implements Actions.Store, Actions.Get {
             LOGGER.log(Level.FINER, "Fin de la transacción. Reseteando el cache.....................");
             this.transactionCache.clear();
         }
+        
+        // cuardar el objeto en el caché
+        objectCache.put(rid, new WeakReference<>(o));
+        
         LOGGER.log(Level.FINER, "Fin get -------------------------------------\n");
         return o;
     }
@@ -789,7 +852,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
                 new OCommandSQL(cSQL)).execute()) {
             ret.add(this.get(clase, v.getId().toString()));
         }
-
+        
         return ret;
     }
 
