@@ -59,10 +59,14 @@ public class Test {
 
     public void initSession() {
         System.out.println("Iniciando comunicación con la base....");
-        sm = new SessionManager("remote:localhost/Test", "root", "toor");
+        long millis = System.currentTimeMillis();
+        System.out.println(""+millis);
+        sm = new SessionManager("remote:localhost/quiencotiza", "root", "toor");
+        System.out.println(""+(System.currentTimeMillis()-millis));
         System.out.println("comunicación inicializada!");
         sm.begin();
-        sm.setAuditOnUser("userAuditado");
+        System.out.println(""+(System.currentTimeMillis()-millis));
+//        sm.setAuditOnUser("userAuditado");
     }
 
     public void testSessionManager() {
@@ -73,7 +77,7 @@ public class Test {
 //          this.testStoreLink();
 //        this.testUpdateLink();
 //        this.testQuery();
-        testLoop();
+//        testLoop();
 //        this.lab();
 
         try {

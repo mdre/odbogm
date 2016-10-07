@@ -441,6 +441,9 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         LOGGER.log(Level.FINER, "iniciando commit interno " + this.___baseElement.getId() + ".... (dirty mark:" + ___dirty + ")");
         // si ya estaba marcado como dirty no volver a procesarlo.
         if (!___dirty) {
+            if (this.___baseElement.getGraph() == null) {
+                this.___sm.getGraphdb().attach(this.___baseElement);
+            }
             // FIXME: debería pasar este map como propiedad para optimizar la velocidad?
             Map<String, Object> vmap = this.___baseElement.getProperties();
 
