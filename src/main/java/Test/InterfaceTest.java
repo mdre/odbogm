@@ -3,13 +3,16 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package TestBB;
+
+package Test;
+
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  *
- * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
+ * @author Marcelo D. Ré <marcelo.re@gmail.com>
  */
-public interface ITest {
-    public void setData(String s);
-    public String getData();
+public interface InterfaceTest {
+    public void foo();
 }

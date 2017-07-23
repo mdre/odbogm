@@ -17,7 +17,7 @@ import net.odbogm.annotations.FieldAttributes;
 
 /**
  *
- * @author Marcelo D. Ré <marcelo.re@gmail.com>
+ * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
 @Audit(log = Audit.AuditType.ALL)
 public class SimpleVertexEx extends SimpleVertex {
@@ -166,29 +166,3 @@ public class SimpleVertexEx extends SimpleVertex {
         
 }
 
-class EdgeAttrib {
-    String nota;
-    Date fecha;
-
-    public EdgeAttrib(String nota, Date fecha) {
-        this.nota = nota;
-        this.fecha = fecha;
-    }
-
-    public String getNota() {
-        return nota;
-    }
-
-    public void setNota(String nota) {
-        this.nota = nota;
-    }
-
-    public Date getFecha() {
-        return fecha;
-    }
-
-    public void setFecha(Date fecha) {
-        this.fecha = fecha;
-    }
-    
-}

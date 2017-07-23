@@ -14,7 +14,7 @@ import net.odbogm.utils.ReflectionUtils;
 
 /**
  *
- * @author Marcelo D. Ré <marcelo.re@gmail.com>
+ * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
 public class TestEx {
     private final static Logger LOGGER = Logger.getLogger(TestEx.class .getName());

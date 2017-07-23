@@ -9,7 +9,7 @@ import java.util.logging.Level;
 
 /**
  * Configuración de los log de cada clase
- * @author Marcelo D. Ré <marcelo.re@gmail.com>
+ * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
 public class LogginProperties {
 
@@ -25,7 +25,7 @@ public class LogginProperties {
     public static Level ObjectProxyFactory          = Level.INFO;
     public static Level ObjectStruct                = Level.INFO;
     public static Level ReflectionUtils             = Level.INFO;
-    public static Level SessionManager              = Level.INFO;
+    public static Level SessionManager              = Level.FINE;
     public static Level VectorLazyProxy             = Level.INFO;
     public static Level VertexUtil                  = Level.INFO;
     public static Level ThreadedGraphRecordFactory  = Level.INFO;

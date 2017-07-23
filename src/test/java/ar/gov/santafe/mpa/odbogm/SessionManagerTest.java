@@ -5,10 +5,13 @@
  */
 package ar.gov.santafe.mpa.odbogm;
 
+import Test.EdgeAttrib;
 import Test.EnumTest;
 import net.odbogm.SessionManager;
 import Test.SimpleVertex;
 import Test.SimpleVertexEx;
+import Test.SimpleVertexInterfaceAttr;
+import com.arshadow.utilitylib.DateHelper;
 import net.odbogm.proxy.IObjectProxy;
 import java.util.ArrayList;
 import java.util.Date;
@@ -616,6 +619,62 @@ public class SessionManagerTest {
     }
     
     
+    @Test
+    public void testComplexHashMap(){
+        System.out.println("\n\n\n");
+        System.out.println("***************************************************************");
+        System.out.println("Verificar el comportamiento de los HashMap con objetos como key");
+        System.out.println("***************************************************************");
+        SimpleVertexEx sve = new SimpleVertexEx();
+        
+        System.out.println("guardado del objeto limpio.");
+        SimpleVertexEx stored = sm.store(sve);
+        sm.commit();
+        
+        String rid = ((IObjectProxy)stored).___getRid();
+        
+        System.out.println("primer commit finalizado. RID: "+rid+" ------------------------------------------------------------");
+        
+        assertNull(stored.getOhmSVE());
+        
+        System.out.println("Agrego un HM nuevo");
+        HashMap<EdgeAttrib,SimpleVertexEx> ohm = new HashMap<>();
+        stored.setOhmSVE(ohm);
+        ohm.put(new EdgeAttrib("nota 1", DateHelper.getCurrentDate()),new SimpleVertexEx());
+        ohm.put(new EdgeAttrib("nota 2", DateHelper.getCurrentDate()),new SimpleVertexEx());
+        
+        System.out.println("\ninicio segundo commit ----------------------------------------------------------");
+        sm.commit();
+        System.out.println("segundo commit finalizado ----------------------------------------------------------\n");
+        
+        SimpleVertexEx retrieved = sm.get(SimpleVertexEx.class, rid);
+        System.out.println("retrieved: "+retrieved+" : "+retrieved.getOhmSVE());
+        System.out.println("stored: "+stored+" : "+stored.getOhmSVE()+"\n\n");
+        int iretSize = retrieved.getOhmSVE().size();
+        int istoredSize = stored.getOhmSVE().size();
+        assertEquals(iretSize,istoredSize);
+
+//        SimpleVertexEx ohmsveGetted = retrieved.getOhmSVE().get("key1");
+//        System.out.println("key1: "+(ohmsveGetted==null?" NULL!":"Ok."));
+//        assertNotNull(ohmsveGetted);
+//        
+        System.out.println("\nagregamos un nuevo objeto al hashmap ya inicializado");
+        stored.getOhmSVE().put(new EdgeAttrib("nota 3", DateHelper.getCurrentDate()),new SimpleVertexEx());
+        System.out.println("\ninicio tercer commit ----------------------------------------------------------");
+        sm.commit();
+        System.out.println("tercer commit ----------------------------------------------------------\n");
+        
+        retrieved = sm.get(SimpleVertexEx.class, rid);
+        
+        System.out.println("retrieved: "+retrieved+" : "+retrieved.getOhmSVE());
+        System.out.println("stored: "+stored+" : "+stored.getOhmSVE());
+        
+        assertEquals(retrieved.getOhmSVE().size(), stored.getOhmSVE().size());
+        
+    }
+    
+    
+    
     
     
     @Test
@@ -825,4 +884,48 @@ public class SessionManagerTest {
     }
     
     
+    /**
+     * Test of store method, of class SessionManager.
+     */
+    @Test
+    public void testStoreWithInterfaceAttr() {
+        System.out.println("\n\n\n");
+        System.out.println("***************************************************************");
+        System.out.println("store objeto with Interface as attr (SimpleVertexWithInterfaceAttr)");
+        System.out.println("***************************************************************");
+        
+        SimpleVertexInterfaceAttr sv = new SimpleVertexInterfaceAttr();
+        SimpleVertexInterfaceAttr expResult = sv;
+        
+        assertEquals(0, sm.getDirtyCount());
+        
+        SimpleVertexInterfaceAttr result = sm.store(sv);
+        
+        assertEquals(2, sm.getDirtyCount());
+        assertTrue(result instanceof IObjectProxy);
+        
+        assertEquals(expResult.getS(), result.getS());
+        
+        this.sm.commit();
+        assertEquals(0, sm.getDirtyCount());
+
+        System.out.println("Recuperar el objeto de la base");
+        String rid = ((IObjectProxy)result).___getRid();
+        expResult = this.sm.get(SimpleVertexInterfaceAttr.class, rid);
+
+        assertEquals(0, sm.getDirtyCount());
+        
+        // verificar que el resultado implemente la interface 
+        assertTrue(expResult instanceof IObjectProxy);
+        
+        // verificar que todos los valores sean iguales
+        assertEquals(((IObjectProxy)expResult).___getRid(), ((IObjectProxy)result).___getRid());
+        
+        assertEquals(expResult.getI(), sv.getI());
+//        assertEquals((float)expResult.getF(), (float)sv.getF());
+        assertEquals(expResult.getS(), sv.getS());
+        assertEquals(expResult.getoB(), sv.getoB());
+        assertEquals(expResult.getoF(), sv.getoF());
+        assertEquals(expResult.getoI(), sv.getoI());
+    }
 }

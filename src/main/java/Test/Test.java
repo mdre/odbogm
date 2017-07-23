@@ -19,6 +19,7 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.logging.Level;
@@ -29,7 +30,7 @@ import net.odbogm.utils.ReflectionUtils;
 
 /**
  *
- * @author Marcelo D. Ré <marcelo.re@gmail.com>
+ * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
 public class Test {
 
@@ -98,6 +99,7 @@ public class Test {
         SimpleVertexEx sv1 = sm.get(SimpleVertexEx.class, "12:1177");
         SimpleVertexEx sv2 = sm.get(SimpleVertexEx.class, "12:1177");
         
+        HashMap<Integer,Object> hmi = new HashMap<>();
         
         try {
             System.out.println(ReflectionUtils.findMethod(SimpleVertexEx.class, "toString", (Class<?>[]) null));

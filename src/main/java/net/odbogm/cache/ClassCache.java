@@ -21,7 +21,7 @@ import net.odbogm.LogginProperties;
 
 /**
  *
- * @author Marcelo D. Ré <marcelo.re@gmail.com>
+ * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
 public class ClassCache {
 
@@ -38,7 +38,7 @@ public class ClassCache {
     /**
      * Devuelve el mapa de la clase obteniéndolo desde el cache. Si no exite, analiza la clase y lo agrega.
      *
-     * @param c
+     * @param c: reference class.
      * @return
      */
     public ClassDef get(Class<?> c) {
@@ -55,7 +55,7 @@ public class ClassCache {
     /**
      * Analiza la clase y devuelve un mapa con las definiciones de campo. Además agrega la clase al cache
      *
-     * @param c
+     * @param c reference class.
      */
     private ClassDef cacheClass(Class<?> c) {
         

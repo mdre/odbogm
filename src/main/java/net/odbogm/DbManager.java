@@ -31,8 +31,8 @@ import net.odbogm.annotations.Indexed;
  * DbManager se encarga de analizar todas las clases que se encuentren en los paquetes que se le indiquen o las clases específicas que se le indiquen
  * y crea la correspondiete estructura en la base de datos. Para ello se basa en las anotaciones:
  *
- * @Index: crea un índice sobre el campo.
- * @FieldAttributes: define varios attributos de los campos de acuerdo a la cláusula ALTER PROPERTY LINKEDCLASS, the linked class name. Accepts a
+ * {@code @Index}: crea un índice sobre el campo.
+ * {@code @FieldAttributes}: define varios attributos de los campos de acuerdo a la cláusula {@code ALTER PROPERTY LINKEDCLASS}, the linked class name. Accepts a
  * string as value. NULL to remove it LINKEDTYPE, the linked type name between those supported:Types. Accepts a string as value. NULL to remove it
  * MIN, the minimum value as constraint. Accepts strings, numbers or dates as value. NULL to remove it MANDATORY, true if the property is mandatory.
  * Accepts "true" or "false" MAX, the maximum value as constraint. Accepts strings, numbers or dates as value. NULL to remove it NAME, the property
@@ -40,12 +40,12 @@ import net.odbogm.annotations.Indexed;
  * a string as value. NULL to remove it TYPE, the type between those supported:Types Accepts a string as value COLLATE, sets the collate to define the
  * strategy of comparison. By default is case sensitive. By setting it yo "ci", any comparison will be case-insensitive READONLY the property value is
  * immutable: it can't be changed after the first assignment. Use this with DEFAULT to have immutable values on creation. Accepts "true" or "false"
- * CUSTOM Set custom properties. Syntax is <name> = <value>. Example: stereotype = icon DEFAULT (Since 2.1) set the default value. Default value can
+ * CUSTOM Set custom properties. Syntax is {@code <name> = <value>}. Example: {@code stereotype = icon DEFAULT} (Since 2.1) set the default value. Default value can
  * be a value or a function. See below for examples
- * @IgnoreProperty: ignora el campo en la definición de la clase. Sin embargo se persistirá si el campo es distinto de null cuando se realice un store
+ * {@code @IgnoreProperty}: ignora el campo en la definición de la clase. Sin embargo se persistirá si el campo es distinto de null cuando se realice un store
  * del objeto.
  *
- * @author Marcelo D. Ré <marcelo.re@gmail.com>
+ * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
 public class DbManager {
 

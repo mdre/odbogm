@@ -50,7 +50,7 @@ import net.odbogm.exceptions.VertexJavaClassNotFound;
 
 /**
  *
- * @author Marcelo D. Ré <marcelo.re@gmail.com>
+ * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
 public class SessionManager implements Actions.Store, Actions.Get {
 
@@ -316,7 +316,6 @@ public class SessionManager implements Actions.Store, Actions.Get {
     /**
      * Marca un objecto como dirty para ser procesado en el commit
      *
-     * @param rid
      * @param o
      */
     public synchronized void setAsDirty(Object o) throws UnmanagedObject {
@@ -786,7 +785,6 @@ public class SessionManager implements Actions.Store, Actions.Get {
     /**
      * Ejecuta un comando que devuelve un número. El valor devuelto será el primero que se encuentre en la lista de resultado.
      *
-     * @param <T>
      * @param sql comando a ejecutar
      * @param retVal nombre de la propiedad a devolver
      * @return retorna el valor de la propiedad indacada obtenida de la ejecución de la consulta
@@ -811,9 +809,8 @@ public class SessionManager implements Actions.Store, Actions.Get {
     /**
      * Devuelve todos los registros a partir de una clase base.
      *
-     * @param <T>
-     * @param sql
-     * @return
+     * @param <T> Reference class
+     * @return return a list of object of the refecence class.
      */
     public <T> List<T> query(Class<T> clase) {
         if (graphdb == null) {

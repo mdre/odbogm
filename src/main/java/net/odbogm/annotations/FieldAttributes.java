@@ -9,10 +9,9 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.util.Date;
 
 /**
- * @FieldAttributes: define varios attributos de los campos de acuerdo a la cláusula ALTER PROPERTY
+ * {@code @FieldAttributes}: define varios attributos de los campos de acuerdo a la cláusula ALTER PROPERTY
  *          LINKEDCLASS, the linked class name. Accepts a string as value. NULL to remove it
  *          LINKEDTYPE, the linked type name between those supported:Types. Accepts a string as value. NULL to remove it
  *          MIN, the minimum value as constraint. Accepts strings, numbers or dates as value. NULL to remove it
@@ -26,11 +25,11 @@ import java.util.Date;
  *                   By setting it yo "ci", any comparison will be case-insensitive
  *          READONLY the property value is immutable: it can't be changed after the first assignment. 
  *                   Use this with DEFAULT to have immutable values on creation. Accepts "true" or "false"
- *          CUSTOM Set custom properties. Syntax is <name> = <value>. Example: stereotype = icon
+ *          CUSTOM Set custom properties. Syntax is {@code <name> = <value>}. Example: {@code stereotype = icon}
  *          DEFAULT (Since 2.1) set the default value. Default value can be a value or a function. See below for examples
  * 
  * 
- * @author Marcelo D. Ré <marcelo.re@gmail.com>
+ * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD) //on class level

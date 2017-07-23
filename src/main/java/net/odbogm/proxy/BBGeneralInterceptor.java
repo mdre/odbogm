@@ -15,7 +15,7 @@ import net.bytebuddy.implementation.bind.annotation.This;
 
 /**
  *
- * @author Marcelo D. Ré <marcelo.re@gmail.com>
+ * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
 public class BBGeneralInterceptor {
 

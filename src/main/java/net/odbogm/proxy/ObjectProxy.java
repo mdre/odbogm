@@ -5,7 +5,6 @@
  */
 package net.odbogm.proxy;
 
-import Test.SimpleVertexEx;
 import net.odbogm.annotations.RemoveOrphan;
 import net.odbogm.ObjectStruct;
 import net.odbogm.SessionManager;
@@ -41,7 +40,7 @@ import net.sf.cglib.proxy.MethodProxy;
 
 /**
  *
- * @author Marcelo D. Ré <marcelo.re@gmail.com>
+ * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
 public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
@@ -353,7 +352,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
      *
      * establece el elemento base como un vértice.
      *
-     * @param v
+     * @param e
      */
     @Override
     public void ___setEdge(OrientEdge e) {
@@ -415,8 +414,9 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                            mapeado 
                              */
                             this.___sm.addToTransactionCache(this.___getRid(), ___proxyObject);
-
-                            Object innerO = this.___sm.get(fc, vertice.getId().toString());
+                            
+                            // si es una interface llamar a get solo con el RID.
+                            Object innerO = fc.isInterface()?this.___sm.get(vertice.getId().toString()):this.___sm.get(fc, vertice.getId().toString());
                             LOGGER.log(Level.FINER, "Inner object " + field + ": " + (innerO == null ? "NULL" : "" + innerO.toString()) + "  FC: " + fc.getSimpleName() + "   innerO.class: " + innerO.getClass().getSimpleName());
                             fLink.set(this.___proxyObject, fc.cast(innerO));
                             duplicatedLinkGuard = true;
@@ -609,7 +609,6 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     /**
      * Marca el objeto como dirty para que sea considerado en el próximo commit
      *
-     * @param d
      */
     @Override
     public void ___setDirty() {

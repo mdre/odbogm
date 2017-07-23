@@ -28,7 +28,7 @@ import java.util.stream.Stream;
 
 /**
  *
- * @author Marcelo D. Ré <marcelo.re@gmail.com>
+ * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
 public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCalls {
 

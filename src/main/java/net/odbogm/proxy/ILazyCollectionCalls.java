@@ -11,7 +11,7 @@ import java.util.Map;
 
 /**
  *
- * @author Marcelo D. Ré <marcelo.re@gmail.com>
+ * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
 public interface ILazyCollectionCalls extends ILazyCalls {
     public void init(SessionManager sm, OrientVertex relatedTo, IObjectProxy parent, String field, Class<?> c);

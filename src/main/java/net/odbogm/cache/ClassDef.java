@@ -10,7 +10,7 @@ import java.util.logging.Logger;
 
 /**
  * Estructura para soportar la definición de una clase.
- * @author Marcelo D. Ré <marcelo.re@gmail.com>
+ * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
 public class ClassDef {
 

@@ -28,7 +28,7 @@ import net.odbogm.LogginProperties;
 
 /**
  *
- * @author Marcelo D. Ré <marcelo.re@gmail.com>
+ * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
 public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMapCalls {
 
@@ -57,7 +57,8 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
      * @param sm Vínculo al SessionManager actual
      * @param relatedTo: Vértice con el cual se relaciona la colección
      * @param field: atributo de relación
-     * @param c: clase genérica de la colección.
+     * @param k: clase del key.
+     * @param v: clase del value.
      */
     @Override
     public void init(SessionManager sm, OrientVertex relatedTo, IObjectProxy parent, String field, Class<?> k, Class<?> v) {
