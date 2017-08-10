@@ -13,6 +13,7 @@ import java.util.logging.Level;
  */
 public class LogginProperties {
 
+    public static Level ArrayListEmbeddedProxy          = Level.INFO;
     public static Level ArrayListLazyProxy          = Level.INFO;
     public static Level Auditor                     = Level.INFO;
     public static Level ClassCache                  = Level.INFO;
@@ -25,7 +26,7 @@ public class LogginProperties {
     public static Level ObjectProxyFactory          = Level.INFO;
     public static Level ObjectStruct                = Level.INFO;
     public static Level ReflectionUtils             = Level.INFO;
-    public static Level SessionManager              = Level.FINE;
+    public static Level SessionManager              = Level.INFO;
     public static Level VectorLazyProxy             = Level.INFO;
     public static Level VertexUtil                  = Level.INFO;
     public static Level ThreadedGraphRecordFactory  = Level.INFO;

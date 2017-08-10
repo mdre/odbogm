@@ -461,7 +461,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             // obtener un mapa actualizado del objeto contenido
             ObjectStruct oStruct = this.___sm.getObjectMapper().objectStruct(this.___proxyObject);
             Map<String, Object> omap = oStruct.fields;
-
+            
             // si los mapas no son iguales, entonces eso implica que el objeto cambió
             boolean eqMaps = true;
             for (Map.Entry<String, Object> entry : omap.entrySet()) {
@@ -469,6 +469,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                 Object value = entry.getValue();
 
                 Object vval = vmap.get(key);
+                LOGGER.log(Level.FINER, "value: "+value+" =<>= "+vval);
                 if (!value.equals(vval)) {
                     eqMaps = false;
                     break;
@@ -1024,9 +1025,29 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
                 boolean acc = f.isAccessible();
                 f.setAccessible(true);
-                f.set(___proxyObject, value);
+                
+//                if (f.getType().isEnum()) {
+//                    LOGGER.log(Level.FINER, "Enum field: " + f.getName() + " type: " + f.getType() + "  value: " + value + "   Enum val: " + Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString()));
+////                    f.set(oproxied, Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString()));
+//                    this.setFieldValue(oproxied, prop, Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString()));
+//                    f.set(___proxyObject, value);
+//                } else 
+                if (f.getType().isAssignableFrom(List.class)) {
+                    // se debe hacer una copia del la lista para no quede referenciando al objeto original
+                    // dado que en la asignación solo se pasa la referencia del objeto.
+                    LOGGER.log(Level.FINER, "Lista detectada: realizando una copia del contenido...");
+                    f.set(___proxyObject, new ArrayListEmbeddedProxy((IObjectProxy)___proxyObject,(List)value));
+                } else if (f.getType().isAssignableFrom(Map.class)) {
+                    // se debe hacer una copia del la lista para no quede referenciando al objeto original
+                    // dado que en la asignación solo se pasa la referencia del objeto.
+                    LOGGER.log(Level.FINER, "Map detectado: realizando una copia del contenido...");
+                    // FIXME: Ojo que se hace solo un shalow copy!! no se está conando la clave y el value
+                    f.set(___proxyObject, new HashMapEmbeddedProxy((IObjectProxy)___proxyObject,(Map)value));
+                } else{
+                    f.set(___proxyObject, value);
+                }
                 LOGGER.log(Level.FINER, "hidratado campo: " + prop + "=" + value);
-                f.setAccessible(acc);
+                f.setAccessible(acc); 
             } catch (NoSuchFieldException ex) {
                 Logger.getLogger(ObjectProxy.class.getName()).log(Level.SEVERE, null, ex);
             } catch (IllegalArgumentException ex) {

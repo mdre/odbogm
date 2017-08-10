@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.LogginProperties;
+import net.odbogm.annotations.Embedded;
 
 /**
  *
@@ -100,11 +101,13 @@ public class ClassCache {
                             boolean setAsEmbedded = false;
                             if (List.class.isAssignableFrom(f.getType())) {
                                 LOGGER.log(Level.FINER, "se trata de una Lista...");
-                                // se trata de una lista. Verificar el subtipo
+                                // se trata de una lista. Verificar el subtipo o el @Embedded
                                 ParameterizedType listType = (ParameterizedType) f.getGenericType();
                                 Class<?> listClass = (Class<?>) listType.getActualTypeArguments()[0];
-                                if (Primitives.PRIMITIVE_MAP.get(listClass)!=null) {
+                                if ((Primitives.PRIMITIVE_MAP.get(listClass)!=null)
+                                        ||(f.isAnnotationPresent(Embedded.class))) {
                                     LOGGER.log(Level.FINER, "Es una colección de primitivas: "+listClass.getSimpleName());
+                                    LOGGER.log(Level.FINER, "Se procede a embeberla.");
                                     setAsEmbedded = true;
                                 }
                             } else if (Map.class.isAssignableFrom(f.getType())) {
@@ -114,8 +117,15 @@ public class ClassCache {
                                 ParameterizedType listType = (ParameterizedType) f.getGenericType();
                                 Class<?> keyClass = (Class<?>) listType.getActualTypeArguments()[0];
                                 Class<?> valClass = (Class<?>) listType.getActualTypeArguments()[1];
-                                if (Primitives.PRIMITIVE_MAP.get(valClass)!=null) {
-                                    LOGGER.log(Level.FINER, "Es una colección de primitivas: "+valClass.getSimpleName());
+                                
+                                // para que un map pueda ser embebido tiene que tener el key: string y si el value es una primitiva
+                                // directamente lo embebemos. En caso contrario, si existe el annotation @Embedded tambien
+                                // lo marcamos como campo.
+                                if ( (keyClass == String.class)
+                                        && ((Primitives.PRIMITIVE_MAP.get(valClass)!=null)
+                                           || (f.isAnnotationPresent(Embedded.class))
+                                        )) {
+                                    LOGGER.log(Level.FINER, "Es una colección de embebida: "+valClass.getSimpleName());
                                     setAsEmbedded = true;
                                 }
                             }
@@ -128,6 +138,8 @@ public class ClassCache {
                                 cached.linkLists.put(f.getName(), f.getType());
                             }
                         } else {
+                            // FIXME: los @Embedded sobre las propiedades pueden generar problemas para detectar los cambios en los 
+                            // objetos embebidos. Ojo con como se procesan.
                             cached.links.put(f.getName(), f.getType());
 //                        } else {
 //                            LOGGER.log(Level.WARNING, "NO PERSISTIDO: {0}.{1}", new Object[]{c.getName(), f.getName()});

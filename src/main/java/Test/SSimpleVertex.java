@@ -7,17 +7,20 @@
 package Test;
 
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import net.odbogm.annotations.Ignore;
 import java.util.logging.Logger;
+import net.odbogm.annotations.Embedded;
 import net.odbogm.security.SObject;
 
 /**
  *
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
-public class SimpleVertex extends SObject {
+public class SSimpleVertex extends SObject {
     @Ignore
-    private final static Logger LOGGER = Logger.getLogger(SimpleVertex.class .getName());
+    private final static Logger LOGGER = Logger.getLogger(SSimpleVertex.class .getName());
 
     private String rid;
     private String s;
@@ -26,6 +29,9 @@ public class SimpleVertex extends SObject {
     private boolean b;
     private Date fecha;
 
+    //@Embedded
+    private Map<String,Integer> map = new HashMap<>();
+    
     public Date getFecha() {
         return fecha;
     }
@@ -61,7 +67,7 @@ public class SimpleVertex extends SObject {
     private Float oF;
     private Boolean oB;
     
-    public SimpleVertex(String s, int i, float f, boolean b, Integer oI, Float oF, Boolean oB) {
+    public SSimpleVertex(String s, int i, float f, boolean b, Integer oI, Float oF, Boolean oB) {
         this.s = s;
         this.i = i;
         this.f = f;
@@ -71,7 +77,7 @@ public class SimpleVertex extends SObject {
         this.oB = oB;
     }
 
-    public SimpleVertex(){
+    public SSimpleVertex(){
         this.s = "string";
         this.i = 1;
         this.f = 0.1f;
@@ -79,11 +85,10 @@ public class SimpleVertex extends SObject {
         this.oI = new Integer(100);
         this.oF = new Float(1.1);
         this.oB = new Boolean(true);
-    }
-    
-    public SimpleVertex(String s) {
-        super();
-        this.s = s;
+        
+        this.map.put("key1", 1);
+        this.map.put("key2", 2);
+        this.map.put("key3", 3);
     }
     
     public Object getRid() {

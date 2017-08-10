@@ -183,7 +183,12 @@ public class DbManager {
      * @param clazz
      */
     private void buildDBScript(Class clazz) {
-        if ((clazz == null)||(clazz.isAnonymousClass())||(clazz.isEnum())||(clazz.isAnnotationPresent(IgnoreClass.class)))
+        if ((clazz == null)
+                ||(clazz.isAnonymousClass())
+                ||(clazz.isEnum())
+                ||(clazz.isAnnotationPresent(IgnoreClass.class))
+                ||(clazz.isInterface())
+                )
             return;
         
         LOGGER.log(Level.FINER, "procesando: "+clazz.getSimpleName()+"...");
@@ -302,7 +307,7 @@ public class DbManager {
                 } else {
                     // si no es un tipo básico, se debe conectar con un Edge.
 //                    if (Primitives.LAZY_COLLECTION.get(field.getType())!=null) {
-                    // FIXME: ojo que si se tratara de una extensín de AL o HM no lo vería como tal y lo vincularía con un link
+                    // FIXME: ojo que si se tratara de una extensión de AL o HM no lo vería como tal y lo vincularía con un link
                     clazzStruct.properties.add("\n"
                         +"let exist = select from (select expand(classes) from metadata:schema) where name = '"+className+"_"+field.getName()+"'\n"
                         + "if ($exist.size()=0) {\n"

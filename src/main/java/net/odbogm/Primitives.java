@@ -17,6 +17,7 @@ import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Vector;
 
 /**
@@ -71,6 +72,7 @@ public class Primitives {
         LAZY_COLLECTION.put(Vector.class,VectorLazyProxy.class);
         
         LAZY_COLLECTION.put(HashMap.class,HashMapLazyProxy.class);
+        LAZY_COLLECTION.put(Map.class,HashMapLazyProxy.class);
         
         
         

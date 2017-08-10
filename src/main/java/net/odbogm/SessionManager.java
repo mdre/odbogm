@@ -95,7 +95,6 @@ public class SessionManager implements Actions.Store, Actions.Get {
 //        this.url = url;
 //        this.user = user;
 //        this.passwd = passwd;
-
         this.factory = new OrientGraphFactory(url, user, passwd).setupPool(1, 10);
 //        vertexs = new ConcurrentHashMap<>();
 //        edges = new HashMap<>();
@@ -141,7 +140,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
                 classname = o.getClass().getSimpleName();
             }
             LOGGER.log(Level.FINER, "STORE: guardando objeto de la clase " + classname);
-
+            
             // Recuperar la definición de clase del objeto.
             ClassDef oClassDef = this.objectMapper.getClassDef(o);
             // Obtener un map del objeto.

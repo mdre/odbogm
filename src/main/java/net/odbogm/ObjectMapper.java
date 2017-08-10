@@ -5,6 +5,7 @@
  */
 package net.odbogm;
 
+import com.esotericsoftware.kryo.Kryo;
 import net.odbogm.cache.ClassCache;
 import net.odbogm.cache.ClassDef;
 import net.odbogm.exceptions.CollectionNotSupported;
@@ -17,9 +18,12 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import com.tinkerpop.blueprints.impls.orient.OrientEdge;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import net.odbogm.exceptions.DuplicateClassDefinition;
+import net.odbogm.proxy.ArrayListEmbeddedProxy;
+import net.odbogm.proxy.HashMapEmbeddedProxy;
 import net.odbogm.proxy.ILazyCollectionCalls;
 import net.odbogm.proxy.ILazyMapCalls;
 import net.odbogm.proxy.IObjectProxy;
@@ -37,7 +41,8 @@ public class ObjectMapper {
         LOGGER.setLevel(LogginProperties.ObjectMapper);
     }
 //    private static int newObjectCounter = 0;
-
+    private Kryo kryo = new Kryo();
+    
     private SessionManager sessionManager;
     private ClassCache classCache;
 
@@ -139,16 +144,18 @@ public class ObjectMapper {
             try {
                 String field = entry.getKey();
                 Class<?> c = entry.getValue();
-
                 Field f = ReflectionUtils.findField(o.getClass(), field);
+                
                 boolean acc = f.isAccessible();
                 f.setAccessible(true);
+                
                 // determinar si no es nulo
                 if (f.get(o) != null) {
+                    LOGGER.log(Level.FINER, "Field: "+field+" Class: "+c.getSimpleName()+": "+f.get(o));
                     oStruct.fields.put(f.getName(), f.get(o));
                 }
                 f.setAccessible(acc);
-
+                
             } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
                 Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
             }
@@ -274,6 +281,7 @@ public class ObjectMapper {
             
             LOGGER.log(Level.FINER, "Buscando campo {0} ....", new String[]{prop});
             Object value = v.getProperty(prop);
+            
             if (value != null) {
                 // obtener la clase a la que pertenece el campo
                 Class<?> fc = fieldmap.get(prop);
@@ -286,8 +294,18 @@ public class ObjectMapper {
                     LOGGER.log(Level.FINER, "Enum field: " + f.getName() + " type: " + f.getType() + "  value: " + value + "   Enum val: " + Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString()));
 //                    f.set(oproxied, Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString()));
                     this.setFieldValue(oproxied, prop, Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString()));
-                } else {
-//                    f.set(oproxied, value);
+                } else if (f.getType().isAssignableFrom(List.class)) {
+                    // se debe hacer una copia del la lista para no quede referenciando al objeto original
+                    // dado que en la asignación solo se pasa la referencia del objeto.
+                    LOGGER.log(Level.FINER, "Lista detectada: realizando una copia del contenido...");
+                    this.setFieldValue(oproxied, prop, new ArrayListEmbeddedProxy((IObjectProxy)oproxied,(List)value));
+                } else if (f.getType().isAssignableFrom(Map.class)) {
+                    // se debe hacer una copia del la lista para no quede referenciando al objeto original
+                    // dado que en la asignación solo se pasa la referencia del objeto.
+                    LOGGER.log(Level.FINER, "Map detectado: realizando una copia del contenido...");
+                    // FIXME: Ojo que se hace solo un shalow copy!! no se está conando la clave y el value
+                    this.setFieldValue(oproxied, prop, new HashMapEmbeddedProxy((IObjectProxy)oproxied,(Map)value));
+                } else{
                     this.setFieldValue(oproxied, prop, value);
                 }
                 LOGGER.log(Level.FINER, "hidratado campo: " + prop + "=" + value);

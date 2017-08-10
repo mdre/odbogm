@@ -11,6 +11,7 @@ import net.odbogm.SessionManager;
 import Test.SimpleVertex;
 import Test.SimpleVertexEx;
 import Test.SimpleVertexInterfaceAttr;
+import Test.SimpleVertexWithEmbedded;
 import com.arshadow.utilitylib.DateHelper;
 import net.odbogm.proxy.IObjectProxy;
 import java.util.ArrayList;
@@ -733,7 +734,7 @@ public class SessionManagerTest {
                 else
                     System.out.println("ERROR:  "+object.getClass()+" !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
                      
-            System.out.println("Query: "+object.getClass()+" - toString: "+object.getClass().getSimpleName());
+            //System.out.println("Query: "+object.getClass()+" - toString: "+object.getClass().getSimpleName());
         }
         assertTrue(isv>0);
         assertTrue(isve>0);
@@ -928,4 +929,62 @@ public class SessionManagerTest {
         assertEquals(expResult.getoF(), sv.getoF());
         assertEquals(expResult.getoI(), sv.getoI());
     }
+    
+    
+    /**
+     * Test of store embedded list and maps.
+     */
+    @Test
+    public void testEmbedded() {
+        System.out.println("\n\n\n");
+        System.out.println("***************************************************************");
+        System.out.println("store objet with List<Primiteve> and Map<Prim,Prim> as attr (SimpleVertexWithEmbedded)");
+        System.out.println("***************************************************************");
+        
+        SimpleVertexWithEmbedded svemb = new SimpleVertexWithEmbedded();
+        
+        assertEquals(0, sm.getDirtyCount());
+        
+        SimpleVertexWithEmbedded result = this.sm.store(svemb);
+        
+        assertEquals(1, sm.getDirtyCount());
+        
+        this.sm.commit();
+        
+        assertEquals(0, sm.getDirtyCount());
+        
+        String rid = ((IObjectProxy)result).___getRid();
+        
+        SimpleVertexWithEmbedded ret = this.sm.get(SimpleVertexWithEmbedded.class, rid);
+        
+        assertEquals(svemb.getStringlist().size(), ret.getStringlist().size());
+        assertEquals(svemb.getSimplemap().size(), ret.getSimplemap().size());
+        
+        System.out.println("Anexando uno a la lista");
+        ret.addToList();
+
+        assertNotEquals(svemb.getStringlist().size(), ret.getStringlist().size());
+        
+        this.sm.commit();
+        assertEquals(0, sm.getDirtyCount());
+        System.out.println("modificando el contenido de un elemento de la lista...");
+        ret.getStringlist().set(1, "-1-");
+        assertEquals(1, sm.getDirtyCount());
+        this.sm.commit();
+        
+        System.out.println("==========================================================");
+        System.out.println("Anexando uno al map");
+        System.out.println("==========================================================");
+        assertEquals(0, sm.getDirtyCount());
+        ret.addToMap();
+        assertEquals(1, sm.getDirtyCount());
+        this.sm.commit();
+        assertEquals(0, sm.getDirtyCount());
+        System.out.println("==========================================================");
+        ret.getSimplemap().put("key 1", 10);
+        assertEquals(1, sm.getDirtyCount());
+        this.sm.commit();
+        assertEquals(0, sm.getDirtyCount());
+    }
+    
 }

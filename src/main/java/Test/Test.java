@@ -36,7 +36,7 @@ public class Test {
 
     private final static Logger LOGGER = Logger.getLogger(Test.class.getName());
     static {
-        LOGGER.setLevel(Level.FINER);
+        LOGGER.setLevel(Level.ALL);
     }
     SessionManager sm;
 
@@ -50,11 +50,12 @@ public class Test {
 
     public Test() {
         initSession();
-        testSessionManager();
+//        testSessionManager();
 //        testDbManager();
 //        lab();
 //        testQuery();
 //        store();
+        testEmbeddded();
         sm.shutdown();
     }
 
@@ -62,7 +63,8 @@ public class Test {
         System.out.println("Iniciando comunicación con la base....");
         long millis = System.currentTimeMillis();
         System.out.println(""+millis);
-        sm = new SessionManager("remote:localhost/quiencotiza", "root", "toor");
+        sm = new SessionManager("remote:localhost/Test", "root", "toor");
+//        sm = new SessionManager("remote:localhost/quiencotiza", "root", "toor");
         System.out.println(""+(System.currentTimeMillis()-millis));
         System.out.println("comunicación inicializada!");
         sm.begin();
@@ -94,6 +96,42 @@ public class Test {
         dbm.generateToConsole(new String[]{"Test"});
     }
 
+    
+    public void testEmbeddded() {
+        SimpleVertexWithEmbedded svemb = new SimpleVertexWithEmbedded();
+        SimpleVertexWithEmbedded result = this.sm.store(svemb);
+        this.sm.commit();
+
+        String rid = ((IObjectProxy)result).___getRid();
+        
+        SimpleVertexWithEmbedded ret = this.sm.get(SimpleVertexWithEmbedded.class, rid);
+        
+        System.out.println("list.size: "+ret.stringlist.size());
+        System.out.println("map.size: "+ret.simplemap.size());
+        
+        System.out.println("Anexando uno a la lista");
+        ret.addToList();
+        
+        this.sm.commit();
+        
+        System.out.println("modificando el contenido de un elemento de la lista...");
+        ret.stringlist.set(1, "-1-");
+        
+        this.sm.commit();
+        
+        System.out.println("==========================================================");
+        System.out.println("Anexando uno al map");
+        System.out.println("==========================================================");
+        ret.addToMap();
+        this.sm.commit();
+        System.out.println("==========================================================");
+        ret.simplemap.put("key 1", 10);
+        
+        this.sm.commit();
+        
+    }
+    
+    
     public void lab() {
         
         SimpleVertexEx sv1 = sm.get(SimpleVertexEx.class, "12:1177");
