@@ -36,7 +36,6 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -46,7 +45,10 @@ import java.util.logging.Logger;
 import net.odbogm.annotations.Audit;
 import net.odbogm.auditory.Auditor;
 import net.odbogm.exceptions.ClassToVertexNotFound;
+import net.odbogm.exceptions.NoUserLoggedIn;
 import net.odbogm.exceptions.VertexJavaClassNotFound;
+import net.odbogm.security.SObject;
+import net.odbogm.security.UserSID;
 
 /**
  *
@@ -90,6 +92,9 @@ public class SessionManager implements Actions.Store, Actions.Get {
 
     // usuario a registrar en la tabla de auditoría.
     private Auditor auditor;
+
+    // usuario logueado sobre el que se ejecutan los controles de seguridad si corresponden
+    private UserSID loggedInUser;
 
     public SessionManager(String url, String user, String passwd) {
 //        this.url = url;
@@ -140,7 +145,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
                 classname = o.getClass().getSimpleName();
             }
             LOGGER.log(Level.FINER, "STORE: guardando objeto de la clase " + classname);
-            
+
             // Recuperar la definición de clase del objeto.
             ClassDef oClassDef = this.objectMapper.getClassDef(o);
             // Obtener un map del objeto.
@@ -155,17 +160,18 @@ public class SessionManager implements Actions.Store, Actions.Get {
             }
 
             OrientVertex v = graphdb.addVertex("class:" + classname, omap);
-            
+
             proxied = ObjectProxyFactory.create(o, v, this);
-            
+
             // registrar el rid temporal para futuras referencias.
             newrids.add(v.getId().toString());
-            
+
             // transferir todos los valores al proxy
-            ReflectionUtils.copyObject(o, proxied);
+            ReflectionUtils.copyObject(o, proxied, true);
             if (this.isAuditing()) {
                 this.auditLog((IObjectProxy) proxied, Audit.AuditType.WRITE, "STORE", omap);
             }
+
             LOGGER.log(Level.FINER, "Marcando como dirty: " + proxied.getClass().getSimpleName());
             this.dirty.put(v.getId().toString(), proxied);
 
@@ -174,7 +180,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
             this.commitedObject.put(o, proxied);
 
             /* 
-            procesar los objetos internos. Primero se deber determinar
+            procesar los objetos internos. Primero se debe determinar
             si los objetos ya existían en el contexto actual. Si no existen
             deben ser creados.
              */
@@ -202,7 +208,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
                 } else {
                     ObjectMapper.setFieldValue(proxied, field, innerO);
                 }
-                
+
                 // crear un link entre los dos objetos.
                 OrientEdge oe = this.graphdb.addEdge("class:" + graphRelationName, v, ((IObjectProxy) innerO).___getVertex(), graphRelationName);
                 if (this.isAuditing()) {
@@ -367,6 +373,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
         // this.commitObjectChanges();
         // cambiar el estado a comiteando
         this.commiting = true;
+        LOGGER.log(Level.FINER, "Iniciando COMMIT ==================================");
         LOGGER.log(Level.FINER, "Objetos marcados como Dirty: " + dirty.size());
         for (Map.Entry<String, Object> e : dirty.entrySet()) {
             String rid = e.getKey();
@@ -388,7 +395,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
         this.dirty.clear();
         this.commiting = false;
         this.commitedObject.clear();
-        
+
 //        // refrescar las referencias del caché
 //        String newRid;
 //        for (Iterator<String> iterator = newrids.iterator(); iterator.hasNext();) {
@@ -407,7 +414,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
         this.objectCache.clear();
         newrids.clear();
     }
-    
+
     /**
      * Transfiere todos los cambios de los objetos a las estructuras subyacentes.
      */
@@ -442,12 +449,12 @@ public class SessionManager implements Actions.Store, Actions.Get {
             IObjectProxy value = (IObjectProxy) entry.getValue();
             value.___rollback();
         }
-        
+
         // se opta por eliminar el caché de objetos recuperados de la base en un commit o rollback
         // por lo que futuros pedidos a la base fuera de la transacción devolverá una nueva instancia
         // del objeto.
         this.objectCache.clear();
-        
+
         // limpiar el caché de objetos modificados
         this.dirty.clear();
     }
@@ -504,7 +511,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
             // si ret == null, recuperar el objeto desde la base, en caso contrario devolver el objeto desde el caché
             if (ret == null) {
                 objectCache.remove(rid);
-                
+
                 OrientVertex v = graphdb.getVertex(rid);
                 if (v == null) {
                     throw new UnknownRID(rid);
@@ -518,9 +525,13 @@ public class SessionManager implements Actions.Store, Actions.Get {
                 ret = this.get(c, rid);
             } else {
                 LOGGER.log(Level.FINER, "Objeto Recupeardo del caché.");
+                // validar contra el usuario actualmente logueado si corresponde.
+                if ((this.loggedInUser != null) && (ret instanceof SObject)) {
+                    ((SObject) ret).validate(loggedInUser);
+                }
             }
             return ret;
-            
+
         } catch (ClassNotFoundException ex) {
             Logger.getLogger(SessionManager.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -548,12 +559,12 @@ public class SessionManager implements Actions.Store, Actions.Get {
         if (objectCache.get(rid) != null) {
             if (objectCache.get(rid).get() != null) {
                 LOGGER.log(Level.FINER, "Objeto Recupeardo del caché.");
-                return (T)objectCache.get(rid).get();
+                return (T) objectCache.get(rid).get();
             } else {
                 objectCache.remove(rid);
             }
         }
-        
+
         // iniciar el conteo de gets. Todos los gets se guardan en un mapa 
         // para impedir que un único get entre en un loop cuando un objeto
         // tiene referencias a su padre.
@@ -587,9 +598,14 @@ public class SessionManager implements Actions.Store, Actions.Get {
             LOGGER.log(Level.FINER, "Fin de la transacción. Reseteando el cache.....................");
             this.transactionCache.clear();
         }
-        
+
         // cuardar el objeto en el caché
         objectCache.put(rid, new WeakReference<>(o));
+        
+        // Aplicar los controles de seguridad.
+        if ((this.loggedInUser != null) && (o instanceof SObject)) {
+            ((SObject) o).validate(loggedInUser);
+        }
         
         LOGGER.log(Level.FINER, "Fin get -------------------------------------\n");
         return o;
@@ -848,7 +864,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
                 new OCommandSQL(cSQL)).execute()) {
             ret.add(this.get(clase, v.getId().toString()));
         }
-        
+
         return ret;
     }
 
@@ -892,6 +908,28 @@ public class SessionManager implements Actions.Store, Actions.Get {
         }
         this.auditor = new Auditor(this, user);
 
+    }
+
+    /**
+     * Comienza a auditar los objetos y los persiste con el nombre de usuario actualmente logueado.
+     *
+     */
+    public void setAuditOnUser() throws NoUserLoggedIn {
+        if (graphdb == null) {
+            throw new NoOpenTx();
+        }
+        if (this.loggedInUser == null) {
+            throw new NoUserLoggedIn();
+        }
+
+        this.auditor = new Auditor(this, this.loggedInUser.getUUID());
+    }
+
+    /**
+     * Establece el usuario actualmente logueado.
+     */
+    public void setLoggedInUser(UserSID usid) {
+        this.loggedInUser = usid;
     }
 
     /**

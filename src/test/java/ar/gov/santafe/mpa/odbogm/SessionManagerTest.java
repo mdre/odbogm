@@ -7,17 +7,22 @@ package ar.gov.santafe.mpa.odbogm;
 
 import Test.EdgeAttrib;
 import Test.EnumTest;
+import Test.SSimpleVertex;
 import net.odbogm.SessionManager;
 import Test.SimpleVertex;
 import Test.SimpleVertexEx;
 import Test.SimpleVertexInterfaceAttr;
 import Test.SimpleVertexWithEmbedded;
 import com.arshadow.utilitylib.DateHelper;
+import com.orientechnologies.orient.core.sql.OCommandSQL;
 import net.odbogm.proxy.IObjectProxy;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import net.odbogm.security.AccessRight;
+import net.odbogm.security.GroupSID;
+import net.odbogm.security.UserSID;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -986,5 +991,88 @@ public class SessionManagerTest {
         this.sm.commit();
         assertEquals(0, sm.getDirtyCount());
     }
+    
+    
+    
+    /**
+     * Test security of SObjects
+     */
+//    @Test
+//    public void testSObjects() {
+//        System.out.println("\n\n\n");
+//        System.out.println("***************************************************************");
+//        System.out.println("test security of SObjects");
+//        System.out.println("***************************************************************");
+//    
+//        
+//        // elminar los grupos
+//        this.sm.getGraphdb().command(new OCommandSQL("delete vertex GroupSID")).execute();
+//        
+//        // eliminar los usuarios
+//        this.sm.getGraphdb().command(new OCommandSQL("delete vertex UserSID")).execute();
+//        
+//        // crear los grupos y los usuarios.
+//        GroupSID gna = new GroupSID("gna","gna");
+//        GroupSID gr = new GroupSID("gr","gr");
+//        GroupSID gw = new GroupSID("gw","gr");
+//        
+//        GroupSID sgna = this.sm.store(gna);
+//        GroupSID sgr = this.sm.store(gr);
+//        GroupSID sgw = this.sm.store(gw);
+//        this.sm.commit();
+//        
+//        UserSID una = new UserSID("una", "una");
+//        UserSID ur = new UserSID("ur", "ur");
+//        UserSID uw = new UserSID("uw", "uw");
+//        UserSID urw = new UserSID("urw", "urw");
+//        
+//        una = this.sm.store(una);
+//        ur = this.sm.store(ur);
+//        uw = this.sm.store(uw);
+//        urw = this.sm.store(urw);
+//        
+//        this.sm.commit();
+//        
+//        una.addGroup(sgna);
+//        una.addGroup(sgr);
+//        
+//        ur.addGroup(sgr);
+//        
+//        uw.addGroup(sgw);
+//        
+//        urw.addGroup(sgw);
+//        urw.addGroup(sgr);
+//        
+//        this.sm.commit();
+//        
+//        //--------------------------------------------------------
+//        
+//        
+//        SSimpleVertex ssv = new SSimpleVertex();
+//        
+//        ssv = this.sm.store(ssv);
+//        this.sm.commit();
+//                
+//        String reg = ((IObjectProxy)ssv).___getRid();
+//        
+////        SSimpleVertex rssv = this.sm.get(SSimpleVertex.class, reg);
+//        
+//        System.out.println("Agregando los acls...");
+//        ssv.setAcl(gna, new AccessRight(0));
+//        ssv.setAcl(gr, new AccessRight().setRights(AccessRight.READ));
+//        ssv.setAcl(gw, new AccessRight().setRights(AccessRight.WRITE));
+//        
+//        this.sm.commit();
+//        
+//        this.sm.setLoggedInUser(una);
+//        SSimpleVertex 
+//                
+//        System.out.println("Security State NA: "+ssv.validate(una));
+//        System.out.println("Security State R: "+ssv.validate(ur));
+//        System.out.println("Security State W: "+ssv.validate(uw));
+//        
+//        
+//    }
+    
     
 }

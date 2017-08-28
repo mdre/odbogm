@@ -27,6 +27,11 @@ public class ClassDef {
     public HashMap<String, Class<?>> enumFields = new HashMap<>();
     
     /**
+     * Mapa de los embedded List y HashMap del objeto
+     */
+    public HashMap<String, Class<?>> embeddedFields = new HashMap<>();
+    
+    /**
      * Mapa de links a otros objetos
      */
     public HashMap<String, Class<?>> links = new HashMap<>();

@@ -29,10 +29,10 @@ public class AccessRight {
      */ 
     public static final int NOACCESS = 0;
     public static final int READ     = 1;
-    public static final int WRITE    = 1<<2;
-    public static final int DELETE   = 1<<3;
-    public static final int LIST     = 1<<4;
-    public static final int PRINT    = 1<<5;
+    public static final int WRITE    = 1<<1;
+    public static final int DELETE   = 1<<2;
+    public static final int LIST     = 1<<3;
+    public static final int PRINT    = 1<<4;
     
     private int rights = 0;
 
@@ -47,8 +47,9 @@ public class AccessRight {
         return rights;
     }
 
-    public void setRights(int rights) {
+    public AccessRight setRights(int rights) {
         this.rights = rights;
+        return this;
     }
     
     /**
@@ -56,7 +57,7 @@ public class AccessRight {
      * 
      * @param rights 
      */
-    public void setRights(int... rights) {
+    public AccessRight setRights(int... rights) {
         this.rights = 0;
         // fusionar los valores
         for (int i: rights) {
@@ -67,6 +68,7 @@ public class AccessRight {
             }
             this.rights|=i;
         }
+        return this;
     }
     
 }

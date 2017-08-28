@@ -6,6 +6,8 @@
 
 package net.odbogm.security;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -13,17 +15,22 @@ import java.util.logging.Logger;
  *
  * @author Marcelo D. Ré <marcelo.re@gmail.com>
  */
-public class SID {
+public abstract class SID {
     private final static Logger LOGGER = Logger.getLogger(SID.class .getName());
     static {
         LOGGER.setLevel(Level.INFO);
     }
     private String name = "";
-    private String id = "";
-
+    private String uuid = "";
+            
     public SID() {
     }
 
+    public SID(String name, String uuid) {
+        this.name = name;
+        this.uuid = uuid;
+    }
+    
     public final String getName() {
         return name;
     }
@@ -33,18 +40,18 @@ public class SID {
         return this;
     }
 
-    public final String getId() {
-        return id;
+    public final String getUUID() {
+        return uuid;
     }
 
-    public final SID setId(String id) {
-        this.id = id;
+    public final SID setId(String uuid) {
+        this.uuid = uuid;
         return this;
     }
 
     @Override
     public final String toString() {
-        return "SID{" + "id=" + id + '}';
+        return "SID{" + "id=" + uuid + ", name="+this.name+"}";
     }
     
 }

@@ -123,8 +123,9 @@ public class ClassCache {
                                 // lo marcamos como campo.
                                 if ( (keyClass == String.class)
                                         && ((Primitives.PRIMITIVE_MAP.get(valClass)!=null)
-                                           || (f.isAnnotationPresent(Embedded.class))
-                                        )) {
+                                            || (f.isAnnotationPresent(Embedded.class))
+                                            )
+                                        ) {
                                     LOGGER.log(Level.FINER, "Es una colección de embebida: "+valClass.getSimpleName());
                                     setAsEmbedded = true;
                                 }
@@ -132,6 +133,8 @@ public class ClassCache {
                             if (setAsEmbedded) {
                                 // es una colección de primitivas. Tratarla como un field común
                                 cached.fields.put(f.getName(), f.getType());
+                                // FIXME: verificar si se puede unificar y no registrar en dos lados.
+                                cached.embeddedFields.put(f.getName(), f.getType());
                             } else {
                                 // es una colección de objetos.
                                 LOGGER.log(Level.FINER, "Es una colección de objetos que genera Vértices y Ejes.");

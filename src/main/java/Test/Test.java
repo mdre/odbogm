@@ -5,27 +5,23 @@
  */
 package Test;
 
-import com.arshadow.utilitylib.DateHelper;
 import net.odbogm.exceptions.IncorrectRIDField;
 import net.odbogm.SessionManager;
 import net.odbogm.proxy.IObjectProxy;
 import com.orientechnologies.orient.core.exception.OConcurrentModificationException;
-import com.tinkerpop.blueprints.Direction;
-import com.tinkerpop.blueprints.Edge;
-import com.tinkerpop.blueprints.impls.orient.OrientVertex;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.DbManager;
-import net.odbogm.LogginProperties;
+import net.odbogm.security.AccessRight;
+import net.odbogm.security.GroupSID;
+import net.odbogm.security.UserSID;
 import net.odbogm.utils.ReflectionUtils;
 
 /**
@@ -55,7 +51,9 @@ public class Test {
 //        lab();
 //        testQuery();
 //        store();
-        testEmbeddded();
+//        testEmbeddded();
+//        setUpGroups();
+        testSObjects();
         sm.shutdown();
     }
 
@@ -132,6 +130,78 @@ public class Test {
     }
     
     
+    //======================================
+    public void setUpGroups() {
+        GroupSID gna = new GroupSID("gna","gna");
+        GroupSID gr = new GroupSID("gr","gr");
+        GroupSID gw = new GroupSID("gw","gr");
+        
+        GroupSID sgna = this.sm.store(gna);
+        GroupSID sgr = this.sm.store(gr);
+        GroupSID sgw = this.sm.store(gw);
+        this.sm.commit();
+        
+        UserSID una = new UserSID("una", "una");
+        UserSID ur = new UserSID("ur", "ur");
+        UserSID uw = new UserSID("uw", "uw");
+        UserSID urw = new UserSID("urw", "urw");
+        
+        una = this.sm.store(una);
+        ur = this.sm.store(ur);
+        uw = this.sm.store(uw);
+        urw = this.sm.store(urw);
+        
+        this.sm.commit();
+        
+        una.addGroup(sgna);
+        una.addGroup(sgr);
+        
+        ur.addGroup(sgr);
+        
+        uw.addGroup(sgw);
+        
+        urw.addGroup(sgw);
+        urw.addGroup(sgr);
+        
+        this.sm.commit();
+    }
+    
+    public void testSObjects() {
+        SSimpleVertex ssv = new SSimpleVertex();
+        
+        ssv = this.sm.store(ssv);
+        this.sm.commit();
+                
+        String reg = ((IObjectProxy)ssv).___getRid();
+        
+//        SSimpleVertex rssv = this.sm.get(SSimpleVertex.class, reg);
+        
+        // recuperar los grupos
+        GroupSID gna = this.sm.get(GroupSID.class,"#32:11");
+        GroupSID gr = this.sm.get(GroupSID.class,"#32:10");
+        GroupSID gw = this.sm.get(GroupSID.class,"#32:9");
+        
+        System.out.println("Agregando los acls...");
+        ssv.setAcl(gna, new AccessRight(0));
+        ssv.setAcl(gr, new AccessRight().setRights(AccessRight.READ));
+        ssv.setAcl(gw, new AccessRight().setRights(AccessRight.WRITE));
+        
+        this.sm.commit();
+        
+        // testear SIN ACCESO
+        UserSID una = this.sm.get(UserSID.class, "33:23");
+        UserSID ur = this.sm.get(UserSID.class, "33:22");
+        UserSID uw = this.sm.get(UserSID.class, "33:21");
+        this.sm.setLoggedInUser(una);
+        
+        System.out.println("Security State NA: "+ssv.validate(una));
+        System.out.println("Security State R: "+ssv.validate(ur));
+        System.out.println("Security State W: "+ssv.validate(uw));
+        
+        
+    }
+    
+    //======================================
     public void lab() {
         
         SimpleVertexEx sv1 = sm.get(SimpleVertexEx.class, "12:1177");
@@ -180,9 +250,9 @@ public class Test {
 //        sm.commit();
 //        
 //        ArrayList<Integer> testal = new ArrayList<>();
-//        testal.add(1);
-//        testal.add(2);
-//        testal.add(3);
+//        testal.___add(1);
+//        testal.___add(2);
+//        testal.___add(3);
 //        
 //        HashMap<String,Object> hmTest = new HashMap<>();
 //        hmTest.put("hmalI", testal);
