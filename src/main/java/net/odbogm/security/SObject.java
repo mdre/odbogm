@@ -20,9 +20,9 @@ public abstract class SObject {
     static {
         LOGGER.setLevel(Level.INFO);
     }
-    private SID _owner;
+    private SID __owner;
     // Access Control List
-    private Map<String,Integer> _acl = new HashMap<>();;
+    private Map<String,Integer> __acl = new HashMap<>();;
     
     /**
      * Estados internos del objeto:
@@ -32,23 +32,23 @@ public abstract class SObject {
      * 4: delete
      * 8: list
      */ 
-    private int state = 0;
-    private boolean inherit = false;
+    private int __state = 0;
+    private SObject __inherit = null;
 
     
     public SObject() {
     }
     
-    public SObject(SID _owner) {
-        this._owner = _owner;
+    public SObject(SID owner) {
+        this.__owner = owner;
     }
     
     void setState(int s) {
-        this.state = s;
+        this.__state = s;
     }
     
     int getState() {
-        return this.state;
+        return this.__state;
     }
     
     
@@ -61,19 +61,19 @@ public abstract class SObject {
      */
     public final SObject setAcl(SID sid,AccessRight ar)  {
         
-        _acl.put(sid.getUUID(), ar.getRights());
+        __acl.put(sid.getUUID(), ar.getRights());
             
         return this;
     }
     
     
     public final void removeAcl(SID sid) {
-        if (_acl!=null)
-            _acl.remove(sid.getUUID());
+        if (__acl!=null)
+            __acl.remove(sid.getUUID());
     }
     
     public final SObject setOwner(SID o) {
-        this._owner = o;
+        this.__owner = o;
         return this;
     }
     
@@ -84,16 +84,18 @@ public abstract class SObject {
     public final int validate(ISecurityCredentials sc) {
         int partialState = 0;
         int gal = 0;
+        HashMap<String,Integer> acls = this.getAcls();
+        
         for (String securityCredential : sc.showSecurityCredentials()) {
-            gal = this._acl.get(securityCredential);
+            gal = acls.get(securityCredential);
             if (gal == AccessRight.NOACCESS) {
                 partialState = 0;
                 break;
             }
             partialState |= gal;
         }
-        this.state = partialState;
-        return this.state;
+        this.__state = partialState;
+        return this.__state;
     }
     
     /**
@@ -101,7 +103,31 @@ public abstract class SObject {
      * @return 
      */
     public final int getSecurityState() {
-        return this.state;
+        return this.__state;
     }
     
+    /**
+     * Retorna una copia de los ACLs establecidos para el objecto
+     * 
+     * @return Map<String,Integer> de los acls
+     */
+    public final HashMap<String,Integer> getAcls() {
+        HashMap<String,Integer> acls = new HashMap<>();
+        
+        if (this.__inherit!=null)
+            acls.putAll(this.__inherit.getAcls());
+        
+        acls.putAll(this.__acl);
+        
+        return acls;
+    }
+    
+    /**
+     * Establece el objecto desde el que se heredan los permisos.
+     * 
+     * @param so 
+     */
+    public final void setInheritFrom(SObject so) {
+        this.__inherit = so;
+    }
 }

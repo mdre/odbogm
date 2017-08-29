@@ -554,59 +554,62 @@ public class SessionManager implements Actions.Store, Actions.Get {
         if (rid == null) {
             throw new UnknownRID();
         }
+        T o = null;
 
         // si está en el caché, devolver la referencia desde ahí.
         if (objectCache.get(rid) != null) {
             if (objectCache.get(rid).get() != null) {
                 LOGGER.log(Level.FINER, "Objeto Recupeardo del caché.");
-                return (T) objectCache.get(rid).get();
+                o = (T) objectCache.get(rid).get();
             } else {
                 objectCache.remove(rid);
             }
         }
 
-        // iniciar el conteo de gets. Todos los gets se guardan en un mapa 
-        // para impedir que un único get entre en un loop cuando un objeto
-        // tiene referencias a su padre.
-        getTransactionCount++;
-
-        LOGGER.log(Level.FINER, "Obteniendo objeto type: " + type.getSimpleName() + " en RID: " + rid);
-        T o = null;
-
-        // verificar si ya no se ha cargado
-        o = (T) this.transactionCache.get(rid);
-
         if (o == null) {
-            // recuperar el vértice solicitado
-            OrientVertex v = graphdb.getVertex(rid);
+            // iniciar el conteo de gets. Todos los gets se guardan en un mapa 
+            // para impedir que un único get entre en un loop cuando un objeto
+            // tiene referencias a su padre.
+            getTransactionCount++;
 
-            // hidratar un objeto
-            try {
-                o = objectMapper.hydrate(type, v);
+            LOGGER.log(Level.FINER, "Obteniendo objeto type: " + type.getSimpleName() + " en RID: " + rid);
+
+            // verificar si ya no se ha cargado
+            o = (T) this.transactionCache.get(rid);
+
+            if (o == null) {
+                // recuperar el vértice solicitado
+                OrientVertex v = graphdb.getVertex(rid);
+
+                // hidratar un objeto
+                try {
+                    o = objectMapper.hydrate(type, v);
 //                entities.put(rid, o);
-                if (isAuditing()) {
-                    auditLog((IObjectProxy) o, Audit.AuditType.READ, "READ", "");
+                    if (isAuditing()) {
+                        auditLog((IObjectProxy) o, Audit.AuditType.READ, "READ", "");
+                    }
+                } catch (InstantiationException | IllegalAccessException | NoSuchFieldException ex) {
+                    Logger.getLogger(SessionManager.class.getName()).log(Level.SEVERE, null, ex);
                 }
-            } catch (InstantiationException | IllegalAccessException | NoSuchFieldException ex) {
-                Logger.getLogger(SessionManager.class.getName()).log(Level.SEVERE, null, ex);
+            } else {
+                LOGGER.log(Level.FINER, "Objeto recuperado del dirty cache! : " + o.getClass().getSimpleName());
             }
-        } else {
-            LOGGER.log(Level.FINER, "Objeto recuperado del dirty cache! : " + o.getClass().getSimpleName());
-        }
-        getTransactionCount--;
-        if (getTransactionCount == 0) {
-            LOGGER.log(Level.FINER, "Fin de la transacción. Reseteando el cache.....................");
-            this.transactionCache.clear();
+            getTransactionCount--;
+            if (getTransactionCount == 0) {
+                LOGGER.log(Level.FINER, "Fin de la transacción. Reseteando el cache.....................");
+                this.transactionCache.clear();
+            }
+
+            // cuardar el objeto en el caché
+            objectCache.put(rid, new WeakReference<>(o));
         }
 
-        // cuardar el objeto en el caché
-        objectCache.put(rid, new WeakReference<>(o));
-        
         // Aplicar los controles de seguridad.
         if ((this.loggedInUser != null) && (o instanceof SObject)) {
+            LOGGER.log(Level.FINER, "SObject detectado. Aplicando seguridad de acuerdo al usuario logueado: "+loggedInUser.getName());
             ((SObject) o).validate(loggedInUser);
         }
-        
+
         LOGGER.log(Level.FINER, "Fin get -------------------------------------\n");
         return o;
     }
@@ -645,6 +648,12 @@ public class SessionManager implements Actions.Store, Actions.Get {
         try {
             // verificar si ya no se ha cargado
             o = this.objectMapper.hydrate(type, e);
+
+            // Aplicar los controles de seguridad.
+            if ((this.loggedInUser != null) && (o instanceof SObject)) {
+                ((SObject) o).validate(loggedInUser);
+            }
+
         } catch (InstantiationException ex) {
             Logger.getLogger(SessionManager.class.getName()).log(Level.SEVERE, null, ex);
         } catch (IllegalAccessException ex) {
@@ -927,6 +936,8 @@ public class SessionManager implements Actions.Store, Actions.Get {
 
     /**
      * Establece el usuario actualmente logueado.
+     * 
+     * @param usid
      */
     public void setLoggedInUser(UserSID usid) {
         this.loggedInUser = usid;

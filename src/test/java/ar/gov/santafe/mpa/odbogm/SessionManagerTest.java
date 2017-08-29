@@ -997,82 +997,94 @@ public class SessionManagerTest {
     /**
      * Test security of SObjects
      */
-//    @Test
-//    public void testSObjects() {
-//        System.out.println("\n\n\n");
-//        System.out.println("***************************************************************");
-//        System.out.println("test security of SObjects");
-//        System.out.println("***************************************************************");
-//    
-//        
-//        // elminar los grupos
-//        this.sm.getGraphdb().command(new OCommandSQL("delete vertex GroupSID")).execute();
-//        
-//        // eliminar los usuarios
-//        this.sm.getGraphdb().command(new OCommandSQL("delete vertex UserSID")).execute();
-//        
-//        // crear los grupos y los usuarios.
-//        GroupSID gna = new GroupSID("gna","gna");
-//        GroupSID gr = new GroupSID("gr","gr");
-//        GroupSID gw = new GroupSID("gw","gr");
-//        
-//        GroupSID sgna = this.sm.store(gna);
-//        GroupSID sgr = this.sm.store(gr);
-//        GroupSID sgw = this.sm.store(gw);
-//        this.sm.commit();
-//        
-//        UserSID una = new UserSID("una", "una");
-//        UserSID ur = new UserSID("ur", "ur");
-//        UserSID uw = new UserSID("uw", "uw");
-//        UserSID urw = new UserSID("urw", "urw");
-//        
-//        una = this.sm.store(una);
-//        ur = this.sm.store(ur);
-//        uw = this.sm.store(uw);
-//        urw = this.sm.store(urw);
-//        
-//        this.sm.commit();
-//        
-//        una.addGroup(sgna);
-//        una.addGroup(sgr);
-//        
-//        ur.addGroup(sgr);
-//        
-//        uw.addGroup(sgw);
-//        
-//        urw.addGroup(sgw);
-//        urw.addGroup(sgr);
-//        
-//        this.sm.commit();
-//        
-//        //--------------------------------------------------------
-//        
-//        
-//        SSimpleVertex ssv = new SSimpleVertex();
-//        
-//        ssv = this.sm.store(ssv);
-//        this.sm.commit();
-//                
-//        String reg = ((IObjectProxy)ssv).___getRid();
-//        
-////        SSimpleVertex rssv = this.sm.get(SSimpleVertex.class, reg);
-//        
-//        System.out.println("Agregando los acls...");
-//        ssv.setAcl(gna, new AccessRight(0));
-//        ssv.setAcl(gr, new AccessRight().setRights(AccessRight.READ));
-//        ssv.setAcl(gw, new AccessRight().setRights(AccessRight.WRITE));
-//        
-//        this.sm.commit();
-//        
-//        this.sm.setLoggedInUser(una);
-//        SSimpleVertex 
-//                
-//        System.out.println("Security State NA: "+ssv.validate(una));
-//        System.out.println("Security State R: "+ssv.validate(ur));
-//        System.out.println("Security State W: "+ssv.validate(uw));
-//        
-//        
-//    }
+    @Test
+    public void testSObjects() {
+        System.out.println("\n\n\n");
+        System.out.println("***************************************************************");
+        System.out.println("test security of SObjects");
+        System.out.println("***************************************************************");
+    
+        
+        // elminar los grupos
+        this.sm.getGraphdb().command(new OCommandSQL("delete vertex GroupSID")).execute();
+        
+        // eliminar los usuarios
+        this.sm.getGraphdb().command(new OCommandSQL("delete vertex UserSID")).execute();
+        
+        // eliminar los SSVertex
+        this.sm.getGraphdb().command(new OCommandSQL("delete vertex SSimpleVertex")).execute();
+        
+        // crear los grupos y los usuarios.
+        GroupSID gna = new GroupSID("gna","gna");
+        GroupSID gr = new GroupSID("gr","gr");
+        GroupSID gw = new GroupSID("gw","gw");
+        
+        GroupSID sgna = this.sm.store(gna);
+        GroupSID sgr = this.sm.store(gr);
+        GroupSID sgw = this.sm.store(gw);
+        this.sm.commit();
+        
+        UserSID una = new UserSID("una", "una");
+        UserSID ur = new UserSID("ur", "ur");
+        UserSID uw = new UserSID("uw", "uw");
+        UserSID urw = new UserSID("urw", "urw");
+        
+        una = this.sm.store(una);
+        ur = this.sm.store(ur);
+        uw = this.sm.store(uw);
+        urw = this.sm.store(urw);
+        
+        this.sm.commit();
+        
+        una.addGroup(sgna);
+        una.addGroup(sgr);
+        
+        ur.addGroup(sgr);
+        
+        uw.addGroup(sgw);
+        
+        urw.addGroup(sgw);
+        urw.addGroup(sgr);
+        
+        this.sm.commit();
+        
+        //--------------------------------------------------------
+        
+        SSimpleVertex ssv = new SSimpleVertex();
+        
+        ssv = this.sm.store(ssv);
+        this.sm.commit();
+                
+        String reg = ((IObjectProxy)ssv).___getRid();
+        
+//        SSimpleVertex rssv = this.sm.get(SSimpleVertex.class, reg);
+        
+        System.out.println("Agregando los acls...");
+        ssv.setAcl(gna, new AccessRight().setRights(AccessRight.NOACCESS));
+        ssv.setAcl(gr, new AccessRight().setRights(AccessRight.READ));
+        ssv.setAcl(gw, new AccessRight().setRights(AccessRight.WRITE));
+        
+        this.sm.commit();
+        
+        this.sm.setLoggedInUser(una);
+        System.out.println("Login UserNoAccess");
+        SSimpleVertex ssvna = this.sm.get(SSimpleVertex.class,reg);
+        System.out.println("State: "+ssvna.getSecurityState());
+        assertTrue(ssvna.getSecurityState()==AccessRight.NOACCESS);
+        
+        System.out.println("Login UserRead");
+        this.sm.setLoggedInUser(ur);
+        SSimpleVertex ssvr = this.sm.get(SSimpleVertex.class,reg);
+        System.out.println("State: "+ssvr.getSecurityState());
+        assertTrue(ssvr.getSecurityState()==AccessRight.READ);
+        
+        this.sm.setLoggedInUser(uw);
+        System.out.println("Login UserWrite");
+        SSimpleVertex ssvw = this.sm.get(SSimpleVertex.class,reg);
+        System.out.println("State: "+ssvw.getSecurityState());
+        assertTrue(ssvw.getSecurityState()==AccessRight.WRITE);
+        
+    }
     
     
 }

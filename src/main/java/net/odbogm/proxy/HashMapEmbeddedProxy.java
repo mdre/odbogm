@@ -6,20 +6,11 @@
 package net.odbogm.proxy;
 
 import com.arshadow.utilitylib.ThreadHelper;
-import net.odbogm.Primitives;
-import net.odbogm.SessionManager;
-import com.tinkerpop.blueprints.Direction;
-import com.tinkerpop.blueprints.Edge;
-import com.tinkerpop.blueprints.Vertex;
-import com.tinkerpop.blueprints.impls.orient.OrientEdge;
-import com.tinkerpop.blueprints.impls.orient.OrientVertex;
 import java.lang.ref.WeakReference;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.Function;
@@ -79,6 +70,11 @@ public class HashMapEmbeddedProxy extends HashMap<Object, Object> implements IEm
         super();
     }
 
+    public HashMapEmbeddedProxy(IObjectProxy parent) {
+        super();
+        this.init(parent);
+    }
+    
     public HashMapEmbeddedProxy(IObjectProxy parent, Map source) {
         super(source);
         this.init(parent);

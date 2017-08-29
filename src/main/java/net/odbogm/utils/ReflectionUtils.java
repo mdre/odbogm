@@ -77,13 +77,21 @@ public class ReflectionUtils {
                             // se debe hacer una copia del la lista para no quede referenciando al objeto original
                             // dado que en la asignación solo se pasa la referencia del objeto.
                             LOGGER.log(Level.FINER, "Lista detectada: realizando una copia del contenido...");
-                            fields[i].set(to, new ArrayListEmbeddedProxy((IObjectProxy) to, (List) fields[i].get(from)));
+                            if (fields[i].get(from) == null) {
+                                fields[i].set(to, new ArrayListEmbeddedProxy((IObjectProxy) to));
+                            } else {
+                                fields[i].set(to, new ArrayListEmbeddedProxy((IObjectProxy) to, (List) fields[i].get(from)));
+                            }
                         } else if (fields[i].getType().isAssignableFrom(Map.class)) {
                             // se debe hacer una copia del la lista para no quede referenciando al objeto original
                             // dado que en la asignación solo se pasa la referencia del objeto.
                             LOGGER.log(Level.FINER, "Map detectado: realizando una copia del contenido...");
                             // FIXME: Ojo que se hace solo un shalow copy!! no se está conando la clave y el value
-                            fields[i].set(to, new HashMapEmbeddedProxy((IObjectProxy) to, (Map) fields[i].get(from)));
+                            if (fields[i].get(from) == null) {
+                                fields[i].set(to, new HashMapEmbeddedProxy((IObjectProxy) to));
+                            } else {
+                                fields[i].set(to, new HashMapEmbeddedProxy((IObjectProxy) to, (Map) fields[i].get(from)));
+                            }
                         } else {
                             fields[i].set(to, fields[i].get(from));
                         }
@@ -100,8 +108,7 @@ public class ReflectionUtils {
     }
 
     /**
-     * Copia todos los atributos del objeto "from" al objeto "to". 
-     * no se realiza la conversión de las listas/mapas a embedded
+     * Copia todos los atributos del objeto "from" al objeto "to". no se realiza la conversión de las listas/mapas a embedded
      *
      * @param from objeto origen
      * @param to objeto destina
@@ -110,5 +117,5 @@ public class ReflectionUtils {
     public static void copyObject(Object from, Object to) {
         ReflectionUtils.copyObject(from, to, false);
     }
-    
+
 }
