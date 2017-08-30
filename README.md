@@ -20,7 +20,8 @@ After that, the SessionManager implements the method to:
 * ***rollback***: rollback the current transaction. TBD
 * ***query***: query the database.
 * ***shutdown***: shutdown the DB communication.
-* ***setAuditOnUser***: set the user name to store in auditlog. Read ***Auditory*** section.
+* ***setLoggedInUser***: set the UserSID to be used in the security check of the SObjects. Read ***Security*** section.
+* ***setAuditOnUser***: enable the auditory log and/or set the user name to store in auditlog. Read ***Auditory*** section.
 
 So, for example, let say that we have this class definition:
 
@@ -182,14 +183,32 @@ sm.query(Class<T> clase, String body);
 ```
 This query is similar but let us add a body after the select-from clause.
 
+## Security check helper
+The security model implemented is a helper to the application level classes. It is NOT a close security againts what is readed/writed to the DB and could by bypassed.
+The security model implements a way to mark SObjects in a particular state based on the ACLs defined to it and the access right granted to the logged in users. To do this, the object must extends SObject.
+The model use the class UserSID to define the user and grant access to him and groups (GroupSID) to define ACL to a group of users.
+SObject implement a ACL in where you add a pair of (<SID>,<AccessRight>) where the AccessRight is bitmask to set a particular right.
+Its is necesary to have a logged in user to set the security state of the objects. The LoggedInUser is set using the setLoggedInUser method.
+When an object is retrieved from de DB, if it extends SObject, the security validation check is excecuted. To do this, the SObject request the LoggedInUser to present it SecurityCredentials and test all of its ACLs againts thats to set it internal security state.
+After that, you could test the object security state calling the *getSecutityState()* method to get mask and choose what to do.
+  
+
 ## Auditory
-The SessionManager implement a way to audit the dialog with the database. Since we need a more complex system of security I decided to implement a diferent way of manage users. We need to control the user right at application level and we want to not restrict the communication with the DB, so the SM let you to stablish a connection with one user (we are using the ***writer*** profile) and after that set an audit user name that you get from your app. 
+The SessionManager implement a way to audit the dialog with the database. Since we need a more complex system of security I decided to implement a diferent way of manage users. We need to control the user right at application level and we want to not restrict the communication with the DB, so the SM let you to stablish a connection with one user (we are using the ***writer*** profile) and after that set an audit user name that you get from your app or, if you implement the Security model based on te ACL, it audit against the logged in user. 
 For example:
 
 ```Java
 sm = new SessionManager("remote:localhost/somedb", "writer", "w1t3r");
 sm.begin();
 sm.setAuditOnUser("jlennon");
+```
+or 
+
+```Java
+sm = new SessionManager("remote:localhost/somedb", "writer", "w1t3r");
+sm.begin();
+sm.setLoggedInUser(<UserSID>);
+sm.setAuditOnUser();
 ```
 
 The ***sm*** will create a class called ***ODBAuditLog*** with this fields:
@@ -218,10 +237,4 @@ public class Ex2 extends Ex1 {
 ```
 
 After that, the ***sm*** will log every access to the instance of Ex2 class. 
-
-
-----
-
-
-Working on the security system……
 
