@@ -54,7 +54,7 @@ dependencies {
     
     compile("com.orientechnologies:orientdb-graphdb:2.2.22")
     
-    compile("com.arshadow:UtilityLib:1.0-SNAPSHOT")
+    compile("com.arshadow:UtilityLib:1.0")
     testCompile("junit:junit:[4,)")
     
 }
