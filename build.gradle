@@ -1,0 +1,75 @@
+plugins {
+    id 'net.researchgate.release' version '2.0.2'
+//    id "org.sonarqube" version '2.5'
+    id 'nu.studer.credentials' version '1.0.0'
+}
+
+apply plugin: 'java'
+apply plugin: "maven"
+
+println "***************************************************************"
+println "SISTEMA: " + name
+println "VERSION: " + version
+println "***************************************************************"
+
+//Para guardar el usuario y contraseña en forma segura hacer:
+//gradle addCredentials -PcredentialsKey=nexusUser -PcredentialsValue=XXXXX
+//gradle addCredentials -PcredentialsKey=nexusPassword -PcredentialsValue=YYYYY
+//o para hacerlo más seguro:
+//gradle addCredentials -PcredentialsKey=nexusUser -PcredentialsValue=XXXXX -PcredentialsPassphrase=zzzzzzzz
+//gradle addCredentials -PcredentialsKey=nexusPassword -PcredentialsValue=YYYYY -PcredentialsPassphrase=zzzzzzzz
+def nexusUser = credentials.nexusUser
+def nexusPassword = credentials.nexusPassword
+
+// seteo carpeta de fuentes para sonar
+//sonarqube {
+//    properties {
+//        property "sonar.sources", "src/main"
+//    }
+//}
+
+// desactivo la generación de javadoc en los proyectos que tengan la tarea
+javadoc.enabled = true
+
+repositories {
+    maven {
+        url "$nexusURLPublic"
+            
+        credentials {
+            username = "$nexusUser"
+            password = "$nexusPassword"
+        }
+    }
+    mavenLocal()
+    //        mavenCentral()
+
+}
+    
+dependencies {
+    compile("net.bytebuddy:byte-buddy:1.3.18")
+    compile("net.bytebuddy:byte-buddy-agent:1.3.18")
+    compile("cglib:cglib:3.2.2")
+    
+    compile("com.esotericsoftware:kryo-shaded:4.0.1")
+    
+    compile("com.orientechnologies:orientdb-graphdb:2.2.22")
+    
+    compile("com.arshadow:UtilityLib:1.0-SNAPSHOT")
+    testCompile("junit:junit:[4,)")
+    
+}
+
+//sube a nexus
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            repository(url: "$nexusURLReleases") {
+                authentication(userName: credentials.nexusUser, password: credentials.nexusPassword)
+            }
+            pom.groupId = rootProject.group
+            pom.artifactId = project.name
+        }
+    }
+}
+
+createReleaseTag.dependsOn ':uploadArchives'

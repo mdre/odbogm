@@ -183,11 +183,11 @@ sm.query(Class<T> clase, String body);
 ```
 This query is similar but let us add a body after the select-from clause.
 
-## Security check helper
+## Security
 The security model implemented is a helper to the application level classes. It is NOT a close security againts what is readed/writed to the DB and could by bypassed.
 The security model implements a way to mark SObjects in a particular state based on the ACLs defined to it and the access right granted to the logged in users. To do this, the object must extends SObject.
 The model use the class UserSID to define the user and grant access to him and groups (GroupSID) to define ACL to a group of users.
-SObject implement a ACL in where you add a pair of (<SID>,<AccessRight>) where the AccessRight is bitmask to set a particular right.
+SObject implement a ACL in where you add a pair of (*SID*,*AccessRight*) where the AccessRight is bitmask to set a particular right.
 Its is necesary to have a logged in user to set the security state of the objects. The LoggedInUser is set using the setLoggedInUser method.
 When an object is retrieved from de DB, if it extends SObject, the security validation check is excecuted. To do this, the SObject request the LoggedInUser to present it SecurityCredentials and test all of its ACLs againts thats to set it internal security state.
 After that, you could test the object security state calling the *getSecutityState()* method to get mask and choose what to do.

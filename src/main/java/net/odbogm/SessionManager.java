@@ -613,7 +613,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
         LOGGER.log(Level.FINER, "Fin get -------------------------------------\n");
         return o;
     }
-
+    
     /**
      * Agrega si no existe un objeto al cache de la transacción acutal a fin de evitar los loops cuando se comletan los links dentro del ObjectProxy
      *
@@ -962,4 +962,5 @@ public class SessionManager implements Actions.Store, Actions.Get {
     public boolean isAuditing() {
         return this.auditor != null;
     }
+    
 }

@@ -1056,7 +1056,7 @@ public class SessionManagerTest {
         this.sm.commit();
                 
         String reg = ((IObjectProxy)ssv).___getRid();
-        
+        System.out.println("RID: "+reg);
 //        SSimpleVertex rssv = this.sm.get(SSimpleVertex.class, reg);
         
         System.out.println("Agregando los acls...");
