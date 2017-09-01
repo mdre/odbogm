@@ -5,7 +5,7 @@
  */
 package net.odbogm;
 
-import com.esotericsoftware.kryo.Kryo;
+//import com.esotericsoftware.kryo.Kryo;
 import net.odbogm.cache.ClassCache;
 import net.odbogm.cache.ClassDef;
 import net.odbogm.exceptions.CollectionNotSupported;
@@ -41,7 +41,7 @@ public class ObjectMapper {
         LOGGER.setLevel(LogginProperties.ObjectMapper);
     }
 //    private static int newObjectCounter = 0;
-    private Kryo kryo = new Kryo();
+//    private Kryo kryo = new Kryo();
     
     private SessionManager sessionManager;
     private ClassCache classCache;

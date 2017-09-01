@@ -5,7 +5,6 @@
  */
 package net.odbogm.proxy;
 
-import com.arshadow.utilitylib.ThreadHelper;
 import net.odbogm.SessionManager;
 import com.tinkerpop.blueprints.Direction;
 import com.tinkerpop.blueprints.Vertex;
@@ -28,6 +27,7 @@ import java.util.logging.Logger;
 import java.util.stream.Stream;
 import net.odbogm.LogginProperties;
 import net.odbogm.exceptions.RelatedToNullException;
+import net.odbogm.utils.ThreadHelper;
 
 /**
  *

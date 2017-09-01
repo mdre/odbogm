@@ -26,9 +26,9 @@ import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import net.bytebuddy.implementation.bind.annotation.Origin;
-import net.bytebuddy.implementation.bind.annotation.RuntimeType;
-import net.bytebuddy.implementation.bind.annotation.SuperCall;
+//import net.bytebuddy.implementation.bind.annotation.Origin;
+//import net.bytebuddy.implementation.bind.annotation.RuntimeType;
+//import net.bytebuddy.implementation.bind.annotation.SuperCall;
 import net.odbogm.LogginProperties;
 import net.odbogm.ObjectMapper;
 import net.odbogm.annotations.Audit.AuditType;
@@ -84,93 +84,93 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     // ByteBuddy inteceptor
     // this method will be called each time      
     // when the object proxy calls any of its methods
-    @RuntimeType
-    public Object intercept(@SuperCall Callable<?> zuper, @Origin Method method) throws Exception {
-
-        // response object
-        Object res = null;
-
-        // BEFORE
-        // measure the current time         
-        // long time1 = System.currentTimeMillis();
-        // LOGGER.log(Level.FINER, "method intercepted: "+method.getName());
-        // modificar el llamado
-        if (!this.___deletedMark) {
-            switch (method.getName()) {
-                case "___getVertex":
-                    if (this.___objectReady) {
-                        res = this.___getVertex();
-                    }
-                    break;
-                case "___getRid":
-                    if (this.___objectReady) {
-                        res = this.___getRid();
-                    }
-                    break;
-                case "___getProxiObject":
-                    if (this.___objectReady) {
-                        res = this.___getProxiObject();
-                    }
-                    break;
-                case "___getBaseClass":
-                    if (this.___objectReady) {
-                        res = this.___getBaseClass();
-                    }
-                    break;
-                case "___isDirty":
-                    if (this.___objectReady) {
-                        res = this.___isDirty();
-                    }
-                    break;
-                case "___setDirty":
-                    if (this.___objectReady) {
-                        this.___setDirty();
-                    }
-                    break;
-                case "___removeDirtyMark":
-                    if (this.___objectReady) {
-                        this.___removeDirtyMark();
-                    }
-                    break;
-                case "___commit":
-                    if (this.___objectReady) {
-                        this.___commit();
-                    }
-                    break;
-                case "___rollback":
-                    if (this.___objectReady) {
-                        this.___rollback();
-                    }
-                    break;
-                case "___setDeletedMark":
-                    this.___setDeletedMark();
-                    break;
-                default:
-                    // antes de invocar cualquier método, asegurarse de cargar los lazyLinks
-                    if (this.___objectReady) {
-                        if (this.___loadLazyLinks) {
-                            LOGGER.log(Level.FINER, "\n\nCargar los lazyLinks!....\n\n");
-                            this.___loadLazyLinks();
-                        }
-                    }
-                    // invoke the method on the real object with the given params
-                    res = zuper.call();
-                    // verificar si hay diferencias entre los objetos.
-                    if (this.___objectReady) {
-                        this.commitObjectChange();
-                    }
-
-                    break;
-            }
-        } else {
-            throw new ObjectMarkedAsDeleted("The object " + this.___baseElement.getId().toString() + " was deleted from the database.");
-        }
-        // AFTER
-        // print how long it took to execute the method on the proxified object
-        // System.out.println("Took: " + (System.currentTimeMillis() - time1) + " ms");
-        // return the result         
-        return res;
-    }
+//    @RuntimeType
+//    public Object intercept(@SuperCall Callable<?> zuper, @Origin Method method) throws Exception {
+//
+//        // response object
+//        Object res = null;
+//
+//        // BEFORE
+//        // measure the current time         
+//        // long time1 = System.currentTimeMillis();
+//        // LOGGER.log(Level.FINER, "method intercepted: "+method.getName());
+//        // modificar el llamado
+//        if (!this.___deletedMark) {
+//            switch (method.getName()) {
+//                case "___getVertex":
+//                    if (this.___objectReady) {
+//                        res = this.___getVertex();
+//                    }
+//                    break;
+//                case "___getRid":
+//                    if (this.___objectReady) {
+//                        res = this.___getRid();
+//                    }
+//                    break;
+//                case "___getProxiObject":
+//                    if (this.___objectReady) {
+//                        res = this.___getProxiObject();
+//                    }
+//                    break;
+//                case "___getBaseClass":
+//                    if (this.___objectReady) {
+//                        res = this.___getBaseClass();
+//                    }
+//                    break;
+//                case "___isDirty":
+//                    if (this.___objectReady) {
+//                        res = this.___isDirty();
+//                    }
+//                    break;
+//                case "___setDirty":
+//                    if (this.___objectReady) {
+//                        this.___setDirty();
+//                    }
+//                    break;
+//                case "___removeDirtyMark":
+//                    if (this.___objectReady) {
+//                        this.___removeDirtyMark();
+//                    }
+//                    break;
+//                case "___commit":
+//                    if (this.___objectReady) {
+//                        this.___commit();
+//                    }
+//                    break;
+//                case "___rollback":
+//                    if (this.___objectReady) {
+//                        this.___rollback();
+//                    }
+//                    break;
+//                case "___setDeletedMark":
+//                    this.___setDeletedMark();
+//                    break;
+//                default:
+//                    // antes de invocar cualquier método, asegurarse de cargar los lazyLinks
+//                    if (this.___objectReady) {
+//                        if (this.___loadLazyLinks) {
+//                            LOGGER.log(Level.FINER, "\n\nCargar los lazyLinks!....\n\n");
+//                            this.___loadLazyLinks();
+//                        }
+//                    }
+//                    // invoke the method on the real object with the given params
+//                    res = zuper.call();
+//                    // verificar si hay diferencias entre los objetos.
+//                    if (this.___objectReady) {
+//                        this.commitObjectChange();
+//                    }
+//
+//                    break;
+//            }
+//        } else {
+//            throw new ObjectMarkedAsDeleted("The object " + this.___baseElement.getId().toString() + " was deleted from the database.");
+//        }
+//        // AFTER
+//        // print how long it took to execute the method on the proxified object
+//        // System.out.println("Took: " + (System.currentTimeMillis() - time1) + " ms");
+//        // return the result         
+//        return res;
+//    }
 
     // GCLib interceptor 
     @Override

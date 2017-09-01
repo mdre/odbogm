@@ -6,10 +6,7 @@
 
 package net.odbogm.auditory;
 
-import com.arshadow.utilitylib.DateHelper;
 import com.orientechnologies.orient.core.metadata.schema.OType;
-import com.orientechnologies.orient.core.sql.OCommandSQL;
-import com.tinkerpop.blueprints.Vertex;
 import com.tinkerpop.blueprints.impls.orient.OrientVertex;
 import com.tinkerpop.blueprints.impls.orient.OrientVertexType;
 import java.util.ArrayList;
@@ -22,6 +19,7 @@ import net.odbogm.LogginProperties;
 import net.odbogm.SessionManager;
 import net.odbogm.annotations.Audit;
 import net.odbogm.proxy.IObjectProxy;
+import net.odbogm.utils.DateHelper;
 
 /**
  *

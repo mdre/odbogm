@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package ar.gov.santafe.mpa.odbogm;
+package net.odbogm;
 
 import Test.EdgeAttrib;
 import Test.EnumTest;
@@ -13,7 +13,6 @@ import Test.SimpleVertex;
 import Test.SimpleVertexEx;
 import Test.SimpleVertexInterfaceAttr;
 import Test.SimpleVertexWithEmbedded;
-import com.arshadow.utilitylib.DateHelper;
 import com.orientechnologies.orient.core.sql.OCommandSQL;
 import net.odbogm.proxy.IObjectProxy;
 import java.util.ArrayList;
@@ -23,6 +22,7 @@ import java.util.List;
 import net.odbogm.security.AccessRight;
 import net.odbogm.security.GroupSID;
 import net.odbogm.security.UserSID;
+import net.odbogm.utils.DateHelper;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;

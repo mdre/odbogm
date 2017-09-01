@@ -5,7 +5,6 @@
  */
 package net.odbogm;
 
-import com.arshadow.utilitylib.ThreadHelper;
 import net.odbogm.annotations.CascadeDelete;
 import net.odbogm.exceptions.NoOpenTx;
 import net.odbogm.exceptions.IncorrectRIDField;
@@ -49,6 +48,7 @@ import net.odbogm.exceptions.NoUserLoggedIn;
 import net.odbogm.exceptions.VertexJavaClassNotFound;
 import net.odbogm.security.SObject;
 import net.odbogm.security.UserSID;
+import net.odbogm.utils.ThreadHelper;
 
 /**
  *

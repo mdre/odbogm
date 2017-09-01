@@ -8,17 +8,8 @@ package net.odbogm.proxy;
 
 import net.odbogm.SessionManager;
 import com.tinkerpop.blueprints.impls.orient.OrientElement;
-import static java.lang.ClassLoader.getSystemClassLoader;
-import java.util.logging.Level;
 import java.util.logging.Logger;
-import net.bytebuddy.ByteBuddy;
-import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
-import net.bytebuddy.dynamic.loading.MultipleParentClassLoader;
-import net.bytebuddy.implementation.MethodDelegation;
-import static net.bytebuddy.matcher.ElementMatchers.any;
-import static net.bytebuddy.matcher.ElementMatchers.isDeclaredBy;
 import net.sf.cglib.proxy.Enhancer;
-import static net.bytebuddy.matcher.ElementMatchers.isDeclaredBy;
 import net.odbogm.LogginProperties;
 
 /**
@@ -35,9 +26,9 @@ public class ObjectProxyFactory {
     private static proxyLibrary library = proxyLibrary.CGLIB;
     
     public static <T> T create(T o, OrientElement oe, SessionManager sm ) {
-        if (library == proxyLibrary.BB)
-            return bbcreate(o, oe, sm);
-        else
+//        if (library == proxyLibrary.BB)
+//            return bbcreate(o, oe, sm);
+//        else
             return cglibcreate(o, oe, sm);
     }
     
@@ -47,9 +38,9 @@ public class ObjectProxyFactory {
     }
     
     public static <T> T create(Class<T> c, OrientElement ov, SessionManager sm ) {
-        if (library == proxyLibrary.BB)
-            return bbcreate(c, ov, sm);
-        else
+//        if (library == proxyLibrary.BB)
+//            return bbcreate(c, ov, sm);
+//        else
           return cglibcreate(c, ov, sm);
     }
     
@@ -67,33 +58,33 @@ public class ObjectProxyFactory {
      * @param sm
      * @return 
      */
-    public static <T> T bbcreate(T o, OrientElement oe, SessionManager sm ) {
-        T po = null;
-        try {
-            ObjectProxy bbi = new ObjectProxy(o,oe,sm);
-            ClassLoader mpcl = new MultipleParentClassLoader.Builder()
-                                                .append(IObjectProxy.class, o.getClass())
-                                                .build();
-            //mpcl = o.getClass().getClassLoader();
-            
-            po = (T) new ByteBuddy()
-                    .subclass(o.getClass())
-                    .implement(IObjectProxy.class)
-//                        .method(isDeclaredBy(IObjectProxy.class))
-                        .method(any())
-                        .intercept(MethodDelegation.to(bbi))
-                    .make()
-                    .load(mpcl, ClassLoadingStrategy.Default.WRAPPER)
-                    .getLoaded().newInstance();
-            bbi.___setProxyObject(po);
-            
-        } catch (InstantiationException ex) {
-            Logger.getLogger(ObjectProxyFactory.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (IllegalAccessException ex) {
-            Logger.getLogger(ObjectProxyFactory.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        return po;
-    }
+//    public static <T> T bbcreate(T o, OrientElement oe, SessionManager sm ) {
+//        T po = null;
+//        try {
+//            ObjectProxy bbi = new ObjectProxy(o,oe,sm);
+//            ClassLoader mpcl = new MultipleParentClassLoader.Builder()
+//                                                .append(IObjectProxy.class, o.getClass())
+//                                                .build();
+//            //mpcl = o.getClass().getClassLoader();
+//            
+//            po = (T) new ByteBuddy()
+//                    .subclass(o.getClass())
+//                    .implement(IObjectProxy.class)
+////                        .method(isDeclaredBy(IObjectProxy.class))
+//                        .method(any())
+//                        .intercept(MethodDelegation.to(bbi))
+//                    .make()
+//                    .load(mpcl, ClassLoadingStrategy.Default.WRAPPER)
+//                    .getLoaded().newInstance();
+//            bbi.___setProxyObject(po);
+//            
+//        } catch (InstantiationException ex) {
+//            Logger.getLogger(ObjectProxyFactory.class.getName()).log(Level.SEVERE, null, ex);
+//        } catch (IllegalAccessException ex) {
+//            Logger.getLogger(ObjectProxyFactory.class.getName()).log(Level.SEVERE, null, ex);
+//        }
+//        return po;
+//    }
 
     /**
      * Devuelve un proxy a partir de una definición de clase.
@@ -103,30 +94,30 @@ public class ObjectProxyFactory {
      * @param sm
      * @return 
      */
-    public static <T> T bbcreate(Class<T> c, OrientElement ov, SessionManager sm ) {
-        T po = null;
-        try {
-            ObjectProxy bbi = new ObjectProxy(c,ov,sm);
-            ClassLoader mpcl = new MultipleParentClassLoader.Builder()
-                                                .append(IObjectProxy.class, c)
-                                                .build();
-            // mpcl = c.getClassLoader();
-            po = (T) new ByteBuddy()
-                    .subclass(c)
-                    .implement(IObjectProxy.class)
-                    .method(isDeclaredBy(IObjectProxy.class))
-                    .intercept(MethodDelegation.to(bbi))
-                    .make()
-                    .load(mpcl, ClassLoadingStrategy.Default.WRAPPER)
-                    .getLoaded().newInstance();
-            bbi.___setProxyObject(po);
-        } catch (InstantiationException ex) {
-            Logger.getLogger(ObjectProxyFactory.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (IllegalAccessException ex) {
-            Logger.getLogger(ObjectProxyFactory.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        return po;
-    }
+//    public static <T> T bbcreate(Class<T> c, OrientElement ov, SessionManager sm ) {
+//        T po = null;
+//        try {
+//            ObjectProxy bbi = new ObjectProxy(c,ov,sm);
+//            ClassLoader mpcl = new MultipleParentClassLoader.Builder()
+//                                                .append(IObjectProxy.class, c)
+//                                                .build();
+//            // mpcl = c.getClassLoader();
+//            po = (T) new ByteBuddy()
+//                    .subclass(c)
+//                    .implement(IObjectProxy.class)
+//                    .method(isDeclaredBy(IObjectProxy.class))
+//                    .intercept(MethodDelegation.to(bbi))
+//                    .make()
+//                    .load(mpcl, ClassLoadingStrategy.Default.WRAPPER)
+//                    .getLoaded().newInstance();
+//            bbi.___setProxyObject(po);
+//        } catch (InstantiationException ex) {
+//            Logger.getLogger(ObjectProxyFactory.class.getName()).log(Level.SEVERE, null, ex);
+//        } catch (IllegalAccessException ex) {
+//            Logger.getLogger(ObjectProxyFactory.class.getName()).log(Level.SEVERE, null, ex);
+//        }
+//        return po;
+//    }
     
     
     // Implementación con CGLib

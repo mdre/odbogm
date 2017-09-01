@@ -5,7 +5,6 @@
  */
 package net.odbogm.proxy;
 
-import com.arshadow.utilitylib.ThreadHelper;
 import java.lang.ref.WeakReference;
 import java.util.Collection;
 import java.util.HashMap;
@@ -17,6 +16,7 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.LogginProperties;
+import net.odbogm.utils.ThreadHelper;
 
 /**
  *
