@@ -6,8 +6,10 @@ plugins {
 }
 
 apply plugin: 'java'
-apply plugin: "maven"
+apply plugin: 'maven'
 apply plugin: 'signing'
+
+
 
 println "***************************************************************"
 println "SISTEMA: " + name
@@ -24,6 +26,9 @@ println "***************************************************************"
 //def nexusPassword = credentials.nexusPassword
 def sonatypeUser = credentials.sonatypeUser
 def sonatypePassword = credentials.sonatypePassword
+
+
+
 
 // seteo carpeta de fuentes para sonar
 //sonarqube {
@@ -46,7 +51,6 @@ repositories {
     }
     mavenLocal()
     //        mavenCentral()
-
 }
     
 dependencies {
@@ -100,26 +104,32 @@ artifacts {
 }
 
 signing {
+    required { gradle.taskGraph.hasTask("uploadArchives")}
+    
+    ext."signing.keyId"= credentials.gpgKeyId
+    ext."signing.password"= credentials.gpgKeyPassword
+    ext."signing.secretKeyRingFile" = credentials.gpgKeyRingFile                
+
     sign configurations.archives
 }
 
+
+
+
+
 nexusStaging {
     packageGroup = "com.github.mdre" //optional if packageGroup == project.getGroup()
-//    stagingProfileId = "yourStagingProfileId" //when not defined will be got from server using "packageGroup"
+    //    stagingProfileId = "yourStagingProfileId" //when not defined will be got from server using "packageGroup"
 }
 
 //sube a nexus
 uploadArchives {
     repositories {
-        //        mavenDeployer {
-        //            repository(url: "$nexusURLReleases") {
-        //                authentication(userName: credentials.nexusUser, password: credentials.nexusPassword)
-        //            }
-        //            pom.groupId = rootProject.group
-        //            pom.artifactId = project.name
-        //        }
+    
         mavenDeployer {
-//            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+            beforeDeployment {
+                MavenDeployment deployment -> signing.signPom(deployment) 
+            }
             
             repository(url: "$sonatypeURLRelease") {
                 authentication(userName: credentials.sonatypeUser, password: credentials.sonatypePassword)
