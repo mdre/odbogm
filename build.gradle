@@ -2,12 +2,12 @@ plugins {
     id 'net.researchgate.release' version '2.0.2'
     //    id "org.sonarqube" version '2.5'
     id 'nu.studer.credentials' version '1.0.0'
+    id 'io.codearte.nexus-staging' version '0.11.0'
 }
 
 apply plugin: 'java'
 apply plugin: "maven"
 apply plugin: 'signing'
-
 
 println "***************************************************************"
 println "SISTEMA: " + name
@@ -101,6 +101,11 @@ artifacts {
 
 signing {
     sign configurations.archives
+}
+
+nexusStaging {
+    packageGroup = "com.github.mdre" //optional if packageGroup == project.getGroup()
+//    stagingProfileId = "yourStagingProfileId" //when not defined will be got from server using "packageGroup"
 }
 
 //sube a nexus
