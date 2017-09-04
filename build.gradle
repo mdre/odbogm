@@ -114,7 +114,7 @@ uploadArchives {
         //            pom.artifactId = project.name
         //        }
         mavenDeployer {
-            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+//            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
             
             repository(url: "$sonatypeURLRelease") {
                 authentication(userName: credentials.sonatypeUser, password: credentials.sonatypePassword)
@@ -136,8 +136,8 @@ uploadArchives {
                 url 'https://github.com/mdre/odbogm'
 
                 scm {
-                    connection 'scm:git:https://github.com/mdre/odbogm'
-                    developerConnection 'scm:git:https://github.com/mdre/odbogm'
+                    connection 'scm:git:git://github.com/mdre/odbogm.git'
+                    developerConnection 'scm:git:ssh://github.com/mdre/odbogm.git'
                     url 'https://github.com/mdre/odbogm'
                 }
 
