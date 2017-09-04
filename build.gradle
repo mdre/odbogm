@@ -1,11 +1,13 @@
 plugins {
     id 'net.researchgate.release' version '2.0.2'
-//    id "org.sonarqube" version '2.5'
+    //    id "org.sonarqube" version '2.5'
     id 'nu.studer.credentials' version '1.0.0'
 }
 
 apply plugin: 'java'
 apply plugin: "maven"
+apply plugin: 'signing'
+
 
 println "***************************************************************"
 println "SISTEMA: " + name
@@ -81,23 +83,80 @@ test {
     }
 }
 
+// de acuerdo a la guía de 
+// http://central.sonatype.org/pages/gradle.html
+task javadocJar(type: Jar) {
+    classifier = 'javadoc'
+    from javadoc
+}
+
+task sourcesJar(type: Jar) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+artifacts {
+    archives javadocJar, sourcesJar
+}
+
+signing {
+    sign configurations.archives
+}
 
 //sube a nexus
 uploadArchives {
     repositories {
-//        mavenDeployer {
-//            repository(url: "$nexusURLReleases") {
-//                authentication(userName: credentials.nexusUser, password: credentials.nexusPassword)
-//            }
-//            pom.groupId = rootProject.group
-//            pom.artifactId = project.name
-//        }
+        //        mavenDeployer {
+        //            repository(url: "$nexusURLReleases") {
+        //                authentication(userName: credentials.nexusUser, password: credentials.nexusPassword)
+        //            }
+        //            pom.groupId = rootProject.group
+        //            pom.artifactId = project.name
+        //        }
         mavenDeployer {
+            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+            
             repository(url: "$sonatypeURLRelease") {
                 authentication(userName: credentials.sonatypeUser, password: credentials.sonatypePassword)
             }
+            
+            snapshotRepository(url: "$sonatypeURLSnapshot") {
+                authentication(userName: credentials.sonatypeUser, password: credentials.sonatypePassword)
+            }
+            
             pom.groupId = 'com.github.mdre'
             pom.artifactId = 'odbogm'
+            
+            
+            pom.project {
+                name 'Object to OrientDB Graph mapper'
+                packaging 'jar'
+                // optionally artifactId can be defined here 
+                description 'ODBOGM let you store/retrieve object in a OrientDB graph structure in a clear and simple way.'
+                url 'https://github.com/mdre/odbogm'
+
+                scm {
+                    connection 'scm:git:https://github.com/mdre/odbogm'
+                    developerConnection 'scm:git:https://github.com/mdre/odbogm'
+                    url 'https://github.com/mdre/odbogm'
+                }
+
+                licenses {
+                    license {
+                        name 'The Apache License, Version 2.0'
+                        url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                    }
+                }
+
+                developers {
+                    developer {
+                        id 'mdre'
+                        name 'Marcelo D. RE'
+                        email 'marcelo.re@gmail.com'
+                    }
+                }
+            }
+            
         }
     }
 }
