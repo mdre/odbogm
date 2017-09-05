@@ -40,7 +40,7 @@ public class ClassCache {
      * Devuelve el mapa de la clase obteniéndolo desde el cache. Si no exite, analiza la clase y lo agrega.
      *
      * @param c: reference class.
-     * @return
+     * @return a ClassDefiniton object
      */
     public ClassDef get(Class<?> c) {
         LOGGER.log(Level.FINER, "Procesando clase: {0}", c.getName());

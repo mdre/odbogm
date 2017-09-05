@@ -7,10 +7,6 @@ package net.odbogm.security;
 
 import java.util.List;
 
-/**
- *
- * @author Marcelo D. Ré <marcelo.re@gmail.com>
- */
 public interface ISecurityCredentials {
     public List<String> showSecurityCredentials();
 }

@@ -125,8 +125,8 @@ public class SessionManager implements Actions.Store, Actions.Get {
     /**
      * Crea a un *NUEVO* vértice en la base de datos a partir del objeto. Retorna el RID del objeto que se agregó a la base.
      *
-     * @param <T>
-     * @param o
+     * @param <T> clase base del objeto.
+     * @param o objeto de referencia a almacenar.
      */
     @Override
     public synchronized <T> T store(T o) throws IncorrectRIDField, NoOpenTx, ClassToVertexNotFound {
@@ -321,7 +321,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
     /**
      * Marca un objecto como dirty para ser procesado en el commit
      *
-     * @param o
+     * @param o objeto de referencia.
      */
     public synchronized void setAsDirty(Object o) throws UnmanagedObject {
 //        graphdb.getRawGraph().activateOnCurrentThread();
@@ -338,7 +338,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
     /**
      * Retorna el ObjectMapper asociado a la sesión
      *
-     * @return
+     * @return retorna un mapa del objeto
      */
     public ObjectMapper getObjectMapper() {
         return this.objectMapper;
@@ -348,8 +348,8 @@ public class SessionManager implements Actions.Store, Actions.Get {
      * Recupera el @RID asociado al objeto. Se debe tener en cuenta que si el objeto aún no se ha persistido la base devolverá un RID temporal con los
      * ids en negativo. Ej: #-10:-2
      *
-     * @param o
-     * @return
+     * @param o objeto de referencia
+     * @return el RID del objeto o null.
      */
     public String getRID(Object o) {
         if ((o != null) && (o instanceof IObjectProxy)) {
@@ -361,7 +361,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
     /**
      * Persistir la información pendiente en la transacción
      *
-     * @throws NoOpenTx
+     * @throws NoOpenTx si no hay una trnasacción abierta.
      */
     public synchronized void commit() throws NoOpenTx, OConcurrentModificationException {
         if (graphdb == null) {
@@ -474,7 +474,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
     /**
      * Devuelve el objeto de comunicación con la base.
      *
-     * @return
+     * @return retorna la referencia directa al driver del la base.
      */
     public OrientGraph getGraphdb() {
         return graphdb;
@@ -482,6 +482,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
 
     /**
      * Retorna la cantidad de objetos marcados como Dirty. Utilizado para los test
+     * @return retorna la cantidad de objetos marcados para el próximo commit
      */
     public int getDirtyCount() {
         return this.dirty.size();
@@ -491,7 +492,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
      * Recupera un objecto desde la base a partir del RID del Vértice.
      *
      * @param rid: ID del vértice a recupear
-     * @return: Retorna un objeto de la clase javaClass del vértice.
+     * @return Retorna un objeto de la clase javaClass del vértice.
      */
     @Override
     public Object get(String rid) throws UnknownRID, VertexJavaClassNotFound {
@@ -541,10 +542,10 @@ public class SessionManager implements Actions.Store, Actions.Get {
     /**
      * Recupera un objeto a partir de la clase y el RID correspondiente.
      *
-     * @param <T>
-     * @param type
-     * @param rid
-     * @return
+     * @param <T> clase a devolver
+     * @param type clase a devolver
+     * @param rid RID del vértice de la base
+     * @return objeto de la clase T
      */
     @Override
     public <T> T get(Class<T> type, String rid) throws UnknownRID {
@@ -617,8 +618,8 @@ public class SessionManager implements Actions.Store, Actions.Get {
     /**
      * Agrega si no existe un objeto al cache de la transacción acutal a fin de evitar los loops cuando se comletan los links dentro del ObjectProxy
      *
-     * @param rid
-     * @param o
+     * @param rid RID del objeto.
+     * @param o objeto a controlar.
      */
     public void addToTransactionCache(String rid, Object o) {
         getTransactionCount++;
@@ -677,10 +678,11 @@ public class SessionManager implements Actions.Store, Actions.Get {
 //            
 //        }
 //    }
+    
     /**
      * Remueve un vértice y todos los vértices apuntados por él y marcados con @RemoveOrphan
      *
-     * @param toRemove
+     * @param toRemove referencia al objeto a remover
      */
     public void delete(Object toRemove) throws ReferentialIntegrityViolation, UnknownObject {
         LOGGER.log(Level.FINER, "Remove: " + toRemove.getClass().getName());
@@ -790,11 +792,11 @@ public class SessionManager implements Actions.Store, Actions.Get {
     }
 
     /**
-     * realiza un query a la base de datos
+     * Realiza un query direto a la base de datos y devuelve el resultado directamente sin procesarlo.
      *
-     * @param <T>
-     * @param sql
-     * @return
+     * @param <T> clase a devolver
+     * @param sql sentencia a ejecutar 
+     * @return resutado de la ejecución de la sentencia SQL
      */
     public <T> T query(String sql) {
         if (graphdb == null) {
@@ -831,12 +833,14 @@ public class SessionManager implements Actions.Store, Actions.Get {
     }
 
     /**
+     * Return all record of the reference class.
      * Devuelve todos los registros a partir de una clase base.
      *
      * @param <T> Reference class
+     * @param clazz reference class 
      * @return return a list of object of the refecence class.
      */
-    public <T> List<T> query(Class<T> clase) {
+    public <T> List<T> query(Class<T> clazz) {
         if (graphdb == null) {
             throw new NoOpenTx();
         }
@@ -844,8 +848,8 @@ public class SessionManager implements Actions.Store, Actions.Get {
 
         ArrayList<T> ret = new ArrayList<>();
 
-        for (Vertex verticesOfClas : graphdb.getVerticesOfClass(clase.getSimpleName())) {
-            ret.add(this.get(clase, verticesOfClas.getId().toString()));
+        for (Vertex verticesOfClas : graphdb.getVerticesOfClass(clazz.getSimpleName())) {
+            ret.add(this.get(clazz, verticesOfClas.getId().toString()));
             LOGGER.log(Level.FINER, "vertex: " + verticesOfClas.getId().toString() + "  class: " + ((OrientVertex) verticesOfClas).getType().getName());
         }
 
@@ -856,6 +860,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
      * Devuelve todos los registros a partir de una clase base en una lista, filtrando los datos por lo que se agregue en el body.
      *
      * @param <T> clase base que se utilizará para el armado de la lista
+     * @param clase clase base.
      * @param body cuerpo a agregar a la sentencia select. Ej: "where ...."
      * @return Lista con todos los objetos recuperados.
      */
@@ -880,11 +885,11 @@ public class SessionManager implements Actions.Store, Actions.Get {
     /**
      * Ejecuta un prepared query y devuelve una lista de la clase indicada.
      *
-     * @param <T>
-     * @param clase
-     * @param sql
-     * @param param
-     * @return
+     * @param <T> clase de referencia para crear la lista de resultados
+     * @param clase clase de referencia
+     * @param sql comando a ejecutar 
+     * @param param parámetros extras para el query parametrizado.
+     * @return una lista de la clase solicitada con los objetos lazy inicializados.
      */
     public <T> List<T> query(Class<T> clase, String sql, Object... param) {
         OSQLSynchQuery<ODocument> query = new OSQLSynchQuery<>(sql);
@@ -900,7 +905,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
     /**
      * Devuelve el objecto de definición de la clase en la base.
      *
-     * @param clase
+     * @param clase nombre de la clase
      * @return OClass o null si la clase no existe
      */
     public OClass getDBClass(String clase) {
@@ -910,6 +915,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
     /**
      * Comienza a auditar los objetos y los persiste con el nombre de usuario.
      *
+     * @param user User String only.
      */
     public void setAuditOnUser(String user) {
         if (graphdb == null) {
@@ -937,7 +943,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
     /**
      * Establece el usuario actualmente logueado.
      * 
-     * @param usid
+     * @param usid referencia al usuario
      */
     public void setLoggedInUser(UserSID usid) {
         this.loggedInUser = usid;
@@ -948,6 +954,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
      *
      * @param o IOBjectProxy a auditar
      * @param at AuditType
+     * @param label etiqueta de referencia
      * @param data objeto a loguear con un toString
      */
     public void auditLog(IObjectProxy o, int at, String label, Object data) {
@@ -958,6 +965,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
 
     /**
      * determina si se está guardando un log de auditoría
+     * @return true si la auditoría está activa
      */
     public boolean isAuditing() {
         return this.auditor != null;

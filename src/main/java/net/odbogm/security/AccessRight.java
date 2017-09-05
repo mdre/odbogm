@@ -11,7 +11,7 @@ import java.util.logging.Logger;
 
 /**
  *
- * @author Marcelo D. Ré <marcelo.re@gmail.com>
+ * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
 public class AccessRight {
     private final static Logger LOGGER = Logger.getLogger(AccessRight.class .getName());
@@ -55,7 +55,8 @@ public class AccessRight {
     /**
      * Set the access right.
      * 
-     * @param rights 
+     * @param rights AccessRights a conceder.
+     * @return return this instance.
      */
     public AccessRight setRights(int... rights) {
         this.rights = 0;

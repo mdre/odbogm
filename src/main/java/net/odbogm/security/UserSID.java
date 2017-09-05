@@ -12,10 +12,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-/**
- *
- * @author Marcelo D. Ré <marcelo.re@gmail.com>
- */
 public class UserSID extends SID implements ISecurityCredentials {
     private final static Logger LOGGER = Logger.getLogger(UserSID.class .getName());
     static {
@@ -50,7 +46,7 @@ public class UserSID extends SID implements ISecurityCredentials {
     
     /**
      * Retorna una lista con todos los UUID de los grupos a los que pertenece el usuario.
-     * @return List<String::UUID>
+     * @return {@literal List<String::UUID>} lista de grupos a los que pertene el usuario.
      */
     @Override
     public List<String> showSecurityCredentials() {

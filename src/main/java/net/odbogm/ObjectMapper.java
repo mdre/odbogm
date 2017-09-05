@@ -57,8 +57,8 @@ public class ObjectMapper {
     /**
      * Devuelve la definición de la clase para el objeto pasado por parámetro
      *
-     * @param o
-     * @return
+     * @param o objeto de referencia
+     * @return definición de la clase
      */
     public ClassDef getClassDef(Object o) {
         if (o instanceof IObjectProxy) {
@@ -71,8 +71,8 @@ public class ObjectMapper {
     /**
      * Devuelve un mapeo rápido del Objeto. No procesa los link o linklist. Simplemente devuelve todos los atributos del objeto en un map
      *
-     * @param o
-     * @return
+     * @param o objeto a analizar.
+     * @return un mapa con los campos y las clases que representa.
      */
     public Map<String, Object> simpleMap(Object o) {
         HashMap<String, Object> data = new HashMap<>();
@@ -112,8 +112,8 @@ public class ObjectMapper {
     /**
      * Devuelve un Map con todos los K,V de cada campo del objeto.
      *
-     * @param o
-     * @return
+     * @param o objeto a analizar 
+     * @return un objeto con la estructura del objeto analizado.
      */
     public ObjectStruct objectStruct(Object o) {
         ObjectStruct oStruct = new ObjectStruct();
@@ -134,8 +134,8 @@ public class ObjectMapper {
     /**
      * Realiza un mapeo a partir de las definiciones existentes en el caché
      *
-     * @param o
-     * @param oStruct
+     * @param o objeto a analizar
+     * @param oStruct objeto de referencia a completar
      */
     private void fastmap(Object o, ClassDef classmap, ObjectStruct oStruct) {
 
@@ -226,13 +226,13 @@ public class ObjectMapper {
     /**
      * Crea y llena un objeto con los valores correspondintes obtenidos del Vertice asignado.
      *
-     * @param <T>
-     * @param c
-     * @param v
-     * @return
-     * @throws InstantiationException
-     * @throws IllegalAccessException
-     * @throws NoSuchFieldException
+     * @param <T> clase a devolver
+     * @param c clase de referencia
+     * @param v vértice de referencia
+     * @return un objeto de la clase T
+     * @throws InstantiationException cuando no se puede instanciar
+     * @throws IllegalAccessException cuando no se puede acceder
+     * @throws NoSuchFieldException no existe el campo.
      */
     public <T> T hydrate(Class<T> c, OrientVertex v) throws DuplicateClassDefinition, InstantiationException, IllegalAccessException, NoSuchFieldException, CollectionNotSupported {
 //        T o = c.newInstance();
@@ -445,10 +445,10 @@ public class ObjectMapper {
      * @param <T> clase del objeto a devolver
      * @param c : clase del objeto a devolver
      * @param e : Edge desde el que recuperar los datos
-     * @return
-     * @throws InstantiationException
-     * @throws IllegalAccessException
-     * @throws NoSuchFieldException
+     * @return objeto completado a partir de la base de datos
+     * @throws InstantiationException si no se puede instanciar. 
+     * @throws IllegalAccessException si no se puede acceder
+     * @throws NoSuchFieldException si no se encuentra alguno de los campos.
      */
     public <T> T hydrate(Class<T> c, OrientEdge e) throws InstantiationException, IllegalAccessException, NoSuchFieldException {
         T oproxied = ObjectProxyFactory.create(c, e, sessionManager);

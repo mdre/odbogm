@@ -49,15 +49,15 @@ public class ObjectProxyFactory {
         return create(c,ov,sm);
     }
     
-    /**
-     * Devuelve un proxy a partir de un objeto existente y copia todos los valores del objeto original al 
-     * nuevo objecto provisto por el proxy
-     * @param <T>
-     * @param o
-     * @param oe
-     * @param sm
-     * @return 
-     */
+//    /**
+//     * Devuelve un proxy a partir de un objeto existente y copia todos los valores del objeto original al 
+//     * nuevo objecto provisto por el proxy
+//     * @param <T>
+//     * @param o
+//     * @param oe
+//     * @param sm
+//     * @return 
+//     */
 //    public static <T> T bbcreate(T o, OrientElement oe, SessionManager sm ) {
 //        T po = null;
 //        try {
@@ -85,15 +85,15 @@ public class ObjectProxyFactory {
 //        }
 //        return po;
 //    }
-
-    /**
-     * Devuelve un proxy a partir de una definición de clase.
-     * @param <T>
-     * @param c
-     * @param ov
-     * @param sm
-     * @return 
-     */
+//
+//    /**
+//     * Devuelve un proxy a partir de una definición de clase.
+//     * @param <T>
+//     * @param c
+//     * @param ov
+//     * @param sm
+//     * @return 
+//     */
 //    public static <T> T bbcreate(Class<T> c, OrientElement ov, SessionManager sm ) {
 //        T po = null;
 //        try {

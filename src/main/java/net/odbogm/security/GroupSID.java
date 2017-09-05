@@ -11,10 +11,6 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-/**
- *
- * @author Marcelo D. Ré <marcelo.re@gmail.com>
- */
 public class GroupSID extends SID {
     private final static Logger LOGGER = Logger.getLogger(GroupSID.class .getName());
     static {
@@ -36,7 +32,7 @@ public class GroupSID extends SID {
      * <div class="en">Add a user or group to this group.</div>
      * <div class="es">Agrega un usuario o grupo.</div>
      * 
-     * @param user 
+     * @param user reference to user.
      */
     public final void ___add(SID user) {
         if (participants == null) 

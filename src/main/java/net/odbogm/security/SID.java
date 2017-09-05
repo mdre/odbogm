@@ -6,15 +6,9 @@
 
 package net.odbogm.security;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-/**
- *
- * @author Marcelo D. Ré <marcelo.re@gmail.com>
- */
 public abstract class SID {
     private final static Logger LOGGER = Logger.getLogger(SID.class .getName());
     static {

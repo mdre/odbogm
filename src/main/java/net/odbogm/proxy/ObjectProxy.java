@@ -285,10 +285,9 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     }
 
     /**
-     * 7
      * Establece el objeto base sobre el que trabaja el proxy
      *
-     * @param po
+     * @param po objeto de referencia
      */
     public void ___setProxyObject(Object po) {
         this.___proxyObject = po;
@@ -298,7 +297,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     /**
      * retorna el vértice asociado a este proxi o null en caso que no exista uno.
      *
-     * @return
+     * @return referencia al OrientVertex
      */
     @Override
     public OrientVertex ___getVertex() {
@@ -312,7 +311,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     /**
      * retorna el vértice asociado a este proxi o null en caso que no exista uno.
      *
-     * @return
+     * @return el RID del object en la base
      */
     @Override
     public String ___getRid() {
@@ -327,7 +326,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
      *
      * establece el elemento base como un vértice.
      *
-     * @param v
+     * @param v vétice de referencia
      */
     @Override
     public void ___setVertex(OrientVertex v) {
@@ -337,7 +336,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     /**
      * retorna el vértice asociado a este proxi o null en caso que no exista uno.
      *
-     * @return
+     * @return la referencia al OrientVertex
      */
     @Override
     public OrientVertex ___getEdge() {
@@ -352,7 +351,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
      *
      * establece el elemento base como un vértice.
      *
-     * @param e
+     * @param e Edge de referencia
      */
     @Override
     public void ___setEdge(OrientEdge e) {

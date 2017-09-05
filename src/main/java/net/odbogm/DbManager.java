@@ -126,8 +126,8 @@ public class DbManager {
     
     /**
      * Devuelve un arraylist con todas las instrucciones necesarias para la creación de la base de datos.
-     * @param analize
-     * @return 
+     * @param analize lista de clases a analizar
+     * @return  arraylist con las instrucciones.
      */
     public ArrayList<String> generateDBSQL(String[] analize){
         ArrayList<String> statements = new ArrayList<>();
@@ -180,7 +180,7 @@ public class DbManager {
     /**
      * Verifica que el árbol de herencias de la clase esté registrado. Si no es así, lo registra desde la clase superior hacia abajo.
      *
-     * @param clazz
+     * @param clazz clase a analizar
      */
     private void buildDBScript(Class clazz) {
         if ((clazz == null)

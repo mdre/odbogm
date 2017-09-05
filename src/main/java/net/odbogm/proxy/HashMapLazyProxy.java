@@ -150,7 +150,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
     /**
      * Actualiza el estado de todo el MAP y devuelve la referencia al estado de los keys
      * 
-     * @return 
+     * @return  retorna un mapa con el estado de la colección
      */
     @Override
     public Map<Object, ObjectCollectionState> collectionState() {

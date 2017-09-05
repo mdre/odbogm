@@ -14,10 +14,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.annotations.Embedded;
 
-/**
- *
- * @author Marcelo D. Ré <marcelo.re@gmail.com>
- */
 public class SimpleVertexWithEmbedded {
     private final static Logger LOGGER = Logger.getLogger(SimpleVertexWithEmbedded.class .getName());
     static {

@@ -29,6 +29,7 @@ public class VertexUtils {
      *
      * @param v1 first vertex
      * @param v2 second vertex
+     * @param edgeLabel etiqueta del edge
      * @return true if any conection exist
      */
     public static boolean areConected(OrientVertex v1, OrientVertex v2, String edgeLabel) {

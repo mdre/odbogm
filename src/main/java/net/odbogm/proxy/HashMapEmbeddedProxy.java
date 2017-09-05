@@ -32,17 +32,13 @@ public class HashMapEmbeddedProxy extends HashMap<Object, Object> implements IEm
     private boolean dirty = false;
     
     
-    // referencia debil al objeto padre. Se usa para notificar al padre que la colección ha cambiado.
+    // referencia devil al objeto padre. Se usa para notificar al padre que la colección ha cambiado.
     private WeakReference<IObjectProxy> parent;
     
     /**
      * Crea un HashMap con detección de cambios.
      *
-     * @param sm Vínculo al SessionManager actual
-     * @param relatedTo: Vértice con el cual se relaciona la colección
-     * @param field: atributo de relación
-     * @param k: clase del key.
-     * @param v: clase del value.
+     * @param parent link al padre
      */
     @Override
     public void init(IObjectProxy parent) {

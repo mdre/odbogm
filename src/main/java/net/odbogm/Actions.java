@@ -19,10 +19,10 @@ public interface Actions {
         /**
          * Guarda un objeto en la base de datos descomponiéndolo en vértices y links
          * y retorna el @RID asociado. 
-         * @param <T>
-         * @param o
-         * @return
-         * @throws IncorrectRIDField 
+         * @param <T> clase del objeto.
+         * @param o objeto a almacenar
+         * @return retorna el nuevo objeto administrado por la base.
+         * @throws IncorrectRIDField  referencia incorrecta.
          */
         <T> T store(T o) throws IncorrectRIDField;
     }

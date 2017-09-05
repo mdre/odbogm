@@ -9,10 +9,6 @@ package Test;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-/**
- *
- * @author Marcelo D. Ré <marcelo.re@gmail.com>
- */
 public class SimpleVertexInterfaceAttr extends SimpleVertex {
     private final static Logger LOGGER = Logger.getLogger(SimpleVertexInterfaceAttr.class .getName());
     static {

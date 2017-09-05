@@ -10,10 +10,6 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-/**
- *
- * @author Marcelo D. Ré <marcelo.re@gmail.com>
- */
 public abstract class SObject {
 
     private final static Logger LOGGER = Logger.getLogger(SObject.class.getName());
@@ -80,7 +76,8 @@ public abstract class SObject {
     /**
      * Validate all groups aganis the acls and return the final state of the object
      *
-     * @param sc
+     * @param sc SecurityCredential
+     * @return the security state computed.
      */
     public final int validate(ISecurityCredentials sc) {
         int partialState = 0;
@@ -107,7 +104,7 @@ public abstract class SObject {
     /**
      * Devuelve el estado de seguridad actual del objeto.
      *
-     * @return
+     * @return devuelve el SecurityState actual del objeto
      */
     public final int getSecurityState() {
         return this.__state;
@@ -116,7 +113,7 @@ public abstract class SObject {
     /**
      * Retorna una copia de los ACLs establecidos para el objecto
      *
-     * @return Map<String,Integer> de los acls
+     * @return {@literal Map<String,Integer>} de los acls
      */
     public final HashMap<String, Integer> getAcls() {
         HashMap<String, Integer> acls = new HashMap<>();
@@ -132,7 +129,7 @@ public abstract class SObject {
     /**
      * Establece el objecto desde el que se heredan los permisos.
      *
-     * @param so
+     * @param so objecto desde el que se heredan los permisos.
      */
     public final void setInheritFrom(SObject so) {
         this.__inherit = so;

@@ -132,7 +132,11 @@ public final class DateHelper {
         return calendarMonthToInt(calendarMonth);
     } // getMonth
 
-    /** retorna el día de la semana (1-7) */
+    /** 
+     * retorna el día de la semana (1-7) 
+     * @param date fecha de referencia
+     * @return el día correspondiente
+     */
     public static int getDOW(java.util.Date date) {
         Calendar cal = new GregorianCalendar();
         cal.setTime(date);
@@ -201,9 +205,9 @@ public final class DateHelper {
     /**
      * Retorna un string con la representación de la fecha de acuerdo al formato pasado.
      * Se utiliza SimpleDateFormat para relaizar la conversió.
-     * @param date
+     * @param date feca de refenrecia
      * @param pattern: ej: "YYYY-MM-dd"
-     * @return 
+     * @return el formato correspondiente.
      */
     public static String format(
         Date date,
@@ -292,7 +296,7 @@ public final class DateHelper {
 
     /**
      * retorna la fecha actual con la hora puesta a 00:00
-     * @return
+     * @return fecha actual.
      */
     public static java.util.Date getCurrentDate() {
         int yy = DateHelper.getYear(DateHelper.getCurrentDateTime());
@@ -305,8 +309,8 @@ public final class DateHelper {
     /**
      * Retorna una cadena con la fecha actual en el formato requerido.
      * Se utiliza SimpleDateFormat.
-     * @param format
-     * @return 
+     * @param format formato a usar
+     * @return fecha actual de acuerdo al formato.
      */
     public static String getCurrentDate(String format) {
         return DateHelper.format(DateHelper.getCurrentDate(), format);
@@ -315,7 +319,7 @@ public final class DateHelper {
     
     /**
      * retorna la fecha y hora actual
-     * @return
+     * @return fecha y hora actual
      */
     public static java.util.Date getCurrentDateTime() {
         return Calendar.getInstance().getTime();
@@ -342,6 +346,7 @@ public final class DateHelper {
     /**
      * Crea una instancia de Calendar en base a un java.sql.Date
      * @param fecha la fecha a convertir
+     * @return Calendar inicializado con la fecha de referencia.
      */
     public static Calendar sqlDateToCalendar(java.sql.Date fecha) {
         if (fecha == null) {
@@ -411,8 +416,8 @@ public final class DateHelper {
      * retorna la fecha en formato string eliminando todos los caracteres separadores
      * quedando con la siguiente cadena: yyyymmddhhmmss
      *
-     * @param date
-     * @return
+     * @param date fecha de referencia
+     * @return String con el formato yyyymmddhhmmss
      */
     public static String dtos(Date date){
         int yyyy = getYear(date);
@@ -432,8 +437,8 @@ public final class DateHelper {
 
     /**
      * Retorna una cadena en formato dd/MM/yyyy
-     * @param date
-     * @return 
+     * @param date fecha de referencia.
+     * @return String con el formato dd/MM/yyyy
      */
     public static String toScreenableString(Date date) {
         SimpleDateFormat sdf = new SimpleDateFormat ("dd/MM/yyyy");
