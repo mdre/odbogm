@@ -129,8 +129,7 @@ uploadArchives {
     repositories {
         mavenDeployer {
             beforeDeployment {
-                println signing.keyId
-                //MavenDeployment deployment -> signing.signPom(deployment) 
+                MavenDeployment deployment -> signing.signPom(deployment) 
             }
             
             repository(url: "$sonatypeURLRelease") {
