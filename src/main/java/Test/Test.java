@@ -47,13 +47,13 @@ public class Test {
     public Test() {
         initSession();
 //        testSessionManager();
-//        testDbManager();
+        testDbManager();
 //        lab();
 //        testQuery();
 //        store();
 //        testEmbeddded();
 //        setUpGroups();
-        testSObjects();
+//        testSObjects();
         sm.shutdown();
     }
 
@@ -91,7 +91,9 @@ public class Test {
 
     public void testDbManager() {
         DbManager dbm = new DbManager("remote:localhost/Test", "root", "toor");
-        dbm.generateToConsole(new String[]{"Test"});
+//        dbm.generateToConsole(new String[]{"Test"});
+        dbm.generateDBSQL("/tmp/1/test.sql", new String[]{"Test"});
+        
     }
 
     
@@ -250,9 +252,9 @@ public class Test {
 //        sm.commit();
 //        
 //        ArrayList<Integer> testal = new ArrayList<>();
-//        testal.___add(1);
-//        testal.___add(2);
-//        testal.___add(3);
+//        testal.add(1);
+//        testal.add(2);
+//        testal.add(3);
 //        
 //        HashMap<String,Object> hmTest = new HashMap<>();
 //        hmTest.put("hmalI", testal);

@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 public class GroupSID extends SID {
     private final static Logger LOGGER = Logger.getLogger(GroupSID.class .getName());
@@ -34,20 +35,20 @@ public class GroupSID extends SID {
      * 
      * @param user reference to user.
      */
-    public final void ___add(SID user) {
+    public final void add(SID user) {
         if (participants == null) 
             this.participants = new ArrayList<>();
         this.participants.add(user);
     }
     
-    public final void ___remove(SID user) {
+    public final void remove(SID user) {
         this.participants.remove(user);
     }
     
-    public final List<SID> ___getParticipants() {
+    public final List<SID> getParticipants() {
         // FIXME: ojo que se está retornando la lista de participantes y esto permite que se acceda a los objetos
         // internos de la misma.
-        return this.participants;
+        return this.participants.stream().map(sid -> sid).collect(Collectors.toList());
     }
     
 }

@@ -34,14 +34,14 @@ public class UserSID extends SID implements ISecurityCredentials {
             this.groups = new ArrayList<>();
         }
         this.groups.add(gsid);
-        gsid.___add(this);
+        gsid.add(this);
     }
     
     public void removeGroup(GroupSID gsid) {
         if (this.groups!=null) {
             this.groups.remove(gsid);
         }
-        gsid.___remove(this);
+        gsid.remove(this);
     }
     
     /**
@@ -55,4 +55,13 @@ public class UserSID extends SID implements ISecurityCredentials {
         return this.groups.stream().map(gid -> gid.getUUID()).collect(Collectors.toList());
     }
     
+    /**
+     * Retorna una lista con todos los grupos a los que pertenece el usuario.
+     * @return lista de GroupSID
+     */
+    public List<GroupSID> getGroups() {
+        // FIXME: existe algún riesgo en esto?
+        return this.groups.stream().map(gid -> gid).collect(Collectors.toList());
+    }
+
 }

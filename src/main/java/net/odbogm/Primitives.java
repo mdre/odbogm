@@ -75,8 +75,6 @@ public class Primitives {
         LAZY_COLLECTION.put(Map.class,HashMapLazyProxy.class);
         
         
-        
-        
     }
 
     
