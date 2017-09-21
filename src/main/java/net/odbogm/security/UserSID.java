@@ -33,15 +33,16 @@ public class UserSID extends SID implements ISecurityCredentials {
         if (this.groups==null) {
             this.groups = new ArrayList<>();
         }
-        this.groups.add(gsid);
+        if (!this.groups.contains(gsid))
+            this.groups.add(gsid);
         gsid.add(this);
     }
     
     public void removeGroup(GroupSID gsid) {
         if (this.groups!=null) {
             this.groups.remove(gsid);
+            gsid.remove(this);
         }
-        gsid.remove(this);
     }
     
     /**

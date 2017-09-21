@@ -16,7 +16,8 @@ public abstract class SID {
     }
     private String name = "";
     private String uuid = "";
-            
+    
+    @Deprecated
     public SID() {
     }
 
