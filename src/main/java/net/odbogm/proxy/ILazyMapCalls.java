@@ -5,17 +5,17 @@
  */
 package net.odbogm.proxy;
 
-import net.odbogm.SessionManager;
 import com.tinkerpop.blueprints.impls.orient.OrientEdge;
 import com.tinkerpop.blueprints.impls.orient.OrientVertex;
 import java.util.Map;
+import net.odbogm.Transaction;
 
 /**
  *
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
 public interface ILazyMapCalls extends ILazyCalls {
-    public void init(SessionManager sm, OrientVertex relatedTo, IObjectProxy parent, String field, Class<?> keyClass, Class<?> valueClass);
+    public void init(Transaction t, OrientVertex relatedTo, IObjectProxy parent, String field, Class<?> keyClass, Class<?> valueClass);
     public Map<Object,ObjectCollectionState> collectionState();
     
     

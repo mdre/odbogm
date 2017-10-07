@@ -25,6 +25,7 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.LogginProperties;
+import net.odbogm.Transaction;
 
 /**
  *
@@ -42,7 +43,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
     private boolean lazyLoad = true;
     private boolean lazyLoading = false;
     
-    private SessionManager sm;
+    private Transaction transaction;
     private OrientVertex relatedTo;
     private String field;
     private Class<?> keyClass;
@@ -54,15 +55,15 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
     /**
      * Crea un ArrayList lazy.
      *
-     * @param sm Vínculo al SessionManager actual
+     * @param t Vínculo a la transacción actual
      * @param relatedTo: Vértice con el cual se relaciona la colección
      * @param field: atributo de relación
      * @param k: clase del key.
      * @param v: clase del value.
      */
     @Override
-    public void init(SessionManager sm, OrientVertex relatedTo, IObjectProxy parent, String field, Class<?> k, Class<?> v) {
-        this.sm = sm;
+    public void init(Transaction t, OrientVertex relatedTo, IObjectProxy parent, String field, Class<?> k, Class<?> v) {
+        this.transaction = t;
         this.relatedTo = relatedTo;
         this.parent = new WeakReference<>(parent);
         this.field = field;
@@ -85,7 +86,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
             OrientVertex next = (OrientVertex) iterator.next();
 //            LOGGER.log(Level.FINER, "loading: " + next.getId().toString());
 
-            Object o = sm.get(valueClass, next.getId().toString());
+            Object o = transaction.get(valueClass, next.getId().toString());
 
             // para cada vértice conectado, es necesario mapear todos los Edges que los unen.
             for (Edge edge : relatedTo.getEdges(next, Direction.OUT, field)) {
@@ -100,7 +101,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
                     }
                 } else {
                     LOGGER.log(Level.FINER, "clase como key");
-                    k = this.sm.getEdgeAsObject(keyClass, oe);
+                    k = transaction.getEdgeAsObject(keyClass, oe);
                 }
                 this.put(k, o);
                 this.keyState.put(k, ObjectCollectionState.REMOVED);

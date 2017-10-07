@@ -43,15 +43,15 @@ public class ObjectMapper {
 //    private static int newObjectCounter = 0;
 //    private Kryo kryo = new Kryo();
     
-    private SessionManager sessionManager;
+//    private SessionManager sessionManager;
     private ClassCache classCache;
 
-    public ObjectMapper(SessionManager sm) {
+    public ObjectMapper() {
 //        LOGGER.setLevel(Level.INFO);
 
         // inicializar le caché de clases
         classCache = new ClassCache();
-        this.sessionManager = sm;
+//        this.sessionManager = sm;
     }
 
     /**
@@ -229,12 +229,13 @@ public class ObjectMapper {
      * @param <T> clase a devolver
      * @param c clase de referencia
      * @param v vértice de referencia
+     * @param t Vínculo a la transacción actual
      * @return un objeto de la clase T
      * @throws InstantiationException cuando no se puede instanciar
      * @throws IllegalAccessException cuando no se puede acceder
      * @throws NoSuchFieldException no existe el campo.
      */
-    public <T> T hydrate(Class<T> c, OrientVertex v) throws DuplicateClassDefinition, InstantiationException, IllegalAccessException, NoSuchFieldException, CollectionNotSupported {
+    public <T> T hydrate(Class<T> c, OrientVertex v, Transaction t) throws DuplicateClassDefinition, InstantiationException, IllegalAccessException, NoSuchFieldException, CollectionNotSupported {
 //        T o = c.newInstance();
         // activar la base de datos en el hilo actual.
         v.getGraph().getRawGraph().activateOnCurrentThread();
@@ -265,7 +266,7 @@ public class ObjectMapper {
         }
 
         // crear un proxy sobre el objeto y devolverlo
-        Object oproxied = ObjectProxyFactory.create(toHydrate, v, sessionManager);
+        Object oproxied = ObjectProxyFactory.create(toHydrate, v, t);
 
         LOGGER.log(Level.FINER, "**************************************************");
         LOGGER.log(Level.FINER, "Hydratando: {0} - Class: {1}", new Object[]{c.getName(), toHydrate});
@@ -313,7 +314,7 @@ public class ObjectMapper {
             }
         }
         // insertar el objeto en el transactionCache
-        this.sessionManager.transactionCache.put(v.getId().toString(), oproxied);
+        t.transactionCache.put(v.getId().toString(), oproxied);
 
         // procesar los enum
         for (Map.Entry<String, Class<?>> entry : classdef.enumFields.entrySet()) {
@@ -356,7 +357,7 @@ public class ObjectMapper {
 
                 // si hay Vértices conectados o si el constructor del objeto ha inicializado los vectores, convertirlos
                 if ((v.countEdges(Direction.OUT, graphRelationName) > 0) || (fLink.get(oproxied) != null)) {
-                    this.colecctionToLazy(oproxied, field, fc, v);
+                    this.colecctionToLazy(oproxied, field, fc, v, t);
                 }
 
                 fLink.setAccessible(acc);
@@ -374,7 +375,7 @@ public class ObjectMapper {
         return (T) oproxied;
     }
 
-    public void colecctionToLazy(Object o, String field, OrientVertex v) {
+    public void colecctionToLazy(Object o, String field, OrientVertex v, Transaction t) {
         ClassDef classdef;
         if (o instanceof IObjectProxy) {
             classdef = classCache.get(o.getClass().getSuperclass());
@@ -383,7 +384,7 @@ public class ObjectMapper {
         }
 
         Class<?> fc = classdef.linkLists.get(field);
-        colecctionToLazy(o, field, fc, v);
+        colecctionToLazy(o, field, fc, v, t);
     }
 
     /**
@@ -394,9 +395,10 @@ public class ObjectMapper {
      * @param field campo a modificar
      * @param fc clase original del campo
      * @param v vértice con el cual se conecta.
+     * @param t Vínculo a la transacción actual
      *
      */
-    public void colecctionToLazy(Object o, String field, Class<?> fc, OrientVertex v) {
+    public void colecctionToLazy(Object o, String field, Class<?> fc, OrientVertex v, Transaction t) {
         try {
             Class<?> c;
             if (o instanceof IObjectProxy) {
@@ -418,7 +420,7 @@ public class ObjectMapper {
                 ParameterizedType listType = (ParameterizedType) fLink.getGenericType();
                 Class<?> listClass = (Class<?>) listType.getActualTypeArguments()[0];
                 // inicializar la colección
-                ((ILazyCollectionCalls) col).init(sessionManager, v, (IObjectProxy) o, graphRelationName, listClass);
+                ((ILazyCollectionCalls) col).init(t, v, (IObjectProxy) o, graphRelationName, listClass);
 
 //                LOGGER.log(Level.FINER, "col: "+col.getDBClass());
             } else if (col instanceof Map) {
@@ -426,7 +428,7 @@ public class ObjectMapper {
                 Class<?> keyClass = (Class<?>) listType.getActualTypeArguments()[0];
                 Class<?> valClass = (Class<?>) listType.getActualTypeArguments()[1];
                 // inicializar la colección
-                ((ILazyMapCalls) col).init(sessionManager, v, (IObjectProxy) o, graphRelationName, keyClass, valClass);
+                ((ILazyMapCalls) col).init(t, v, (IObjectProxy) o, graphRelationName, keyClass, valClass);
             } else {
                 throw new CollectionNotSupported();
             }
@@ -445,13 +447,14 @@ public class ObjectMapper {
      * @param <T> clase del objeto a devolver
      * @param c : clase del objeto a devolver
      * @param e : Edge desde el que recuperar los datos
+     * @param t Vínculo a la transacción actual
      * @return objeto completado a partir de la base de datos
      * @throws InstantiationException si no se puede instanciar. 
      * @throws IllegalAccessException si no se puede acceder
      * @throws NoSuchFieldException si no se encuentra alguno de los campos.
      */
-    public <T> T hydrate(Class<T> c, OrientEdge e) throws InstantiationException, IllegalAccessException, NoSuchFieldException {
-        T oproxied = ObjectProxyFactory.create(c, e, sessionManager);
+    public <T> T hydrate(Class<T> c, OrientEdge e, Transaction t) throws InstantiationException, IllegalAccessException, NoSuchFieldException {
+        T oproxied = ObjectProxyFactory.create(c, e, t);
         // recuperar la definición de la clase desde el caché
         ClassDef classdef = classCache.get(c);
         Map<String, Class<?>> fieldmap = classdef.fields;

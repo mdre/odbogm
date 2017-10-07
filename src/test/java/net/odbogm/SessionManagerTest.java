@@ -146,7 +146,7 @@ public class SessionManagerTest {
         
     }
     
-//    @Test
+    @Test
     public void testStorePrimitiveCol() {
         System.out.println("\n\n\n");
         System.out.println("***************************************************************");
@@ -1083,6 +1083,81 @@ public class SessionManagerTest {
         SSimpleVertex ssvw = this.sm.get(SSimpleVertex.class,reg);
         System.out.println("State: "+ssvw.getSecurityState());
         assertTrue(ssvw.getSecurityState()==AccessRight.WRITE);
+        
+    }
+    
+    
+    /**
+     * Test de Transacciones privadas múltiples
+     */
+    @Test
+    public void testTransaction() {
+        System.out.println("\n\n\n");
+        System.out.println("***************************************************************");
+        System.out.println("Transacción múltiples privadas");
+        System.out.println("***************************************************************");
+        
+        Transaction t1 = this.sm.getTransaction();
+        Transaction t2 = this.sm.getTransaction();
+        
+        
+        SimpleVertex sv = new SimpleVertex();
+        SimpleVertex expResult = sv;
+        
+        assertEquals(0, t1.getDirtyCount());
+        
+        SimpleVertex result = t1.store(sv);
+        
+        assertEquals(1, t1.getDirtyCount());
+        assertTrue(result instanceof IObjectProxy);
+        
+        assertEquals(expResult.i, result.i);
+        
+        t1.commit();
+        assertEquals(0, t1.getDirtyCount());
+
+        System.out.println("Recuperar el objeto de la base a traves de una Transacción");
+        String rid = ((IObjectProxy)result).___getRid();
+        System.out.println("RID: "+rid);
+        
+        expResult = t1.get(SimpleVertex.class, rid);
+
+        assertEquals(0, t1.getDirtyCount());
+        
+        // verificar que el resultado implemente la interface 
+        assertTrue(expResult instanceof IObjectProxy);
+        
+        // verificar que todos los valores sean iguales
+        assertEquals(((IObjectProxy)expResult).___getRid(), ((IObjectProxy)result).___getRid());
+        
+        assertEquals(expResult.getI(), sv.getI());
+//        assertEquals((float)expResult.getF(), (float)sv.getF());
+        assertEquals(expResult.getS(), sv.getS());
+        assertEquals(expResult.getoB(), sv.getoB());
+        assertEquals(expResult.getoF(), sv.getoF());
+        assertEquals(expResult.getoI(), sv.getoI());
+        
+        
+        // recuperar el mismo registro desde la otra Transacción
+        SimpleVertex expResultT2 = t2.get(SimpleVertex.class, rid);
+        
+        // modificar el objeto en la T1
+        expResult.setS("modificado en t1");
+        
+        assertNotEquals(t1.getDirtyCount(), t2.getDirtyCount());
+        
+        // hacer un commit en T1 y provocar la falla en T2
+        t1.commit();
+        
+        System.out.println("Desde T1: "+expResult.getS());
+        System.out.println("Desde T2: "+expResultT2.getS());
+        
+        expResultT2.setoI(2);
+        
+        t2.commit();
+        System.out.println("Commit en T2");
+        System.out.println("Desde T2: "+expResultT2.getS());
+        
         
     }
     

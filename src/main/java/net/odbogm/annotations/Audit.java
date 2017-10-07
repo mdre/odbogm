@@ -28,6 +28,6 @@ public @interface Audit {
 
     }
 
-    // por defecto realiza log solo sobre operaciones de write
+    // por defecto realiza log solo sobre operaciones de write y delete
     int log() default 4;
 }

@@ -73,6 +73,10 @@ public abstract class SObject {
         return this;
     }
 
+    public final SID getOwner() {
+        return this.__owner;
+    }
+    
     /**
      * Validate all groups aganis the acls and return the final state of the object
      *

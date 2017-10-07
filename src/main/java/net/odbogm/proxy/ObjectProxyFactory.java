@@ -11,6 +11,7 @@ import com.tinkerpop.blueprints.impls.orient.OrientElement;
 import java.util.logging.Logger;
 import net.sf.cglib.proxy.Enhancer;
 import net.odbogm.LogginProperties;
+import net.odbogm.Transaction;
 
 /**
  *
@@ -25,28 +26,28 @@ public class ObjectProxyFactory {
     public enum proxyLibrary {CGLIB,BB};
     private static proxyLibrary library = proxyLibrary.CGLIB;
     
-    public static <T> T create(T o, OrientElement oe, SessionManager sm ) {
+    public static <T> T create(T o, OrientElement oe, Transaction transaction ) {
 //        if (library == proxyLibrary.BB)
 //            return bbcreate(o, oe, sm);
 //        else
-            return cglibcreate(o, oe, sm);
+            return cglibcreate(o, oe, transaction);
     }
     
-    public static <T> T create(T o, OrientElement oe, SessionManager sm, proxyLibrary proxyLibrary ) {
+    public static <T> T create(T o, OrientElement oe, Transaction transaction, proxyLibrary proxyLibrary ) {
         library = proxyLibrary;
-        return create(o,oe,sm);
+        return create(o,oe,transaction);
     }
     
-    public static <T> T create(Class<T> c, OrientElement ov, SessionManager sm ) {
+    public static <T> T create(Class<T> c, OrientElement ov, Transaction transaction ) {
 //        if (library == proxyLibrary.BB)
 //            return bbcreate(c, ov, sm);
 //        else
-          return cglibcreate(c, ov, sm);
+          return cglibcreate(c, ov, transaction);
     }
     
-    public static <T> T create(Class<T> c, OrientElement ov, SessionManager sm, proxyLibrary proxyLibrary ) {
+    public static <T> T create(Class<T> c, OrientElement ov, Transaction transaction, proxyLibrary proxyLibrary ) {
         library = proxyLibrary;
-        return create(c,ov,sm);
+        return create(c,ov,transaction);
     }
     
 //    /**
@@ -121,7 +122,7 @@ public class ObjectProxyFactory {
     
     
     // Implementación con CGLib
-    public static <T> T cglibcreate(T o, OrientElement oe, SessionManager sm ) {
+    public static <T> T cglibcreate(T o, OrientElement oe, Transaction transaction ) {
         // this is the main cglib api entry-point
         // this object will 'enhance' (in terms of CGLIB) with new capabilities
         // one can treat this class as a 'Builder' for the dynamic proxy
@@ -131,7 +132,7 @@ public class ObjectProxyFactory {
         e.setSuperclass(o.getClass());
         // we have to declare the interceptor  - the class whose 'intercept'
         // will be called when any method of the proxified object is called.
-        ObjectProxy po = new ObjectProxy(o.getClass(),oe, sm);
+        ObjectProxy po = new ObjectProxy(o.getClass(),oe, transaction);
         e.setCallback(po);
         e.setInterfaces(new Class[]{IObjectProxy.class});
 
@@ -144,7 +145,7 @@ public class ObjectProxyFactory {
         return proxifiedObj;
     }
     
-    public static <T> T cglibcreate(Class<T> c, OrientElement oe, SessionManager sm ) {
+    public static <T> T cglibcreate(Class<T> c, OrientElement oe, Transaction transaction ) {
         // this is the main cglib api entry-point
         // this object will 'enhance' (in terms of CGLIB) with new capabilities
         // one can treat this class as a 'Builder' for the dynamic proxy
@@ -154,7 +155,7 @@ public class ObjectProxyFactory {
         e.setSuperclass(c);
         // we have to declare the interceptor  - the class whose 'intercept'
         // will be called when any method of the proxified object is called.
-        ObjectProxy po = new ObjectProxy(c,oe, sm);
+        ObjectProxy po = new ObjectProxy(c,oe, transaction);
         e.setCallback(po);
         e.setInterfaces(new Class[]{IObjectProxy.class});
 

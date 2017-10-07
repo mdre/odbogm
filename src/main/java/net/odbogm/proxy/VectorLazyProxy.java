@@ -27,6 +27,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 import net.odbogm.LogginProperties;
+import net.odbogm.Transaction;
 
 /**
  *
@@ -44,7 +45,7 @@ public class VectorLazyProxy extends Vector implements ILazyCollectionCalls {
     private boolean lazyLoad = true;
     private boolean lazyLoading = false;
     
-    private SessionManager sm;
+    private Transaction transaction;
     private OrientVertex relatedTo;
     private String field;
     private Class<?> fieldClass;
@@ -54,15 +55,15 @@ public class VectorLazyProxy extends Vector implements ILazyCollectionCalls {
     /**
      * Crea un ArrayList lazy.
      *
-     * @param sm Vínculo al SessionManager actual
+     * @param t Vínculo a la transacción actual
      * @param relatedTo: Vértice con el cual se relaciona la colección
      * @param field: atributo de relación
      * @param c: clase genérica de la colección.
      */
     @Override
-    public void init(SessionManager sm, OrientVertex relatedTo, IObjectProxy parent, String field, Class<?> c) {
+    public void init(Transaction t, OrientVertex relatedTo, IObjectProxy parent, String field, Class<?> c) {
         try {
-            this.sm = sm;
+            this.transaction = t;
             this.relatedTo = relatedTo;
             this.parent = new WeakReference<>(parent);
             this.field = field;
@@ -78,10 +79,10 @@ public class VectorLazyProxy extends Vector implements ILazyCollectionCalls {
     private Map<Object, ObjectCollectionState> listState = new ConcurrentHashMap<>();
     
     private void lazyLoad() {
-        this.sm.getGraphdb().getRawGraph().activateOnCurrentThread();
+        this.transaction.getSessionManager().getGraphdb().getRawGraph().activateOnCurrentThread();
         LOGGER.log(Level.FINER, "getGraph: "+relatedTo.getGraph());
         if (relatedTo.getGraph()==null)
-            this.sm.getGraphdb().attach(relatedTo);
+            this.transaction.getSessionManager().getGraphdb().attach(relatedTo);
         
         LOGGER.log(Level.FINER, "getRawGraph: "+relatedTo.getGraph().getRawGraph());
         
@@ -100,7 +101,7 @@ public class VectorLazyProxy extends Vector implements ILazyCollectionCalls {
         for (Iterator<Vertex> iterator = rt.iterator(); iterator.hasNext();) {
             OrientVertex next = (OrientVertex) iterator.next();
 //            LOGGER.log(Level.INFO, "loading: " + next.getId().toString());
-            Object o = sm.get(fieldClass, next.getId().toString());
+            Object o = transaction.get(fieldClass, next.getId().toString());
             this.add(o);
             // se asume que todos fueron borrados
             this.listState.put(o, ObjectCollectionState.REMOVED);

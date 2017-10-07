@@ -30,6 +30,7 @@ public interface IObjectProxy {
     public void ___removeDirtyMark();
     
     public void ___commit();
+    public void ___reload();
     public void ___rollback();
     public void ___loadLazyLinks();
 }
