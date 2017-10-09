@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import net.odbogm.exceptions.UnknownRID;
 import net.odbogm.security.AccessRight;
 import net.odbogm.security.GroupSID;
 import net.odbogm.security.UserSID;
@@ -1161,5 +1162,44 @@ public class SessionManagerTest {
         
     }
     
+    
+    
+    /**
+     * Test of delete method, of class SessionManager.
+     */
+    @Test
+    public void testDeleteSimple() {
+        System.out.println("\n\n\n");
+        System.out.println("***************************************************************");
+        System.out.println("delete objeto simple (SimpleVertex)");
+        System.out.println("***************************************************************");
+        
+        SimpleVertex sv = new SimpleVertex();
+        SimpleVertex expResult = sv;
+        
+        assertEquals(0, sm.getDirtyCount());
+        
+        SimpleVertex result = sm.store(sv);
+        
+        this.sm.commit();
+
+        System.out.println("Recuperar el objeto de la base");
+        String rid = ((IObjectProxy)result).___getRid();
+        expResult = this.sm.get(SimpleVertex.class, rid);
+        
+        System.out.println("Eliminar el objeto: "+rid);
+        sm.delete(expResult);
+        sm.commit();
+        
+        try {
+            sm.get(rid);
+            fail("El objeto aún exite!!!");
+        }catch(UnknownRID urid) {
+            System.out.println("El objeto fue borrado!");
+        }
+        
+        
+        
+    }
     
 }
