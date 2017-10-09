@@ -149,6 +149,16 @@ public class SessionManager implements Actions.Store, Actions.Get {
     }
 
     /**
+     * Remueve un vértice y todos los vértices apuntados por él y marcados con @RemoveOrphan
+     *
+     * @param toRemove referencia al objeto a remover
+     */
+    public void delete(Object toRemove) throws ReferentialIntegrityViolation, UnknownObject {
+        this.publicTransaction.delete(toRemove);
+    }
+    
+    
+    /**
      * Marca un objecto como dirty para ser procesado en el commit
      *
      * @param o objeto de referencia.
