@@ -530,7 +530,7 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
             }
 
             if (this.sm.isAuditing()) {
-                this.sm.auditLog((IObjectProxy) ovToRemove, Audit.AuditType.DELETE, "DELETE", "");
+                this.sm.auditLog((IObjectProxy) toRemove, Audit.AuditType.DELETE, "DELETE", "");
             }
             ovToRemove.remove();
             // si tengo un RID, proceder a removerlo de las colecciones.
