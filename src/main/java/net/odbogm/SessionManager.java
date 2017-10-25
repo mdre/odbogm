@@ -118,12 +118,18 @@ public class SessionManager implements Actions.Store, Actions.Get {
      * Inicia una transacción contra el servidor.
      */
     public void begin() {
-        graphdb = factory.getTx();
-        graphdb.setThreadMode(OrientConfigurableGraph.THREAD_MODE.ALWAYS_AUTOSET);
-        publicTransaction = new Transaction(this);
-//        graphdb.getRawGraph().activateOnCurrentThread();
-//        graphdb.setThreadMode(OrientConfigurableGraph.THREAD_MODE.ALWAYS_AUTOSET);
-//        ODatabaseRecordThreadLocal.INSTANCE.set(graphdb.getRawGraph());
+        // si no hay una transacción creada, abrir una...
+        if (this.publicTransaction == null) {
+            graphdb = factory.getTx();
+            graphdb.setThreadMode(OrientConfigurableGraph.THREAD_MODE.ALWAYS_AUTOSET);
+            publicTransaction = new Transaction(this);
+    //        graphdb.getRawGraph().activateOnCurrentThread();
+    //        graphdb.setThreadMode(OrientConfigurableGraph.THREAD_MODE.ALWAYS_AUTOSET);
+    //        ODatabaseRecordThreadLocal.INSTANCE.set(graphdb.getRawGraph());
+        } else {
+            // en caso contrario, iniciar una transacción anidada.
+            this.publicTransaction.begin();
+        }
     }
 
     /**
