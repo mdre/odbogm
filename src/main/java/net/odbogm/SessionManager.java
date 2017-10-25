@@ -131,8 +131,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
      * forma independiente de los recuperados en otras.
      * 
      * @return un objeto Transaction para operar.
-     */
-    
+     */    
     public Transaction getTransaction() {
         return new Transaction(this);
     }

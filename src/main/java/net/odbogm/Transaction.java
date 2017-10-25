@@ -3,7 +3,6 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-
 package net.odbogm;
 
 import com.orientechnologies.orient.core.exception.OConcurrentModificationException;
@@ -46,23 +45,28 @@ import net.odbogm.utils.ThreadHelper;
 
 /**
  * Constituye un marco de control para los objetos recuperados.
- * 
+ *
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
 public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
-    private final static Logger LOGGER = Logger.getLogger(Transaction.class .getName());
+
+    private final static Logger LOGGER = Logger.getLogger(Transaction.class.getName());
     private static final long serialVersionUID = 1L;
+
     static {
-        LOGGER.setLevel(Level.INFO);
+        LOGGER.setLevel(LogginProperties.Transaction);
     }
     // Es el único objectMapper para todo el SM. 
     private ObjectMapper objectMapper;
-    
+
     // cache de los objetos recuperados de la base. Si se encuentra en el caché en un get, se recupera desde 
     // acá. En caso contrario se recupera desde la base.
     private ConcurrentHashMap<String, WeakReference<Object>> objectCache = new ConcurrentHashMap<>();
 
     private ConcurrentHashMap<String, Object> dirty = new ConcurrentHashMap<>();
+
+    // utilizado para determinar si existen transacciones anidadas.
+    private int nestedTransactionLevel = 0;
 
     // se utiliza para guardar los objetos recuperados durante un get a fin de evitar los loops
     private int getTransactionCount = 0;
@@ -76,21 +80,21 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
     private ConcurrentHashMap<Object, Object> commitedObject = new ConcurrentHashMap<>();
 
     int newObjectCount = 0;
-    
+
     SessionManager sm;
-    
+
     Transaction(SessionManager sm) {
         this.sm = sm;
         this.objectMapper = this.sm.getObjectMapper();
     }
-    
+
     /**
      * Elimina cualquier objeto que esté marcado como dirty en esta transacción
      */
     public void clear() {
         this.dirty.clear();
     }
-    
+
     /**
      * Marca un objecto como dirty para ser procesado en el commit
      *
@@ -107,19 +111,20 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
             throw new UnmanagedObject();
         }
     }
-    
+
     /**
      * Agrega un objeto al cache de la transacción
+     *
      * @param rid record id
      * @param o objeto a referenciar
      */
     public synchronized void addToCache(String rid, WeakReference<Object> o) {
         this.objectCache.put(rid, o);
     }
-    
+
     /**
-     * Vuelve a cargar todos los objetos que han sido marcados como modificados con los datos desde las base.
-     * Los objetos marcados como Dirty forman parte del siguiente commit
+     * Vuelve a cargar todos los objetos que han sido marcados como modificados con los datos desde las base. Los objetos marcados como Dirty forman
+     * parte del siguiente commit
      */
     public synchronized void refreshDirtyObjects() {
         if (this.sm.getGraphdb() == null) {
@@ -135,59 +140,64 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
         }
     }
 
-    
     /**
-     * Vuelve a cargar el objeto con los datos desde las base.
-     * Esta accion no se propaga sobre los objetos que lo componen.
-     * 
+     * Vuelve a cargar el objeto con los datos desde las base. Esta accion no se propaga sobre los objetos que lo componen.
+     *
      * @param o objeto recuperado de la base a ser actualizado.
      */
     public synchronized void refreshObject(IObjectProxy o) {
         if (this.sm.getGraphdb() == null) {
             throw new NoOpenTx();
         }
-            
+
         o.___reload();
     }
-    
-    
+
+    /**
+     * Inicia una transacción anidada
+     */
+    public synchronized void begin() {
+        this.nestedTransactionLevel++;
+    }
+
     /**
      * Persistir la información pendiente en la transacción
      *
      * @throws NoOpenTx si no hay una trnasacción abierta.
      */
     public synchronized void commit() throws NoOpenTx, OConcurrentModificationException {
-        if (this.sm.getGraphdb() == null) {
-            throw new NoOpenTx();
-        }
+        if (this.nestedTransactionLevel == 0) {
+            if (this.sm.getGraphdb() == null) {
+                throw new NoOpenTx();
+            }
 //        this.graphdb.getRawGraph().activateOnCurrentThread();
 
-        // bajar todos los objetos a los vértices
-        // this.commitObjectChanges();
-        // cambiar el estado a comiteando
-        this.commiting = true;
-        LOGGER.log(Level.FINER, "Iniciando COMMIT ==================================");
-        LOGGER.log(Level.FINER, "Objetos marcados como Dirty: " + dirty.size());
-        for (Map.Entry<String, Object> e : dirty.entrySet()) {
-            String rid = e.getKey();
-            IObjectProxy o = (IObjectProxy) e.getValue();
-            LOGGER.log(Level.FINER, "Commiting: " + rid + "   class: " + o.___getBaseClass());
-            // actualizar todos los objetos antes de bajarlos.
-            o.___commit();
-        }
-        LOGGER.log(Level.FINER, "Fin persistencia. <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
-        // comitear los vértices
-        this.sm.getGraphdb().commit();
-
-        // si se está en modalidad audit, grabar los logs
-        if (this.sm.isAuditing()) {
-            this.sm.getAuditor().commit();
+            // bajar todos los objetos a los vértices
+            // this.commitObjectChanges();
+            // cambiar el estado a comiteando
+            this.commiting = true;
+            LOGGER.log(Level.FINER, "Iniciando COMMIT ==================================");
+            LOGGER.log(Level.FINER, "Objetos marcados como Dirty: " + dirty.size());
+            for (Map.Entry<String, Object> e : dirty.entrySet()) {
+                String rid = e.getKey();
+                IObjectProxy o = (IObjectProxy) e.getValue();
+                LOGGER.log(Level.FINER, "Commiting: " + rid + "   class: " + o.___getBaseClass());
+                // actualizar todos los objetos antes de bajarlos.
+                o.___commit();
+            }
+            LOGGER.log(Level.FINER, "Fin persistencia. <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
+            // comitear los vértices
             this.sm.getGraphdb().commit();
-        }
-        // vaciar el caché de elementos modificados.
-        this.dirty.clear();
-        this.commiting = false;
-        this.commitedObject.clear();
+
+            // si se está en modalidad audit, grabar los logs
+            if (this.sm.isAuditing()) {
+                this.sm.getAuditor().commit();
+                this.sm.getGraphdb().commit();
+            }
+            // vaciar el caché de elementos modificados.
+            this.dirty.clear();
+            this.commiting = false;
+            this.commitedObject.clear();
 
 //        // refrescar las referencias del caché
 //        String newRid;
@@ -201,14 +211,17 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
 //                objectCache.put(newRid, new WeakReference<>(o));
 //            }
 //        }
-        // se opta por eliminar el caché de objetos recuperados de la base en un commit o rollback
-        // por lo que futuros pedidos a la base fuera de la transacción devolverá una nueva instancia
-        // del objeto.
-        this.objectCache.clear();
-        newrids.clear();
+            // se opta por eliminar el caché de objetos recuperados de la base en un commit o rollback
+            // por lo que futuros pedidos a la base fuera de la transacción devolverá una nueva instancia
+            // del objeto.
+            this.objectCache.clear();
+            newrids.clear();
+        } else {
+            this.nestedTransactionLevel --;
+        }
     }
-    
-     /**
+
+    /**
      * realiza un rollback sobre la transacción activa.
      */
     public synchronized void rollback() {
@@ -232,8 +245,9 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
 
         // limpiar el caché de objetos modificados
         this.dirty.clear();
+        this.nestedTransactionLevel = 0;
     }
-    
+
     /**
      * Crea a un *NUEVO* vértice en la base de datos a partir del objeto. Retorna el RID del objeto que se agregó a la base.
      *
@@ -429,8 +443,7 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
         LOGGER.log(Level.FINER, "FIN del Store ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
         return proxied;
     }
-    
-    
+
     /**
      * Remueve un vértice y todos los vértices apuntados por él y marcados con @RemoveOrphan
      *
@@ -542,9 +555,8 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
         }
 
     }
-    
 
-     /**
+    /**
      * Transfiere todos los cambios de los objetos a las estructuras subyacentes.
      */
     public synchronized void flush() {
@@ -560,24 +572,25 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
             o.___commit();
         }
     }
-    
+
     /**
      * retorna el SessionManager asociado a la transacción
-     * @return  sm
+     *
+     * @return sm
      */
     public SessionManager getSessionManager() {
         return this.sm;
     }
-    
+
     /**
      * Devuelve el ObjectMapper asociado a la transacción
+     *
      * @return objectMapper
      */
     public ObjectMapper getObjectMapper() {
         return this.objectMapper;
     }
-    
-    
+
     /**
      * Agrega si no existe un objeto al cache de la transacción acutal a fin de evitar los loops cuando se comletan los links dentro del ObjectProxy
      *
@@ -601,16 +614,16 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
             transactionCache.clear();
         }
     }
-    
+
     /**
      * Retorna la cantidad de objetos marcados como Dirty. Utilizado para los test
+     *
      * @return retorna la cantidad de objetos marcados para el próximo commit
      */
     public int getDirtyCount() {
         return this.dirty.size();
     }
-    
-    
+
     /**
      * Recupera un objecto desde la base a partir del RID del Vértice.
      *
@@ -730,15 +743,13 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
 
         // Aplicar los controles de seguridad.
         if ((this.sm.getLoggedInUser() != null) && (o instanceof SObject)) {
-            LOGGER.log(Level.FINER, "SObject detectado. Aplicando seguridad de acuerdo al usuario logueado: "+this.sm.getLoggedInUser().getName());
+            LOGGER.log(Level.FINER, "SObject detectado. Aplicando seguridad de acuerdo al usuario logueado: " + this.sm.getLoggedInUser().getName());
             ((SObject) o).validate(this.sm.getLoggedInUser());
         }
 
         LOGGER.log(Level.FINER, "Fin get -------------------------------------\n");
         return o;
     }
-    
-    
 
     @Override
     public <T> T getEdgeAsObject(Class<T> type, OrientEdge e) {
@@ -765,13 +776,12 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
         }
         return o;
     }
-    
-    
+
     /**
      * Realiza un query direto a la base de datos y devuelve el resultado directamente sin procesarlo.
      *
      * @param <T> clase a devolver
-     * @param sql sentencia a ejecutar 
+     * @param sql sentencia a ejecutar
      * @return resutado de la ejecución de la sentencia SQL
      */
     @Override
@@ -811,11 +821,10 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
     }
 
     /**
-     * Return all record of the reference class.
-     * Devuelve todos los registros a partir de una clase base.
+     * Return all record of the reference class. Devuelve todos los registros a partir de una clase base.
      *
      * @param <T> Reference class
-     * @param clazz reference class 
+     * @param clazz reference class
      * @return return a list of object of the refecence class.
      */
     @Override
@@ -825,13 +834,17 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
         }
         this.flush();
 
+        long init = System.currentTimeMillis();
+
         ArrayList<T> ret = new ArrayList<>();
 
-        for (Vertex verticesOfClas : this.sm.getGraphdb().getVerticesOfClass(clazz.getSimpleName())) {
+        Iterable<Vertex> vertices = this.sm.getGraphdb().getVerticesOfClass(clazz.getSimpleName());
+        LOGGER.log(Level.FINER, "Enlapsed ODB response: " + (System.currentTimeMillis() - init));
+        for (Vertex verticesOfClas : vertices) {
             ret.add(this.get(clazz, verticesOfClas.getId().toString()));
-            LOGGER.log(Level.FINER, "vertex: " + verticesOfClas.getId().toString() + "  class: " + ((OrientVertex) verticesOfClas).getType().getName());
+//            LOGGER.log(Level.FINER, "vertex: " + verticesOfClas.getId().toString() + "  class: " + ((OrientVertex) verticesOfClas).getType().getName());
         }
-
+        LOGGER.log(Level.FINER, "Enlapsed time query to List: " + (System.currentTimeMillis() - init));
         return ret;
     }
 
@@ -867,7 +880,7 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
      *
      * @param <T> clase de referencia para crear la lista de resultados
      * @param clase clase de referencia
-     * @param sql comando a ejecutar 
+     * @param sql comando a ejecutar
      * @param param parámetros extras para el query parametrizado.
      * @return una lista de la clase solicitada con los objetos lazy inicializados.
      */
