@@ -249,6 +249,15 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
     }
 
     /**
+     * Retorna el nivel de transacciones anidadas. El nivel superior es 0. 
+     * @return nivel de transacciones anidadas.
+     */
+    public int getTransactionLevel() {
+        return this.nestedTransactionLevel;
+    }
+    
+    
+    /**
      * Crea a un *NUEVO* vértice en la base de datos a partir del objeto. Retorna el RID del objeto que se agregó a la base.
      *
      * @param <T> clase base del objeto.
