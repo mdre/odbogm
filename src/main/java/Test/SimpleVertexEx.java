@@ -9,8 +9,8 @@ package Test;
 import net.odbogm.annotations.Ignore;
 import net.odbogm.annotations.RemoveOrphan;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.logging.Logger;
 import net.odbogm.annotations.Audit;
 import net.odbogm.annotations.FieldAttributes;
@@ -39,6 +39,8 @@ public class SimpleVertexEx extends SimpleVertex {
     public HashMap<String,String> hmString;
     
     public ArrayList<SimpleVertex> alSV;
+    
+    public List<SimpleVertex> lSV;
     
     public ArrayList<SimpleVertexEx> alSVE;
     

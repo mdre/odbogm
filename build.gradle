@@ -187,3 +187,23 @@ uploadArchives {
 }
 
 createReleaseTag.dependsOn ':uploadArchives'
+
+task runFile(dependsOn: 'classes',type:JavaExec) {
+    if (project.hasProperty('mainClass')) {
+        main = mainClass
+        classpath = sourceSets.main.runtimeClasspath
+        standardOutput = System.out
+        errorOutput = System.err
+    }
+}
+
+
+task debug(dependsOn: 'classes',type:JavaExec) {
+    if (project.hasProperty('mainClass')) {
+        main = mainClass
+        classpath = sourceSets.main.runtimeClasspath
+        standardOutput = System.out
+        errorOutput = System.err
+        debug true
+    }
+}

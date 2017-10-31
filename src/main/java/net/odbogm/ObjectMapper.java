@@ -298,18 +298,18 @@ public class ObjectMapper {
                 } else if (f.getType().isAssignableFrom(List.class)) {
                     // se debe hacer una copia del la lista para no quede referenciando al objeto original
                     // dado que en la asignación solo se pasa la referencia del objeto.
-                    LOGGER.log(Level.FINER, "Lista detectada: realizando una copia del contenido...");
+                    LOGGER.log(Level.FINER, "EmbeddedList detectada: realizando una copia del contenido...");
                     this.setFieldValue(oproxied, prop, new ArrayListEmbeddedProxy((IObjectProxy)oproxied,(List)value));
                 } else if (f.getType().isAssignableFrom(Map.class)) {
                     // se debe hacer una copia del la lista para no quede referenciando al objeto original
                     // dado que en la asignación solo se pasa la referencia del objeto.
-                    LOGGER.log(Level.FINER, "Map detectado: realizando una copia del contenido...");
+                    LOGGER.log(Level.FINER, "EmbeddedMap detectado: realizando una copia del contenido...");
                     // FIXME: Ojo que se hace solo un shalow copy!! no se está conando la clave y el value
                     this.setFieldValue(oproxied, prop, new HashMapEmbeddedProxy((IObjectProxy)oproxied,(Map)value));
                 } else{
+                    LOGGER.log(Level.FINER, "hidratado campo: " + prop + "=" + value);
                     this.setFieldValue(oproxied, prop, value);
                 }
-                LOGGER.log(Level.FINER, "hidratado campo: " + prop + "=" + value);
                 f.setAccessible(acc);
             }
         }
@@ -376,6 +376,7 @@ public class ObjectMapper {
     }
 
     public void colecctionToLazy(Object o, String field, OrientVertex v, Transaction t) {
+        LOGGER.log(Level.FINER, "convertir colection a Lazy: "+field);
         ClassDef classdef;
         if (o instanceof IObjectProxy) {
             classdef = classCache.get(o.getClass().getSuperclass());
@@ -399,6 +400,9 @@ public class ObjectMapper {
      *
      */
     public void colecctionToLazy(Object o, String field, Class<?> fc, OrientVertex v, Transaction t) {
+        LOGGER.log(Level.FINER, "***************************************************************");
+        LOGGER.log(Level.FINER, "convertir colection a Lazy: "+field+" class: "+fc.getName());
+        LOGGER.log(Level.FINER, "***************************************************************");
         try {
             Class<?> c;
             if (o instanceof IObjectProxy) {
@@ -441,6 +445,51 @@ public class ObjectMapper {
         }
     }
 
+    /**
+     * Convierte todas las colecciones identificadas como embedded en el ClassDef a sus correspondientes proxies
+     * @param o
+     * @param classDef
+     * @param t 
+     */
+    public void collectionsToEmbedded(Object o, ClassDef classDef, Transaction t) {
+        boolean acc;
+        Field f;
+        for (Map.Entry<String, Class<?>> entry : classDef.embeddedFields.entrySet()) {
+            try {
+                String field = entry.getKey();
+                Class<? extends Object> value = entry.getValue();
+                
+                Class<?> c;
+                if (o instanceof IObjectProxy) {
+                    c = o.getClass().getSuperclass();
+                } else {
+                    c = o.getClass();
+                }
+                LOGGER.log(Level.FINER, "Procesando campo: {0} type: {1}",new String[]{field,value.getName()});
+                f = ReflectionUtils.findField(c, field);
+                acc = f.isAccessible();
+                f.setAccessible(true);
+                // realizar la conversión solo si el campo tiene un valor.
+                if (f.get(o)!=null) {
+                    if (value.isAssignableFrom(List.class)) { 
+                        LOGGER.log(Level.FINER, "convirtiendo en ArrayListEmbeddedProxy...");
+                        f.set(o, new ArrayListEmbeddedProxy((IObjectProxy) o, (List) f.get(o)));
+                    } else if (value.isAssignableFrom(Map.class)) { 
+                        LOGGER.log(Level.FINER, "convirtiendo en HashMapEmbeddedProxy");
+                        f.set(o, new HashMapEmbeddedProxy((IObjectProxy) o, (Map) f.get(o)));
+                    }
+                }
+                f.setAccessible(acc);
+            } catch (NoSuchFieldException ex) {
+                Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (IllegalArgumentException ex) {
+                Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (IllegalAccessException ex) {
+                Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+    }
+    
     /**
      * Hidrata un objeto a partir de los atributos guardados en un Edge
      *

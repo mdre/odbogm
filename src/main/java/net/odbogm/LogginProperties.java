@@ -28,6 +28,7 @@ public class LogginProperties {
     public static Level ObjectStruct                = Level.INFO;
     public static Level ReflectionUtils             = Level.INFO;
     public static Level SessionManager              = Level.INFO;
+    public static Level SObject                     = Level.INFO;
     public static Level VectorLazyProxy             = Level.INFO;
     public static Level VertexUtil                  = Level.INFO;
     public static Level ThreadedGraphRecordFactory  = Level.INFO;

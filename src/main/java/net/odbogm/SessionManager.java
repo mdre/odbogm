@@ -62,7 +62,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
         LOGGER.setLevel(LogginProperties.SessionManager);
     }
 
-    private OrientGraph graphdb;
+//    private OrientGraph graphdb;
     private OrientGraphFactory factory;
 
     // uso un solo objectMapper para ahorar memoria. Estas instancia se comparte entre las transacciones.
@@ -91,37 +91,51 @@ public class SessionManager implements Actions.Store, Actions.Get {
 //
 //    int newObjectCount = 0;
 
+    private List<WeakReference<Transaction>> openTransactionList = new ArrayList<>();
     private Transaction publicTransaction; 
     
     // usuario a registrar en la tabla de auditoría.
-    private Auditor auditor;
+//    private Auditor auditor;
 
     // usuario logueado sobre el que se ejecutan los controles de seguridad si corresponden
     private UserSID loggedInUser;
 
     public SessionManager(String url, String user, String passwd) {
+        this.init(url, user, passwd, 1, 10);
+    }
+
+    public SessionManager(String url, String user, String passwd, int minPool, int maxPool) {
+        this.init(url, user, passwd, minPool, maxPool);
+    }
+    
+    
+    private void init(String url, String user, String passwd, int minPool, int maxPool) {
 //        this.url = url;
 //        this.user = user;
 //        this.passwd = passwd;
-        this.factory = new OrientGraphFactory(url, user, passwd).setupPool(1, 10);
+        this.factory = new OrientGraphFactory(url, user, passwd).setupPool(minPool, maxPool);
 //        vertexs = new ConcurrentHashMap<>();
 //        edges = new HashMap<>();
 //        this.factory.setThreadMode(OrientConfigurableGraph.THREAD_MODE.ALWAYS_AUTOSET);
         this.objectMapper = new ObjectMapper();
+
     }
 
-    private void init() {
-        this.publicTransaction.clear();
+    /**
+     * Retorna el factory inicializado por el SessionManager
+     * @return 
+     */
+    OrientGraphFactory getFactory() {
+        return this.factory;
     }
-
+    
     /**
      * Inicia una transacción contra el servidor.
      */
     public void begin() {
         // si no hay una transacción creada, abrir una...
         if (this.publicTransaction == null) {
-            graphdb = factory.getTx();
-            graphdb.setThreadMode(OrientConfigurableGraph.THREAD_MODE.ALWAYS_AUTOSET);
+            
             publicTransaction = new Transaction(this);
     //        graphdb.getRawGraph().activateOnCurrentThread();
     //        graphdb.setThreadMode(OrientConfigurableGraph.THREAD_MODE.ALWAYS_AUTOSET);
@@ -203,9 +217,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
      * @throws NoOpenTx si no hay una trnasacción abierta.
      */
     public synchronized void commit() throws NoOpenTx, OConcurrentModificationException {
-        if (graphdb == null) {
-            throw new NoOpenTx();
-        }
+        
 //        this.graphdb.getRawGraph().activateOnCurrentThread();
 
         // bajar todos los objetos a los vértices
@@ -218,9 +230,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
      * Transfiere todos los cambios de los objetos a las estructuras subyacentes.
      */
     public synchronized void flush() {
-        if (graphdb == null) {
-            throw new NoOpenTx();
-        }
+        
         this.publicTransaction.flush();
     }
 
@@ -229,9 +239,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
      * Los objetos marcados como Dirty forman parte del siguiente commit
      */
     public synchronized void refreshDirtyObjects() {
-        if (graphdb == null) {
-            throw new NoOpenTx();
-        }
+        
         this.publicTransaction.refreshDirtyObjects();
     }
 
@@ -243,9 +251,6 @@ public class SessionManager implements Actions.Store, Actions.Get {
      * @param o objeto recuperado de la base a ser actualizado.
      */
     public synchronized void refreshObject(IObjectProxy o) {
-        if (graphdb == null) {
-            throw new NoOpenTx();
-        }
             
         this.publicTransaction.refreshObject(o);
     }
@@ -256,19 +261,24 @@ public class SessionManager implements Actions.Store, Actions.Get {
      * realiza un rollback sobre la transacción activa.
      */
     public synchronized void rollback() {
-        if (graphdb == null) {
-            throw new NoOpenTx();
-        }
         this.publicTransaction.rollback();
         
     }
 
     /**
-     * Finaliza la comunicación con la base.
+     * Finaliza la comunicación con la base. 
+     * Todas las transacciones abiertas son ROLLBACK y finalizadas.
      */
     public void shutdown() {
-        graphdb.shutdown();
-        this.init();
+        for (WeakReference<Transaction> weakReference : openTransactionList) {
+            Transaction t = weakReference.get();
+            if (t!=null) {
+                t.rollback();
+                t.close();
+            }
+        }
+        this.factory.close();
+        this.publicTransaction.close();
     }
 
     public void getTxConflics() {
@@ -281,7 +291,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
      * @return retorna la referencia directa al driver del la base.
      */
     public OrientGraph getGraphdb() {
-        return graphdb;
+        return this.publicTransaction.getGraphdb();
     }
 
     /**
@@ -410,7 +420,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
      * @return OClass o null si la clase no existe
      */
     public OClass getDBClass(String clase) {
-        return graphdb.getRawGraph().getMetadata().getSchema().getClass(clase);
+        return this.publicTransaction.getDBClass(clase);
     }
 
     /**
@@ -419,11 +429,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
      * @param user User String only.
      */
     public void setAuditOnUser(String user) {
-        if (graphdb == null) {
-            throw new NoOpenTx();
-        }
-        this.auditor = new Auditor(this, user);
-
+        this.publicTransaction.setAuditOnUser(user);
     }
 
     /**
@@ -431,14 +437,8 @@ public class SessionManager implements Actions.Store, Actions.Get {
      *
      */
     public void setAuditOnUser() throws NoUserLoggedIn {
-        if (graphdb == null) {
-            throw new NoOpenTx();
-        }
-        if (this.loggedInUser == null) {
-            throw new NoUserLoggedIn();
-        }
 
-        this.auditor = new Auditor(this, this.loggedInUser.getUUID());
+        this.publicTransaction.setAuditOnUser();
     }
 
     /**
@@ -459,8 +459,8 @@ public class SessionManager implements Actions.Store, Actions.Get {
      * @param data objeto a loguear con un toString
      */
     public void auditLog(IObjectProxy o, int at, String label, Object data) {
-        if (this.isAuditing()) {
-            auditor.auditLog(o, at, label, data);
+        if (this.publicTransaction.isAuditing()) {
+            this.publicTransaction.auditLog(o, at, label, data);
         }
     }
 
@@ -469,11 +469,11 @@ public class SessionManager implements Actions.Store, Actions.Get {
      * @return true si la auditoría está activa
      */
     public boolean isAuditing() {
-        return this.auditor != null;
+        return this.publicTransaction.isAuditing();
     }
     
     Auditor getAuditor() {
-        return this.auditor;
+        return this.publicTransaction.getAuditor();
     }
     
     public UserSID getLoggedInUser() {

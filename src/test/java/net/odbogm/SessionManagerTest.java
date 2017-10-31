@@ -14,11 +14,14 @@ import Test.SimpleVertexEx;
 import Test.SimpleVertexInterfaceAttr;
 import Test.SimpleVertexWithEmbedded;
 import com.orientechnologies.orient.core.sql.OCommandSQL;
+import java.io.IOException;
 import net.odbogm.proxy.IObjectProxy;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import net.odbogm.exceptions.UnknownRID;
 import net.odbogm.security.AccessRight;
 import net.odbogm.security.GroupSID;
@@ -70,13 +73,13 @@ public class SessionManagerTest {
 //     */
 //    //@Test
 //    public void testBegin() {
-//        System.out.println("begin");
+//        System.out.println("begin");  
 //        SessionManager instance = null;
 //        instance.begin();
 //        // TODO review the generated test code and remove the default call to fail.
 //        fail("The test case is a prototype.");
 //    }
-
+    
     /**
      * Test of store method, of class SessionManager.
      */
@@ -534,6 +537,8 @@ public class SessionManagerTest {
         
         String rid = ((IObjectProxy)stored).___getRid();
         
+        // validar que no se modifique la lista
+        assertNull(stored.lSV);
         System.out.println("primer commit finalizado. RID: "+rid+" ------------------------------------------------------------");
         
         assertNull(stored.getAlSVE());
@@ -547,6 +552,8 @@ public class SessionManagerTest {
         System.out.println("\ninicio segundo commit ----------------------------------------------------------");
         sm.commit();
         System.out.println("segundo commit finalizado ----------------------------------------------------------\n");
+        // validar que no se modifique la lista
+        assertNull(stored.lSV);
         
         SimpleVertexEx retrieved = sm.get(SimpleVertexEx.class, rid);
         System.out.println("retrieved: "+retrieved+" : "+retrieved.getAlSVE());
@@ -567,7 +574,8 @@ public class SessionManagerTest {
         System.out.println("stored: "+stored+" : "+stored.getAlSVE());
         
         assertEquals(retrieved.getAlSVE().size(), stored.getAlSVE().size());
-        
+        // validar que no se modifique la lista
+        assertNull(stored.lSV);
     }
     
     
@@ -753,8 +761,7 @@ public class SessionManagerTest {
     
     
     /**
-     * Rollback simple de los atributos
-     * 
+     * Rollback simple de los atributos 
      */
     @Test
     public void testRollbackSimple() {
@@ -796,6 +803,21 @@ public class SessionManagerTest {
         assertEquals(sve.isB(), stored.isB());
         assertEquals(sve.getoI(), stored.getoI());
         assertEquals(sve.getoF(), stored.getoF(),0.0002);
+        
+        System.out.println("haciendo rollback de un store.....");
+        assertEquals(0, this.sm.getDirtyCount());
+        sve = new SimpleVertexEx();
+        sve.setS("ROLLBACK");
+        stored = this.sm.store(sve);
+        assertEquals(1, this.sm.getDirtyCount());
+        this.sm.rollback();
+        assertEquals(0, this.sm.getDirtyCount());
+        try {
+            stored.setS("error!");
+        } catch(Exception e) {
+            e.printStackTrace();
+        }
+        assertEquals(0, this.sm.getDirtyCount());
     }
     
     
@@ -844,17 +866,18 @@ public class SessionManagerTest {
         sve.alSV.add(new SimpleVertex());
         sve.alSV.add(new SimpleVertex());
 
-        System.out.println("guardando el objeto con 3 elementos en el AL.");
         SimpleVertexEx stored = sm.store(sve);
+        System.out.println("guardando el objeto con 3 elementos en el AL.");
         sm.commit();
-        
+        System.out.println("\n\nSTORE FINALIZADO ========================= \n\n");
         String rid = sm.getRID(stored);
         
         // modificar los campos.
         stored.alSV.add(new SimpleVertex());
-        
+        System.out.println("\n\nINICIANDO ROLLBACK ========================= \n\n");
         sm.rollback();
         
+        System.out.println(""+sve.alSV.size()+ " =|= "+stored.alSV.size());
         assertEquals(sve.alSV.size(), stored.alSV.size());
     }
     
@@ -991,6 +1014,32 @@ public class SessionManagerTest {
         assertEquals(1, sm.getDirtyCount());
         this.sm.commit();
         assertEquals(0, sm.getDirtyCount());
+        
+        // verificar el rollback con embedded.
+        // agrego una string a la lista
+        System.out.println("Verificando rollback....");
+        int size = ret.getStringlist().size();
+        ret.getStringlist().add("rollback");
+        this.sm.rollback();
+        assertEquals(0, sm.getDirtyCount());
+        assertEquals(size, ret.getStringlist().size());
+        
+        System.out.println("==========================================================");
+    }
+    
+    
+    
+    /**
+     * Test of store embedded list and maps.
+     */
+    @Test
+    public void testTransaccionesAnidades() {
+        System.out.println("\n\n\n");
+        System.out.println("***************************************************************");
+        System.out.println("Transacciones anidadas");
+        System.out.println("***************************************************************");
+        
+        
     }
     
     
@@ -1085,6 +1134,35 @@ public class SessionManagerTest {
         System.out.println("State: "+ssvw.getSecurityState());
         assertTrue(ssvw.getSecurityState()==AccessRight.WRITE);
         
+        
+    }
+    
+    
+    @Test
+    public void testEmbeddedRollback() {
+        System.out.println("\n\n\n");
+        System.out.println("***************************************************************");
+        System.out.println("Rollback sobre un objeto que aún no se persistió con commit");
+        System.out.println("y tiene colecciones");
+        System.out.println("***************************************************************");
+        
+        // test rollback
+        UserSID usidRollback = new UserSID("rollback", "rollback");
+        UserSID rusid = this.sm.store(usidRollback);
+        
+        System.out.println("Haciendo rollback...");
+        this.sm.rollback();
+        try {
+            
+            System.out.println("setName");
+            rusid.setName("fail");
+            System.out.println("getGroups...");
+            List l = rusid.getGroups();
+            fail("El objeto existe aún después de haberse hecho un rollback");
+        } catch (Exception e) {
+            
+        }
+        System.out.println("===========================================================");
     }
     
     
@@ -1201,5 +1279,55 @@ public class SessionManagerTest {
         
         
     }
+    @Test
+    public void testTransactions() {
+        try {
+            System.out.println("\n\n\n");
+            System.out.println("***************************************************************");
+            System.out.println("múltiples transacciones en paralelo.");
+            System.out.println("***************************************************************");
+            
+            SimpleVertexEx s1 = new SimpleVertexEx();
+            s1.setS("Transaction 1");
+            SimpleVertexEx s2 = new SimpleVertexEx();
+            s2.setS("Transaction 2");
+            
+            Transaction t1 = sm.getTransaction();
+            Transaction t2 = sm.getTransaction();
+            
+            // verificar que sean objetos distintos
+            assertNotEquals(t1.getGraphdb(), t2.getGraphdb());
+            
+            // persistir un objeto en cada transacción
+            System.out.println("Store de s1");
+//            SimpleVertexEx ms1 = t1.store(s1);
+//            assertEquals(1, t1.getDirtyCount());
+            
+            System.in.read();
+            
+            System.out.println("Store de s2");
+            SimpleVertexEx ms2 = t2.store(s2);
+            assertEquals(1, t2.getDirtyCount());
+            
+            System.out.println("RID S2: "+sm.getRID(ms2));
+            
+            // hacer commit en t1 y rollback en t2
+//            System.out.println("commit en T1");
+//            t1.commit();
+//            System.in.read();
+            
+            System.out.println("rollback en t2");
+            t2.rollback();
+            
+            // ambas transacciones deben estar en 0
+            assertEquals(t1.getDirtyCount(), t2.getDirtyCount());
+        } catch (IOException ex) {
+            Logger.getLogger(SessionManagerTest.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    
+        
+    }
+    
+    
     
 }

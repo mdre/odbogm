@@ -53,14 +53,13 @@ public class ReflectionUtils {
     }
 
     /**
-     * Copia todos los atributos del objeto "from" al objeto "to". Si convertToProxy = true las colencciones se convierten a colecciones Embebidas
-     *
+     * Copia todos los atributos del objeto "from" al objeto "to".
+     * 
      * @param from objeto origen
      * @param to objeto destina
-     * @param convertToProxy determina si se convierten las colecciones a listas/mapas embebidos.
      *
      */
-    public static void copyObject(Object from, Object to, boolean convertToProxy) {
+    public static void copyObject(Object from, Object to) {
         // Walk up the superclass hierarchy
         for (Class obj = from.getClass();
                 !obj.equals(Object.class);
@@ -69,36 +68,8 @@ public class ReflectionUtils {
             for (int i = 0; i < fields.length; i++) {
                 fields[i].setAccessible(true);
                 try {
-                    // for each class/suerclass, copy all fields
-                    // from this object to the clone
-
-                    if (convertToProxy) {
-                        if (fields[i].getType().isAssignableFrom(List.class)) {
-                            // se debe hacer una copia del la lista para no quede referenciando al objeto original
-                            // dado que en la asignación solo se pasa la referencia del objeto.
-                            LOGGER.log(Level.FINER, "Lista detectada: realizando una copia del contenido...");
-                            if (fields[i].get(from) == null) {
-                                fields[i].set(to, new ArrayListEmbeddedProxy((IObjectProxy) to));
-                            } else {
-                                fields[i].set(to, new ArrayListEmbeddedProxy((IObjectProxy) to, (List) fields[i].get(from)));
-                            }
-                        } else if (fields[i].getType().isAssignableFrom(Map.class)) {
-                            // se debe hacer una copia del la lista para no quede referenciando al objeto original
-                            // dado que en la asignación solo se pasa la referencia del objeto.
-                            LOGGER.log(Level.FINER, "Map detectado: realizando una copia del contenido...");
-                            // FIXME: Ojo que se hace solo un shalow copy!! no se está conando la clave y el value
-                            if (fields[i].get(from) == null) {
-                                fields[i].set(to, new HashMapEmbeddedProxy((IObjectProxy) to));
-                            } else {
-                                fields[i].set(to, new HashMapEmbeddedProxy((IObjectProxy) to, (Map) fields[i].get(from)));
-                            }
-                        } else {
-                            fields[i].set(to, fields[i].get(from));
-                        }
-                    } else {
-                        // si no hay conversión para embebidos, se copia directamente los valores
-                        fields[i].set(to, fields[i].get(from));
-                    }
+                    
+                    fields[i].set(to, fields[i].get(from));
 
                 } catch (IllegalArgumentException e) {
                 } catch (IllegalAccessException e) {
@@ -106,16 +77,6 @@ public class ReflectionUtils {
             }
         }
     }
-
-    /**
-     * Copia todos los atributos del objeto "from" al objeto "to". no se realiza la conversión de las listas/mapas a embedded
-     *
-     * @param from objeto origen
-     * @param to objeto destina
-     *
-     */
-    public static void copyObject(Object from, Object to) {
-        ReflectionUtils.copyObject(from, to, false);
-    }
-
+    
+    
 }

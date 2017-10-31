@@ -9,6 +9,8 @@ import net.odbogm.exceptions.IncorrectRIDField;
 import net.odbogm.SessionManager;
 import net.odbogm.proxy.IObjectProxy;
 import com.orientechnologies.orient.core.exception.OConcurrentModificationException;
+import com.tinkerpop.blueprints.impls.orient.OrientGraph;
+import com.tinkerpop.blueprints.impls.orient.OrientGraphFactory;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -54,10 +56,13 @@ public class Test {
 //        testQuery();
 //        store();
 //          testDelete();
-//        testEmbeddded();
+        testEmbeddded();
 //        setUpGroups();
 //        testSObjects();
-        testLongQuery();
+//        testLongQuery();
+//        testMultiTran();
+//        testRollbackEmbedded();
+//        testRollbackSVE();
         sm.shutdown();
     }
 
@@ -709,4 +714,85 @@ public class Test {
         return builder.toString();
     }
 
+    
+    private void testMultiTran() {
+        
+        OrientGraphFactory fact = new OrientGraphFactory("remote:localhost/Test", "root", "toor").setupPool(1, 10);
+        
+        OrientGraph t1 = fact.getTx();
+        OrientGraph t2 = fact.getTx();
+        
+        t1.addVertex("class:Test", "text","transac 1");
+        t2.addVertex("class:Test", "text","transac 2");
+        
+        t1.commit();
+        
+        t2.rollback();
+        
+        t1.shutdown();
+        t2.shutdown();
+                
+        
+    }
+    
+    
+    private void testRollbackEmbedded() {
+        System.out.println("\n\n\n");
+        System.out.println("***************************************************************");
+        System.out.println("test embedded rollback SObjects");
+        System.out.println("***************************************************************");
+        
+        
+        // guardarlo
+        Foo foo = new Foo();
+        
+        System.out.println("\n\nIniciando Store ========================= \n\n");
+        Foo rfoo = this.sm.store(foo);
+        this.sm.commit();
+        System.out.println("\n\nStore finalizado ========================= \n\n");
+        String rid = this.sm.getRID(rfoo);
+        // dereferenciar el objeto
+        rfoo = null;
+        
+        // obtener nuevamente el objeto desde la base.
+        System.out.println("\n\nIniciando GET ========================= \n\n");
+        rfoo = this.sm.get(Foo.class, rid);
+        System.out.println("\n\nGET FINALIZADO ========================= \n\n");
+        rfoo.setText("rollback");
+        
+        System.out.println("\n\nINICIANDO ROLLBACK ========================= \n\n");
+        this.sm.rollback();
+        
+        
+    }
+    
+    private void testRollbackSVE() {
+        System.out.println("\n\n\n");
+        System.out.println("***************************************************************");
+        System.out.println("Rollback Collections. Se restablecen los atributos que hereden de Collection.");
+        System.out.println("***************************************************************");
+        SimpleVertexEx sve = new SimpleVertexEx();
+        sve.initEnum();
+        sve.initInner();
+        sve.initArrayList();
+        sve.initHashMap();
+        sve.alSV = new ArrayList<SimpleVertex>();
+        sve.alSV.add(new SimpleVertex());
+        sve.alSV.add(new SimpleVertex());
+        sve.alSV.add(new SimpleVertex());
+
+        SimpleVertexEx stored = sm.store(sve);
+        System.out.println("guardando el objeto con 3 elementos en el AL.");
+        sm.commit();
+        System.out.println("\n\nSTORE FINALIZADO ========================= \n\n");
+        String rid = sm.getRID(stored);
+        
+        // modificar los campos.
+        stored.alSV.add(new SimpleVertex());
+        System.out.println("\n\nINICIANDO ROLLBACK ========================= \n\n");
+        sm.rollback();
+        
+        System.out.println(""+sve.alSV.size()+ " =|= "+stored.alSV.size());
+        assertEquals(sve.alSV.size(), stored.alSV.size());
+    }
 }

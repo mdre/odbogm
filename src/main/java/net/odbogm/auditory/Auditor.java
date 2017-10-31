@@ -17,6 +17,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.LogginProperties;
 import net.odbogm.SessionManager;
+import net.odbogm.Transaction;
 import net.odbogm.annotations.Audit;
 import net.odbogm.proxy.IObjectProxy;
 import net.odbogm.utils.DateHelper;
@@ -31,25 +32,25 @@ public class Auditor implements IAuditor {
         LOGGER.setLevel(LogginProperties.Auditor);
     }
 
-    private SessionManager sm;
+    private Transaction transaction;
     private String auditUser;
     private ArrayList<LogData> logdata = new ArrayList<>();
     private final String ODBAUDITLOGVERTEXCLASS = "ODBAuditLog";
     
-    public Auditor(SessionManager sm, String user) {
-        this.sm = sm;
+    public Auditor(Transaction t, String user) {
+        this.transaction = t;
         this.auditUser = user;
         
         // verificar que la clase de auditorías exista
-        if (this.sm.getDBClass(this.ODBAUDITLOGVERTEXCLASS) == null) {
-            OrientVertexType olog = this.sm.getGraphdb().createVertexType(this.ODBAUDITLOGVERTEXCLASS);
+        if (this.transaction.getDBClass(this.ODBAUDITLOGVERTEXCLASS) == null) {
+            OrientVertexType olog = this.transaction.getGraphdb().createVertexType(this.ODBAUDITLOGVERTEXCLASS);
             olog.createProperty("rid", OType.STRING);
             olog.createProperty("timestamp", OType.DATETIME);
             olog.createProperty("user", OType.STRING);
             olog.createProperty("action", OType.STRING);
             olog.createProperty("label", OType.STRING);
             olog.createProperty("log", OType.STRING);
-            this.sm.commit();
+            this.transaction.commit();
         }
         
     }
@@ -93,7 +94,7 @@ public class Auditor implements IAuditor {
             ologData.put("label", logData.label);
             ologData.put("log", logData.data.toString());
             
-            OrientVertex ovlog = this.sm.getGraphdb().addVertex("class:" + this.ODBAUDITLOGVERTEXCLASS, ologData);
+            OrientVertex ovlog = this.transaction.getGraphdb().addVertex("class:" + this.ODBAUDITLOGVERTEXCLASS, ologData);
         }
         
         this.logdata.clear();

@@ -23,7 +23,6 @@ import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.Callable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 //import net.bytebuddy.implementation.bind.annotation.Origin;
@@ -34,6 +33,7 @@ import net.odbogm.ObjectMapper;
 import net.odbogm.Transaction;
 import net.odbogm.annotations.Audit.AuditType;
 import net.odbogm.exceptions.DuplicateLink;
+import net.odbogm.exceptions.InvalidObjectReference;
 import net.odbogm.exceptions.ObjectMarkedAsDeleted;
 import net.odbogm.utils.VertexUtils;
 import net.sf.cglib.proxy.MethodInterceptor;
@@ -56,6 +56,11 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     // Vértice desde el que se obtiene el objeto.
     // private OrientVertex baseVertex;
     private OrientElement ___baseElement;
+    
+    // permite marcar el objeto como inválida en caso que se haga un rollback 
+    // sobre un objeto que nunca se persistió.
+    private boolean ___isValidObject = true;
+    
     private Transaction ___transaction;
     private boolean ___dirty = false;
     // determina si ya se han cargado los links o no
@@ -63,7 +68,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     // determina si el objeto ya ha sido completamente inicializado.
     // sirve para impedir que se invoquen a los métodos durante el setup inicial del construtor.
     private boolean ___objectReady = false;
-
+    
     // si esta marca está activa indica que el objeto ha sido eliminado de la base de datos 
     // y toda comunicación con el mismo debe ser abortada
     private boolean ___deletedMark = false;
@@ -181,7 +186,12 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             MethodProxy methodProxy) throws Throwable {
         // response object
         Object res = null;
-
+        
+        if (!this.___isValidObject) {
+            LOGGER.log(Level.FINER, "El objeto está marcado como inválido!!!");
+            throw new InvalidObjectReference();
+        }
+            
         if (this.___baseElement.getIdentity().isNew()) {
             LOGGER.log(Level.FINER, "RID nuevo. No procesar porque el store preparó todo y no hay nada que recuperar de la base.");
             this.___loadLazyLinks = false;
@@ -573,7 +583,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                     }
                                 } else {
                                     Object innerO = oStruct.linkLists.get(field);
-                                    LOGGER.log(Level.FINER, field + " instanceof ILazyCalls: " + (innerO instanceof ILazyCalls));
+                                    LOGGER.log(Level.FINER, field + ": type: " +innerO.getClass() + " instanceof ILazyCalls: " + (innerO instanceof ILazyCalls));
                                     // verificar si ya está en el contexto. Si fue creado en forma 
                                     // separada y asociado con el objeto principal, se puede dar el caso
                                     // de que el objeto principal tiene RID y el agregado no.
@@ -585,12 +595,17 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                         // es una colección nueva.
                                         this.___setDirty();
                                         LOGGER.log(Level.FINER, "Dirty (" + graphRelationName + "): se ha agregado una colección nueva.");
+                                    } else if (f.get(innerO)==null) {
+                                        LOGGER.log(Level.FINER, "La colección está en NULL. Se deja sin modificar.");
+                                        
                                     }
                                 }
 
                                 f.setAccessible(acc);
                             } catch (NoSuchFieldException | IllegalArgumentException ex) {
                                 Logger.getLogger(SessionManager.class.getName()).log(Level.SEVERE, null, ex);
+                            } catch (IllegalAccessException ex) {
+                                Logger.getLogger(ObjectProxy.class.getName()).log(Level.SEVERE, null, ex);
                             }
 
                         }
@@ -1015,6 +1030,16 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
      */
     @Override
     public synchronized void ___rollback() {
+        LOGGER.log(Level.FINER, "\n\n******************* ROLLBACK *******************\n\n");
+        // si es un objeto nuevo
+        LOGGER.log(Level.FINER, "RID: "+this.___baseElement.getIdentity().toString()+" Nueva?: "+this.___baseElement.getIdentity().isNew());
+        if (this.___baseElement.getIdentity().isNew()) {
+            // invalidar el objeto
+            LOGGER.log(Level.FINER, "El objeto aún no se ha persistido en la base. Invalidar");
+            this.___isValidObject = false;
+            return;
+        }
+        
         // restaurar los atributos al estado original.
         ClassDef classdef = this.___transaction.getObjectMapper().getClassDef(___proxyObject);
         Map<String, Class<?>> fieldmap = classdef.fields;
@@ -1067,6 +1092,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         }
 
         // procesar los enum
+        LOGGER.log(Level.FINER, "Procesando los enums...");
         for (Map.Entry<String, Class<?>> entry : classdef.enumFields.entrySet()) {
             String prop = entry.getKey();
             Class<? extends Object> fieldClazz = entry.getValue();
@@ -1098,7 +1124,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                 Logger.getLogger(ObjectProxy.class.getName()).log(Level.SEVERE, null, ex);
             }
         }
-
+        
         LOGGER.log(Level.FINER, "Revirtiendo los Links......... ");
         // hidratar los atributos @links
         // procesar todos los links
@@ -1152,6 +1178,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             }
 
         }
+        
     }
 
 }

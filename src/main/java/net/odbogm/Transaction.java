@@ -6,6 +6,7 @@
 package net.odbogm;
 
 import com.orientechnologies.orient.core.exception.OConcurrentModificationException;
+import com.orientechnologies.orient.core.metadata.schema.OClass;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.sql.OCommandSQL;
 import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery;
@@ -13,6 +14,7 @@ import com.tinkerpop.blueprints.Direction;
 import com.tinkerpop.blueprints.Vertex;
 import com.tinkerpop.blueprints.impls.orient.OrientDynaElementIterable;
 import com.tinkerpop.blueprints.impls.orient.OrientEdge;
+import com.tinkerpop.blueprints.impls.orient.OrientGraph;
 import com.tinkerpop.blueprints.impls.orient.OrientVertex;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
@@ -27,11 +29,13 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.annotations.Audit;
 import net.odbogm.annotations.CascadeDelete;
+import net.odbogm.auditory.Auditor;
 import net.odbogm.cache.ClassDef;
 import net.odbogm.exceptions.ClassToVertexNotFound;
 import net.odbogm.exceptions.CollectionNotSupported;
 import net.odbogm.exceptions.IncorrectRIDField;
 import net.odbogm.exceptions.NoOpenTx;
+import net.odbogm.exceptions.NoUserLoggedIn;
 import net.odbogm.exceptions.ReferentialIntegrityViolation;
 import net.odbogm.exceptions.UnknownObject;
 import net.odbogm.exceptions.UnknownRID;
@@ -81,10 +85,19 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
 
     int newObjectCount = 0;
 
+    // Auditor asociado a la transacción
+    private Auditor auditor;
+    
     SessionManager sm;
-
+    OrientGraph orientdbTransact;
+    
+    /**
+     * Devuelve una transacción ya inicializada contra la base de datos.
+     * @param sm 
+     */
     Transaction(SessionManager sm) {
         this.sm = sm;
+        orientdbTransact = this.sm.getFactory().getTx();
         this.objectMapper = this.sm.getObjectMapper();
     }
 
@@ -127,7 +140,7 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
      * parte del siguiente commit
      */
     public synchronized void refreshDirtyObjects() {
-        if (this.sm.getGraphdb() == null) {
+        if (this.orientdbTransact == null) {
             throw new NoOpenTx();
         }
         for (Map.Entry<String, Object> e : dirty.entrySet()) {
@@ -146,13 +159,21 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
      * @param o objeto recuperado de la base a ser actualizado.
      */
     public synchronized void refreshObject(IObjectProxy o) {
-        if (this.sm.getGraphdb() == null) {
+        if (this.orientdbTransact == null) {
             throw new NoOpenTx();
         }
-
         o.___reload();
     }
 
+    /**
+     * Devuelve el objeto de comunicación con la base.
+     *
+     * @return retorna la referencia directa al driver del la base.
+     */
+    public OrientGraph getGraphdb() {
+        return orientdbTransact;
+    }
+    
     /**
      * Inicia una transacción anidada
      */
@@ -161,13 +182,20 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
     }
 
     /**
+     * Finaliza la comunicación contra la base de datos.
+     */
+    public synchronized void close() {
+        this.orientdbTransact.shutdown();
+    }
+    
+    /**
      * Persistir la información pendiente en la transacción
      *
      * @throws NoOpenTx si no hay una trnasacción abierta.
      */
     public synchronized void commit() throws NoOpenTx, OConcurrentModificationException {
         if (this.nestedTransactionLevel == 0) {
-            if (this.sm.getGraphdb() == null) {
+            if (this.orientdbTransact == null) {
                 throw new NoOpenTx();
             }
 //        this.graphdb.getRawGraph().activateOnCurrentThread();
@@ -187,12 +215,12 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
             }
             LOGGER.log(Level.FINER, "Fin persistencia. <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
             // comitear los vértices
-            this.sm.getGraphdb().commit();
+            this.orientdbTransact.commit();
 
             // si se está en modalidad audit, grabar los logs
-            if (this.sm.isAuditing()) {
-                this.sm.getAuditor().commit();
-                this.sm.getGraphdb().commit();
+            if (this.isAuditing()) {
+                this.getAuditor().commit();
+                this.orientdbTransact.commit();
             }
             // vaciar el caché de elementos modificados.
             this.dirty.clear();
@@ -225,11 +253,11 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
      * realiza un rollback sobre la transacción activa.
      */
     public synchronized void rollback() {
-        if (this.sm.getGraphdb() == null) {
+        if (this.orientdbTransact == null) {
             throw new NoOpenTx();
         }
         // primero revertir todos los vértices
-        this.sm.getGraphdb().rollback();
+        this.orientdbTransact.rollback();
 
         // refrescar todos los objetos
         for (Map.Entry<String, Object> entry : dirty.entrySet()) {
@@ -269,7 +297,7 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
         T proxied = null;
         try {
             // si no hay una tx abierta, disparar una excepción
-            if (this.sm.getGraphdb() == null) {
+            if (this.orientdbTransact == null) {
                 throw new NoOpenTx();
             }
 
@@ -294,7 +322,7 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
                 //graphdb.createVertexType(classname);
             }
 
-            OrientVertex v = this.sm.getGraphdb().addVertex("class:" + classname, omap);
+            OrientVertex v = this.orientdbTransact.addVertex("class:" + classname, omap);
 
             proxied = ObjectProxyFactory.create(o, v, this);
 
@@ -302,9 +330,12 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
             newrids.add(v.getId().toString());
 
             // transferir todos los valores al proxy
-            ReflectionUtils.copyObject(o, proxied, true);
-            if (sm.isAuditing()) {
-                sm.auditLog((IObjectProxy) proxied, Audit.AuditType.WRITE, "STORE", omap);
+            ReflectionUtils.copyObject(o, proxied);
+            // convertir los embedded
+            this.sm.getObjectMapper().collectionsToEmbedded(proxied, oClassDef, this);
+            
+            if (this.isAuditing()) {
+                this.auditLog((IObjectProxy) proxied, Audit.AuditType.WRITE, "STORE", omap);
             }
 
             LOGGER.log(Level.FINER, "Marcando como dirty: " + proxied.getClass().getSimpleName());
@@ -345,9 +376,9 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
                 }
 
                 // crear un link entre los dos objetos.
-                OrientEdge oe = this.sm.getGraphdb().addEdge("class:" + graphRelationName, v, ((IObjectProxy) innerO).___getVertex(), graphRelationName);
-                if (this.sm.isAuditing()) {
-                    this.sm.auditLog((IObjectProxy) proxied, Audit.AuditType.WRITE, "STORE: " + graphRelationName, oe);
+                OrientEdge oe = this.orientdbTransact.addEdge("class:" + graphRelationName, v, ((IObjectProxy) innerO).___getVertex(), graphRelationName);
+                if (this.isAuditing()) {
+                    this.auditLog((IObjectProxy) proxied, Audit.AuditType.WRITE, "STORE: " + graphRelationName, oe);
                 }
             }
 
@@ -357,16 +388,18 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
             deben ser creados.
              */
             LOGGER.log(Level.FINER, "Procesando los LinkList");
+            LOGGER.log(Level.FINER, "LinkLists: "+oStruct.linkLists.size());
+            
             final T finalProxied = proxied;
 
             for (Map.Entry<String, Object> link : oStruct.linkLists.entrySet()) {
                 String field = link.getKey();
                 Object value = link.getValue();
                 final String graphRelationName = classname + "_" + field;
-
+                LOGGER.log(Level.FINER, "field: "+field+" clase: "+value.getClass().getName());
                 if (value instanceof List) {
                     // crear un objeto de la colección correspondiente para poder trabajarlo
-//                Class<?> oColection = oClassDef.linkLists.get(field);
+                    // Class<?> oColection = oClassDef.linkLists.get(field);
                     Collection innerCol = (Collection) value;
 
                     // recorrer la colección verificando el estado de cada objeto.
@@ -390,9 +423,9 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
 
                         // crear un link entre los dos objetos.
                         LOGGER.log(Level.FINE, "-----> agregando un edge a: " + ioproxied.___getVertex().getId());
-                        OrientEdge oe = this.sm.getGraphdb().addEdge("class:" + graphRelationName, v, ioproxied.___getVertex(), graphRelationName);
-                        if (this.sm.isAuditing()) {
-                            this.sm.auditLog((IObjectProxy) proxied, Audit.AuditType.WRITE, "STORE: " + graphRelationName, oe);
+                        OrientEdge oe = this.orientdbTransact.addEdge("class:" + graphRelationName, v, ioproxied.___getVertex(), graphRelationName);
+                        if (this.isAuditing()) {
+                            this.auditLog((IObjectProxy) proxied, Audit.AuditType.WRITE, "STORE: " + graphRelationName, oe);
                         }
                     }
                 } else if (value instanceof Map) {
@@ -420,9 +453,9 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
                             }
                             // crear un link entre los dos objetos.
                             LOGGER.log(Level.FINER, "-----> agregando el edges de " + v.getId().toString() + " para " + ioproxied.___getVertex().toString() + " key: " + imk);
-                            OrientEdge oe = sm.getGraphdb().addEdge("class:" + graphRelationName, v, ioproxied.___getVertex(), graphRelationName);
-                            if (sm.isAuditing()) {
-                                sm.auditLog((IObjectProxy) finalProxied, Audit.AuditType.WRITE, "STORE: " + graphRelationName, oe);
+                            OrientEdge oe = orientdbTransact.addEdge("class:" + graphRelationName, v, ioproxied.___getVertex(), graphRelationName);
+                            if (isAuditing()) {
+                                auditLog((IObjectProxy) finalProxied, Audit.AuditType.WRITE, "STORE: " + graphRelationName, oe);
                             }
                             // agragar la key como atributo.
                             if (Primitives.PRIMITIVE_MAP.get(imk.getClass()) != null) {
@@ -551,8 +584,8 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
 
             }
 
-            if (this.sm.isAuditing()) {
-                this.sm.auditLog((IObjectProxy) toRemove, Audit.AuditType.DELETE, "DELETE", "");
+            if (this.isAuditing()) {
+                this.auditLog((IObjectProxy) toRemove, Audit.AuditType.DELETE, "DELETE", "");
             }
             ovToRemove.remove();
             // si tengo un RID, proceder a removerlo de las colecciones.
@@ -569,7 +602,7 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
      * Transfiere todos los cambios de los objetos a las estructuras subyacentes.
      */
     public synchronized void flush() {
-        if (this.sm.getGraphdb() == null) {
+        if (this.orientdbTransact == null) {
             throw new NoOpenTx();
         }
         for (Map.Entry<String, Object> e : dirty.entrySet()) {
@@ -642,7 +675,7 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
     @Override
     public Object get(String rid) throws UnknownRID, VertexJavaClassNotFound {
         try {
-            if (this.sm.getGraphdb() == null) {
+            if (this.orientdbTransact == null) {
                 throw new NoOpenTx();
             }
             if (rid == null) {
@@ -658,7 +691,7 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
             if (ret == null) {
                 objectCache.remove(rid);
 
-                OrientVertex v = this.sm.getGraphdb().getVertex(rid);
+                OrientVertex v = this.orientdbTransact.getVertex(rid);
                 if (v == null) {
                     throw new UnknownRID(rid);
                 }
@@ -694,7 +727,7 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
      */
     @Override
     public <T> T get(Class<T> type, String rid) throws UnknownRID {
-        if (this.sm.getGraphdb() == null) {
+        if (this.orientdbTransact == null) {
             throw new NoOpenTx();
         }
         if (rid == null) {
@@ -725,15 +758,13 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
 
             if (o == null) {
                 // recuperar el vértice solicitado
-                OrientVertex v = this.sm.getGraphdb().getVertex(rid);
+                OrientVertex v = this.orientdbTransact.getVertex(rid);
 
                 // hidratar un objeto
                 try {
                     o = objectMapper.hydrate(type, v, this);
 //                entities.put(rid, o);
-                    if (this.sm.isAuditing()) {
-                        this.sm.auditLog((IObjectProxy) o, Audit.AuditType.READ, "READ", "");
-                    }
+                    
                 } catch (InstantiationException | IllegalAccessException | NoSuchFieldException ex) {
                     Logger.getLogger(SessionManager.class.getName()).log(Level.SEVERE, null, ex);
                 }
@@ -756,13 +787,17 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
             ((SObject) o).validate(this.sm.getLoggedInUser());
         }
 
+        if (this.isAuditing()) {
+            this.auditLog((IObjectProxy) o, Audit.AuditType.READ, "READ", "");
+        }
+        
         LOGGER.log(Level.FINER, "Fin get -------------------------------------\n");
         return o;
     }
 
     @Override
     public <T> T getEdgeAsObject(Class<T> type, OrientEdge e) {
-        if (this.sm.getGraphdb() == null) {
+        if (this.orientdbTransact == null) {
             throw new NoOpenTx();
         }
 
@@ -795,13 +830,13 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
      */
     @Override
     public <T> T query(String sql) {
-        if (this.sm.getGraphdb() == null) {
+        if (this.orientdbTransact == null) {
             throw new NoOpenTx();
         }
         flush();
 
         OCommandSQL osql = new OCommandSQL(sql);
-        return this.sm.getGraphdb().command(osql).execute();
+        return this.orientdbTransact.command(osql).execute();
     }
 
     /**
@@ -815,13 +850,13 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
      */
     @Override
     public long query(String sql, String retVal) {
-        if (this.sm.getGraphdb() == null) {
+        if (this.orientdbTransact == null) {
             throw new NoOpenTx();
         }
         this.flush();
 
         OCommandSQL osql = new OCommandSQL(sql);
-        OrientVertex ov = (OrientVertex) ((OrientDynaElementIterable) this.sm.getGraphdb().command(osql).execute()).iterator().next();
+        OrientVertex ov = (OrientVertex) ((OrientDynaElementIterable) this.orientdbTransact.command(osql).execute()).iterator().next();
         if (retVal == null) {
             retVal = ov.getProperties().keySet().iterator().next();
         }
@@ -838,7 +873,7 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
      */
     @Override
     public <T> List<T> query(Class<T> clazz) {
-        if (this.sm.getGraphdb() == null) {
+        if (this.orientdbTransact == null) {
             throw new NoOpenTx();
         }
         this.flush();
@@ -847,7 +882,7 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
 
         ArrayList<T> ret = new ArrayList<>();
 
-        Iterable<Vertex> vertices = this.sm.getGraphdb().getVerticesOfClass(clazz.getSimpleName());
+        Iterable<Vertex> vertices = this.orientdbTransact.getVerticesOfClass(clazz.getSimpleName());
         LOGGER.log(Level.FINER, "Enlapsed ODB response: " + (System.currentTimeMillis() - init));
         for (Vertex verticesOfClas : vertices) {
             ret.add(this.get(clazz, verticesOfClas.getId().toString()));
@@ -867,7 +902,7 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
      */
     @Override
     public <T> List<T> query(Class<T> clase, String body) {
-        if (this.sm.getGraphdb() == null) {
+        if (this.orientdbTransact == null) {
             throw new NoOpenTx();
         }
         this.flush();
@@ -876,7 +911,7 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
 
         String cSQL = "SELECT FROM " + clase.getSimpleName() + " " + body;
         LOGGER.log(Level.FINER, cSQL);
-        for (Vertex v : (Iterable<Vertex>) this.sm.getGraphdb().command(
+        for (Vertex v : (Iterable<Vertex>) this.orientdbTransact.command(
                 new OCommandSQL(cSQL)).execute()) {
             ret.add(this.get(clase, v.getId().toString()));
         }
@@ -899,9 +934,72 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
         ArrayList<T> ret = new ArrayList<>();
 
         LOGGER.log(Level.FINER, sql);
-        for (Vertex v : (Iterable<Vertex>) this.sm.getGraphdb().command(query).execute(param)) {
+        for (Vertex v : (Iterable<Vertex>) this.orientdbTransact.command(query).execute(param)) {
             ret.add(this.get(clase, v.getId().toString()));
         }
         return ret;
+    }
+    
+    
+    
+    /**
+     * Devuelve el objecto de definición de la clase en la base.
+     *
+     * @param clase nombre de la clase
+     * @return OClass o null si la clase no existe
+     */
+    public OClass getDBClass(String clase) {
+        return this.getGraphdb().getRawGraph().getMetadata().getSchema().getClass(clase);
+    }
+    
+    // Procesos de auditoría
+    /**
+     * Comienza a auditar los objetos y los persiste con el nombre de usuario.
+     *
+     * @param user User String only.
+     */
+    public void setAuditOnUser(String user) {
+        
+        this.auditor = new Auditor(this, user);
+
+    }
+
+    /**
+     * Comienza a auditar los objetos y los persiste con el nombre de usuario actualmente logueado.
+     *
+     */
+    public void setAuditOnUser() throws NoUserLoggedIn {
+        if (this.sm.getLoggedInUser() == null) {
+            throw new NoUserLoggedIn();
+        }
+
+        this.auditor = new Auditor(this, this.sm.getLoggedInUser().getUUID());
+    }
+
+    
+    /**
+     * realiza una auditoría a partir del objeto indicado.
+     *
+     * @param o IOBjectProxy a auditar
+     * @param at AuditType
+     * @param label etiqueta de referencia
+     * @param data objeto a loguear con un toString
+     */
+    public void auditLog(IObjectProxy o, int at, String label, Object data) {
+        if (this.isAuditing()) {
+            auditor.auditLog(o, at, label, data);
+        }
+    }
+
+    /**
+     * determina si se está guardando un log de auditoría
+     * @return true si la auditoría está activa
+     */
+    public boolean isAuditing() {
+        return this.auditor != null;
+    }
+    
+    Auditor getAuditor() {
+        return this.auditor;
     }
 }

@@ -9,13 +9,14 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import net.odbogm.LogginProperties;
 
 public abstract class SObject {
 
     private final static Logger LOGGER = Logger.getLogger(SObject.class.getName());
 
     static {
-        LOGGER.setLevel(Level.INFO);
+        LOGGER.setLevel(LogginProperties.SObject);
     }
     private SID __owner;
     // Access Control List
@@ -84,12 +85,15 @@ public abstract class SObject {
      * @return the security state computed.
      */
     public final int validate(ISecurityCredentials sc) {
+        LOGGER.log(Level.FINER, "validando los permisos de acceso...");
         int partialState = 0;
         int gal = 0;
         HashMap<String, Integer> acls = this.getAcls();
+        LOGGER.log(Level.FINER, "Lista de acls: "+acls.size());
         if (acls.size() != 0) {
             for (String securityCredential : sc.showSecurityCredentials()) {
                 gal = acls.get(securityCredential);
+                LOGGER.log(Level.FINER, "SecurityCredential: "+securityCredential+" "+gal);
                 if (gal == AccessRight.NOACCESS) {
                     partialState = 0;
                     break;

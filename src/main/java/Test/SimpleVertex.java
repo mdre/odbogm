@@ -15,7 +15,7 @@ import net.odbogm.security.SObject;
  *
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
-public class SimpleVertex extends SObject {
+public class SimpleVertex {
     @Ignore
     private final static Logger LOGGER = Logger.getLogger(SimpleVertex.class .getName());
 
@@ -25,7 +25,7 @@ public class SimpleVertex extends SObject {
     private float f;
     private boolean b;
     private Date fecha;
-
+    
     public Date getFecha() {
         return fecha;
     }

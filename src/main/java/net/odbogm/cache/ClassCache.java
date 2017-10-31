@@ -50,6 +50,13 @@ public class ClassCache {
             cached = this.cacheClass(c);
             this.classCache.put(c, cached);
         }
+        LOGGER.log(Level.FINER, "Class struc:");
+        LOGGER.log(Level.FINER, "Class: "+c.getName());
+        LOGGER.log(Level.FINER, "Fields: "+cached.fields.size());
+        LOGGER.log(Level.FINER, "enums: "+cached.enumFields.size());
+        LOGGER.log(Level.FINER, "Links: "+cached.links.size());
+        LOGGER.log(Level.FINER, "LinkList: "+cached.linkLists.size());
+        LOGGER.log(Level.FINER, "-------------------------------------");
         return cached;
     }
 
@@ -106,8 +113,10 @@ public class ClassCache {
                                 Class<?> listClass = (Class<?>) listType.getActualTypeArguments()[0];
                                 if ((Primitives.PRIMITIVE_MAP.get(listClass)!=null)
                                         ||(f.isAnnotationPresent(Embedded.class))) {
+                                    LOGGER.log(Level.FINER, "\n**********************************************************");
                                     LOGGER.log(Level.FINER, "Es una colección de primitivas: "+listClass.getSimpleName());
                                     LOGGER.log(Level.FINER, "Se procede a embeberla.");
+                                    LOGGER.log(Level.FINER, "\n**********************************************************");
                                     setAsEmbedded = true;
                                 }
                             } else if (Map.class.isAssignableFrom(f.getType())) {
