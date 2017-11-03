@@ -157,6 +157,14 @@ public class SessionManager implements Actions.Store, Actions.Get {
     }
     
     /**
+     * Devuelve la transacción por defecto que está utilizando el SessionManager.
+     * @return publicTransaction
+     */
+    public Transaction getCurrentTransaction() {
+        return this.publicTransaction;
+    }
+    
+    /**
      * Crea a un *NUEVO* vértice en la base de datos a partir del objeto. Retorna el RID del objeto que se agregó a la base.
      *
      * @param <T> clase base del objeto.
