@@ -1033,7 +1033,7 @@ public class SessionManagerTest {
      * Test of store embedded list and maps.
      */
     @Test
-    public void testTransaccionesAnidades() {
+    public void testTransaccionesAnidadas() {
         System.out.println("\n\n\n");
         System.out.println("***************************************************************");
         System.out.println("Transacciones anidadas");

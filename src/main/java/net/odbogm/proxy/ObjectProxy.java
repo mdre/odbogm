@@ -595,17 +595,14 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                         // es una colección nueva.
                                         this.___setDirty();
                                         LOGGER.log(Level.FINER, "Dirty (" + graphRelationName + "): se ha agregado una colección nueva.");
-                                    } else if (f.get(innerO)==null) {
+                                    } else {
                                         LOGGER.log(Level.FINER, "La colección está en NULL. Se deja sin modificar.");
-                                        
                                     }
                                 }
 
                                 f.setAccessible(acc);
                             } catch (NoSuchFieldException | IllegalArgumentException ex) {
                                 Logger.getLogger(SessionManager.class.getName()).log(Level.SEVERE, null, ex);
-                            } catch (IllegalAccessException ex) {
-                                Logger.getLogger(ObjectProxy.class.getName()).log(Level.SEVERE, null, ex);
                             }
 
                         }

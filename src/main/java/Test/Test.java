@@ -56,12 +56,12 @@ public class Test {
 //        testQuery();
 //        store();
 //          testDelete();
-        testEmbeddded();
+//        testEmbeddded();
 //        setUpGroups();
 //        testSObjects();
 //        testLongQuery();
 //        testMultiTran();
-//        testRollbackEmbedded();
+        testRollbackEmbedded();
 //        testRollbackSVE();
         sm.shutdown();
     }
