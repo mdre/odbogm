@@ -37,4 +37,13 @@ public class ThreadHelper {
         }
         return stb.toString();
     }
+    
+    public synchronized static String getFullLineDescript() {
+        StackTraceElement l = new Exception().getStackTrace()[0];
+        return l.getClassName()+"/"+l.getMethodName()+":"+l.getLineNumber();
+    }
+    
+    public synchronized static int getLineNumber() {
+        return (new Exception()).getStackTrace()[0].getLineNumber();
+    }
 }

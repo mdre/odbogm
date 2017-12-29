@@ -11,9 +11,11 @@ import net.odbogm.annotations.RemoveOrphan;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.UUID;
 import java.util.logging.Logger;
 import net.odbogm.annotations.Audit;
 import net.odbogm.annotations.FieldAttributes;
+import net.odbogm.annotations.Indexed;
 
 /**
  *
@@ -30,6 +32,17 @@ public class SimpleVertexEx extends SimpleVertex {
     private SimpleVertexEx looptest;
     
     public EnumTest enumTest;
+
+    @Indexed(type = Indexed.IndexType.UNIQUE)
+    public String uuid;
+
+    public String getUuid() {
+        return uuid;
+    }
+
+    public void setUuid(String uuid) {
+        this.uuid = uuid;
+    }
     
     @RemoveOrphan
     private SimpleVertex svinner; 
@@ -54,11 +67,13 @@ public class SimpleVertexEx extends SimpleVertex {
         super(s, i, f, b, oI, oF, oB);
         this.svex = svex;
         this.enumTest = EnumTest.UNO;
+        this.uuid = UUID.randomUUID().toString();
     }
 
     public SimpleVertexEx() {
         super();
         this.svex = "default";
+        this.uuid = UUID.randomUUID().toString();
     }
         
     public void initEnum() {

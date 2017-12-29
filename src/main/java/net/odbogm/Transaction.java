@@ -209,18 +209,22 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
             for (Map.Entry<String, Object> e : dirty.entrySet()) {
                 String rid = e.getKey();
                 IObjectProxy o = (IObjectProxy) e.getValue();
-                LOGGER.log(Level.FINER, "Commiting: " + rid + "   class: " + o.___getBaseClass());
+                LOGGER.log(Level.FINER, "Commiting: " + rid + "   class: " + o.___getBaseClass()+" isValid: "+ o.___isValid());
                 // actualizar todos los objetos antes de bajarlos.
                 o.___commit();
             }
             LOGGER.log(Level.FINER, "Fin persistencia. <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
             // comitear los vértices
+            LOGGER.log(Level.FINER, "llamando al commit de la base");
             this.orientdbTransact.commit();
+            LOGGER.log(Level.FINER, "finalizado.");
 
             // si se está en modalidad audit, grabar los logs
             if (this.isAuditing()) {
+                LOGGER.log(Level.FINER, "grabando auditoría...");
                 this.getAuditor().commit();
                 this.orientdbTransact.commit();
+                LOGGER.log(Level.FINER, "finalizado.");
             }
             // vaciar el caché de elementos modificados.
             this.dirty.clear();
@@ -247,18 +251,21 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
         } else {
             this.nestedTransactionLevel --;
         }
+        LOGGER.log(Level.FINER, "FIN DE COMMIT! ----------------------------");
     }
 
     /**
      * realiza un rollback sobre la transacción activa.
      */
     public synchronized void rollback() {
+        LOGGER.log(Level.FINER, "Rollback ------------------------");
+        LOGGER.log(Level.FINER, "Dirty objects: "+dirty.size());
         if (this.orientdbTransact == null) {
             throw new NoOpenTx();
         }
-        // primero revertir todos los vértices
+        
         this.orientdbTransact.rollback();
-
+        
         // refrescar todos los objetos
         for (Map.Entry<String, Object> entry : dirty.entrySet()) {
             String key = entry.getKey();
@@ -274,6 +281,7 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
         // limpiar el caché de objetos modificados
         this.dirty.clear();
         this.nestedTransactionLevel = 0;
+        LOGGER.log(Level.FINER, "FIN ROLLBACK.");
     }
 
     /**

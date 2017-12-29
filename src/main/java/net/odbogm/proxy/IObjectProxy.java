@@ -25,6 +25,8 @@ public interface IObjectProxy {
     public Class<?> ___getBaseClass();
     public Object ___getProxiObject();
     
+    public boolean ___isValid();
+    
     public void ___setDirty();
     public  boolean ___isDirty() ;
     public void ___removeDirtyMark();

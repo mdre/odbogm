@@ -86,6 +86,8 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         this.___baseElement = e;
         this.___transaction = t;
     }
+    
+//    
 
     // ByteBuddy inteceptor
     // this method will be called each time      
@@ -221,6 +223,11 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                 case "___getBaseClass":
                     if (this.___objectReady) {
                         res = this.___getBaseClass();
+                    }
+                    break;
+                case "___isValid":
+                    if (this.___isValidObject) {
+                        res = this.___isValid();
                     }
                     break;
                 case "___isDirty":
@@ -464,9 +471,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 //                vmap.put(prop, vvalue);
 //            });
             // obtener la definición de la clase
-            LOGGER.log(Level.FINER, "**********************************");
             ClassDef cDef = this.___transaction.getObjectMapper().getClassDef(this.___proxyObject);
-            LOGGER.log(Level.FINER, "**********************************");
 
             // obtener un mapa actualizado del objeto contenido
             ObjectStruct oStruct = this.___transaction.getObjectMapper().objectStruct(this.___proxyObject);
@@ -611,9 +616,14 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             }
 
         }
-        LOGGER.log(Level.FINER, "fin commitObjectChange ------------------------------------------------\n");
+        LOGGER.log(Level.FINER, "fin commitObjectChange. Dirty: "+this.___dirty+"\n\n");
     }
 
+    @Override
+    public boolean ___isValid() {
+        return ___isValidObject;
+    }
+    
     @Override
     public boolean ___isDirty() {
         return ___dirty;
@@ -640,7 +650,8 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     @Override
     public synchronized void ___commit() {
 //        ODatabaseRecordThreadLocal.INSTANCE.set(this.___sm.getGraphdb().getRawGraph());
-
+        LOGGER.log(Level.FINER, "Iniciando ___commit() ....");
+        LOGGER.log(Level.FINER, "valid: "+this.___isValidObject);
         if (this.___dirty) {
             this.___transaction.getSessionManager().getGraphdb().getRawGraph().activateOnCurrentThread();
             // asegurarse que está atachado
@@ -970,6 +981,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             // quitar la marca de dirty
             this.___dirty = false;
         }
+        LOGGER.log(Level.FINER, "fin commit ----");
     }
 
     /**
@@ -1036,7 +1048,10 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             this.___isValidObject = false;
             return;
         }
+        // recargar todo.
+        this.___baseElement.reload();
         
+        LOGGER.log(Level.FINER, "vmap: "+this.___baseElement.getProperties());
         // restaurar los atributos al estado original.
         ClassDef classdef = this.___transaction.getObjectMapper().getClassDef(___proxyObject);
         Map<String, Class<?>> fieldmap = classdef.fields;

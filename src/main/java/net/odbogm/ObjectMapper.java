@@ -447,9 +447,9 @@ public class ObjectMapper {
 
     /**
      * Convierte todas las colecciones identificadas como embedded en el ClassDef a sus correspondientes proxies
-     * @param o
-     * @param classDef
-     * @param t 
+     * @param o the object to be analyzed
+     * @param classDef  the class struct
+     * @param t the current transaction
      */
     public void collectionsToEmbedded(Object o, ClassDef classDef, Transaction t) {
         boolean acc;

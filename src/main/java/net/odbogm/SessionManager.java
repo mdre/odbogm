@@ -110,6 +110,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
     
     
     private void init(String url, String user, String passwd, int minPool, int maxPool) {
+        LOGGER.log(Level.INFO, "ODBOGM Session Manager initialization...");
 //        this.url = url;
 //        this.user = user;
 //        this.passwd = passwd;
