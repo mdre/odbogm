@@ -18,10 +18,10 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import net.odbogm.agent.ITransparentDirtyDetector;
+import net.odbogm.agent.TransparentDirtyDetectorAgent;
 import net.odbogm.exceptions.UnknownRID;
-import net.odbogm.security.AccessRight;
-import net.odbogm.security.GroupSID;
-import net.odbogm.security.UserSID;
+import net.odbogm.security.*;
 import net.odbogm.utils.DateHelper;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -51,11 +51,28 @@ public class SessionManagerTest {
 
     @Before
     public void setUp() {
-        sm = new SessionManager("remote:localhost/Test", "root", "toor");
+//        TransparentDirtyDetectorAgent.initialize("Test");
+//        
+//        System.out.println("1-----");
+//        GroupSID gs = new GroupSID("dd", "uu");
+//        System.out.println("2-----");
+        
+        System.out.println("Iniciando session manager...");
+        sm = new SessionManager("remote:localhost/Test", "root", "toor")
+                .setActivationStrategy(SessionManager.ActivationStrategy.ONMETHODACCESS, "Test");
+        
+        System.out.println("1-----");
+//        GroupSID gs = new GroupSID("dd", "uu");
+        System.out.println("2-----");
+        
+        
+        System.out.println("Begin");
         this.sm.begin();
+        
+        System.out.println("fin setup.");
 //        this.sm.setAuditOnUser("userAuditado");
 
-        // borrar todos los vértices 
+        // GroupSID todos los vértices 
 //        this.sm.getGraphdb().command(new OCommandSQL("delete vertex V")).execute();
     }
 
@@ -371,11 +388,23 @@ public class SessionManagerTest {
         sm.commit();
         assertEquals(0, sm.getDirtyCount());
         System.out.println("=========== fin segundo commit ====================================");
-        System.out.println("result.svinner: " + result.getSvinner().getS() + "      toS: " + result.getSvinner().toString());
+        System.out.println("dirty count: " + sm.getDirtyCount());
+        if (sm.getActivationStrategy() == SessionManager.ActivationStrategy.CLASS_INSTRUMENTATION) {
+            System.out.println("isDirty" + ((ITransparentDirtyDetector) result).___ogm___isDirty());
+            System.out.println("isDirty" + ((ITransparentDirtyDetector) result.svinner).___ogm___isDirty());
 
+            System.out.println("result.svinner: " + result.getSvinner().getS());
+            System.out.println("isDirty" + ((ITransparentDirtyDetector) result).___ogm___isDirty());
+
+            System.out.println("dirty count: " + sm.getDirtyCount());
+            System.out.println("isDirty" + ((ITransparentDirtyDetector) result).___ogm___isDirty());
+        }
+        System.out.println("      toS: " + result.getSvinner().toString());
+        System.out.println("dirty count: " + sm.getDirtyCount());
         // recuperar el objeto en otra instancia
         String rid = ((IObjectProxy) result).___getRid();
 
+        assertEquals(0, sm.getDirtyCount());
         System.out.println("============================================================================");
         System.out.println("RID: " + rid);
         System.out.println("============================================================================");
@@ -641,8 +670,12 @@ public class SessionManagerTest {
         System.out.println("segundo commit finalizado ----------------------------------------------------------\n");
 
         SimpleVertexEx retrieved = sm.get(SimpleVertexEx.class, rid);
-        System.out.println("retrieved: " + retrieved + " : " + retrieved.getOhmSVE());
+        System.out.println("1 ----------");
+//        System.out.println("retrieved: " + retrieved + " : " + retrieved.getOhmSVE());
+        System.out.println("retrieved: " + retrieved + " : ");
+        System.out.println("2 ----------");
         System.out.println("stored: " + stored + " : " + stored.getOhmSVE() + "\n\n");
+        System.out.println("3 ----------");
         int iretSize = retrieved.getOhmSVE().size();
         int istoredSize = stored.getOhmSVE().size();
         assertEquals(iretSize, istoredSize);
@@ -1015,15 +1048,18 @@ public class SessionManagerTest {
         this.sm.getGraphdb().command(new OCommandSQL("delete vertex SSimpleVertex")).execute();
 
         // crear los grupos y los usuarios.
+        System.out.println("\n\n\nCreando los grupos ----------------------------------");
         GroupSID gna = new GroupSID("gna", "gna");
         GroupSID gr = new GroupSID("gr", "gr");
         GroupSID gw = new GroupSID("gw", "gw");
+        System.out.println("\n\n\nGuardando los grupos ----------------------------------");
 
         GroupSID sgna = this.sm.store(gna);
         GroupSID sgr = this.sm.store(gr);
         GroupSID sgw = this.sm.store(gw);
+        System.out.println("\n\n\nIniciando commit de grupos.............................");
         this.sm.commit();
-
+        System.out.println("fin de grupos -----------------------------------------------\n\n\n");
         UserSID una = new UserSID("una", "una");
         UserSID ur = new UserSID("ur", "ur");
         UserSID uw = new UserSID("uw", "uw");
@@ -1250,26 +1286,26 @@ public class SessionManagerTest {
             sm.rollback();
             System.out.println("6. Finalizado!");
         }
-        System.out.println("7. Objetos marcados: "+sm.getDirtyCount());
-        
+        System.out.println("7. Objetos marcados: " + sm.getDirtyCount());
+
         System.out.println("8. Probando sobre un objeto existente ==============");
         // probar el error sobre un objeto que ya está administrado por el ogm.
-        System.out.println("UUIDs Exitente: "+uuidExitente);
+        System.out.println("UUIDs Exitente: " + uuidExitente);
         SimpleVertexEx dup2 = new SimpleVertexEx();
-        System.out.println("UUIDs Nuevo   : "+dup2.uuid);
-        
+        System.out.println("UUIDs Nuevo   : " + dup2.uuid);
+
         SimpleVertexEx sDup2 = sm.store(dup2);
         String currentUUID = sDup2.getUuid();
-        String rid = ((IObjectProxy)sDup2).___getRid();
-        
-        System.out.println("RID: "+rid);
-        System.out.println("current UUID: "+currentUUID);
-        System.out.println("Es válido: "+((IObjectProxy)sDup2).___isValid());
-        System.out.println("9. Objetos marcados: "+sm.getDirtyCount());
+        String rid = ((IObjectProxy) sDup2).___getRid();
+
+        System.out.println("RID: " + rid);
+        System.out.println("current UUID: " + currentUUID);
+        System.out.println("Es válido: " + ((IObjectProxy) sDup2).___isValid());
+        System.out.println("9. Objetos marcados: " + sm.getDirtyCount());
         System.out.println("10. haciendo commit");
         sm.commit();
-        System.out.println("current UUID: "+sDup2.getUuid());
-        
+        System.out.println("current UUID: " + sDup2.getUuid());
+
         System.out.println("11. cambiando a un uuid existente");
         sDup2.setUuid(uuidExitente);
         // intentar almacenar
@@ -1281,7 +1317,7 @@ public class SessionManagerTest {
             System.out.println("14. invocando a rollback...");
             sm.rollback();
         }
-        System.out.println(currentUUID + " =<>= "+sDup2.getUuid());
+        System.out.println(currentUUID + " =<>= " + sDup2.getUuid());
         assertEquals(currentUUID, sDup2.getUuid());
         System.out.println("15. Finalizado!");
     }

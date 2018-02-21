@@ -71,6 +71,14 @@ dependencies {
     
     compile("com.orientechnologies:orientdb-graphdb:2.2.29")
     
+    // https://mvnrepository.com/artifact/org.objenesis/objenesis
+    compile group: 'org.objenesis', name: 'objenesis', version: '2.6'
+    
+    compile "com.sun:tools:1.8.0"
+    
+    // https://mvnrepository.com/artifact/com.ea.agentloader/ea-agent-loader
+    compile group: 'com.ea.agentloader', name: 'ea-agent-loader', version: '1.0.3'
+    
     //compile("com.arshadow:UtilityLib:1.0")
     testCompile("junit:junit:[4,)")
     
@@ -95,6 +103,36 @@ test {
         //        org.gradle.api.tasks.testing.logging.TestLogEvent.STANDARD_ERROR,
     }
 }
+
+jar {
+    manifest {
+        attributes(
+      'Class-Path': configurations.compile.collect { it.getName() }.join(' '),
+      'Premain-Class':'net.odbogm.agent.TransparentDirtyDetectorAgent',
+      'Agent-Class':'net.odbogm.agent.TransparentDirtyDetectorAgent',
+      'Can-Redefine-Classes':true,
+      'Can-Retransform-Classes':true
+        )
+    }
+}
+
+
+//create a single Jar with all dependencies
+task fatJar(type: Jar) {
+    manifest {
+        attributes(
+      'Class-Path': configurations.compile.collect { it.getName() }.join(' '),
+      'Premain-Class':'net.odbogm.agent.TransparentDirtyDetectorAgent',
+      'Agent-Class':'net.odbogm.agent.TransparentDirtyDetectorAgent',
+      'Can-Redefine-Classes':true,
+      'Can-Retransform-Classes':true
+        )
+    }
+    baseName = project.name + '-all'
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
+}
+
 
 // de acuerdo a la guía de 
 // http://central.sonatype.org/pages/gradle.html

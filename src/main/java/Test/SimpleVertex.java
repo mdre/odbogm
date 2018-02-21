@@ -9,12 +9,14 @@ package Test;
 import java.util.Date;
 import net.odbogm.annotations.Ignore;
 import java.util.logging.Logger;
+import net.odbogm.annotations.Audit;
 import net.odbogm.security.SObject;
 
 /**
  *
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
+@Audit(log = Audit.AuditType.DELETE)
 public class SimpleVertex {
     @Ignore
     private final static Logger LOGGER = Logger.getLogger(SimpleVertex.class .getName());

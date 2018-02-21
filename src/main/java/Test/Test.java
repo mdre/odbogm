@@ -25,6 +25,7 @@ import net.odbogm.DbManager;
 import net.odbogm.security.AccessRight;
 import net.odbogm.security.GroupSID;
 import net.odbogm.security.UserSID;
+import net.odbogm.utils.DateHelper;
 import net.odbogm.utils.ReflectionUtils;
 
 /**
@@ -54,27 +55,31 @@ public class Test {
 //        testDbManager();
 //        lab();
 //        testQuery();
-//        store();
+        store();
 //          testDelete();
 //        testEmbeddded();
 //        setUpGroups();
 //        testSObjects();
 //        testLongQuery();
 //        testMultiTran();
-        testRollbackEmbedded();
+//        testRollbackEmbedded();
 //        testRollbackSVE();
+//        testTimeLoad();
+//        testComplexHashMap();
+//        testSimpleQuery();
         sm.shutdown();
     }
 
     public void initSession() {
         System.out.println("Iniciando comunicación con la base....");
         long millis = System.currentTimeMillis();
-        sm = new SessionManager("remote:localhost/Test", "root", "toor");
+        sm = new SessionManager("remote:localhost/Test", "root", "toor")
+                    .setActivationStrategy(SessionManager.ActivationStrategy.CLASS_INSTRUMENTATION, "Test");
 //        sm = new SessionManager("remote:localhost/quiencotiza", "root", "toor");
-        System.out.println("" + (System.currentTimeMillis() - millis));
+        System.out.println("Tiempo de inicio: " + (System.currentTimeMillis() - millis));
         System.out.println("comunicación inicializada!");
         sm.begin();
-        System.out.println("" + (System.currentTimeMillis() - millis));
+//        System.out.println("" + (System.currentTimeMillis() - millis));
 //        sm.setAuditOnUser("userAuditado");
     }
 
@@ -103,6 +108,105 @@ public class Test {
 
     }
 
+    public void testSimpleQuery() {
+        System.out.println("\n\n\n");
+        System.out.println("***************************************************************");
+        System.out.println("Query basado en la clase: verificar que devuelve la clase y los");
+        System.out.println("subtipos de la misma");
+        System.out.println("***************************************************************");
+        SimpleVertexEx sve = new SimpleVertexEx();
+        sve.initEnum();
+        sve.initInner();
+        sve.initArrayList();
+        sve.initHashMap();
+
+        System.out.println("guardado del objeto limpio.");
+        SimpleVertexEx stored = sm.store(sve);
+        sm.commit();
+
+        System.out.println("consultando por SimpleVertex....");
+        List list = sm.query(SimpleVertex.class);
+        int isv = 0;
+        int isve = 0;
+        for (Object object : list) {
+            if (object instanceof SimpleVertexEx) {
+                isve++;
+            } else if (object instanceof SimpleVertex) {
+                isv++;
+            } else {
+                System.out.println("ERROR:  " + object.getClass() + " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+            }
+
+            //System.out.println("Query: "+object.getClass()+" - toString: "+object.getClass().getSimpleName());
+        }
+        System.out.println("sv: "+isv);
+        System.out.println("SVE: "+isve );
+
+        System.out.println("***************************************************************");
+        System.out.println("Fin SimpleQuery");
+        System.out.println("***************************************************************");
+    }
+    
+    
+    
+    public void testComplexHashMap() {
+        System.out.println("\n\n\n");
+        System.out.println("***************************************************************");
+        System.out.println("Verificar el comportamiento de los HashMap con objetos como key");
+        System.out.println("***************************************************************");
+        SimpleVertexEx sve = new SimpleVertexEx();
+
+        System.out.println("guardado del objeto limpio.");
+        SimpleVertexEx stored = sm.store(sve);
+        sm.commit();
+
+        String rid = ((IObjectProxy) stored).___getRid();
+
+        System.out.println("primer commit finalizado. RID: " + rid + " ------------------------------------------------------------");
+
+        //assertNull(stored.getOhmSVE());
+
+        System.out.println("Agrego un HM nuevo");
+        HashMap<EdgeAttrib, SimpleVertexEx> ohm = new HashMap<>();
+        stored.setOhmSVE(ohm);
+        ohm.put(new EdgeAttrib("nota 1", DateHelper.getCurrentDate()), new SimpleVertexEx());
+        ohm.put(new EdgeAttrib("nota 2", DateHelper.getCurrentDate()), new SimpleVertexEx());
+
+        System.out.println("\ninicio segundo commit ----------------------------------------------------------");
+        sm.commit();
+        System.out.println("segundo commit finalizado ----------------------------------------------------------\n");
+
+        SimpleVertexEx retrieved = sm.get(SimpleVertexEx.class, rid);
+        System.out.println("1 ----------");
+        System.out.println("retrieved: " + retrieved + " : " + retrieved.getOhmSVE());
+        System.out.println("2 ----------");
+        System.out.println("stored: " + stored + " : " + stored.getOhmSVE() + "\n\n");
+        System.out.println("3 ----------");
+        int iretSize = retrieved.getOhmSVE().size();
+        int istoredSize = stored.getOhmSVE().size();
+        assertEquals(iretSize, istoredSize);
+
+//        SimpleVertexEx ohmsveGetted = retrieved.getOhmSVE().get("key1");
+//        System.out.println("key1: "+(ohmsveGetted==null?" NULL!":"Ok."));
+//        assertNotNull(ohmsveGetted);
+//        
+        System.out.println("\nagregamos un nuevo objeto al hashmap ya inicializado");
+        stored.getOhmSVE().put(new EdgeAttrib("nota 3", DateHelper.getCurrentDate()), new SimpleVertexEx());
+        System.out.println("\ninicio tercer commit ----------------------------------------------------------");
+        sm.commit();
+        System.out.println("tercer commit ----------------------------------------------------------\n");
+
+        retrieved = sm.get(SimpleVertexEx.class, rid);
+
+        System.out.println("retrieved: " + retrieved + " : " + retrieved.getOhmSVE());
+        System.out.println("stored: " + stored + " : " + stored.getOhmSVE());
+
+        assertEquals(retrieved.getOhmSVE().size(), stored.getOhmSVE().size());
+
+    }
+    
+    
+    
     public void testEmbeddded() {
         SimpleVertexWithEmbedded svemb = new SimpleVertexWithEmbedded();
         SimpleVertexWithEmbedded result = this.sm.store(svemb);
@@ -160,15 +264,15 @@ public class Test {
 
         this.sm.commit();
 
-        una.addGroup(sgna);
-        una.addGroup(sgr);
-
-        ur.addGroup(sgr);
-
-        uw.addGroup(sgw);
-
-        urw.addGroup(sgw);
-        urw.addGroup(sgr);
+//        una.addGroup(sgna);
+//        una.addGroup(sgr);
+//
+//        ur.addGroup(sgr);
+//
+//        uw.addGroup(sgw);
+//
+//        urw.addGroup(sgw);
+//        urw.addGroup(sgr);
 
         this.sm.commit();
     }
@@ -330,6 +434,12 @@ public class Test {
 
     public void store() {
         try {
+            System.out.println("*******************************");
+            System.out.println("     Test store: agrego uno    ");
+            System.out.println("*******************************");
+            
+            GroupSID gs = new GroupSID();
+            System.out.println("---------------------------------------------------------");
             // usuado para hacer una pausa.
             BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
             LOGGER.log(Level.FINER, "Test finer");
@@ -346,9 +456,7 @@ public class Test {
             svex.initEnum();
 
             // Test store
-            System.out.println("*******************************");
-            System.out.println("     Test store: agrego uno    ");
-            System.out.println("*******************************");
+            System.out.println("iniciando STORE -------");
             svex = sm.store(svex);
             System.out.println("idNew: " + ((IObjectProxy) svex).___getVertex().getIdentity().isNew());
             System.out.println("idTemporary: " + ((IObjectProxy) svex).___getVertex().getIdentity().isTemporary());
@@ -368,7 +476,7 @@ public class Test {
             sv = sm.get(SimpleVertexEx.class, testRID);
 
             //---------------- pausar
-            System.out.print("Enter String");
+            System.out.print("1- Enter String");
             String s = br.readLine();
             System.out.println("continuando...");
             //-----------------------
@@ -390,7 +498,7 @@ public class Test {
             }
 
             //---------------- pausar
-            System.out.print("Enter String");
+            System.out.print("2- Enter String");
             s = br.readLine();
             System.out.println("continuando...");
             //-----------------------
@@ -794,5 +902,21 @@ public class Test {
         
         System.out.println(""+sve.alSV.size()+ " =|= "+stored.alSV.size());
         assertEquals(sve.alSV.size(), stored.alSV.size());
+    }
+
+    private void testTimeLoad() {
+        long initTime = System.currentTimeMillis();
+        List<SimpleVertexEx> svexs = sm.query(SimpleVertexEx.class);
+        long endTime = System.currentTimeMillis();
+        
+        System.out.println("Tiempo: "+(endTime - initTime) + " - Size: "+svexs.size()+"\n\n");
+        
+        // forzar la instanciación: 
+        initTime = System.currentTimeMillis();
+        for (SimpleVertexEx svex : svexs) {
+            String trash = svex.getS()+", "+svex.getI()+", "+svex.getF()+", "+svex.getFecha();
+        }
+        endTime = System.currentTimeMillis();
+        System.out.println("Tiempo: "+(endTime - initTime) + "\n\n");
     }
 }

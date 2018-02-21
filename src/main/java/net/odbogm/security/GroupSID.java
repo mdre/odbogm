@@ -12,6 +12,10 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
+/**
+ *
+ * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
+ */
 public class GroupSID extends SID {
     private final static Logger LOGGER = Logger.getLogger(GroupSID.class .getName());
     static {
@@ -23,7 +27,6 @@ public class GroupSID extends SID {
     public GroupSID() {
         super();
     }
-
     
     public GroupSID(String name, String uuid) {
         super(name, uuid);

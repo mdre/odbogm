@@ -18,7 +18,6 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import com.tinkerpop.blueprints.impls.orient.OrientEdge;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import net.odbogm.exceptions.DuplicateClassDefinition;
@@ -28,6 +27,7 @@ import net.odbogm.proxy.ILazyCollectionCalls;
 import net.odbogm.proxy.ILazyMapCalls;
 import net.odbogm.proxy.IObjectProxy;
 import net.odbogm.proxy.ObjectProxyFactory;
+import org.objenesis.ObjenesisStd;
 
 /**
  *
@@ -45,7 +45,15 @@ public class ObjectMapper {
     
 //    private SessionManager sessionManager;
     private ClassCache classCache;
-
+    
+    // usado para no llamar a Class.forName para clases ya cargadas.
+    private HashMap<String, Class> classLoaded = new HashMap<>();
+    
+    // Clase encargada de la instanciación de los objetos.
+    // http://objenesis.org/
+    private ObjenesisStd objenesis = new ObjenesisStd();
+    
+    
     public ObjectMapper() {
 //        LOGGER.setLevel(Level.INFO);
 
@@ -254,7 +262,6 @@ public class ObjectMapper {
                     // validar que sea un super de la clase del vértice
                     javaClass = javaClass.replaceAll("[\'\"]", "");
                     toHydrate = Class.forName(javaClass);
-
                 } catch (ClassNotFoundException ex) {
                     Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
                 }
@@ -267,14 +274,14 @@ public class ObjectMapper {
 
         // crear un proxy sobre el objeto y devolverlo
         Object oproxied = ObjectProxyFactory.create(toHydrate, v, t);
-
+        
         LOGGER.log(Level.FINER, "**************************************************");
         LOGGER.log(Level.FINER, "Hydratando: {0} - Class: {1}", new Object[]{c.getName(), toHydrate});
         LOGGER.log(Level.FINER, "**************************************************");
         // recuperar la definición de la clase desde el caché
         ClassDef classdef = classCache.get(toHydrate);
         Map<String, Class<?>> fieldmap = classdef.fields;
-
+        
         Field f;
         for (Map.Entry<String, Class<?>> entry : fieldmap.entrySet()) {
             String prop = entry.getKey();

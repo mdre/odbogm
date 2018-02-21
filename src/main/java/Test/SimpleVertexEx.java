@@ -45,7 +45,7 @@ public class SimpleVertexEx extends SimpleVertex {
     }
     
     @RemoveOrphan
-    private SimpleVertex svinner; 
+    public SimpleVertex svinner; 
     
     public ArrayList<String> alString;
     

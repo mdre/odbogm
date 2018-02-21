@@ -61,6 +61,15 @@ public interface Actions {
          * @return resutado de la ejecución de la sentencia SQL
          */
         public <T> T query(String sql);
+        
+        /**
+         * Realiza un query direto a la base de datos y devuelve el resultado directamente sin procesarlo.
+         *
+         * @param <T> clase a devolver
+         * @param sql sentencia a ejecutar
+         * @return resutado de la ejecución de la sentencia SQL
+         */
+        public <T> T query(String sql, Object... param);
 
         /**
          * Ejecuta un comando que devuelve un número. El valor devuelto será el primero que se encuentre en la lista de resultado.

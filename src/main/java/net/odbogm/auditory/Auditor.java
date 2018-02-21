@@ -31,7 +31,7 @@ public class Auditor implements IAuditor {
     static {
         LOGGER.setLevel(LogginProperties.Auditor);
     }
-
+    
     private Transaction transaction;
     private String auditUser;
     private ArrayList<LogData> logdata = new ArrayList<>();
@@ -64,12 +64,12 @@ public class Auditor implements IAuditor {
      * @param data objeto a loguear con un toString
      */
     @Override
-    public void auditLog(IObjectProxy o, int at, String label, Object data) {
+    public synchronized void auditLog(IObjectProxy o, int at, String label, Object data) {
         // guardar log de auditoría si corresponde.
         if (o.___getBaseClass().isAnnotationPresent(Audit.class)) {
             int logVal = o.___getBaseClass().getAnnotation(Audit.class).log();
             if ((logVal & at) > 0) {
-                this.logdata.add(new LogData(o, at, label, data));
+                this.logdata.add(new LogData(o.___getRid(), at, label, data));
                 LOGGER.log(Level.FINER, "objeto auditado");
             } else {
                 LOGGER.log(Level.FINER, "No auditado por no corresponder");
@@ -87,7 +87,7 @@ public class Auditor implements IAuditor {
         for (LogData logData : logdata) {
             Map<String, Object> ologData = new HashMap<>();
             ologData.put("transactionID",ovLogID);
-            ologData.put("rid", logData.source.___getRid());
+            ologData.put("rid", logData.rid);
             ologData.put("timestamp", DateHelper.getCurrentDateTime());
             ologData.put("user", this.auditUser);
             ologData.put("action", logData.auditType);
@@ -104,13 +104,13 @@ public class Auditor implements IAuditor {
 }
 
 class LogData {
-    public IObjectProxy source;
+    public String rid;
     public int auditType;
     public String label;
     public Object data;
 
-    public LogData(IObjectProxy source, int auditType, String label, Object data) {
-        this.source = source;
+    public LogData(String rid, int auditType, String label, Object data) {
+        this.rid = rid;
         this.auditType = auditType;
         this.label = label;
         this.data = data;

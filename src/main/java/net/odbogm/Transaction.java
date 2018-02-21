@@ -693,6 +693,12 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
 
             if (objectCache.get(rid) != null) {
                 ret = objectCache.get(rid).get();
+                // si fue recuperado del caché, determinar si se ha modificado.
+                // si no fue modificado, hacer un reload para actualizar con la última 
+                // versión de la base de datos.
+                if (!((IObjectProxy)ret).___isDirty()) {
+                    ((IObjectProxy)ret).___reload();
+                }
             }
 
             // si ret == null, recuperar el objeto desde la base, en caso contrario devolver el objeto desde el caché
@@ -748,6 +754,14 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
             if (objectCache.get(rid).get() != null) {
                 LOGGER.log(Level.FINER, "Objeto Recupeardo del caché.");
                 o = (T) objectCache.get(rid).get();
+                
+                // si fue recuperado del caché, determinar si se ha modificado.
+                // si no fue modificado, hacer un reload para actualizar con la última 
+                // versión de la base de datos.
+                if (!((IObjectProxy)o).___isDirty()) {
+                    ((IObjectProxy)o).___reload();
+                }
+                
             } else {
                 objectCache.remove(rid);
             }
@@ -845,6 +859,25 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
 
         OCommandSQL osql = new OCommandSQL(sql);
         return this.orientdbTransact.command(osql).execute();
+    }
+
+    /**
+     * Realiza un query direto a la base de datos y devuelve el resultado directamente sin procesarlo.
+     *
+     * @param <T> clase a devolver
+     * @param sql sentencia a ejecutar
+     * @param param parámetros a utilizar en el query
+     * @return resutado de la ejecución de la sentencia SQL
+     */
+    @Override
+    public <T> T query(String sql, Object... param) {
+        if (this.orientdbTransact == null) {
+            throw new NoOpenTx();
+        }
+        flush();
+
+        OCommandSQL osql = new OCommandSQL(sql);
+        return this.orientdbTransact.command(osql).execute(param);
     }
 
     /**
@@ -993,7 +1026,7 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
      * @param label etiqueta de referencia
      * @param data objeto a loguear con un toString
      */
-    public void auditLog(IObjectProxy o, int at, String label, Object data) {
+    public synchronized void auditLog(IObjectProxy o, int at, String label, Object data) {
         if (this.isAuditing()) {
             auditor.auditLog(o, at, label, data);
         }

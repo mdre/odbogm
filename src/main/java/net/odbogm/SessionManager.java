@@ -5,50 +5,29 @@
  */
 package net.odbogm;
 
-import net.odbogm.annotations.CascadeDelete;
 import net.odbogm.exceptions.NoOpenTx;
 import net.odbogm.exceptions.IncorrectRIDField;
 import net.odbogm.exceptions.ReferentialIntegrityViolation;
 import net.odbogm.exceptions.UnknownObject;
-import net.odbogm.cache.ClassDef;
-import net.odbogm.exceptions.CollectionNotSupported;
 import net.odbogm.exceptions.UnknownRID;
 import net.odbogm.exceptions.UnmanagedObject;
 import net.odbogm.proxy.IObjectProxy;
-import net.odbogm.proxy.ObjectProxyFactory;
-import net.odbogm.utils.ReflectionUtils;
 import com.orientechnologies.orient.core.exception.OConcurrentModificationException;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
-import com.orientechnologies.orient.core.record.impl.ODocument;
-import com.orientechnologies.orient.core.sql.OCommandSQL;
-import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery;
-import com.tinkerpop.blueprints.Direction;
-import com.tinkerpop.blueprints.Vertex;
-import com.tinkerpop.blueprints.impls.orient.OrientConfigurableGraph;
-import com.tinkerpop.blueprints.impls.orient.OrientDynaElementIterable;
 import com.tinkerpop.blueprints.impls.orient.OrientEdge;
 import com.tinkerpop.blueprints.impls.orient.OrientGraph;
 import com.tinkerpop.blueprints.impls.orient.OrientGraphFactory;
-import com.tinkerpop.blueprints.impls.orient.OrientVertex;
 import java.lang.ref.WeakReference;
-import java.lang.reflect.Field;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BiConsumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import net.odbogm.annotations.Audit;
+import net.odbogm.agent.TransparentDirtyDetectorAgent;
 import net.odbogm.auditory.Auditor;
 import net.odbogm.exceptions.ClassToVertexNotFound;
 import net.odbogm.exceptions.NoUserLoggedIn;
 import net.odbogm.exceptions.VertexJavaClassNotFound;
-import net.odbogm.security.SObject;
 import net.odbogm.security.UserSID;
-import net.odbogm.utils.ThreadHelper;
 
 /**
  *
@@ -91,6 +70,13 @@ public class SessionManager implements Actions.Store, Actions.Get {
 //
 //    int newObjectCount = 0;
 
+    public enum ActivationStrategy {
+        ONMETHODACCESS,             // cada vez que se invoca a un método se verifica si hay cambio.
+        CLASS_INSTRUMENTATION        // modifica con un agente la clase para agregar la detección de escritura
+    }
+    
+    private ActivationStrategy activationStrategy = ActivationStrategy.ONMETHODACCESS;
+    
     private List<WeakReference<Transaction>> openTransactionList = new ArrayList<>();
     private Transaction publicTransaction; 
     
@@ -100,6 +86,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
     // usuario logueado sobre el que se ejecutan los controles de seguridad si corresponden
     private UserSID loggedInUser;
 
+    
     public SessionManager(String url, String user, String passwd) {
         this.init(url, user, passwd, 1, 10);
     }
@@ -119,9 +106,29 @@ public class SessionManager implements Actions.Store, Actions.Get {
 //        edges = new HashMap<>();
 //        this.factory.setThreadMode(OrientConfigurableGraph.THREAD_MODE.ALWAYS_AUTOSET);
         this.objectMapper = new ObjectMapper();
-
+        
     }
 
+    /**
+     * Establece la estrategia a utilizar para detectar los cambios en los objetos.
+     * ONMETHODACCESS: cada vez que se invoca a un método se verifica si hay cambio.
+ ONCOMMIT:       cuando se invoca a un método se marca el objeto para ser verificado en el commit
+     * 
+     * @param as
+     * @return 
+     */
+    public SessionManager setActivationStrategy(ActivationStrategy as, String... pkgs) {
+        this.activationStrategy = as;
+        if (this.activationStrategy == ActivationStrategy.CLASS_INSTRUMENTATION) {
+            TransparentDirtyDetectorAgent.initialize(pkgs);
+        }
+        return this;
+    }
+    
+    public ActivationStrategy getActivationStrategy() {
+        return this.activationStrategy;
+    }
+    
     /**
      * Retorna el factory inicializado por el SessionManager
      * @return 
@@ -488,4 +495,5 @@ public class SessionManager implements Actions.Store, Actions.Get {
     public UserSID getLoggedInUser() {
         return this.loggedInUser;
     }
+    
 }

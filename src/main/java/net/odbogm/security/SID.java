@@ -39,7 +39,7 @@ public abstract class SID {
         return uuid;
     }
 
-    public final SID setId(String uuid) {
+    public final SID setUUID(String uuid) {
         this.uuid = uuid;
         return this;
     }

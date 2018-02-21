@@ -31,10 +31,12 @@ import java.util.logging.Logger;
 import net.odbogm.LogginProperties;
 import net.odbogm.ObjectMapper;
 import net.odbogm.Transaction;
+import net.odbogm.agent.ITransparentDirtyDetector;
 import net.odbogm.annotations.Audit.AuditType;
 import net.odbogm.exceptions.DuplicateLink;
 import net.odbogm.exceptions.InvalidObjectReference;
 import net.odbogm.exceptions.ObjectMarkedAsDeleted;
+import net.odbogm.utils.ThreadHelper;
 import net.odbogm.utils.VertexUtils;
 import net.sf.cglib.proxy.MethodInterceptor;
 import net.sf.cglib.proxy.MethodProxy;
@@ -56,11 +58,11 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     // Vértice desde el que se obtiene el objeto.
     // private OrientVertex baseVertex;
     private OrientElement ___baseElement;
-    
+
     // permite marcar el objeto como inválida en caso que se haga un rollback 
     // sobre un objeto que nunca se persistió.
     private boolean ___isValidObject = true;
-    
+
     private Transaction ___transaction;
     private boolean ___dirty = false;
     // determina si ya se han cargado los links o no
@@ -68,7 +70,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     // determina si el objeto ya ha sido completamente inicializado.
     // sirve para impedir que se invoquen a los métodos durante el setup inicial del construtor.
     private boolean ___objectReady = false;
-    
+
     // si esta marca está activa indica que el objeto ha sido eliminado de la base de datos 
     // y toda comunicación con el mismo debe ser abortada
     private boolean ___deletedMark = false;
@@ -86,9 +88,8 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         this.___baseElement = e;
         this.___transaction = t;
     }
-    
-//    
 
+//    
     // ByteBuddy inteceptor
     // this method will be called each time      
     // when the object proxy calls any of its methods
@@ -179,7 +180,6 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 //        // return the result         
 //        return res;
 //    }
-
     // GCLib interceptor 
     @Override
     public Object intercept(Object o,
@@ -188,12 +188,12 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             MethodProxy methodProxy) throws Throwable {
         // response object
         Object res = null;
-        
+
         if (!this.___isValidObject) {
             LOGGER.log(Level.FINER, "El objeto está marcado como inválido!!!");
             throw new InvalidObjectReference();
         }
-            
+
         if (this.___baseElement.getIdentity().isNew()) {
             LOGGER.log(Level.FINER, "RID nuevo. No procesar porque el store preparó todo y no hay nada que recuperar de la base.");
             this.___loadLazyLinks = false;
@@ -257,6 +257,11 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                         this.___commit();
                     }
                     break;
+                case "___reload":
+                    if (this.___objectReady) {
+                        this.___reload();
+                    }
+                    break;
                 case "___rollback":
                     if (this.___objectReady) {
                         this.___rollback();
@@ -265,7 +270,20 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                 case "___setDeletedMark":
                     this.___setDeletedMark();
                     break;
+
+                case "___ogm___setDirty":
+                    res = methodProxy.invokeSuper(o, args);
+                    break;
+                case "___ogm___isDirty":
+//                    LOGGER.log(Level.INFO, "Method: sup.name: "+methodProxy.getSuperName()+
+//                                                       " - sig: "+methodProxy.getSignature()+
+//                                                       " - sup idx: "+methodProxy.getSuperIndex()
+//                            );
+                    res = methodProxy.invokeSuper(o, args);
+
+                    break;
                 default:
+
                     // invoke the method on the real object with the given params
 //                res = methodProxy.invoke(realObj, args);
                     if (this.___objectReady) {
@@ -282,12 +300,25 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                             res = this.___baseElement.getId().toString();
                         }
                     } else {
-                            res = methodProxy.invokeSuper(o, args);
+                        LOGGER.log(Level.FINEST, "invocando: " + method.getName());
+                        res = methodProxy.invokeSuper(o, args);
                     }
-                    
-                    // verificar si hay diferencias entre los objetos.
+
+                    // verificar si hay diferencias entre los objetos dependiendo de la estrategia seleccionada.
                     if (this.___objectReady) {
-                        this.commitObjectChange();
+                        switch (this.___transaction.getSessionManager().getActivationStrategy()) {
+                            case ONMETHODACCESS:
+                                this.commitObjectChange();
+                                break;
+                            case CLASS_INSTRUMENTATION:
+                                // si se está usando la instrumentación de clase, directamente verificar en el objeto
+                                // cual es su estado.
+                                LOGGER.log(Level.FINER, "o: "+o.getClass().getName()+" ITrans: "+(o instanceof ITransparentDirtyDetector));
+                                if (((ITransparentDirtyDetector) o).___ogm___isDirty()) {
+                                    LOGGER.log(Level.FINEST, "objeto {0} marcado como dirty por ASM. Agregarlo a la lista de pendientes.", o.getClass().getName());
+                                    this.___setDirty();
+                                }
+                        }
                     }
 
                     break;
@@ -431,9 +462,9 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                            mapeado 
                              */
                             this.___transaction.addToTransactionCache(this.___getRid(), ___proxyObject);
-                            
+
                             // si es una interface llamar a get solo con el RID.
-                            Object innerO = fc.isInterface()?this.___transaction.get(vertice.getId().toString()):this.___transaction.get(fc, vertice.getId().toString());
+                            Object innerO = fc.isInterface() ? this.___transaction.get(vertice.getId().toString()) : this.___transaction.get(fc, vertice.getId().toString());
                             LOGGER.log(Level.FINER, "Inner object " + field + ": " + (innerO == null ? "NULL" : "" + innerO.toString()) + "  FC: " + fc.getSimpleName() + "   innerO.class: " + innerO.getClass().getSimpleName());
                             fLink.set(this.___proxyObject, fc.cast(innerO));
                             duplicatedLinkGuard = true;
@@ -476,7 +507,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             // obtener un mapa actualizado del objeto contenido
             ObjectStruct oStruct = this.___transaction.getObjectMapper().objectStruct(this.___proxyObject);
             Map<String, Object> omap = oStruct.fields;
-            
+
             // si los mapas no son iguales, entonces eso implica que el objeto cambió
             boolean eqMaps = true;
             for (Map.Entry<String, Object> entry : omap.entrySet()) {
@@ -484,7 +515,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                 Object value = entry.getValue();
 
                 Object vval = vmap.get(key);
-                LOGGER.log(Level.FINER, "value: "+value+" =<>= "+vval);
+                LOGGER.log(Level.FINER, "value: " + value + " =<>= " + vval);
                 if (!value.equals(vval)) {
                     eqMaps = false;
                     break;
@@ -515,7 +546,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                        deben ser creados.
                      */
                     OrientVertex ov = (OrientVertex) this.___baseElement;
-                    
+
                     // si se han cargado los links, controlarlos. En caso contrario ignorar
                     if (!this.___loadLazyLinks) {
                         for (Map.Entry<String, Class<?>> link : cDef.links.entrySet()) {
@@ -588,7 +619,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                     }
                                 } else {
                                     Object innerO = oStruct.linkLists.get(field);
-                                    LOGGER.log(Level.FINER, field + ": type: " +innerO.getClass() + " instanceof ILazyCalls: " + (innerO instanceof ILazyCalls));
+                                    LOGGER.log(Level.FINER, field + ": type: " + innerO.getClass() + " instanceof ILazyCalls: " + (innerO instanceof ILazyCalls));
                                     // verificar si ya está en el contexto. Si fue creado en forma 
                                     // separada y asociado con el objeto principal, se puede dar el caso
                                     // de que el objeto principal tiene RID y el agregado no.
@@ -616,14 +647,14 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             }
 
         }
-        LOGGER.log(Level.FINER, "fin commitObjectChange. Dirty: "+this.___dirty+"\n\n");
+        LOGGER.log(Level.FINER, "fin commitObjectChange. Dirty: " + this.___dirty + "\n\n");
     }
 
     @Override
     public boolean ___isValid() {
         return ___isValidObject;
     }
-    
+
     @Override
     public boolean ___isDirty() {
         return ___dirty;
@@ -635,23 +666,34 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
      */
     @Override
     public void ___setDirty() {
-        this.___dirty = true;
-        // agregarlo a la lista de dirty para procesarlo luego
-        LOGGER.log(Level.FINER, "Dirty: " + this.___proxyObject);
-        this.___transaction.setAsDirty(this.___proxyObject);
-        LOGGER.log(Level.FINER, "Objeto marcado como dirty! <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
+        if (!this.___dirty) {
+            this.___dirty = true;
+            // agregarlo a la lista de dirty para procesarlo luego
+            LOGGER.log(Level.FINER, "Dirty: " + this.___proxyObject);
+            this.___transaction.setAsDirty(this.___proxyObject);
+            LOGGER.log(Level.FINER, "Objeto marcado como dirty! <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
+            LOGGER.log(Level.FINEST, ThreadHelper.getCurrentStackTrace());
+        }
     }
 
     @Override
     public void ___removeDirtyMark() {
         this.___dirty = false;
+        // verificar la estrategia de activación.
+        // si la estrategia es ONCOMMIT se debe validar primero que existan cambios en los objetos
+        // antes de proceder.
+        if (this.___transaction.getSessionManager().getActivationStrategy() == SessionManager.ActivationStrategy.CLASS_INSTRUMENTATION) {
+            LOGGER.log(Level.FINER, "CLASS_INSTRUMENTATION Strategy.");
+            ((ITransparentDirtyDetector) this.___proxyObject).___ogm___setDirty(false);
+        }
     }
 
     @Override
     public synchronized void ___commit() {
 //        ODatabaseRecordThreadLocal.INSTANCE.set(this.___sm.getGraphdb().getRawGraph());
         LOGGER.log(Level.FINER, "Iniciando ___commit() ....");
-        LOGGER.log(Level.FINER, "valid: "+this.___isValidObject);
+        LOGGER.log(Level.FINER, "valid: " + this.___isValidObject);
+
         if (this.___dirty) {
             this.___transaction.getSessionManager().getGraphdb().getRawGraph().activateOnCurrentThread();
             // asegurarse que está atachado
@@ -766,6 +808,11 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 //                            this.sm.getObjectMapper().setFieldValue(realObj, field, innerO);
                             this.___transaction.getObjectMapper().setFieldValue(this.___proxyObject, field, innerO);
 
+                            // si está activa la instrumentación de clases, desmarcar el objeto como dirty
+                            if (innerO instanceof ITransparentDirtyDetector) {
+                                ((ITransparentDirtyDetector) innerO).___ogm___setDirty(false);
+                            }
+
                             OrientEdge oe = this.___transaction.getSessionManager().getGraphdb().addEdge("class:" + graphRelationName, ov, ((IObjectProxy) innerO).___getVertex(), graphRelationName);
                             if (this.___transaction.getSessionManager().isAuditing()) {
                                 this.___transaction.getSessionManager().auditLog(this, AuditType.WRITE, "ADD LINK: " + graphRelationName, oe);
@@ -816,7 +863,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                 } else {
                                     // se ha asignado una colección original y se debe exportar todo
                                     // this.sm.getObjectMapper().colecctionToLazy(this.realObj, field, ov);
-                                    this.___transaction.getObjectMapper().colecctionToLazy(this.___proxyObject, field, ov,this.___transaction);
+                                    this.___transaction.getObjectMapper().colecctionToLazy(this.___proxyObject, field, ov, this.___transaction);
 
                                     //recuperar la nueva colección
                                     // Collection inter = (Collection) f.get(this.realObj);
@@ -842,6 +889,12 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                             colObject = this.___transaction.store(colObject);
                                             // reemplazar en la colección el objeto por uno administrado
                                             lCol.set(i, colObject);
+
+                                            // si está activa la instrumentación de clases, desmarcar el objeto como dirty
+                                            if (colObject instanceof ITransparentDirtyDetector) {
+                                                ((ITransparentDirtyDetector) colObject).___ogm___setDirty(false);
+                                            }
+
                                         }
 
                                         // vincular el nodo
@@ -920,6 +973,11 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                         LOGGER.log(Level.FINER, "Link Map Object nuevo. Crear un vértice y un link");
                                         linkedO = this.___transaction.store(linkedO);
                                         innerMap.replace(imk, linkedO);
+
+                                        // si está activa la instrumentación de clases, desmarcar el objeto como dirty
+                                        if (linkedO instanceof ITransparentDirtyDetector) {
+                                            ((ITransparentDirtyDetector) linkedO).___ogm___setDirty(false);
+                                        }
                                     }
 
                                     // verificar el estado del objeto en la colección.
@@ -979,7 +1037,8 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                 }
             }
             // quitar la marca de dirty
-            this.___dirty = false;
+            this.___removeDirtyMark();
+//            this.___dirty = false;
         }
         LOGGER.log(Level.FINER, "fin commit ----");
     }
@@ -992,7 +1051,6 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         this.___baseElement.reload();
     }
 
-    
     /**
      * Función de uso interno para remover un eje
      *
@@ -1041,7 +1099,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     public synchronized void ___rollback() {
         LOGGER.log(Level.FINER, "\n\n******************* ROLLBACK *******************\n\n");
         // si es un objeto nuevo
-        LOGGER.log(Level.FINER, "RID: "+this.___baseElement.getIdentity().toString()+" Nueva?: "+this.___baseElement.getIdentity().isNew());
+        LOGGER.log(Level.FINER, "RID: " + this.___baseElement.getIdentity().toString() + " Nueva?: " + this.___baseElement.getIdentity().isNew());
         if (this.___baseElement.getIdentity().isNew()) {
             // invalidar el objeto
             LOGGER.log(Level.FINER, "El objeto aún no se ha persistido en la base. Invalidar");
@@ -1050,8 +1108,8 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         }
         // recargar todo.
         this.___baseElement.reload();
-        
-        LOGGER.log(Level.FINER, "vmap: "+this.___baseElement.getProperties());
+
+        LOGGER.log(Level.FINER, "vmap: " + this.___baseElement.getProperties());
         // restaurar los atributos al estado original.
         ClassDef classdef = this.___transaction.getObjectMapper().getClassDef(___proxyObject);
         Map<String, Class<?>> fieldmap = classdef.fields;
@@ -1071,7 +1129,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
                 boolean acc = f.isAccessible();
                 f.setAccessible(true);
-                
+
 //                if (f.getType().isEnum()) {
 //                    LOGGER.log(Level.FINER, "Enum field: " + f.getName() + " type: " + f.getType() + "  value: " + value + "   Enum val: " + Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString()));
 ////                    f.set(oproxied, Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString()));
@@ -1082,18 +1140,18 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                     // se debe hacer una copia del la lista para no quede referenciando al objeto original
                     // dado que en la asignación solo se pasa la referencia del objeto.
                     LOGGER.log(Level.FINER, "Lista detectada: realizando una copia del contenido...");
-                    f.set(___proxyObject, new ArrayListEmbeddedProxy((IObjectProxy)___proxyObject,(List)value));
+                    f.set(___proxyObject, new ArrayListEmbeddedProxy((IObjectProxy) ___proxyObject, (List) value));
                 } else if (f.getType().isAssignableFrom(Map.class)) {
                     // se debe hacer una copia del la lista para no quede referenciando al objeto original
                     // dado que en la asignación solo se pasa la referencia del objeto.
                     LOGGER.log(Level.FINER, "Map detectado: realizando una copia del contenido...");
                     // FIXME: Ojo que se hace solo un shalow copy!! no se está conando la clave y el value
-                    f.set(___proxyObject, new HashMapEmbeddedProxy((IObjectProxy)___proxyObject,(Map)value));
-                } else{
+                    f.set(___proxyObject, new HashMapEmbeddedProxy((IObjectProxy) ___proxyObject, (Map) value));
+                } else {
                     f.set(___proxyObject, value);
                 }
                 LOGGER.log(Level.FINER, "hidratado campo: " + prop + "=" + value);
-                f.setAccessible(acc); 
+                f.setAccessible(acc);
             } catch (NoSuchFieldException ex) {
                 Logger.getLogger(ObjectProxy.class.getName()).log(Level.SEVERE, null, ex);
             } catch (IllegalArgumentException ex) {
@@ -1136,7 +1194,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                 Logger.getLogger(ObjectProxy.class.getName()).log(Level.SEVERE, null, ex);
             }
         }
-        
+
         LOGGER.log(Level.FINER, "Revirtiendo los Links......... ");
         // hidratar los atributos @links
         // procesar todos los links
@@ -1190,7 +1248,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             }
 
         }
-        
+
     }
 
 }

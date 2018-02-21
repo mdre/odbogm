@@ -50,7 +50,7 @@ public class EdgeAttrib {
 
     @Override
     public String toString() {
-        return "EdgeAttrib{" + "nota=" + nota + ", fecha=" + fecha + '}';
+        return "EdgeAttrib{" + "nota=" + nota + ", fecha=" + fecha + "}";
     }
     
     
