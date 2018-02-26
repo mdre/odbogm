@@ -67,6 +67,7 @@ public interface Actions {
          *
          * @param <T> clase a devolver
          * @param sql sentencia a ejecutar
+         * @param param parámetros a usar en el prepared query.
          * @return resutado de la ejecución de la sentencia SQL
          */
         public <T> T query(String sql, Object... param);

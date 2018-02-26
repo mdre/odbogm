@@ -426,7 +426,7 @@ public class Test {
 //            System.out.println(">>>"+sv.i+"  rid: "+sm.getRID(sv));
 //        }
 //        System.out.println("----------- 1 commit -----------------");
-        long i = sm.query("select count(*) as size from SimpleVertexEx ", null);
+        long i = sm.query("select count(*) as size from SimpleVertexEx ", "");
 
         System.out.println("res: " + i);
 

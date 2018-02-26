@@ -36,6 +36,34 @@ def sonatypeUser = credentials.sonatypeUser
 def sonatypePassword = credentials.sonatypePassword
 
 
+// incrementar automáticamente el buildNumber
+task autoBuildNumber {
+    doFirst {
+        File propertiesFile = new File('gradle.properties')
+        def lines = propertiesFile.readLines()
+
+        PrintWriter printWriter = new PrintWriter(propertiesFile)
+        
+        lines.each {String line ->
+            if (line.startsWith("version") ){
+                String versionNumber = line.tokenize("=")[1]
+                String[] versionParts = versionNumber.tokenize(".")
+                // recalcular el build 
+                versionNumber = versionParts[0]+\
+                                '.'+versionParts[1]+\
+                                '.'+versionParts[2]+
+                                '.'+( versionParts.length==4 ? (versionParts[3].toInteger()+1).toString():"1")
+                
+                line = "version="+versionNumber
+                println line
+            }
+            printWriter.println(line)
+        }
+        printWriter.close()
+    }
+}
+build.dependsOn autoBuildNumber
+
 
 
 // seteo carpeta de fuentes para sonar

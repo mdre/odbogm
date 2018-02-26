@@ -10,6 +10,7 @@ import java.lang.instrument.Instrumentation;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.lang.reflect.Method;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import net.odbogm.LogginProperties;
@@ -80,14 +81,15 @@ public class TransparentDirtyDetectorAgent {
      *
      * After the Java Virtual Machine (JVM) has initialized, the premain method will be called. Then the real application main method will be called.
      *
-     * @param args
-     * @param inst
-     * @throws Exception
+     * @param args args
+     * @param inst inst
+     * @throws Exception ex
      */
     public static void premain(String args, Instrumentation inst) throws Exception {
         LOGGER.log(Level.FINER, "premain method invoked with args: {0} and inst: {1}", new Object[]{args, inst});
+        LOGGER.log(Level.FINEST, "args: "+args);
         instrumentation = inst;
-        instrumentation.addTransformer(new TransparentDirtyDetectorInstrumentator(pkgs));
+        instrumentation.addTransformer(new TransparentDirtyDetectorInstrumentator(args.split(";")));
     }
 
     /**
@@ -95,26 +97,32 @@ public class TransparentDirtyDetectorAgent {
      *
      * The agent class may have an agentmain method for use when the agent is started after VM startup.
      *
-     * @param args
-     * @param inst
-     * @throws Exception
+     * @param args args
+     * @param inst inst
+     * @throws Exception ex
      */
     public static void agentmain(String args, Instrumentation inst) throws Exception {
-        LOGGER.log(Level.FINER, "premain method invoked with args: {0} and inst: {1}", new Object[]{args, inst});
+        LOGGER.log(Level.FINER, "agentmain method invoked with args: {0} and inst: {1}", new Object[]{args, inst});
+        LOGGER.log(Level.FINEST, "args: "+args);
         instrumentation = inst;
-        instrumentation.addTransformer(new TransparentDirtyDetectorInstrumentator(pkgs));
+        instrumentation.addTransformer(new TransparentDirtyDetectorInstrumentator(args.split(";")));
     }
 
     /**
      * Programmatic hook to dynamically load javaagent at runtime.
-     * @param pkgs
+     *
+     * @param pkgs paquetes/clases a instrumentar
      */
     public static void initialize(String... pkgs) {
         if (instrumentation == null) {
             TransparentDirtyDetectorAgent.pkgs = pkgs;
 
             LOGGER.log(Level.INFO, "dynamically loading java agent...");
-//            String nameOfRunningVM = ManagementFactory.getRuntimeMXBean().getName();
+            for (String pkg : pkgs) {
+                LOGGER.log(Level.INFO, pkg);
+            }
+            try {
+                //            String nameOfRunningVM = ManagementFactory.getRuntimeMXBean().getName();
 //            int p = nameOfRunningVM.indexOf('@');
 //            String pid = nameOfRunningVM.substring(0, p);
 //
@@ -128,7 +136,18 @@ public class TransparentDirtyDetectorAgent {
 //            } catch (Exception e) {
 //                throw new RuntimeException(e);
 //            }
-            AgentLoader.loadAgentClass(TransparentDirtyDetectorAgent.class.getName(), null, null, true, true, true);
+                String sPkgs = String.join(";", pkgs);
+                String pathToAgent = TransparentDirtyDetectorAgent.class
+                        .getProtectionDomain().getCodeSource().getLocation().toURI().getPath();
+                LOGGER.log(Level.INFO, "path: " + pathToAgent);
+                if (pathToAgent.endsWith(".jar")) {
+                    AgentLoader.loadAgent(pathToAgent, sPkgs);
+                } else {
+                    AgentLoader.loadAgentClass(TransparentDirtyDetectorAgent.class.getName(), sPkgs, null, true, true, true);
+                }
+            } catch (URISyntaxException ex) {
+                Logger.getLogger(TransparentDirtyDetectorAgent.class.getName()).log(Level.SEVERE, null, ex);
+            }
         }
     }
 

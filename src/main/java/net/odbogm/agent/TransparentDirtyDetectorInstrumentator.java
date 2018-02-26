@@ -10,6 +10,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.IllegalClassFormatException;
+import java.nio.file.FileSystem;
+import java.nio.file.FileSystems;
 import java.security.ProtectionDomain;
 import java.util.Arrays;
 import java.util.logging.Level;
@@ -33,43 +35,58 @@ public class TransparentDirtyDetectorInstrumentator implements ClassFileTransfor
     }
     private String[] pkgs;
 
-    public TransparentDirtyDetectorInstrumentator() {
-        this.pkgs = TransparentDirtyDetectorAgent.pkgs;
-    }
+//    public TransparentDirtyDetectorInstrumentator() {
+//        this.pkgs = TransparentDirtyDetectorAgent.pkgs;
+//    }
 
+    /**
+     * Instrumentador
+     *
+     * @param _pkgs lista de paquetes/clases a instrumentar.
+     */
     public TransparentDirtyDetectorInstrumentator(String... _pkgs) {
         // agregar siempre net.odbogm.security porque los objetos del sistema
         // pueden extender a estas clases y es necesario que se activen como dirty 
         // cuando se invoque a algunos de sus métodos.
         this.pkgs = Arrays.copyOf(_pkgs, _pkgs.length + 1); //create new array from old array and allocate one more element
         this.pkgs[this.pkgs.length - 1] = "net.odbogm.security";
+
         
         LOGGER.log(Level.FINER, "Instrumentando clases de los siguientes paquetes: ");
         for (String pkg : this.pkgs) {
-            LOGGER.log(Level.INFO, pkg);
-            
+            LOGGER.log(Level.FINER, pkg);
         }
-        
+
     }
 
+    /**
+     * Implementación del Agente
+     *
+     * @param loader classloader
+     * @param className nombre de la clase
+     * @param classBeingRedefined clase
+     * @param protectionDomain poterctionDomain
+     * @param classfileBuffer buffer de datos con la clases a redefinir
+     * @return byte[] con la clase redefinida
+     * @throws IllegalClassFormatException ex
+     */
     @Override
     public byte[] transform(ClassLoader loader, String className, Class classBeingRedefined,
             ProtectionDomain protectionDomain, byte[] classfileBuffer)
             throws IllegalClassFormatException {
-//        Class<T> taclazz = null;
-        LOGGER.log(Level.FINEST, "preprocesando clase: {0}...", className);
 
+        LOGGER.log(Level.FINEST, "preprocesando clase: {0}...", className);
 
         if (isInstrumentable(className)) {
             // forzar la recarga
 //            clazz.getName().replace(".", "/")
             ClassReader cr = new ClassReader(classfileBuffer);
-            if(isInterface(cr)){
+            if (isInterface(cr)) {
                 // No procesar las interfaces
-                LOGGER.log(Level.FINER, "Interface detectada {0}. NO PROCESAR!",className);
+                LOGGER.log(Level.FINER, "Interface detectada {0}. NO PROCESAR!", className);
                 return classfileBuffer;
             }
-            LOGGER.log(Level.FINER, "Redefiniendo on-the-fly {0}...",className);
+            LOGGER.log(Level.FINER, "Redefiniendo on-the-fly {0}...", className);
             ClassWriter cw = new ClassWriter(cr, ClassWriter.COMPUTE_MAXS);
             TransparentDirtyDetectorAdapter taa = new TransparentDirtyDetectorAdapter(cw);
             cr.accept(taa, 0);
@@ -93,21 +110,28 @@ public class TransparentDirtyDetectorInstrumentator implements ClassFileTransfor
             mv.visitMaxs(1, 1);
             mv.visitEnd();
 
-            writeToFile(className, cw.toByteArray());
-
+            if (LogginProperties.TransparentDirtyDetectorInstrumentator == Level.FINER) {
+                writeToFile(className, cw.toByteArray());
+            }
             return cw.toByteArray();
         }
         return classfileBuffer;
     }
 
+    /**
+     * Herramienta para realizar un volcado de la clase a disco.
+     *
+     * @param className nombre del archivo a graba
+     * @param myByteArray datos de la clase.
+     */
     private void writeToFile(String className, byte[] myByteArray) {
         try {
             File theDir = new File("/tmp/asm");
             if (!theDir.exists()) {
                 theDir.mkdir();
             }
-            
-            FileOutputStream fos = new FileOutputStream("/tmp/asm/" + className.substring(className.lastIndexOf("/")) + ".class"); 
+
+            FileOutputStream fos = new FileOutputStream("/tmp/asm/" + className.substring(className.lastIndexOf("/")) + ".class");
             fos.write(myByteArray);
             fos.close();
         } catch (IOException ex) {
@@ -115,16 +139,21 @@ public class TransparentDirtyDetectorInstrumentator implements ClassFileTransfor
         }
     }
 
+    /**
+     * Determina si la clase es o no instrumentable
+     * @param className nombre completo de la clase
+     * @return true si se debe instrumentar
+     */
     private boolean isInstrumentable(String className) {
         boolean isIns = false;
         for (String pkg : pkgs) {
-            if (className.startsWith(pkg.replace(".", "/")) && !className.contains("ByCGLIB")) {
+            if (className.startsWith(pkg.replace(".", FileSystems.getDefault().getSeparator())) && !className.contains("ByCGLIB")) {
                 isIns = true;
             }
         }
         return isIns;
     }
-    
+
     public boolean isInterface(ClassReader cr) {
         return ((cr.getAccess() & 0x200) != 0);
     }

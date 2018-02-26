@@ -884,7 +884,8 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
      * Ejecuta un comando que devuelve un número. El valor devuelto será el primero que se encuentre en la lista de resultado.
      *
      * @param sql comando a ejecutar
-     * @param retVal nombre de la propiedad a devolver
+     * @param retVal nombre de la propiedad a devolver. Puede ser "". 
+     *         En ese caso se devolverá el primer valor encontrado.
      * @return retorna el valor de la propiedad indacada obtenida de la ejecución de la consulta
      *
      * ejemplo: int size = sm.query("select count(*) as size from TestData","size");
@@ -895,10 +896,10 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
             throw new NoOpenTx();
         }
         this.flush();
-
+        
         OCommandSQL osql = new OCommandSQL(sql);
         OrientVertex ov = (OrientVertex) ((OrientDynaElementIterable) this.orientdbTransact.command(osql).execute()).iterator().next();
-        if (retVal == null) {
+        if (retVal.isEmpty()) {
             retVal = ov.getProperties().keySet().iterator().next();
         }
 

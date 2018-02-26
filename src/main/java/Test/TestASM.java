@@ -9,6 +9,7 @@ import Test.asm.ASMTarget;
 import Test.asm.ASMTargetEx;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import net.odbogm.SessionManager;
 import net.odbogm.agent.ITransparentDirtyDetector;
 import net.odbogm.agent.TransparentDirtyDetectorAgent;
 import net.odbogm.security.GroupSID;
@@ -30,8 +31,11 @@ public class TestASM {
 //        TransparentDirtyDetectorAgent.initialize("ar.gov.santafe.mpa.labmaven.asm.test");
 //    }
     public TestASM() {
-        TransparentDirtyDetectorAgent.initialize("Test.asm");
+//        TransparentDirtyDetectorAgent.initialize("Test.asm");
 
+        SessionManager sm = new SessionManager("remote:localhost/Test", "root", "toor")
+                .setActivationStrategy(SessionManager.ActivationStrategy.CLASS_INSTRUMENTATION,"Test");
+        
         System.out.println("1");
         ASMTarget asmti = new ASMTarget();
 

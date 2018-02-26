@@ -69,10 +69,10 @@ public class Auditor implements IAuditor {
         if (o.___getBaseClass().isAnnotationPresent(Audit.class)) {
             int logVal = o.___getBaseClass().getAnnotation(Audit.class).log();
             if ((logVal & at) > 0) {
-                this.logdata.add(new LogData(o.___getRid(), at, label, data));
+                this.logdata.add(new LogData(o, at, label, data));
                 LOGGER.log(Level.FINER, "objeto auditado");
             } else {
-                LOGGER.log(Level.FINER, "No auditado por no corresponder");
+                LOGGER.log(Level.FINER, "No corresponde auditar");
             }
         } else {
             LOGGER.log(Level.FINER, "No auditado: " + o.___getBaseClass().getSimpleName());
@@ -87,7 +87,7 @@ public class Auditor implements IAuditor {
         for (LogData logData : logdata) {
             Map<String, Object> ologData = new HashMap<>();
             ologData.put("transactionID",ovLogID);
-            ologData.put("rid", logData.rid);
+            ologData.put("rid", (logData.o.___isValid()?logData.o.___getRid():logData.rid));
             ologData.put("timestamp", DateHelper.getCurrentDateTime());
             ologData.put("user", this.auditUser);
             ologData.put("action", logData.auditType);
@@ -104,13 +104,15 @@ public class Auditor implements IAuditor {
 }
 
 class LogData {
+    public IObjectProxy o;
     public String rid;
     public int auditType;
     public String label;
     public Object data;
 
-    public LogData(String rid, int auditType, String label, Object data) {
-        this.rid = rid;
+    public LogData(IObjectProxy o, int auditType, String label, Object data) {
+        this.o = o;
+        this.rid = o.___getRid();
         this.auditType = auditType;
         this.label = label;
         this.data = data;

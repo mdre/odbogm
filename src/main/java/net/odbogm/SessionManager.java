@@ -114,8 +114,9 @@ public class SessionManager implements Actions.Store, Actions.Get {
      * ONMETHODACCESS: cada vez que se invoca a un método se verifica si hay cambio.
  ONCOMMIT:       cuando se invoca a un método se marca el objeto para ser verificado en el commit
      * 
-     * @param as
-     * @return 
+     * @param as Estrategia de detección de dirty
+     * @param pkgs paquetes/clases a instrumentar. Puede ser null.
+     * @return this
      */
     public SessionManager setActivationStrategy(ActivationStrategy as, String... pkgs) {
         this.activationStrategy = as;
@@ -391,6 +392,18 @@ public class SessionManager implements Actions.Store, Actions.Get {
         return this.publicTransaction.query(sql, retVal);
     }
 
+    /**
+     * Realiza un query direto a la base de datos y devuelve el resultado directamente sin procesarlo.
+     *
+     * @param <T> clase a devolver
+     * @param sql sentencia a ejecutar
+     * @param param parámetros a utilizar en el query
+     * @return resutado de la ejecución de la sentencia SQL
+     */
+    public <T> T query(String sql, Object... param) {
+        return this.publicTransaction.query(sql, param);
+    }
+    
     /**
      * Return all record of the reference class.
      * Devuelve todos los registros a partir de una clase base.
