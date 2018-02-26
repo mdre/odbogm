@@ -188,12 +188,17 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             MethodProxy methodProxy) throws Throwable {
         // response object
         Object res = null;
-
+        
+        // el estado del objeto se debe poder consultar siempre
+        if (method.getName().equals("___isValid")) {
+                    return this.___isValid();
+        }
+        
         if (!this.___isValidObject) {
             LOGGER.log(Level.FINER, "El objeto está marcado como inválido!!!");
             throw new InvalidObjectReference();
         }
-
+        
         if (this.___baseElement.getIdentity().isNew()) {
             LOGGER.log(Level.FINER, "RID nuevo. No procesar porque el store preparó todo y no hay nada que recuperar de la base.");
             this.___loadLazyLinks = false;
@@ -225,11 +230,12 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                         res = this.___getBaseClass();
                     }
                     break;
-                case "___isValid":
-                    if (this.___isValidObject) {
-                        res = this.___isValid();
-                    }
-                    break;
+//                case "___isValid":
+//                        se resuelve arriba.
+//                    if (this.___isValidObject) {
+//                        res = this.___isValid();
+//                    }
+//                    break;
                 case "___isDirty":
                     if (this.___objectReady) {
                         res = this.___isDirty();
