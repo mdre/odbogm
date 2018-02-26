@@ -65,6 +65,7 @@ task autoBuildNumber {
 
 // agregar la dependencia solo si no se trata de un release
 if (!project.gradle.startParameter.taskNames.contains(":confirmReleaseVersion") ) {
+    println ">>>>"+project.gradle.startParameter.taskNames
     build.dependsOn autoBuildNumber
 }
 
