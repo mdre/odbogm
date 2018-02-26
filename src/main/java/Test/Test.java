@@ -19,9 +19,12 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Scanner;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.DbManager;
+import net.odbogm.exceptions.ReferentialIntegrityViolation;
+import net.odbogm.exceptions.UnknownRID;
 import net.odbogm.security.AccessRight;
 import net.odbogm.security.GroupSID;
 import net.odbogm.security.UserSID;
@@ -55,8 +58,8 @@ public class Test {
 //        testDbManager();
 //        lab();
 //        testQuery();
-        store();
-//          testDelete();
+//        store();
+          testDelete();
 //        testEmbeddded();
 //        setUpGroups();
 //        testSObjects();
@@ -690,27 +693,66 @@ public class Test {
     public void testDelete() {
         System.out.println("\n\n\n");
         System.out.println("***************************************************************");
-        System.out.println("delete objeto simple (SimpleVertex)");
+        System.out.println("delete objetos");
         System.out.println("***************************************************************");
 
-        SimpleVertex sv = new SimpleVertex();
-        SimpleVertex expResult = sv;
+//        SimpleVertex sv = new SimpleVertex();
+//        SimpleVertex expResult = sv;
+//
+//        assertEquals(0, sm.getDirtyCount());
+//
+//        SimpleVertex result = sm.store(sv);
+//
+//        this.sm.commit();
+//
+//        System.out.println("Recuperar el objeto de la base");
+//        String rid = ((IObjectProxy) result).___getRid();
+//        expResult = this.sm.get(SimpleVertex.class, rid);
+//
+//        System.out.println("Eliminar el objeto: " + rid);
+//        sm.delete(expResult);
+//        sm.commit();
+//
+//        try {
+//            sm.get(rid);
+//            System.out.println("El objeto aún exite!!!");
+//        } catch (UnknownRID urid) {
+//            System.out.println("El objeto fue borrado!");
+//        }
 
-        assertEquals(0, sm.getDirtyCount());
-
-        SimpleVertex result = sm.store(sv);
-
-        this.sm.commit();
-
-        System.out.println("Recuperar el objeto de la base");
-        String rid = ((IObjectProxy) result).___getRid();
-        expResult = this.sm.get(SimpleVertex.class, rid);
-
-        System.out.println("Eliminar el objeto: " + rid);
-        sm.delete(expResult);
+        System.out.println("Testeando ingegridad referencial...");
+        
+        // crear un objeto simple.
+        SimpleVertex irSV = sm.store(new SimpleVertex());
         sm.commit();
-
-        sm.get(rid);
+        String irSVrid = sm.getRID(irSV);
+        
+        // crear el objeto que referenciará al primero
+        SimpleVertexEx irSVEX = new SimpleVertexEx();
+        irSVEX.setSvinner(irSV);
+        
+        SimpleVertexEx rirSVEX = sm.store(irSVEX);
+        
+        // liberar la referencia
+        irSVEX = null;
+        sm.commit();
+        
+        String rirSVEXrid = sm.getRID(rirSVEX);
+        System.out.println("Referencia creada: "+rirSVEXrid+"-->"+irSVrid);
+        
+        System.out.println("presione ENTER para continuar...");
+        Scanner scanner = new Scanner(System.in);
+        scanner.nextLine();
+        
+        
+        // intentar eliminar el objeto dependiente
+        try {
+            sm.delete(irSV);
+            sm.commit();
+            System.out.println("El objeto fue borrado y debería haber saltado una excepción");
+        } catch(ReferentialIntegrityViolation riv) {
+            System.out.println("ReferencialIntegrityViolation ");
+        }
     }
 
     /**

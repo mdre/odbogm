@@ -506,11 +506,13 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
         if (toRemove instanceof IObjectProxy) {
             // verificar que la integridad referencial no se viole.
             OrientVertex ovToRemove = ((IObjectProxy) toRemove).___getVertex();
-
-            if (ovToRemove.countEdges(Direction.IN) > 1) {
+            // reacargar preventivamente el objeto.
+            ovToRemove.reload();
+            LOGGER.log(Level.FINER, "Referencias IN: "+ovToRemove.countEdges(Direction.IN));
+            if (ovToRemove.countEdges(Direction.IN) > 0) {
                 throw new ReferentialIntegrityViolation();
             }
-
+            
             // obtener el classDef del objeto
             ClassDef classDef = this.objectMapper.getClassDef(toRemove);
 

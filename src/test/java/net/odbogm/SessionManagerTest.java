@@ -20,6 +20,7 @@ import java.util.HashMap;
 import java.util.List;
 import net.odbogm.agent.ITransparentDirtyDetector;
 import net.odbogm.agent.TransparentDirtyDetectorAgent;
+import net.odbogm.exceptions.ReferentialIntegrityViolation;
 import net.odbogm.exceptions.UnknownRID;
 import net.odbogm.security.*;
 import net.odbogm.utils.DateHelper;
@@ -1218,10 +1219,10 @@ public class SessionManagerTest {
      * Test of delete method, of class SessionManager.
      */
     @Test
-    public void testDeleteSimple() {
+    public void testDelete() {
         System.out.println("\n\n\n");
         System.out.println("***************************************************************");
-        System.out.println("delete objeto simple (SimpleVertex)");
+        System.out.println("delete objetos");
         System.out.println("***************************************************************");
 
         SimpleVertex sv = new SimpleVertex();
@@ -1248,6 +1249,34 @@ public class SessionManagerTest {
             System.out.println("El objeto fue borrado!");
         }
 
+        System.out.println("Testeando ingegridad referencial...");
+        
+        // crear un objeto simple.
+        SimpleVertex irSV = sm.store(new SimpleVertex());
+        sm.commit();
+        String irSVrid = sm.getRID(irSV);
+        
+        // crear el objeto que referenciará al primero
+        SimpleVertexEx irSVEX = new SimpleVertexEx();
+        irSVEX.setSvinner(irSV);
+        
+        SimpleVertexEx rirSVEX = sm.store(irSVEX);
+        String rirSVEXrid = sm.getRID(rirSVEX);
+        
+        System.out.println("Referencia creada: "+rirSVEXrid+"-->"+irSVrid);
+        // liberar la referencia
+        irSVEX = null;
+        sm.commit();
+        
+        // intentar eliminar el objeto dependiente
+        try {
+            sm.delete(irSV);
+            sm.commit();
+            fail("El objeto fue borrado y debería haber saltado una excepción");
+        } catch(ReferentialIntegrityViolation riv) {
+            System.out.println("ReferencialIntegrityViolation ");
+        }
+        
     }
 
     /**
