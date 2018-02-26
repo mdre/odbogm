@@ -144,19 +144,20 @@ public class ObjectProxyFactory {
         ObjectProxy po = new ObjectProxy(o.getClass(), oe, transaction);
         e.setCallback(po);
         e.setInterfaces(new Class[]{IObjectProxy.class});
-        e.setStrategy(new DefaultGeneratorStrategy() {
-
-            public byte[] transform(byte[] b) {
-                try (FileOutputStream fos = new FileOutputStream("/tmp/1/" + o.getClass().getName() + "_cglib.class")) {
-                    fos.write(b);
-                    fos.close();
-                } catch (IOException ex) {
-                    Logger.getLogger(TransparentDirtyDetectorInstrumentator.class.getName()).log(Level.SEVERE, null, ex);
-                }
-
-                return b;
-            }
-        });
+//        e.setStrategy(new DefaultGeneratorStrategy() {
+//
+//            public byte[] transform(byte[] b) {
+//                try (FileOutputStream fos = new FileOutputStream("/tmp/1/" + o.getClass().getName() + "_cglib.class")) {
+//                    fos.write(b);
+//                    fos.close();
+//                } catch (IOException ex) {
+//                    Logger.getLogger(TransparentDirtyDetectorInstrumentator.class.getName()).log(Level.SEVERE, null, ex);
+//                }
+//
+//                return b;
+//            }
+//        });
+        
         // now the enhancer is configured and we'll create the proxified object
         T proxifiedObj = (T) e.create();
 
