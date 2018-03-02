@@ -84,7 +84,7 @@ public class SessionManagerTest {
 //    /**
 //     * Test of begin method, of class SessionManager.
 //     */
-//    //@Test
+//    ////@Test
 //    public void testBegin() {
 //        System.out.println("begin");  
 //        SessionManager instance = null;
@@ -95,7 +95,7 @@ public class SessionManagerTest {
     /**
      * Test of store method, of class SessionManager.
      */
-    @Test
+    //@Test
     public void testStoreSimple() {
         System.out.println("\n\n\n");
         System.out.println("***************************************************************");
@@ -137,7 +137,7 @@ public class SessionManagerTest {
         assertEquals(expResult.getoI(), sv.getoI());
     }
 
-    @Test
+    //@Test
     public void testDates() {
         System.out.println("\n\n\n");
         System.out.println("***************************************************************");
@@ -160,7 +160,7 @@ public class SessionManagerTest {
 
     }
 
-    @Test
+    //@Test
     public void testStorePrimitiveCol() {
         System.out.println("\n\n\n");
         System.out.println("***************************************************************");
@@ -204,7 +204,7 @@ public class SessionManagerTest {
         assertEquals(expResult.hmString.size(), result.hmString.size());
     }
 
-    @Test
+    //@Test
     public void testStoreExtendedObject() {
         System.out.println("\n\n\n");
         System.out.println("***************************************************************");
@@ -248,7 +248,7 @@ public class SessionManagerTest {
         System.out.println("============================= FIN testStoreExtendedObject ===============================");
     }
 
-    @Test
+    //@Test
     public void testStoreAndLinkToExistingObject() {
         System.out.println("\n\n\n");
         System.out.println("*******************************************************************");
@@ -302,7 +302,7 @@ public class SessionManagerTest {
         System.out.println("\n\n\n");
     }
 
-    @Test
+    //@Test
     public void testStoreFullObject() {
         System.out.println("\n\n\n");
         System.out.println("******************************************************************************");
@@ -363,7 +363,7 @@ public class SessionManagerTest {
         System.out.println("============================= FIN testStoreFullObject ===============================");
     }
 
-    @Test
+    //@Test
     public void testStoreLink() {
         System.out.println("\n\n\n");
         System.out.println("***************************************************************");
@@ -429,7 +429,7 @@ public class SessionManagerTest {
         assertEquals(expResult.getSvinner().getoI(), result.getSvinner().getoI());
     }
 
-    @Test
+    //@Test
     public void testUpdateObject() {
         System.out.println("\n\n\n");
         System.out.println("***************************************************************");
@@ -468,7 +468,7 @@ public class SessionManagerTest {
         System.out.println("Fin Update!.............");
     }
 
-    @Test
+    //@Test
     public void testLoop() {
         System.out.println("\n\n\n");
         System.out.println("***************************************************************");
@@ -532,7 +532,7 @@ public class SessionManagerTest {
     /**
      * Verificar la correscta inicialización de los objetos en un arraylist
      */
-    @Test
+    //@Test
     public void testArrayList() {
         System.out.println("\n\n\n");
         System.out.println("***************************************************************");
@@ -587,7 +587,7 @@ public class SessionManagerTest {
         assertNull(stored.lSV);
     }
 
-    @Test
+    //@Test
     public void testHashMap() {
         System.out.println("\n\n\n");
         System.out.println("***************************************************************");
@@ -641,7 +641,7 @@ public class SessionManagerTest {
 
     }
 
-    @Test
+    //@Test
     public void testComplexHashMap() {
         System.out.println("\n\n\n");
         System.out.println("***************************************************************");
@@ -699,7 +699,7 @@ public class SessionManagerTest {
 
     }
 
-    @Test
+    //@Test
     public void testGet() {
         System.out.println("\n\n\n");
         System.out.println("***************************************************************");
@@ -723,7 +723,7 @@ public class SessionManagerTest {
     /**
      * Verificar que un query simple basado en una clase devueve el listado correcto de objetos.
      */
-    @Test
+    //@Test
     public void testSimpleQuery() {
         System.out.println("\n\n\n");
         System.out.println("***************************************************************");
@@ -766,7 +766,7 @@ public class SessionManagerTest {
     /**
      * Rollback simple de los atributos
      */
-    @Test
+    //@Test
     public void testRollbackSimple() {
         System.out.println("\n\n\n");
         System.out.println("***************************************************************");
@@ -823,7 +823,7 @@ public class SessionManagerTest {
         assertEquals(0, this.sm.getDirtyCount());
     }
 
-    @Test
+    //@Test
     public void testRollbackEnum() {
         System.out.println("\n\n\n");
         System.out.println("***************************************************************");
@@ -851,7 +851,7 @@ public class SessionManagerTest {
         assertEquals(sve.getEnumTest(), stored.getEnumTest());
     }
 
-    @Test
+    //@Test
     public void testRollbackCollections() {
         System.out.println("\n\n\n");
         System.out.println("***************************************************************");
@@ -882,7 +882,7 @@ public class SessionManagerTest {
         assertEquals(sve.alSV.size(), stored.alSV.size());
     }
 
-    @Test
+    //@Test
     public void testRollbackMaps() {
         System.out.println("\n\n\n");
         System.out.println("***************************************************************");
@@ -916,7 +916,7 @@ public class SessionManagerTest {
     /**
      * Test of store method, of class SessionManager.
      */
-    @Test
+    //@Test
     public void testStoreWithInterfaceAttr() {
         System.out.println("\n\n\n");
         System.out.println("***************************************************************");
@@ -961,7 +961,7 @@ public class SessionManagerTest {
     /**
      * Test of store embedded list and maps.
      */
-    @Test
+    //@Test
     public void testEmbedded() {
         System.out.println("\n\n\n");
         System.out.println("***************************************************************");
@@ -1031,7 +1031,7 @@ public class SessionManagerTest {
     /**
      * Test security of SObjects
      */
-//    @Test
+//    //@Test
     public void testSObjects() {
         System.out.println("\n\n\n");
         System.out.println("***************************************************************");
@@ -1132,7 +1132,7 @@ public class SessionManagerTest {
 
     }
 
-    @Test
+    //@Test
     public void testEmbeddedRollback() {
         System.out.println("\n\n\n");
         System.out.println("***************************************************************");
@@ -1162,7 +1162,7 @@ public class SessionManagerTest {
     /**
      * Test de Transacciones privadas múltiples
      */
-    @Test
+    //@Test
     public void testTransaction() {
         System.out.println("\n\n\n");
         System.out.println("***************************************************************");
@@ -1233,7 +1233,7 @@ public class SessionManagerTest {
     /**
      * Test of delete method, of class SessionManager.
      */
-    @Test
+    //@Test
     public void testDelete() {
         System.out.println("\n\n\n");
         System.out.println("***************************************************************");
@@ -1359,6 +1359,46 @@ public class SessionManagerTest {
             System.out.println("El objeto fue borrado!");
         }
 
+        System.out.println("");
+        System.out.println("");
+        System.out.println("");
+        System.out.println("**********************************");
+        System.out.println("Borrar el objeto raíz y verificar que el objeto dependiente se ha borrado");
+        System.out.println("**********************************");
+        
+        SimpleVertexEx svOuter = new SimpleVertexEx();
+        svOuter.setSvinner(new SimpleVertex("toBeRemovedByOrphan"));
+        SimpleVertexEx rsvo = sm.store(svOuter);
+        svOuter = null;
+        System.out.println("Guardando el objeto.......");
+        sm.commit();
+        
+        System.out.println("");
+        System.out.println("");
+        System.out.println("");
+        String srvso = sm.getRID(rsvo);
+        String srsvinner = sm.getRID(rsvo.getSvinner());
+        System.out.println("RID: "+ srvso);
+        System.out.println("RID svinner: "+srsvinner);
+        
+        System.out.println("----------------------------------");
+        System.out.println("Eliminar el objeto...");
+        sm.delete(rsvo);
+        sm.commit();
+        System.out.println("----------------------------------");
+        try {
+            sm.get(srvso);
+            fail("El objeto padre aún exite!!!");
+        } catch (UnknownRID urid) {
+            System.out.println("El objeto padre fue borrado!");
+        }
+        try {
+            sm.get(srsvinner);
+            fail("El objeto Orphan aún exite!!!");
+        } catch (UnknownRID urid) {
+            System.out.println("El objeto Orphan fue borrado!");
+        }
+        
     }
     
     
@@ -1368,7 +1408,7 @@ public class SessionManagerTest {
     /**
      * Test Rollback on exception
      */
-    @Test
+    //@Test
     public void testRollbackOnException() {
         System.out.println("\n\n\n");
         System.out.println("***************************************************************");
@@ -1432,7 +1472,7 @@ public class SessionManagerTest {
         System.out.println("15. Finalizado!");
     }
 
-//    @Test
+//    //@Test
 //    public void testTransactions() {
 //        try {
 //            System.out.println("\n\n\n");

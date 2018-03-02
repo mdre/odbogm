@@ -5,7 +5,7 @@
  */
 package net.odbogm.proxy;
 
-import net.odbogm.annotations.RemoveOrphan;
+//import net.odbogm.annotations.RemoveOrphan;
 import net.odbogm.ObjectStruct;
 import net.odbogm.SessionManager;
 import net.odbogm.cache.ClassDef;
@@ -33,6 +33,7 @@ import net.odbogm.ObjectMapper;
 import net.odbogm.Transaction;
 import net.odbogm.agent.ITransparentDirtyDetector;
 import net.odbogm.annotations.Audit.AuditType;
+import net.odbogm.annotations.RemoveOrphan;
 import net.odbogm.exceptions.DuplicateLink;
 import net.odbogm.exceptions.InvalidObjectReference;
 import net.odbogm.exceptions.ObjectMarkedAsDeleted;

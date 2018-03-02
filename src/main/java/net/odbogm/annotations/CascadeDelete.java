@@ -12,10 +12,11 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Establece una vinculación entre dos objetos
+ * CascadeDelete fuerza el borrado y falla si no puede realizarlo arrojando un 
+ * ReferentialIntegrityViolation. 
+ * Tiene precedencia sobre RemoveOrphan
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
-
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.FIELD})
 public @interface CascadeDelete {

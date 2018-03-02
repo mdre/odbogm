@@ -29,6 +29,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.annotations.Audit;
 import net.odbogm.annotations.CascadeDelete;
+import net.odbogm.annotations.RemoveOrphan;
 import net.odbogm.auditory.Auditor;
 import net.odbogm.cache.ClassDef;
 import net.odbogm.exceptions.ClassToVertexNotFound;
@@ -87,13 +88,14 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
 
     // Auditor asociado a la transacción
     private Auditor auditor;
-    
+
     SessionManager sm;
     OrientGraph orientdbTransact;
-    
+
     /**
      * Devuelve una transacción ya inicializada contra la base de datos.
-     * @param sm 
+     *
+     * @param sm
      */
     Transaction(SessionManager sm) {
         this.sm = sm;
@@ -173,7 +175,7 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
     public OrientGraph getGraphdb() {
         return orientdbTransact;
     }
-    
+
     /**
      * Inicia una transacción anidada
      */
@@ -187,7 +189,7 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
     public synchronized void close() {
         this.orientdbTransact.shutdown();
     }
-    
+
     /**
      * Persistir la información pendiente en la transacción
      *
@@ -209,7 +211,7 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
             for (Map.Entry<String, Object> e : dirty.entrySet()) {
                 String rid = e.getKey();
                 IObjectProxy o = (IObjectProxy) e.getValue();
-                LOGGER.log(Level.FINER, "Commiting: " + rid + "   class: " + o.___getBaseClass()+" isValid: "+ o.___isValid());
+                LOGGER.log(Level.FINER, "Commiting: " + rid + "   class: " + o.___getBaseClass() + " isValid: " + o.___isValid());
                 // actualizar todos los objetos antes de bajarlos.
                 o.___commit();
             }
@@ -249,7 +251,7 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
             this.objectCache.clear();
             newrids.clear();
         } else {
-            this.nestedTransactionLevel --;
+            this.nestedTransactionLevel--;
         }
         LOGGER.log(Level.FINER, "FIN DE COMMIT! ----------------------------");
     }
@@ -259,13 +261,13 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
      */
     public synchronized void rollback() {
         LOGGER.log(Level.FINER, "Rollback ------------------------");
-        LOGGER.log(Level.FINER, "Dirty objects: "+dirty.size());
+        LOGGER.log(Level.FINER, "Dirty objects: " + dirty.size());
         if (this.orientdbTransact == null) {
             throw new NoOpenTx();
         }
-        
+
         this.orientdbTransact.rollback();
-        
+
         // refrescar todos los objetos
         for (Map.Entry<String, Object> entry : dirty.entrySet()) {
             String key = entry.getKey();
@@ -285,14 +287,14 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
     }
 
     /**
-     * Retorna el nivel de transacciones anidadas. El nivel superior es 0. 
+     * Retorna el nivel de transacciones anidadas. El nivel superior es 0.
+     *
      * @return nivel de transacciones anidadas.
      */
     public int getTransactionLevel() {
         return this.nestedTransactionLevel;
     }
-    
-    
+
     /**
      * Crea a un *NUEVO* vértice en la base de datos a partir del objeto. Retorna el RID del objeto que se agregó a la base.
      *
@@ -341,7 +343,7 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
             ReflectionUtils.copyObject(o, proxied);
             // convertir los embedded
             this.sm.getObjectMapper().collectionsToEmbedded(proxied, oClassDef, this);
-            
+
             if (this.isAuditing()) {
                 this.auditLog((IObjectProxy) proxied, Audit.AuditType.WRITE, "STORE", omap);
             }
@@ -396,15 +398,15 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
             deben ser creados.
              */
             LOGGER.log(Level.FINER, "Procesando los LinkList");
-            LOGGER.log(Level.FINER, "LinkLists: "+oStruct.linkLists.size());
-            
+            LOGGER.log(Level.FINER, "LinkLists: " + oStruct.linkLists.size());
+
             final T finalProxied = proxied;
 
             for (Map.Entry<String, Object> link : oStruct.linkLists.entrySet()) {
                 String field = link.getKey();
                 Object value = link.getValue();
                 final String graphRelationName = classname + "_" + field;
-                LOGGER.log(Level.FINER, "field: "+field+" clase: "+value.getClass().getName());
+                LOGGER.log(Level.FINER, "field: " + field + " clase: " + value.getClass().getName());
                 if (value instanceof List) {
                     // crear un objeto de la colección correspondiente para poder trabajarlo
                     // Class<?> oColection = oClassDef.linkLists.get(field);
@@ -508,10 +510,13 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
             OrientVertex ovToRemove = ((IObjectProxy) toRemove).___getVertex();
             // reacargar preventivamente el objeto.
             ovToRemove.reload();
-            LOGGER.log(Level.FINER, "Referencias IN: "+ovToRemove.countEdges(Direction.IN));
+            LOGGER.log(Level.FINER, "Referencias IN: " + ovToRemove.countEdges(Direction.IN));
             if (ovToRemove.countEdges(Direction.IN) > 0) {
                 throw new ReferentialIntegrityViolation();
             }
+            // elimino el nodo de la base para que se actualicen los vértices a los que apuntaba.
+            // de esta forma, los inner quedan libres y pueden ser borrados por un delete simple
+            ovToRemove.remove();
             
             // obtener el classDef del objeto
             ClassDef classDef = this.objectMapper.getClassDef(toRemove);
@@ -531,13 +536,25 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
 
                     if (f.isAnnotationPresent(CascadeDelete.class)) {
                         // si se apunta a un objeto, removerlo
+                        // CascadeDelete fuerza el borrado y falla si no puede. 
+                        // Tiene precedencia sobre RemoveOrphan
+                        Object value = f.get(toRemove);
+                        if (value != null) {
+                            this.delete(value);
+                        }
+                    } else if (f.isAnnotationPresent(RemoveOrphan.class)) {
+                        // si se apunta a un objeto, removerlo
                         /* FIXME: hay dos posibilidades. Una es remover si está huérfano
                             la otra es remover aún cuando al objeto haya relaciones desde otros
                             objetos.
                          */
                         Object value = f.get(toRemove);
                         if (value != null) {
-                            this.delete(value);
+                            try {
+                                this.delete(value);
+                            } catch (ReferentialIntegrityViolation riv) {
+                                LOGGER.log(Level.FINER, "RemoveOrphan: El objeto aún tiene vínculos.");
+                            }
                         }
                     }
 
@@ -587,7 +604,38 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
                             throw new CollectionNotSupported(oCol.getClass().getSimpleName());
                         }
                         f.setAccessible(acc);
+                    } else if ((oCol != null) && (f.isAnnotationPresent(RemoveOrphan.class))) {
+
+                        if (oCol instanceof List) {
+                            for (Object object : oCol) {
+
+                                try {
+                                    this.delete(object);
+                                } catch (ReferentialIntegrityViolation riv) {
+                                    LOGGER.log(Level.FINER, "RemoveOrphan: El objeto aún tiene vínculos.");
+                                }
+
+                            }
+
+                        } else if (oCol instanceof Map) {
+                            HashMap oMapCol = (HashMap) oCol;
+                            oMapCol.forEach((k, v) -> {
+                                try {
+                                    this.delete(v);
+                                } catch (ReferentialIntegrityViolation riv) {
+                                    LOGGER.log(Level.FINER, "RemoveOrphan: El objeto aún tiene vínculos.");
+                                }
+                            });
+
+                        } else {
+                            LOGGER.log(Level.FINER, "********************************************");
+                            LOGGER.log(Level.FINER, "field: {0}", field);
+                            LOGGER.log(Level.FINER, "********************************************");
+                            throw new CollectionNotSupported(oCol.getClass().getSimpleName());
+                        }
+                        f.setAccessible(acc);
                     }
+
                 } catch (NoSuchFieldException | IllegalArgumentException | IllegalAccessException ex) {
                     Logger.getLogger(SessionManager.class.getName()).log(Level.SEVERE, null, ex);
                 }
@@ -597,7 +645,8 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
             if (this.isAuditing()) {
                 this.auditLog((IObjectProxy) toRemove, Audit.AuditType.DELETE, "DELETE", "");
             }
-            ovToRemove.remove();
+            
+            //ovToRemove.remove(); movido arriba.
             // si tengo un RID, proceder a removerlo de las colecciones.
             this.dirty.remove(((IObjectProxy) toRemove).___getVertex().getId().toString());
             // invalidar el objeto
@@ -698,8 +747,8 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
                 // si fue recuperado del caché, determinar si se ha modificado.
                 // si no fue modificado, hacer un reload para actualizar con la última 
                 // versión de la base de datos.
-                if (!((IObjectProxy)ret).___isDirty()) {
-                    ((IObjectProxy)ret).___reload();
+                if (!((IObjectProxy) ret).___isDirty()) {
+                    ((IObjectProxy) ret).___reload();
                 }
             }
 
@@ -756,14 +805,14 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
             if (objectCache.get(rid).get() != null) {
                 LOGGER.log(Level.FINER, "Objeto Recupeardo del caché.");
                 o = (T) objectCache.get(rid).get();
-                
+
                 // si fue recuperado del caché, determinar si se ha modificado.
                 // si no fue modificado, hacer un reload para actualizar con la última 
                 // versión de la base de datos.
-                if (!((IObjectProxy)o).___isDirty()) {
-                    ((IObjectProxy)o).___reload();
+                if (!((IObjectProxy) o).___isDirty()) {
+                    ((IObjectProxy) o).___reload();
                 }
-                
+
             } else {
                 objectCache.remove(rid);
             }
@@ -788,7 +837,7 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
                 try {
                     o = objectMapper.hydrate(type, v, this);
 //                entities.put(rid, o);
-                    
+
                 } catch (InstantiationException | IllegalAccessException | NoSuchFieldException ex) {
                     Logger.getLogger(SessionManager.class.getName()).log(Level.SEVERE, null, ex);
                 }
@@ -814,7 +863,7 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
         if (this.isAuditing()) {
             this.auditLog((IObjectProxy) o, Audit.AuditType.READ, "READ", "");
         }
-        
+
         LOGGER.log(Level.FINER, "Fin get -------------------------------------\n");
         return o;
     }
@@ -886,8 +935,7 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
      * Ejecuta un comando que devuelve un número. El valor devuelto será el primero que se encuentre en la lista de resultado.
      *
      * @param sql comando a ejecutar
-     * @param retVal nombre de la propiedad a devolver. Puede ser "". 
-     *         En ese caso se devolverá el primer valor encontrado.
+     * @param retVal nombre de la propiedad a devolver. Puede ser "". En ese caso se devolverá el primer valor encontrado.
      * @return retorna el valor de la propiedad indacada obtenida de la ejecución de la consulta
      *
      * ejemplo: int size = sm.query("select count(*) as size from TestData","size");
@@ -898,7 +946,7 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
             throw new NoOpenTx();
         }
         this.flush();
-        
+
         OCommandSQL osql = new OCommandSQL(sql);
         OrientVertex ov = (OrientVertex) ((OrientDynaElementIterable) this.orientdbTransact.command(osql).execute()).iterator().next();
         if (retVal.isEmpty()) {
@@ -983,9 +1031,7 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
         }
         return ret;
     }
-    
-    
-    
+
     /**
      * Devuelve el objecto de definición de la clase en la base.
      *
@@ -995,7 +1041,7 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
     public OClass getDBClass(String clase) {
         return this.getGraphdb().getRawGraph().getMetadata().getSchema().getClass(clase);
     }
-    
+
     // Procesos de auditoría
     /**
      * Comienza a auditar los objetos y los persiste con el nombre de usuario.
@@ -1003,7 +1049,7 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
      * @param user User String only.
      */
     public void setAuditOnUser(String user) {
-        
+
         this.auditor = new Auditor(this, user);
 
     }
@@ -1020,7 +1066,6 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
         this.auditor = new Auditor(this, this.sm.getLoggedInUser().getUUID());
     }
 
-    
     /**
      * realiza una auditoría a partir del objeto indicado.
      *
@@ -1037,12 +1082,13 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
 
     /**
      * determina si se está guardando un log de auditoría
+     *
      * @return true si la auditoría está activa
      */
     public boolean isAuditing() {
         return this.auditor != null;
     }
-    
+
     Auditor getAuditor() {
         return this.auditor;
     }

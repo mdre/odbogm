@@ -12,10 +12,10 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Establece una vinculación entre dos objetos
+ * RemoveOrphan intenta borrar el objeto pero no arroja una excepción en caso 
+ * de fallar.
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
-
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.FIELD})
 public @interface RemoveOrphan {
