@@ -108,10 +108,10 @@ public class SimpleVertex {
         System.out.println("in SV");
     }
 
-    @Override
-    public String toString() {
-        return this.s + " - " + this.b +  " - " + this.i +  " - " + this.f;
-    }
+//    @Override
+//    public String toString() {
+//        return this.s + " - " + this.b +  " - " + this.i +  " - " + this.f;
+//    }
 
     public void setI(int i) {
         this.i = i;

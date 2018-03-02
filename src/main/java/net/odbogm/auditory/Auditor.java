@@ -85,9 +85,10 @@ public class Auditor implements IAuditor {
         String ovLogID = UUID.randomUUID().toString();
         
         for (LogData logData : logdata) {
+            LOGGER.log(Level.FINER, "valid: "+logData.o.___isValid() +" : "+logData.rid);
             Map<String, Object> ologData = new HashMap<>();
             ologData.put("transactionID",ovLogID);
-            ologData.put("rid", (logData.o.___isValid()?logData.o.___getRid():logData.rid));
+            ologData.put("rid", (logData.o.___isValid()&!logData.o.___isDeleted()?logData.o.___getRid():logData.rid));
             ologData.put("timestamp", DateHelper.getCurrentDateTime());
             ologData.put("user", this.auditUser);
             ologData.put("action", logData.auditType);

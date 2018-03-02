@@ -14,6 +14,7 @@ import com.tinkerpop.blueprints.impls.orient.OrientVertex;
  */
 public interface IObjectProxy {
     public void ___setDeletedMark();
+    public boolean ___isDeleted();
     
     public OrientVertex ___getVertex();
     public String ___getRid();

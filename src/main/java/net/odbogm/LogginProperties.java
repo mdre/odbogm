@@ -15,7 +15,7 @@ public class LogginProperties {
 
     public static Level ArrayListEmbeddedProxy      = Level.INFO;
     public static Level ArrayListLazyProxy          = Level.INFO;
-    public static Level Auditor                     = Level.INFO;
+    public static Level Auditor                     = Level.FINER;
     public static Level ClassCache                  = Level.INFO;
     public static Level ClassDef                    = Level.INFO;
     public static Level DbManager                   = Level.INFO;
@@ -23,7 +23,7 @@ public class LogginProperties {
     public static Level HashMapLazyProxy            = Level.INFO;
     public static Level LinkedListLazyProxy         = Level.INFO;
     public static Level ObjectMapper                = Level.INFO;
-    public static Level ObjectProxy                 = Level.INFO;
+    public static Level ObjectProxy                 = Level.FINER;
     public static Level ObjectProxyFactory          = Level.INFO;
     public static Level ObjectStruct                = Level.INFO;
     public static Level ReflectionUtils             = Level.INFO;
@@ -34,10 +34,10 @@ public class LogginProperties {
     public static Level ThreadedGraphRecordFactory  = Level.INFO;
     public static Level Transaction                 = Level.INFO;
     
-    public static Level TransparentDirtyDetector                   = Level.INFO;
-    public static Level TransparentDirtyDetectorAdapter            = Level.INFO;
-    public static Level TransparentDirtyDetectorInstrumentator     = Level.INFO;
-    public static Level TransparentDirtyDetectorAgent              = Level.INFO;
-    public static Level WriteAccessActivatorAdapter                = Level.INFO;
+    public static Level TransparentDirtyDetector                   = Level.FINER;
+    public static Level TransparentDirtyDetectorAdapter            = Level.FINER;
+    public static Level TransparentDirtyDetectorInstrumentator     = Level.FINER;
+    public static Level TransparentDirtyDetectorAgent              = Level.FINER;
+    public static Level WriteAccessActivatorAdapter                = Level.FINER;
     
 }

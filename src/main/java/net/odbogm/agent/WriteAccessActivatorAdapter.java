@@ -15,7 +15,7 @@ import org.objectweb.asm.Opcodes;
  *
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
-public class WriteAccessActivatorAdapter extends MethodVisitor implements TransparentDirtyDetectorDef {
+public class WriteAccessActivatorAdapter extends MethodVisitor implements ITransparentDirtyDetectorDef {
 
     private final static Logger LOGGER = Logger.getLogger(WriteAccessActivatorAdapter.class.getName());
     private boolean activate = false;

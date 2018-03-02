@@ -26,7 +26,7 @@ import org.objectweb.asm.Opcodes;
  *
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
-public class TransparentDirtyDetectorInstrumentator implements ClassFileTransformer, TransparentDirtyDetectorDef {
+public class TransparentDirtyDetectorInstrumentator implements ClassFileTransformer, ITransparentDirtyDetectorDef {
 
     private final static Logger LOGGER = Logger.getLogger(TransparentDirtyDetectorInstrumentator.class.getName());
 
@@ -49,7 +49,7 @@ public class TransparentDirtyDetectorInstrumentator implements ClassFileTransfor
         // pueden extender a estas clases y es necesario que se activen como dirty 
         // cuando se invoque a algunos de sus métodos.
         this.pkgs = Arrays.copyOf(_pkgs, _pkgs.length + 1); //create new array from old array and allocate one more element
-        this.pkgs[this.pkgs.length - 1] = "net.odbogm.security";
+        this.pkgs[this.pkgs.length - 1] = "net/odbogm/security";
 
         
         LOGGER.log(Level.FINER, "Instrumentando clases de los siguientes paquetes: ");
@@ -76,7 +76,7 @@ public class TransparentDirtyDetectorInstrumentator implements ClassFileTransfor
             throws IllegalClassFormatException {
 
         LOGGER.log(Level.FINEST, "preprocesando clase: {0}...", className);
-
+        
         if (isInstrumentable(className)) {
             // forzar la recarga
 //            clazz.getName().replace(".", "/")

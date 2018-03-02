@@ -7,19 +7,22 @@ package net.odbogm;
 
 import Test.EdgeAttrib;
 import Test.EnumTest;
+import Test.GroupEx;
 import Test.SSimpleVertex;
 import Test.SimpleVertex;
 import Test.SimpleVertexEx;
 import Test.SimpleVertexInterfaceAttr;
 import Test.SimpleVertexWithEmbedded;
 import com.orientechnologies.orient.core.sql.OCommandSQL;
+import java.io.IOException;
 import net.odbogm.proxy.IObjectProxy;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import net.odbogm.agent.ITransparentDirtyDetector;
-import net.odbogm.agent.TransparentDirtyDetectorAgent;
 import net.odbogm.exceptions.ReferentialIntegrityViolation;
 import net.odbogm.exceptions.UnknownRID;
 import net.odbogm.security.*;
@@ -57,14 +60,15 @@ public class SessionManagerTest {
 //        System.out.println("1-----");
 //        GroupSID gs = new GroupSID("dd", "uu");
 //        System.out.println("2-----");
-        
+               
         System.out.println("Iniciando session manager...");
         sm = new SessionManager("remote:localhost/Test", "root", "toor")
-                .setActivationStrategy(SessionManager.ActivationStrategy.CLASS_INSTRUMENTATION, "Test");
-        
+//                .setActivationStrategy(SessionManager.ActivationStrategy.CLASS_INSTRUMENTATION, "Test")
+                ;
+
         System.out.println("Begin");
         this.sm.begin();
-        
+
         System.out.println("fin setup.");
 //        this.sm.setAuditOnUser("userAuditado");
 
@@ -1028,94 +1032,105 @@ public class SessionManagerTest {
      * Test security of SObjects
      */
 //    @Test
-//    public void testSObjects() {
-//        System.out.println("\n\n\n");
-//        System.out.println("***************************************************************");
-//        System.out.println("test security of SObjects");
-//        System.out.println("***************************************************************");
-//
-//        // elminar los grupos
-//        this.sm.getGraphdb().command(new OCommandSQL("delete vertex GroupSID")).execute();
-//
-//        // eliminar los usuarios
-//        this.sm.getGraphdb().command(new OCommandSQL("delete vertex UserSID")).execute();
-//
-//        // eliminar los SSVertex
-//        this.sm.getGraphdb().command(new OCommandSQL("delete vertex SSimpleVertex")).execute();
-//
-//        // crear los grupos y los usuarios.
-//        System.out.println("\n\n\nCreando los grupos ----------------------------------");
-//        GroupSID gna = new GroupSID("gna", "gna");
-//        GroupSID gr = new GroupSID("gr", "gr");
-//        GroupSID gw = new GroupSID("gw", "gw");
-//        System.out.println("\n\n\nGuardando los grupos ----------------------------------");
-//
-//        GroupSID sgna = this.sm.store(gna);
-//        GroupSID sgr = this.sm.store(gr);
-//        GroupSID sgw = this.sm.store(gw);
-//        System.out.println("\n\n\nIniciando commit de grupos.............................");
-//        this.sm.commit();
-//        System.out.println("fin de grupos -----------------------------------------------\n\n\n");
-//        UserSID una = new UserSID("una", "una");
-//        UserSID ur = new UserSID("ur", "ur");
-//        UserSID uw = new UserSID("uw", "uw");
-//        UserSID urw = new UserSID("urw", "urw");
-//
-//        una = this.sm.store(una);
-//        ur = this.sm.store(ur);
-//        uw = this.sm.store(uw);
-//        urw = this.sm.store(urw);
-//
-//        this.sm.commit();
-//
-//        una.addGroup(sgna);
-//        una.addGroup(sgr);
-//
-//        ur.addGroup(sgr);
-//
-//        uw.addGroup(sgw);
-//
-//        urw.addGroup(sgw);
-//        urw.addGroup(sgr);
-//
-//        this.sm.commit();
-//
-//        //--------------------------------------------------------
-//        SSimpleVertex ssv = new SSimpleVertex();
-//
-//        ssv = this.sm.store(ssv);
-//        this.sm.commit();
-//
-//        String reg = ((IObjectProxy) ssv).___getRid();
-//        System.out.println("RID: " + reg);
-////        SSimpleVertex rssv = this.sm.get(SSimpleVertex.class, reg);
-//
-//        System.out.println("Agregando los acls...");
-//        ssv.setAcl(gna, new AccessRight().setRights(AccessRight.NOACCESS));
-//        ssv.setAcl(gr, new AccessRight().setRights(AccessRight.READ));
-//        ssv.setAcl(gw, new AccessRight().setRights(AccessRight.WRITE));
-//
-//        this.sm.commit();
-//
-//        this.sm.setLoggedInUser(una);
-//        System.out.println("Login UserNoAccess");
-//        SSimpleVertex ssvna = this.sm.get(SSimpleVertex.class, reg);
-//        System.out.println("State: " + ssvna.getSecurityState());
-//        assertTrue(ssvna.getSecurityState() == AccessRight.NOACCESS);
-//
-//        System.out.println("Login UserRead");
-//        this.sm.setLoggedInUser(ur);
-//        SSimpleVertex ssvr = this.sm.get(SSimpleVertex.class, reg);
-//        System.out.println("State: " + ssvr.getSecurityState());
-//        assertTrue(ssvr.getSecurityState() == AccessRight.READ);
-//
-//        this.sm.setLoggedInUser(uw);
-//        System.out.println("Login UserWrite");
-//        SSimpleVertex ssvw = this.sm.get(SSimpleVertex.class, reg);
-//        System.out.println("State: " + ssvw.getSecurityState());
-//        assertTrue(ssvw.getSecurityState() == AccessRight.WRITE);
-//
-//    }
+    public void testSObjects() {
+        System.out.println("\n\n\n");
+        System.out.println("***************************************************************");
+        System.out.println("test security of SObjects");
+        System.out.println("***************************************************************");
+
+        // elminar los grupos
+        this.sm.getGraphdb().command(new OCommandSQL("delete vertex GroupSID")).execute();
+
+        // eliminar los usuarios
+        this.sm.getGraphdb().command(new OCommandSQL("delete vertex UserSID")).execute();
+
+        // eliminar los SSVertex
+        this.sm.getGraphdb().command(new OCommandSQL("delete vertex SSimpleVertex")).execute();
+
+        System.out.println("\n\n\nCreando usuarios ----------------------------------");
+        UserSID una = new UserSID("una", "una");
+        UserSID ur = new UserSID("ur", "ur");
+        UserSID uw = new UserSID("uw", "uw");
+        UserSID urw = new UserSID("urw", "urw");
+        System.out.println("CL user: " + una.getClass().getClassLoader());
+        
+        // crear los grupos y los usuarios.
+        System.out.println("\n\n\nCreando los grupos ----------------------------------");
+        GroupEx gex = new GroupEx("gex","gex");
+        System.out.println(":"+((ITransparentDirtyDetector)gex).___ogm___isDirty());
+        gex.setName("otro");
+        System.out.println("dirty:"+((ITransparentDirtyDetector)gex).___ogm___isDirty());
+        
+        GroupSID gna = new GroupSID("gna", "gna");
+        GroupSID gr = new GroupSID("gr", "gr");
+        GroupSID gw = new GroupSID("gw", "gw");
+        System.out.println("CL group: " + gna.getClass().getClassLoader()+" > "+gna.getClass().getCanonicalName());
+        System.out.println("\n\n\nGuardando los grupos ----------------------------------");
+
+        GroupSID sgna = this.sm.store(gna);
+        GroupSID sgr = this.sm.store(gr);
+        GroupSID sgw = this.sm.store(gw);
+        System.out.println("\n\n\nIniciando commit de grupos.............................");
+        this.sm.commit();
+        System.out.println("fin de grupos -----------------------------------------------\n\n\n");
+        
+        
+
+        una = this.sm.store(una);
+        ur = this.sm.store(ur);
+        uw = this.sm.store(uw);
+        urw = this.sm.store(urw);
+
+        this.sm.commit();
+
+        una.addGroup(sgna);
+        una.addGroup(sgr);
+
+        ur.addGroup(sgr);
+
+        uw.addGroup(sgw);
+
+        urw.addGroup(sgw);
+        urw.addGroup(sgr);
+
+        this.sm.commit();
+
+        //--------------------------------------------------------
+        SSimpleVertex ssv = new SSimpleVertex();
+
+        ssv = this.sm.store(ssv);
+        this.sm.commit();
+
+        String reg = ((IObjectProxy) ssv).___getRid();
+        System.out.println("RID: " + reg);
+//        SSimpleVertex rssv = this.sm.get(SSimpleVertex.class, reg);
+
+        System.out.println("Agregando los acls...");
+        ssv.setAcl(gna, new AccessRight().setRights(AccessRight.NOACCESS));
+        ssv.setAcl(gr, new AccessRight().setRights(AccessRight.READ));
+        ssv.setAcl(gw, new AccessRight().setRights(AccessRight.WRITE));
+
+        this.sm.commit();
+
+        this.sm.setLoggedInUser(una);
+        System.out.println("Login UserNoAccess");
+        SSimpleVertex ssvna = this.sm.get(SSimpleVertex.class, reg);
+        System.out.println("State: " + ssvna.getSecurityState());
+        assertTrue(ssvna.getSecurityState() == AccessRight.NOACCESS);
+
+        System.out.println("Login UserRead");
+        this.sm.setLoggedInUser(ur);
+        SSimpleVertex ssvr = this.sm.get(SSimpleVertex.class, reg);
+        System.out.println("State: " + ssvr.getSecurityState());
+        assertTrue(ssvr.getSecurityState() == AccessRight.READ);
+
+        this.sm.setLoggedInUser(uw);
+        System.out.println("Login UserWrite");
+        SSimpleVertex ssvw = this.sm.get(SSimpleVertex.class, reg);
+        System.out.println("State: " + ssvw.getSecurityState());
+        assertTrue(ssvw.getSecurityState() == AccessRight.WRITE);
+
+    }
 
     @Test
     public void testEmbeddedRollback() {
@@ -1250,7 +1265,7 @@ public class SessionManagerTest {
         }
 
         System.out.println("Testeando ingegridad referencial...");
-        
+
         // crear un objeto simple.
         SimpleVertex irSV = sm.store(new SimpleVertex());
         sm.commit();
@@ -1262,23 +1277,94 @@ public class SessionManagerTest {
         
         SimpleVertexEx rirSVEX = sm.store(irSVEX);
         String rirSVEXrid = sm.getRID(rirSVEX);
-        
-        System.out.println("Referencia creada: "+rirSVEXrid+"-->"+irSVrid);
+
+        System.out.println("Referencia creada: " + rirSVEXrid + "-->" + irSVrid);
         // liberar la referencia
         irSVEX = null;
         sm.commit();
-        
+
         // intentar eliminar el objeto dependiente
         try {
             sm.delete(irSV);
             sm.commit();
             fail("El objeto fue borrado y debería haber saltado una excepción");
-        } catch(ReferentialIntegrityViolation riv) {
+        } catch (ReferentialIntegrityViolation riv) {
             System.out.println("ReferencialIntegrityViolation ");
         }
+
+        System.out.println("*************************");
+        System.out.println("Verificando el comportamiento de la auditoría con objetos borrados");
+        System.out.println("*************************");
+        sm.setAuditOnUser("DeleteAudit");
+        SimpleVertex svaudit = new SimpleVertex("DeleteAudit");
+        SimpleVertex rsva  = sm.store(svaudit);
+        sm.commit();
+        String svaRID = sm.getRID(rsva);
+        System.out.println("RID: "+svaRID);
+        svaudit = null;
+        System.out.println("Eliminando el objeto...");
+        sm.delete(rsva);
+        sm.commit();
+        try {
+            sm.get(svaRID);
+            fail("El objeto aún existe!!!");
+        } catch (Exception e) {
+            System.out.println("Todo ok!");
+        }
+        
+        
         
     }
 
+    
+    /**
+     * Test of delete method, of class SessionManager.
+     */
+    @Test
+    public void testRemoveOrphan() {
+        System.out.println("\n\n\n");
+        System.out.println("***************************************************************");
+        System.out.println("RemoveOrphan");
+        System.out.println("***************************************************************");
+
+        SimpleVertexEx sve = new SimpleVertexEx();
+        sve.setSvinner(new SimpleVertex());
+
+        SimpleVertex result = sm.store(sve);
+
+        this.sm.commit();
+
+        System.out.println("Recuperar el objeto de la base");
+        String rid = ((IObjectProxy) result).___getRid();
+        // liberar el objeto...
+        System.out.println("Liberar el objeto  "+result+"...");
+        result = null;
+        
+        SimpleVertexEx expResult = this.sm.get(SimpleVertexEx.class, rid);
+        System.out.println("Nueva referencia: "+expResult);
+        
+        SimpleVertex sv = expResult.getSvinner();
+        String svrid = this.sm.getRID(sv);
+        System.out.println("Objeto referenciado: " + sm.getRID(sv));
+        System.out.println("Eliminar la referencia");
+        expResult.setSvinner(null);
+        
+        System.out.println("commit...");
+        sm.commit();
+
+        try {
+            sm.get(svrid);
+            fail("El objeto aún exite!!!");
+        } catch (UnknownRID urid) {
+            System.out.println("El objeto fue borrado!");
+        }
+
+    }
+    
+    
+    
+    
+    
     /**
      * Test Rollback on exception
      */

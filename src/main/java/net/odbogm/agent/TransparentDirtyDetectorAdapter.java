@@ -18,7 +18,7 @@ import org.objectweb.asm.Opcodes;
  *
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
-public class TransparentDirtyDetectorAdapter extends ClassVisitor implements TransparentDirtyDetectorDef {
+public class TransparentDirtyDetectorAdapter extends ClassVisitor implements ITransparentDirtyDetectorDef {
 
     private final static Logger LOGGER = Logger.getLogger(TransparentDirtyDetectorAdapter.class.getName());
 

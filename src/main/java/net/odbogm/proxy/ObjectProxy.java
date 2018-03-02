@@ -193,6 +193,9 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         if (method.getName().equals("___isValid")) {
                     return this.___isValid();
         }
+        if (method.getName().equals("___isDeleted")) {
+                    return this.___isDeleted();
+        }
         
         if (!this.___isValidObject) {
             LOGGER.log(Level.FINER, "El objeto está marcado como inválido!!!");
@@ -276,7 +279,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                 case "___setDeletedMark":
                     this.___setDeletedMark();
                     break;
-
+                    
                 case "___ogm___setDirty":
                     res = methodProxy.invokeSuper(o, args);
                     break;
@@ -426,6 +429,11 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     @Override
     public void ___setDeletedMark() {
         this.___deletedMark = true;
+    }
+    
+    @Override
+    public boolean ___isDeleted() {
+        return this.___deletedMark;
     }
 
     /**
@@ -1071,19 +1079,30 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             boolean acc = f.isAccessible();
             f.setAccessible(true);
 
+            // En el Edge, IN proviene del objeto apuntado. Raro pero es así :(
+            String outRid = edgeToRemove.getInVertex().getIdentity().toString();
+            LOGGER.log(Level.FINER, "El edge "+edgeToRemove
+                    +" apunta IN: "+edgeToRemove.getInVertex().getIdentity().toString()
+                    +" apunta OUT: "+edgeToRemove.getOutVertex().getIdentity().toString());
             // remover primero el eje
             edgeToRemove.remove();
 
             // si corresponde
             if (f.isAnnotationPresent(RemoveOrphan.class)) {
-
+                LOGGER.log(Level.FINER, "Remove orphan presente");
                 //auditar
                 if (this.___transaction.getSessionManager().isAuditing()) {
                     this.___transaction.getSessionManager().auditLog(this, AuditType.DELETE, "LINKLIST DELETE: ", f.get(this.___proxyObject));
                 }
                 // eliminar el objecto
                 // this.sm.delete(f.get(realObj));
-                this.___transaction.delete(f.get(this.___proxyObject));
+                if (f.get(this.___proxyObject)!=null) {
+                    LOGGER.log(Level.FINER, "La referencia aún existe. Eliminar el objeto directamente");
+                    this.___transaction.delete(f.get(this.___proxyObject));
+                } else {
+                    LOGGER.log(Level.FINER, "la referencia estaba en null, recupear y eliminar el objeto.");
+                    this.___transaction.delete(this.___transaction.get(outRid));
+                }
             }
 
             f.setAccessible(acc);
