@@ -8,11 +8,13 @@ package Test.asm;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import net.odbogm.annotations.Entity;
 
 /**
  *
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
+@Entity
 public class ASMTargetEx extends ASMTarget {
 
     private float f = 0.1f;

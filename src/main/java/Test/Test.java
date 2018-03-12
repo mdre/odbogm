@@ -77,7 +77,7 @@ public class Test {
         System.out.println("Iniciando comunicación con la base....");
         long millis = System.currentTimeMillis();
         sm = new SessionManager("remote:localhost/Test", "root", "toor")
-                    .setActivationStrategy(SessionManager.ActivationStrategy.CLASS_INSTRUMENTATION, "Test");
+                    .setActivationStrategy(SessionManager.ActivationStrategy.CLASS_INSTRUMENTATION);
 //        sm = new SessionManager("remote:localhost/quiencotiza", "root", "toor");
         System.out.println("Tiempo de inicio: " + (System.currentTimeMillis() - millis));
         System.out.println("comunicación inicializada!");

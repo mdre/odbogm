@@ -14,14 +14,11 @@ import Test.SimpleVertexEx;
 import Test.SimpleVertexInterfaceAttr;
 import Test.SimpleVertexWithEmbedded;
 import com.orientechnologies.orient.core.sql.OCommandSQL;
-import java.io.IOException;
 import net.odbogm.proxy.IObjectProxy;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import net.odbogm.agent.ITransparentDirtyDetector;
 import net.odbogm.exceptions.ReferentialIntegrityViolation;
 import net.odbogm.exceptions.UnknownRID;
@@ -63,7 +60,7 @@ public class SessionManagerTest {
                
         System.out.println("Iniciando session manager...");
         sm = new SessionManager("remote:localhost/Test", "root", "toor")
-//                .setActivationStrategy(SessionManager.ActivationStrategy.CLASS_INSTRUMENTATION, "Test")
+                .setActivationStrategy(SessionManager.ActivationStrategy.CLASS_INSTRUMENTATION)
                 ;
 
         System.out.println("Begin");
@@ -1031,7 +1028,7 @@ public class SessionManagerTest {
     /**
      * Test security of SObjects
      */
-//    @Test
+    @Test
     public void testSObjects() {
         System.out.println("\n\n\n");
         System.out.println("***************************************************************");
@@ -1047,6 +1044,40 @@ public class SessionManagerTest {
         // eliminar los SSVertex
         this.sm.getGraphdb().command(new OCommandSQL("delete vertex SSimpleVertex")).execute();
 
+        
+        // crear los grupos y los usuarios.
+        System.out.println("\n\n\n\n\n\n\n\n\n\n\n\n\n");
+        System.out.println("Creando los grupos ----------------------------------");
+//        System.out.println(":"+((ITransparentDirtyDetector)gex).___ogm___isDirty());
+//        gex.setName("otro");
+//        System.out.println("dirty:"+((ITransparentDirtyDetector)gex).___ogm___isDirty());
+//        
+//        System.out.println("GS =======================================================" );
+//        Group gs2 = new Group("gs2", "gs2");
+//        System.out.println("==========================================================");
+//        
+        GroupSID gna = new GroupSID("gna", "gna");
+        GroupSID gr = new GroupSID("gr", "gr");
+        GroupSID gw = new GroupSID("gw", "gw");
+        System.out.println("gna dirty:"+((ITransparentDirtyDetector)gna).___ogm___isDirty());
+        System.out.println("CL group: " + gna.getClass().getClassLoader()+" > "+gna.getClass().getCanonicalName());
+        System.out.println("\n\n\nGuardando los grupos ----------------------------------");
+
+        GroupSID sgna = this.sm.store(gna);
+        GroupSID sgr = this.sm.store(gr);
+        GroupSID sgw = this.sm.store(gw);
+        
+        // liberar las referencias
+        gna = null;
+        gr = null;
+        gw = null;
+        
+        System.out.println("\n\n\nIniciando commit de grupos.............................");
+        this.sm.commit();
+        System.out.println("fin de grupos -----------------------------------------------\n\n\n");
+        
+        
+        
         System.out.println("\n\n\nCreando usuarios ----------------------------------");
         UserSID una = new UserSID("una", "una");
         UserSID ur = new UserSID("ur", "ur");
@@ -1054,28 +1085,6 @@ public class SessionManagerTest {
         UserSID urw = new UserSID("urw", "urw");
         System.out.println("CL user: " + una.getClass().getClassLoader());
         
-        // crear los grupos y los usuarios.
-        System.out.println("\n\n\nCreando los grupos ----------------------------------");
-        GroupEx gex = new GroupEx("gex","gex");
-        System.out.println(":"+((ITransparentDirtyDetector)gex).___ogm___isDirty());
-        gex.setName("otro");
-        System.out.println("dirty:"+((ITransparentDirtyDetector)gex).___ogm___isDirty());
-        
-        GroupSID gna = new GroupSID("gna", "gna");
-        GroupSID gr = new GroupSID("gr", "gr");
-        GroupSID gw = new GroupSID("gw", "gw");
-        System.out.println("CL group: " + gna.getClass().getClassLoader()+" > "+gna.getClass().getCanonicalName());
-        System.out.println("\n\n\nGuardando los grupos ----------------------------------");
-
-        GroupSID sgna = this.sm.store(gna);
-        GroupSID sgr = this.sm.store(gr);
-        GroupSID sgw = this.sm.store(gw);
-        System.out.println("\n\n\nIniciando commit de grupos.............................");
-        this.sm.commit();
-        System.out.println("fin de grupos -----------------------------------------------\n\n\n");
-        
-        
-
         una = this.sm.store(una);
         ur = this.sm.store(ur);
         uw = this.sm.store(uw);
@@ -1103,12 +1112,15 @@ public class SessionManagerTest {
 
         String reg = ((IObjectProxy) ssv).___getRid();
         System.out.println("RID: " + reg);
-//        SSimpleVertex rssv = this.sm.get(SSimpleVertex.class, reg);
+        SSimpleVertex rssv = this.sm.get(SSimpleVertex.class, reg);
 
+        System.out.println("SecurityState: "+rssv.getSecurityState());
+        
         System.out.println("Agregando los acls...");
-        ssv.setAcl(gna, new AccessRight().setRights(AccessRight.NOACCESS));
-        ssv.setAcl(gr, new AccessRight().setRights(AccessRight.READ));
-        ssv.setAcl(gw, new AccessRight().setRights(AccessRight.WRITE));
+        rssv.setOwner(uw);
+        rssv.setAcl(sgna, new AccessRight().setRights(AccessRight.NOACCESS));
+        rssv.setAcl(sgr, new AccessRight().setRights(AccessRight.READ));
+        rssv.setAcl(sgw, new AccessRight().setRights(AccessRight.WRITE));
 
         this.sm.commit();
 
@@ -1130,6 +1142,7 @@ public class SessionManagerTest {
         System.out.println("State: " + ssvw.getSecurityState());
         assertTrue(ssvw.getSecurityState() == AccessRight.WRITE);
 
+        rssv.removeAcl(sgna);
     }
 
     @Test

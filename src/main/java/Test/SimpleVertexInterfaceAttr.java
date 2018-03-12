@@ -8,7 +8,9 @@ package Test;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import net.odbogm.annotations.Entity;
 
+@Entity
 public class SimpleVertexInterfaceAttr extends SimpleVertex {
     private final static Logger LOGGER = Logger.getLogger(SimpleVertexInterfaceAttr.class .getName());
     static {

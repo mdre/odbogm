@@ -118,10 +118,10 @@ public class SessionManager implements Actions.Store, Actions.Get {
      * @param pkgs paquetes/clases a instrumentar. Puede ser null.
      * @return this
      */
-    public SessionManager setActivationStrategy(ActivationStrategy as, String... pkgs) {
+    public SessionManager setActivationStrategy(ActivationStrategy as) {
         this.activationStrategy = as;
         if (this.activationStrategy == ActivationStrategy.CLASS_INSTRUMENTATION) {
-            TransparentDirtyDetectorAgent.initialize(pkgs);
+            TransparentDirtyDetectorAgent.initialize();
         }
         return this;
     }
@@ -455,7 +455,7 @@ public class SessionManager implements Actions.Store, Actions.Get {
     /**
      * Comienza a auditar los objetos y los persiste con el nombre de usuario.
      *
-     * @param user User String only.
+     * @param user UserSID String only.
      */
     public void setAuditOnUser(String user) {
         this.publicTransaction.setAuditOnUser(user);

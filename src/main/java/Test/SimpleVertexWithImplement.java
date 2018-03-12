@@ -6,14 +6,15 @@
 
 package Test;
 
-import java.util.Date;
 import net.odbogm.annotations.Ignore;
 import java.util.logging.Logger;
+import net.odbogm.annotations.Entity;
 
 /**
  *
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
+@Entity
 public class SimpleVertexWithImplement extends SimpleVertex implements InterfaceTest {
     @Ignore
     private final static Logger LOGGER = Logger.getLogger(SimpleVertexWithImplement.class .getName());

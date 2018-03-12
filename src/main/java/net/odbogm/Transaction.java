@@ -1046,7 +1046,7 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
     /**
      * Comienza a auditar los objetos y los persiste con el nombre de usuario.
      *
-     * @param user User String only.
+     * @param user UserSID String only.
      */
     public void setAuditOnUser(String user) {
 

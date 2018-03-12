@@ -10,7 +10,9 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.LogginProperties;
+import net.odbogm.annotations.Entity;
 
+@Entity
 public abstract class SObject {
 
     private final static Logger LOGGER = Logger.getLogger(SObject.class.getName());
@@ -37,15 +39,19 @@ public abstract class SObject {
     public SObject() {
     }
 
-    public SObject(SID owner) {
+    public SObject(UserSID owner) {
+        this.__owner = owner;
+    }
+    
+    public SObject(GroupSID owner) {
         this.__owner = owner;
     }
 
-    void setState(int s) {
+    final void setState(int s) {
         this.__state = s;
     }
 
-    int getState() {
+    final int getState() {
         return this.__state;
     }
 
@@ -56,20 +62,29 @@ public abstract class SObject {
      * @param ar the AccessRight to set
      * @return this SObject reference
      */
-    public final SObject setAcl(SID sid, AccessRight ar) {
-
+    public final SObject setAcl(GroupSID sid, AccessRight ar) {
         __acl.put(sid.getUUID(), ar.getRights());
-
+        return this;
+    }
+    
+    public final SObject setAcl(UserSID sid, AccessRight ar) {
+        __acl.put(sid.getUUID(), ar.getRights());
         return this;
     }
 
-    public final void removeAcl(SID sid) {
+    public final void removeAcl(GroupSID sid) {
+        if (__acl != null) {
+            __acl.remove(sid.getUUID());
+        }
+    }
+    
+    public final void removeAcl(UserSID sid) {
         if (__acl != null) {
             __acl.remove(sid.getUUID());
         }
     }
 
-    public final SObject setOwner(SID o) {
+    public final SObject setOwner(UserSID o) {
         this.__owner = o;
         return this;
     }

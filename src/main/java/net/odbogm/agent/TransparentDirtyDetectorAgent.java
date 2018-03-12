@@ -29,8 +29,6 @@ public class TransparentDirtyDetectorAgent {
 
     private static Instrumentation instrumentation;
 
-    static String[] pkgs;
-
     /**
      * @author Alexey Ragozin (alexey.ragozin@gmail.com)
      */
@@ -87,9 +85,9 @@ public class TransparentDirtyDetectorAgent {
      */
     public static void premain(String args, Instrumentation inst) throws Exception {
         LOGGER.log(Level.FINER, "premain method invoked with args: {0} and inst: {1}", new Object[]{args, inst});
-        LOGGER.log(Level.FINEST, "args: "+args);
         instrumentation = inst;
-        instrumentation.addTransformer(new TransparentDirtyDetectorInstrumentator(args.split(";")));
+//        instrumentation.addTransformer(new TransparentDirtyDetectorInstrumentator(args.split(";")));
+        instrumentation.addTransformer(new TransparentDirtyDetectorInstrumentator());
     }
 
     /**
@@ -103,9 +101,9 @@ public class TransparentDirtyDetectorAgent {
      */
     public static void agentmain(String args, Instrumentation inst) throws Exception {
         LOGGER.log(Level.FINER, "agentmain method invoked with args: {0} and inst: {1}", new Object[]{args, inst});
-        LOGGER.log(Level.FINEST, "args: "+args);
         instrumentation = inst;
-        instrumentation.addTransformer(new TransparentDirtyDetectorInstrumentator(args.split(";")));
+//        instrumentation.addTransformer(new TransparentDirtyDetectorInstrumentator(args.split(";")));
+        instrumentation.addTransformer(new TransparentDirtyDetectorInstrumentator());
     }
 
     /**
@@ -113,14 +111,10 @@ public class TransparentDirtyDetectorAgent {
      *
      * @param pkgs paquetes/clases a instrumentar
      */
-    public static void initialize(String... pkgs) {
+    public static void initialize() {
         if (instrumentation == null) {
-            TransparentDirtyDetectorAgent.pkgs = pkgs;
 
             LOGGER.log(Level.INFO, "dynamically loading java agent...");
-            for (String pkg : pkgs) {
-                LOGGER.log(Level.INFO, pkg);
-            }
             try {
                 //            String nameOfRunningVM = ManagementFactory.getRuntimeMXBean().getName();
 //            int p = nameOfRunningVM.indexOf('@');
@@ -136,14 +130,13 @@ public class TransparentDirtyDetectorAgent {
 //            } catch (Exception e) {
 //                throw new RuntimeException(e);
 //            }
-                String sPkgs = String.join(";", pkgs);
                 String pathToAgent = TransparentDirtyDetectorAgent.class
                         .getProtectionDomain().getCodeSource().getLocation().toURI().getPath();
                 LOGGER.log(Level.INFO, "path: " + pathToAgent);
                 if (pathToAgent.endsWith(".jar")) {
-                    AgentLoader.loadAgent(pathToAgent, sPkgs);
+                    AgentLoader.loadAgent(pathToAgent, null);
                 } else {
-                    AgentLoader.loadAgentClass(TransparentDirtyDetectorAgent.class.getName(), sPkgs, null, true, true, true);
+                    AgentLoader.loadAgentClass(TransparentDirtyDetectorAgent.class.getName(), null, null, true, true, true);
                 }
             } catch (URISyntaxException ex) {
                 Logger.getLogger(TransparentDirtyDetectorAgent.class.getName()).log(Level.SEVERE, null, ex);

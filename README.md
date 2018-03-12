@@ -156,8 +156,11 @@ To delete an object that was ***previous retrieved*** from the DB, we call
 ```Java
 sm.delete(Object o);
 ```
+### Cascade Delete
 Since an object could be divided into multiple vertex we must tell what to do in this case. The annotation ***@CascadeDelete*** over a field do the job.
 If the vertex holding the object have more than one reference, that indicate that the object is part of another object and if it is deleted, a referential integrity could be occurs, so an exception is throws to catch that problem.
+### Remove Orphan
+Another anotation is ***RemoveOrphan***. This anotation lets us to try to delete a related object in the same way as ***CascadeDelte*** but if the object has references from  other object, it will not be deleted and will not throw an exception. Only when the object has no reference will be deleted.
 
 
 ## Rollback

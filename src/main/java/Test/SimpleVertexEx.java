@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.logging.Logger;
 import net.odbogm.annotations.Audit;
+import net.odbogm.annotations.Entity;
 import net.odbogm.annotations.FieldAttributes;
 import net.odbogm.annotations.Indexed;
 
@@ -21,6 +22,7 @@ import net.odbogm.annotations.Indexed;
  *
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
+@Entity
 @Audit(log = Audit.AuditType.ALL)
 public class SimpleVertexEx extends SimpleVertex {
     @Ignore

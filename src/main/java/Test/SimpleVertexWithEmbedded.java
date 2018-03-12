@@ -12,8 +12,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import net.odbogm.annotations.Embedded;
+import net.odbogm.annotations.Entity;
 
+@Entity
 public class SimpleVertexWithEmbedded {
     private final static Logger LOGGER = Logger.getLogger(SimpleVertexWithEmbedded.class .getName());
     static {

@@ -6,10 +6,13 @@
 
 package Test.asm;
 
+import net.odbogm.annotations.Entity;
+
 /**
  *
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
+@Entity
 public class ASMTarget {
     private String s = "ASM";
     private Integer iI = 100;

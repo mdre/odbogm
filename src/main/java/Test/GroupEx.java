@@ -8,12 +8,14 @@ package Test;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import net.odbogm.annotations.Entity;
 import net.odbogm.security.GroupSID;
 
 /**
  *
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
+@Entity
 public class GroupEx extends GroupSID {
     private final static Logger LOGGER = Logger.getLogger(GroupEx.class .getName());
     static {

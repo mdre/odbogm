@@ -34,7 +34,7 @@ public class TestASM {
 //        TransparentDirtyDetectorAgent.initialize("Test.asm");
 
         SessionManager sm = new SessionManager("remote:localhost/Test", "root", "toor")
-                .setActivationStrategy(SessionManager.ActivationStrategy.CLASS_INSTRUMENTATION,"Test");
+                .setActivationStrategy(SessionManager.ActivationStrategy.CLASS_INSTRUMENTATION);
         
         System.out.println("1");
         ASMTarget asmti = new ASMTarget();
@@ -60,11 +60,16 @@ public class TestASM {
         asmte.set();
         System.out.println("Dirty: " + ((ITransparentDirtyDetector) asmte).___ogm___isDirty());
 
-        System.out.println("8 - invocando init()");
+        System.out.println("8 - reseteando a false");
+        ((ITransparentDirtyDetector) asmte).___ogm___setDirty(false);
+        System.out.println("Ex Dirty: " + ((ITransparentDirtyDetector) asmte).___ogm___isDirty());
+        System.out.println("orig Dirty: " + ((ITransparentDirtyDetector) (ASMTarget) asmte).___ogm___isDirty());
+        
+        System.out.println("9 - invocando init()");
         asmte.init();
         System.out.println("Dirty: " + ((ITransparentDirtyDetector) asmte).___ogm___isDirty());
 
-        System.out.println("9 - reseteando a false");
+        System.out.println("10 - reseteando a false");
         ((ITransparentDirtyDetector) asmte).___ogm___setDirty(false);
         System.out.println("Ex Dirty: " + ((ITransparentDirtyDetector) asmte).___ogm___isDirty());
         System.out.println("orig Dirty: " + ((ITransparentDirtyDetector) (ASMTarget) asmte).___ogm___isDirty());

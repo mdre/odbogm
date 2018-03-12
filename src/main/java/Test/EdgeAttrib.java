@@ -9,11 +9,13 @@ package Test;
 import java.util.Date;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import net.odbogm.annotations.Entity;
 
 /**
  *
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
+@Entity
 public class EdgeAttrib {
     private final static Logger LOGGER = Logger.getLogger(EdgeAttrib.class .getName());
     static {

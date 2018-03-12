@@ -33,30 +33,16 @@ public class TransparentDirtyDetectorInstrumentator implements ClassFileTransfor
     static {
         LOGGER.setLevel(LogginProperties.TransparentDirtyDetectorInstrumentator);
     }
-    private String[] pkgs;
 
 //    public TransparentDirtyDetectorInstrumentator() {
 //        this.pkgs = TransparentDirtyDetectorAgent.pkgs;
 //    }
-
     /**
      * Instrumentador
      *
      * @param _pkgs lista de paquetes/clases a instrumentar.
      */
-    public TransparentDirtyDetectorInstrumentator(String... _pkgs) {
-        // agregar siempre net.odbogm.security porque los objetos del sistema
-        // pueden extender a estas clases y es necesario que se activen como dirty 
-        // cuando se invoque a algunos de sus métodos.
-        this.pkgs = Arrays.copyOf(_pkgs, _pkgs.length + 1); //create new array from old array and allocate one more element
-        this.pkgs[this.pkgs.length - 1] = "net/odbogm/security";
-
-        
-        LOGGER.log(Level.FINER, "Instrumentando clases de los siguientes paquetes: ");
-        for (String pkg : this.pkgs) {
-            LOGGER.log(Level.FINER, pkg);
-        }
-
+    public TransparentDirtyDetectorInstrumentator() {
     }
 
     /**
@@ -76,21 +62,25 @@ public class TransparentDirtyDetectorInstrumentator implements ClassFileTransfor
             throws IllegalClassFormatException {
 
         LOGGER.log(Level.FINEST, "preprocesando clase: {0}...", className);
-        
-        if (isInstrumentable(className)) {
-            // forzar la recarga
-//            clazz.getName().replace(".", "/")
-            ClassReader cr = new ClassReader(classfileBuffer);
-            if (isInterface(cr)) {
-                // No procesar las interfaces
-                LOGGER.log(Level.FINER, "Interface detectada {0}. NO PROCESAR!", className);
-                return classfileBuffer;
-            }
-            LOGGER.log(Level.FINER, "Redefiniendo on-the-fly {0}...", className);
-            ClassWriter cw = new ClassWriter(cr, ClassWriter.COMPUTE_MAXS);
-            TransparentDirtyDetectorAdapter taa = new TransparentDirtyDetectorAdapter(cw);
-            cr.accept(taa, 0);
 
+//        if (isInstrumentable(className)) {
+        // forzar la recarga
+//            clazz.getName().replace(".", "/")
+        ClassReader cr = new ClassReader(classfileBuffer);
+        if (isInterface(cr)) {
+            // No procesar las interfaces
+            LOGGER.log(Level.FINER, "Interface detectada {0}. NO PROCESAR!", className);
+            return classfileBuffer;
+        }
+        ClassWriter cw = new ClassWriter(cr, ClassWriter.COMPUTE_FRAMES);
+
+        TransparentDirtyDetectorAdapter taa = new TransparentDirtyDetectorAdapter(cw);
+
+        cr.accept(taa, 0);
+
+//        LOGGER.log(Level.FINER, "isInstrumentable: "+taa.isInstrumentable());
+        if (taa.isInstrumentable()) {
+            LOGGER.log(Level.FINER, "Redefiniendo on-the-fly {0}...", className);
             // instrumentar el método ___getDirty()
             MethodVisitor mv = cw.visitMethod(Opcodes.ACC_PUBLIC, ISDIRTY, "()Z", null, null);
             mv.visitCode();
@@ -137,21 +127,6 @@ public class TransparentDirtyDetectorInstrumentator implements ClassFileTransfor
         } catch (IOException ex) {
             Logger.getLogger(TransparentDirtyDetectorInstrumentator.class.getName()).log(Level.SEVERE, null, ex);
         }
-    }
-
-    /**
-     * Determina si la clase es o no instrumentable
-     * @param className nombre completo de la clase
-     * @return true si se debe instrumentar
-     */
-    private boolean isInstrumentable(String className) {
-        boolean isIns = false;
-        for (String pkg : pkgs) {
-            if (className.startsWith(pkg.replace(".", FileSystems.getDefault().getSeparator())) && !className.contains("ByCGLIB")) {
-                isIns = true;
-            }
-        }
-        return isIns;
     }
 
     public boolean isInterface(ClassReader cr) {

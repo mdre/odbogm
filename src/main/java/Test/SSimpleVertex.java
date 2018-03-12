@@ -6,21 +6,17 @@
 
 package Test;
 
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
-import net.odbogm.annotations.Ignore;
-import java.util.logging.Logger;
-import net.odbogm.annotations.Embedded;
+import net.odbogm.annotations.Entity;
 import net.odbogm.security.SObject;
 
 /**
  *
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
+@Entity
 public class SSimpleVertex extends SObject {
-    @Ignore
-    private final static Logger LOGGER = Logger.getLogger(SSimpleVertex.class .getName());
+//    @Ignore
+//    private final static Logger LOGGER = Logger.getLogger(SSimpleVertex.class .getName());
 
     private String rid;
     private String s;
@@ -46,5 +42,4 @@ public class SSimpleVertex extends SObject {
     public String toString() {
         return this.s + " - State: "+this.getSecurityState() ;
     }
-    
 }

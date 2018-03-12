@@ -10,12 +10,13 @@ import java.util.Date;
 import net.odbogm.annotations.Ignore;
 import java.util.logging.Logger;
 import net.odbogm.annotations.Audit;
-import net.odbogm.security.SObject;
+import net.odbogm.annotations.Entity;
 
 /**
  *
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
+@Entity
 @Audit(log = Audit.AuditType.DELETE)
 public class SimpleVertex {
     @Ignore

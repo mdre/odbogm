@@ -5,7 +5,6 @@
  */
 package net.odbogm.agent;
 
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.LogginProperties;
 import org.objectweb.asm.MethodVisitor;
