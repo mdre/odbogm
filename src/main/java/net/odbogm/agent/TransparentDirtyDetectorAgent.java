@@ -108,8 +108,6 @@ public class TransparentDirtyDetectorAgent {
 
     /**
      * Programmatic hook to dynamically load javaagent at runtime.
-     *
-     * @param pkgs paquetes/clases a instrumentar
      */
     public static void initialize() {
         if (instrumentation == null) {

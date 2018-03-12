@@ -115,7 +115,6 @@ public class SessionManager implements Actions.Store, Actions.Get {
  ONCOMMIT:       cuando se invoca a un método se marca el objeto para ser verificado en el commit
      * 
      * @param as Estrategia de detección de dirty
-     * @param pkgs paquetes/clases a instrumentar. Puede ser null.
      * @return this
      */
     public SessionManager setActivationStrategy(ActivationStrategy as) {

@@ -24,10 +24,6 @@ import org.objectweb.asm.Opcodes;
 
 public class ASMHelloWorld {
 
-    /**
-     * @param args
-     * @throws IOException 
-     */
     public static void main(String[] args) throws IOException {
         ClassVisitor cl=new ClassVisitor(Opcodes.ASM4) {
             

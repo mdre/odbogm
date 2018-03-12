@@ -39,8 +39,6 @@ public class TransparentDirtyDetectorInstrumentator implements ClassFileTransfor
 //    }
     /**
      * Instrumentador
-     *
-     * @param _pkgs lista de paquetes/clases a instrumentar.
      */
     public TransparentDirtyDetectorInstrumentator() {
     }
