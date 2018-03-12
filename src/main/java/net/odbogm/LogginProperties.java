@@ -34,10 +34,10 @@ public class LogginProperties {
     public static Level ThreadedGraphRecordFactory  = Level.INFO;
     public static Level Transaction                 = Level.INFO;
     
-    public static Level TransparentDirtyDetector                   = Level.FINER;
-    public static Level TransparentDirtyDetectorAdapter            = Level.FINER;
-    public static Level TransparentDirtyDetectorInstrumentator     = Level.FINER;
-    public static Level TransparentDirtyDetectorAgent              = Level.FINER;
-    public static Level WriteAccessActivatorAdapter                = Level.FINER;
+    public static Level TransparentDirtyDetector                   = Level.INFO;
+    public static Level TransparentDirtyDetectorAdapter            = Level.INFO;
+    public static Level TransparentDirtyDetectorInstrumentator     = Level.INFO;
+    public static Level TransparentDirtyDetectorAgent              = Level.INFO;
+    public static Level WriteAccessActivatorAdapter                = Level.INFO;
     
 }
