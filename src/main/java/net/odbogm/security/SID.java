@@ -8,14 +8,18 @@ package net.odbogm.security;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import net.odbogm.LogginProperties;
 import net.odbogm.annotations.Entity;
 
 @Entity
 public abstract class SID {
     private final static Logger LOGGER = Logger.getLogger(SID.class .getName());
     static {
-        LOGGER.setLevel(Level.INFO);
+        if (LOGGER.getLevel() == null) {
+            LOGGER.setLevel(LogginProperties.SID);
+        }
     }
+    
     private String name = "";
     private String uuid = "";
     

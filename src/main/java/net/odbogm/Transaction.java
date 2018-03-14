@@ -53,14 +53,17 @@ import net.odbogm.utils.ThreadHelper;
  *
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
-public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
+public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQuery {
 
     private final static Logger LOGGER = Logger.getLogger(Transaction.class.getName());
     private static final long serialVersionUID = 1L;
 
     static {
-        LOGGER.setLevel(LogginProperties.Transaction);
+        if (LOGGER.getLevel() == null) {
+            LOGGER.setLevel(LogginProperties.Transaction);
+        }
     }
+
     // Es el único objectMapper para todo el SM. 
     private ObjectMapper objectMapper;
 
@@ -514,18 +517,63 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
             if (ovToRemove.countEdges(Direction.IN) > 0) {
                 throw new ReferentialIntegrityViolation();
             }
-            // elimino el nodo de la base para que se actualicen los vértices a los que apuntaba.
-            // de esta forma, los inner quedan libres y pueden ser borrados por un delete simple
-            ovToRemove.remove();
-            
+            // Activar todos los campos que estén marcados con CascadeDelete o RemoveOrphan para poder procesarlos.
             // obtener el classDef del objeto
             ClassDef classDef = this.objectMapper.getClassDef(toRemove);
 
-            //Lista de vértices a remover
-            List<OrientVertex> vertexToRemove = new ArrayList<>();
-
             // analizar el objeto
             Field f;
+            
+            for (Map.Entry<String, Class<?>> entry : classDef.links.entrySet()) {
+                try {
+                    String field = entry.getKey();
+//                    f = ReflectionUtils.findField(((IObjectProxy) toRemove).___getBaseObject().getClass(), field);
+                    f = ReflectionUtils.findField(toRemove.getClass(), field);
+
+                    if (f.isAnnotationPresent(CascadeDelete.class) || f.isAnnotationPresent(RemoveOrphan.class)) {
+                        LOGGER.log(Level.FINER, "CascadeDelete|RemoveOrphan presente. Activando el objeto...");
+                        ((IObjectProxy) toRemove).___loadLazyLinks();
+                    }
+                } catch (NoSuchFieldException ex) {
+                    Logger.getLogger(Transaction.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
+
+            // procesar los linkslist
+            for (Map.Entry<String, Class<?>> entry : classDef.linkLists.entrySet()) {
+                try {
+                    String field = entry.getKey();
+                    final String graphRelationName = toRemove.getClass().getSimpleName() + "_" + field;
+                    Class<? extends Object> fieldClass = entry.getValue();
+
+//                    f = ReflectionUtils.findField(((IObjectProxy) toRemove).___getBaseObject().getClass(), field);
+                    f = ReflectionUtils.findField(toRemove.getClass(), field);
+                    boolean acc = f.isAccessible();
+                    f.setAccessible(true);
+
+                    LOGGER.log(Level.FINER, "procesando campo: " + field);
+
+                    // si hay una colección y corresponde hacer la cascada.
+                    if (f.isAnnotationPresent(CascadeDelete.class)||f.isAnnotationPresent(RemoveOrphan.class)) {
+                        LOGGER.log(Level.FINER, "CascadeDelete|RemoveOrphan presente. Activando el objeto...");
+                        // activar el campo.
+                        Collection oCol = (Collection) f.get(toRemove);
+                        if (oCol != null) {
+                            String garbage = oCol.toString();
+                        }
+                    }
+                } catch (NoSuchFieldException | IllegalArgumentException | IllegalAccessException ex) {
+                    Logger.getLogger(Transaction.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
+            // fin de la activación.
+            
+            // elimino el nodo de la base para que se actualicen los vértices a los que apuntaba.
+            // de esta forma, los inner quedan libres y pueden ser borrados por un delete simple
+            ovToRemove.remove();
+
+            //Lista de vértices a remover
+            List<OrientVertex> vertexToRemove = new ArrayList<>();
 
             // procesar los links
             for (Map.Entry<String, Class<?>> entry : classDef.links.entrySet()) {
@@ -544,10 +592,6 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
                         }
                     } else if (f.isAnnotationPresent(RemoveOrphan.class)) {
                         // si se apunta a un objeto, removerlo
-                        /* FIXME: hay dos posibilidades. Una es remover si está huérfano
-                            la otra es remover aún cuando al objeto haya relaciones desde otros
-                            objetos.
-                         */
                         Object value = f.get(toRemove);
                         if (value != null) {
                             try {
@@ -559,7 +603,7 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
                     }
 
                 } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
-                    Logger.getLogger(SessionManager.class.getName()).log(Level.SEVERE, null, ex);
+                    Logger.getLogger(Transaction.class.getName()).log(Level.SEVERE, null, ex);
                 }
 
             }
@@ -645,7 +689,7 @@ public class Transaction implements Actions.Store, Actions.Get, Actions.Query {
             if (this.isAuditing()) {
                 this.auditLog((IObjectProxy) toRemove, Audit.AuditType.DELETE, "DELETE", "");
             }
-            
+
             //ovToRemove.remove(); movido arriba.
             // si tengo un RID, proceder a removerlo de las colecciones.
             this.dirty.remove(((IObjectProxy) toRemove).___getVertex().getId().toString());

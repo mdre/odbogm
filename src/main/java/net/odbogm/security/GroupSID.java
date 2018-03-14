@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import net.odbogm.LogginProperties;
 import net.odbogm.annotations.Entity;
 
 /**
@@ -21,9 +22,10 @@ import net.odbogm.annotations.Entity;
 public class GroupSID extends SID {
     private final static Logger LOGGER = Logger.getLogger(GroupSID.class .getName());
     static {
-        LOGGER.setLevel(Level.INFO);
+        if (LOGGER.getLevel() == null) {
+            LOGGER.setLevel(LogginProperties.GroupSID);
+        }
     }
-    
     private List<SID> participants;
 
     public GroupSID() {

@@ -23,8 +23,8 @@ import java.util.Scanner;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.DbManager;
+import net.odbogm.Transaction;
 import net.odbogm.exceptions.ReferentialIntegrityViolation;
-import net.odbogm.exceptions.UnknownRID;
 import net.odbogm.security.AccessRight;
 import net.odbogm.security.GroupSID;
 import net.odbogm.security.UserSID;
@@ -77,7 +77,10 @@ public class Test {
         System.out.println("Iniciando comunicación con la base....");
         long millis = System.currentTimeMillis();
         sm = new SessionManager("remote:localhost/Test", "root", "toor")
-                    .setActivationStrategy(SessionManager.ActivationStrategy.CLASS_INSTRUMENTATION);
+                    .setActivationStrategy(SessionManager.ActivationStrategy.CLASS_INSTRUMENTATION)
+//                    .setClassLevelLog(Transaction.class, Level.FINER)
+//                    .setClassLevelLog(SessionManager.class, Level.FINER)
+                ;
 //        sm = new SessionManager("remote:localhost/quiencotiza", "root", "toor");
         System.out.println("Tiempo de inicio: " + (System.currentTimeMillis() - millis));
         System.out.println("comunicación inicializada!");

@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.logging.Logger;
 import net.odbogm.annotations.Audit;
+import net.odbogm.annotations.CascadeDelete;
 import net.odbogm.annotations.Entity;
 import net.odbogm.annotations.FieldAttributes;
 import net.odbogm.annotations.Indexed;
@@ -53,12 +54,14 @@ public class SimpleVertexEx extends SimpleVertex {
     
     public HashMap<String,String> hmString;
     
+    @CascadeDelete
     public ArrayList<SimpleVertex> alSV;
     
     public List<SimpleVertex> lSV;
     
     public ArrayList<SimpleVertexEx> alSVE;
     
+    @CascadeDelete
     public HashMap<String,SimpleVertex> hmSV;
     
     public HashMap<String ,SimpleVertexEx> hmSVE;

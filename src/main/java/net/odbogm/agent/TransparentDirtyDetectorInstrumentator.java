@@ -10,10 +10,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.instrument.ClassFileTransformer;
 import java.lang.instrument.IllegalClassFormatException;
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
 import java.security.ProtectionDomain;
-import java.util.Arrays;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.LogginProperties;
@@ -29,11 +26,11 @@ import org.objectweb.asm.Opcodes;
 public class TransparentDirtyDetectorInstrumentator implements ClassFileTransformer, ITransparentDirtyDetectorDef {
 
     private final static Logger LOGGER = Logger.getLogger(TransparentDirtyDetectorInstrumentator.class.getName());
-
     static {
-        LOGGER.setLevel(LogginProperties.TransparentDirtyDetectorInstrumentator);
+        if (LOGGER.getLevel() == null) {
+            LOGGER.setLevel(LogginProperties.TransparentDirtyDetectorInstrumentator);
+        }
     }
-
 //    public TransparentDirtyDetectorInstrumentator() {
 //        this.pkgs = TransparentDirtyDetectorAgent.pkgs;
 //    }

@@ -37,7 +37,9 @@ public class VectorLazyProxy extends Vector implements ILazyCollectionCalls {
 
     private final static Logger LOGGER = Logger.getLogger(VectorLazyProxy.class.getName());
     static {
-        LOGGER.setLevel(LogginProperties.VectorLazyProxy);
+        if (LOGGER.getLevel() == null) {
+            LOGGER.setLevel(LogginProperties.VectorLazyProxy);
+        }
     }
     
     private boolean dirty = false;

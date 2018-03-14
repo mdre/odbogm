@@ -18,11 +18,12 @@ import java.util.logging.Logger;
 public class ThreadedGraphRecordFactory implements ODatabaseThreadLocalFactory {
 
     private final static Logger LOGGER = Logger.getLogger(ThreadedGraphRecordFactory.class.getName());
-
     static {
-        LOGGER.setLevel(LogginProperties.ThreadedGraphRecordFactory);
+        if (LOGGER.getLevel() == null) {
+            LOGGER.setLevel(LogginProperties.ThreadedGraphRecordFactory);
+        }
     }
-
+    
     private String url;
     private String user;
     private String passwd;

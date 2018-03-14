@@ -7,6 +7,7 @@ package net.odbogm.cache;
 
 import java.util.HashMap;
 import java.util.logging.Logger;
+import net.odbogm.LogginProperties;
 
 /**
  * Estructura para soportar la definición de una clase.
@@ -15,7 +16,11 @@ import java.util.logging.Logger;
 public class ClassDef {
 
     private final static Logger LOGGER = Logger.getLogger(ClassDef.class.getName());
-    
+    static {
+        if (LOGGER.getLevel() == null) {
+            LOGGER.setLevel(LogginProperties.ClassDef);
+        }
+    }
     /**
      * Mapa de atributos básicos
      */

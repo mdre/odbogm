@@ -542,7 +542,7 @@ public class SessionManagerTest {
         sm.commit();
 
         String rid = ((IObjectProxy) stored).___getRid();
-
+        
         // validar que no se modifique la lista
         assertNull(stored.lSV);
         System.out.println("primer commit finalizado. RID: " + rid + " ------------------------------------------------------------");
@@ -560,25 +560,28 @@ public class SessionManagerTest {
         System.out.println("segundo commit finalizado ----------------------------------------------------------\n");
         // validar que no se modifique la lista
         assertNull(stored.lSV);
-
+        
         SimpleVertexEx retrieved = sm.get(SimpleVertexEx.class, rid);
         System.out.println("retrieved: " + retrieved + " : " + retrieved.getAlSVE());
         System.out.println("stored: " + stored + " : " + stored.getAlSVE() + "\n\n");
         int iretSize = retrieved.getAlSVE().size();
         int istoredSize = stored.getAlSVE().size();
         assertEquals(iretSize, istoredSize);
-
+        
+        // eliminar la referencia
+        retrieved = null;
+        
         System.out.println("\nagregamos un nuevo objeto al arraylist ya inicializado");
         stored.getAlSVE().add(new SimpleVertexEx());
         System.out.println("\ninicio tercer commit ----------------------------------------------------------");
         sm.commit();
         System.out.println("tercer commit ----------------------------------------------------------\n");
-
+        
         retrieved = sm.get(SimpleVertexEx.class, rid);
-
+        
         System.out.println("retrieved: " + retrieved + " : " + retrieved.getAlSVE());
         System.out.println("stored: " + stored + " : " + stored.getAlSVE());
-
+        
         assertEquals(retrieved.getAlSVE().size(), stored.getAlSVE().size());
         // validar que no se modifique la lista
         assertNull(stored.lSV);
@@ -1324,8 +1327,55 @@ public class SessionManagerTest {
         } catch (Exception e) {
             System.out.println("Todo ok!");
         }
+
+        spaces(5);
+        System.out.println("*************************");
+        System.out.println("Verificando el comportamiento de CascadeDelete");
+        System.out.println("*************************");
+        System.out.println("\n\n--- En Listas ---");
+        SimpleVertexEx cdsve = new SimpleVertexEx();
+        cdsve.setS("CascadeDelete");
+        cdsve.initArrayList();
         
+        SimpleVertexEx csve = sm.store(cdsve);
+        System.out.println("commit...");
+        sm.commit();
+        System.out.println("fin commit.");
         
+        String csveRid = sm.getRID(csve);
+        System.out.println("RID: "+csveRid);
+        System.out.println("Referencias de objetos en el AL:");
+        ArrayList<String> alRid = new ArrayList<>();
+        for (SimpleVertex simpleVertex : csve.getAlSV()) {
+            String srid = sm.getRID(simpleVertex);
+            alRid.add(srid);
+            System.out.println(srid);
+        }
+        spaces(4);
+        System.out.println("Eliminar el objeto raíz");
+        sm.delete(csve);
+        sm.commit();
+        System.out.println("Verificar que todo esté ok");
+        
+        try {
+            sm.get(csveRid);
+            fail("El objeto aún existe!!!");
+        } catch (Exception e) {
+            System.out.println("Todo ok!");
+        }
+        
+        System.out.println("Verificar los CascadeDelete...");
+        for (String object : alRid) {
+            try {
+                sm.get(object);
+                fail("El objeto "+object+" aún existe!!!");
+            } catch (Exception e) {
+                System.out.println("Todo ok!");
+            }    
+        }
+        
+        spaces(5);
+        System.out.println("--- En Maps ---");
         
     }
 
@@ -1533,4 +1583,10 @@ public class SessionManagerTest {
 //    
 //        
 //    }
+    
+    private void spaces(int lines) {
+        for (int j = 0; j < lines; j++) {
+            System.out.println("");
+        }
+    }
 }

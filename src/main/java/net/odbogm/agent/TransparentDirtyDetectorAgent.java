@@ -22,9 +22,10 @@ import net.odbogm.LogginProperties;
 public class TransparentDirtyDetectorAgent {
 
     private final static Logger LOGGER = Logger.getLogger(TransparentDirtyDetectorAgent.class.getName());
-
     static {
-        LOGGER.setLevel(LogginProperties.TransparentDirtyDetectorAgent);
+        if (LOGGER.getLevel() == null) {
+            LOGGER.setLevel(LogginProperties.TransparentDirtyDetectorAgent);
+        }
     }
 
     private static Instrumentation instrumentation;

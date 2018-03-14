@@ -29,7 +29,9 @@ import net.odbogm.utils.DateHelper;
 public class Auditor implements IAuditor {
     private final static Logger LOGGER = Logger.getLogger(Auditor.class .getName());
     static {
-        LOGGER.setLevel(LogginProperties.Auditor);
+        if (LOGGER.getLevel() == null) {
+            LOGGER.setLevel(LogginProperties.Auditor);
+        }
     }
     
     private Transaction transaction;
@@ -93,7 +95,7 @@ public class Auditor implements IAuditor {
             ologData.put("user", this.auditUser);
             ologData.put("action", logData.auditType);
             ologData.put("label", logData.label);
-            ologData.put("log", logData.data.toString());
+            ologData.put("log", logData.data);
             
             OrientVertex ovlog = this.transaction.getGraphdb().addVertex("class:" + this.ODBAUDITLOGVERTEXCLASS, ologData);
         }
@@ -109,14 +111,14 @@ class LogData {
     public String rid;
     public int auditType;
     public String label;
-    public Object data;
+    public String data;
 
     public LogData(IObjectProxy o, int auditType, String label, Object data) {
         this.o = o;
         this.rid = o.___getRid();
         this.auditType = auditType;
         this.label = label;
-        this.data = data;
+        this.data = data!=null?data.toString():"";
     }
     
 }

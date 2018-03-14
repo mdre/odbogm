@@ -28,7 +28,9 @@ public class ClassCache {
 
     private final static Logger LOGGER = Logger.getLogger(ClassCache.class.getName());
     static {
-        LOGGER.setLevel(LogginProperties.ClassCache);
+        if (LOGGER.getLevel() == null) {
+            LOGGER.setLevel(LogginProperties.ClassCache);
+        }
     }
     
     private final HashMap<Class<?>, ClassDef> classCache = new HashMap<>();

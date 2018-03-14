@@ -33,12 +33,14 @@ import net.odbogm.security.UserSID;
  *
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
-public class SessionManager implements Actions.Store, Actions.Get {
+public class SessionManager implements IActions.IStore, IActions.IGet {
 
     private final static Logger LOGGER = Logger.getLogger(SessionManager.class.getName());
 
     static {
-        LOGGER.setLevel(LogginProperties.SessionManager);
+        if (LOGGER.getLevel() == null) {
+            LOGGER.setLevel(LogginProperties.SessionManager);
+        }
     }
 
 //    private OrientGraph graphdb;
@@ -508,4 +510,10 @@ public class SessionManager implements Actions.Store, Actions.Get {
         return this.loggedInUser;
     }
     
+    
+    public SessionManager setClassLevelLog(Class<?> clazz, Level level) {
+        Logger L = LOGGER.getLogger( clazz.getName() );
+        L.setLevel(level);
+        return this;
+    }
 }

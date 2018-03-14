@@ -25,6 +25,7 @@ import java.util.function.UnaryOperator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
+import net.odbogm.LogginProperties;
 import net.odbogm.Transaction;
 
 /**
@@ -34,7 +35,12 @@ import net.odbogm.Transaction;
 public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCalls {
 
     private final static Logger LOGGER = Logger.getLogger(LinkedListLazyProxy.class.getName());
-
+    static {
+        if (LOGGER.getLevel() == null) {
+            LOGGER.setLevel(LogginProperties.LinkedListLazyProxy);
+        }
+    }
+    
     private boolean dirty = false;
     
     private boolean lazyLoad = true;

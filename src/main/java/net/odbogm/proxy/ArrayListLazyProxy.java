@@ -38,9 +38,10 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
 
     private final static Logger LOGGER = Logger.getLogger(ArrayListLazyProxy.class.getName());
     static {
-        LOGGER.setLevel(LogginProperties.ArrayListLazyProxy);
+        if (LOGGER.getLevel() == null) {
+            LOGGER.setLevel(LogginProperties.ArrayListLazyProxy);
+        }
     }
-
     private boolean dirty = false;
     
     private boolean lazyLoad = true;

@@ -19,10 +19,13 @@ public class WriteAccessActivatorAdapter extends MethodVisitor implements ITrans
     private final static Logger LOGGER = Logger.getLogger(WriteAccessActivatorAdapter.class.getName());
     private boolean activate = false;
     private String owner;
-    static {
-        LOGGER.setLevel(LogginProperties.WriteAccessActivatorAdapter);
-    }
 
+    static {
+        if (LOGGER.getLevel() == null) {
+            LOGGER.setLevel(LogginProperties.WriteAccessActivatorAdapter);
+        }
+    }
+    
     public WriteAccessActivatorAdapter(MethodVisitor mv) {
         super(Opcodes.ASM4, mv);
     }

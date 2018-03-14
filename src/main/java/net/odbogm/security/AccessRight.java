@@ -8,6 +8,7 @@ package net.odbogm.security;
 
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import net.odbogm.LogginProperties;
 import net.odbogm.annotations.Entity;
 
 /**
@@ -18,9 +19,10 @@ import net.odbogm.annotations.Entity;
 public class AccessRight {
     private final static Logger LOGGER = Logger.getLogger(AccessRight.class .getName());
     static {
-        LOGGER.setLevel(Level.INFO);
+        if (LOGGER.getLevel() == null) {
+            LOGGER.setLevel(LogginProperties.AccessRight);
+        }
     }
-    
     /**
      * Estados internos del objeto:
      * 0: sin acceso

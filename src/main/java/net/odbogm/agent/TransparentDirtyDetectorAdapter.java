@@ -22,11 +22,12 @@ import org.objectweb.asm.Opcodes;
 public class TransparentDirtyDetectorAdapter extends ClassVisitor implements ITransparentDirtyDetectorDef {
 
     private final static Logger LOGGER = Logger.getLogger(TransparentDirtyDetectorAdapter.class.getName());
-
     static {
-        LOGGER.setLevel(LogginProperties.TransparentDirtyDetectorAdapter);
+        if (LOGGER.getLevel() == null) {
+            LOGGER.setLevel(LogginProperties.TransparentDirtyDetectorAdapter);
+        }
     }
-
+    
     private boolean isFieldPresent = false;
     private boolean isInstrumetable = false;
 

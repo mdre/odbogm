@@ -16,10 +16,13 @@ import net.odbogm.annotations.Entity;
 public abstract class SObject {
 
     private final static Logger LOGGER = Logger.getLogger(SObject.class.getName());
-
     static {
-        LOGGER.setLevel(LogginProperties.SObject);
+        if (LOGGER.getLevel() == null) {
+            LOGGER.setLevel(LogginProperties.SObject);
+        }
     }
+    
+    
     private SID __owner;
     // Access Control List
     private Map<String, Integer> __acl = new HashMap<>();

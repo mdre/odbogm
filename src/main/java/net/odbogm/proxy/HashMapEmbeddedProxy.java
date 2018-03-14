@@ -26,9 +26,10 @@ public class HashMapEmbeddedProxy extends HashMap<Object, Object> implements IEm
 
     private final static Logger LOGGER = Logger.getLogger(HashMapEmbeddedProxy.class.getName());
     static {
-        LOGGER.setLevel(LogginProperties.HashMapEmbeddedProxy);
+        if (LOGGER.getLevel() == null) {
+            LOGGER.setLevel(LogginProperties.HashMapEmbeddedProxy);
+        }
     }
-    
     private boolean dirty = false;
     
     

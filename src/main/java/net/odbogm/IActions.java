@@ -15,9 +15,9 @@ import net.odbogm.exceptions.VertexJavaClassNotFound;
  *
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
-public interface Actions {
+public interface IActions {
 
-    public interface Store {
+    public interface IStore {
 
         /**
          * Guarda un objeto en la base de datos descomponiéndolo en vértices y links y retorna el @RID asociado.
@@ -30,7 +30,7 @@ public interface Actions {
         <T> T store(T o) throws IncorrectRIDField;
     }
 
-    public interface Delete {
+    public interface IDelete {
 
         <T> void delete(T object);
 
@@ -41,7 +41,7 @@ public interface Actions {
         void clear();
     }
 
-    public interface Get {
+    public interface IGet {
 
         // load a single object of Class type, with id id
         Object get(String rid) throws UnknownRID;
@@ -51,7 +51,7 @@ public interface Actions {
         public <T> T getEdgeAsObject(Class<T> type, OrientEdge e);
     }
 
-    public interface Query {
+    public interface IQuery {
 
         /**
          * Realiza un query direto a la base de datos y devuelve el resultado directamente sin procesarlo.

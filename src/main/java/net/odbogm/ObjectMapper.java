@@ -36,9 +36,10 @@ import org.objenesis.ObjenesisStd;
 public class ObjectMapper {
 
     private final static Logger LOGGER = Logger.getLogger(ObjectMapper.class.getName());
-
     static {
-        LOGGER.setLevel(LogginProperties.ObjectMapper);
+        if (LOGGER.getLevel() == null) {
+            LOGGER.setLevel(LogginProperties.ObjectMapper);
+        }
     }
 //    private static int newObjectCounter = 0;
 //    private Kryo kryo = new Kryo();

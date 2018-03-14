@@ -11,13 +11,16 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
+import net.odbogm.LogginProperties;
 import net.odbogm.annotations.Entity;
 
 @Entity
 public class UserSID extends SID implements ISecurityCredentials {
     private final static Logger LOGGER = Logger.getLogger(UserSID.class .getName());
     static {
-        LOGGER.setLevel(Level.INFO);
+        if (LOGGER.getLevel() == null) {
+            LOGGER.setLevel(LogginProperties.UserSID);
+        }
     }
     
     private List<GroupSID> groups;

@@ -27,11 +27,12 @@ import net.sf.cglib.proxy.CallbackFilter;
 public class ObjectProxyFactory {
 
     private final static Logger LOGGER = Logger.getLogger(ObjectProxyFactory.class.getName());
-
     static {
-        LOGGER.setLevel(LogginProperties.ObjectProxyFactory);
+        if (LOGGER.getLevel() == null) {
+            LOGGER.setLevel(LogginProperties.ObjectProxyFactory);
+        }
     }
-
+    
     public enum proxyLibrary {
         CGLIB, BB
     };

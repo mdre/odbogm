@@ -35,7 +35,9 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
 
     private final static Logger LOGGER = Logger.getLogger(HashMapLazyProxy.class.getName());
     static {
-        LOGGER.setLevel(LogginProperties.HashMapLazyProxy);
+        if (LOGGER.getLevel() == null) {
+            LOGGER.setLevel(LogginProperties.HashMapLazyProxy);
+        }
     }
     
     private boolean dirty = false;

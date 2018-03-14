@@ -51,8 +51,11 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     private final static Logger LOGGER = Logger.getLogger(ObjectProxy.class.getName());
 
     static {
-        LOGGER.setLevel(LogginProperties.ObjectProxy);
+        if (LOGGER.getLevel() == null) {
+            LOGGER.setLevel(LogginProperties.ObjectProxy);
+        }
     }
+
     // the real object      
     private Object ___proxyObject;
     private Class<?> ___baseClass;
@@ -189,20 +192,20 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             MethodProxy methodProxy) throws Throwable {
         // response object
         Object res = null;
-        
+
         // el estado del objeto se debe poder consultar siempre
         if (method.getName().equals("___isValid")) {
-                    return this.___isValid();
+            return this.___isValid();
         }
         if (method.getName().equals("___isDeleted")) {
-                    return this.___isDeleted();
+            return this.___isDeleted();
         }
-        
+
         if (!this.___isValidObject) {
             LOGGER.log(Level.FINER, "El objeto está marcado como inválido!!!");
             throw new InvalidObjectReference();
         }
-        
+
         if (this.___baseElement.getIdentity().isNew()) {
             LOGGER.log(Level.FINER, "RID nuevo. No procesar porque el store preparó todo y no hay nada que recuperar de la base.");
             this.___loadLazyLinks = false;
@@ -240,6 +243,11 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 //                        res = this.___isValid();
 //                    }
 //                    break;
+                case "___loadLazyLinks":
+                    if (this.___objectReady) {
+                        this.___loadLazyLinks();
+                    }
+                    break;
                 case "___isDirty":
                     if (this.___objectReady) {
                         res = this.___isDirty();
@@ -280,7 +288,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                 case "___setDeletedMark":
                     this.___setDeletedMark();
                     break;
-                    
+
                 case "___ogm___setDirty":
                     res = methodProxy.invokeSuper(o, args);
                     break;
@@ -323,7 +331,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                             case CLASS_INSTRUMENTATION:
                                 // si se está usando la instrumentación de clase, directamente verificar en el objeto
                                 // cual es su estado.
-                                LOGGER.log(Level.FINER, "o: "+o.getClass().getName()+" ITrans: "+(o instanceof ITransparentDirtyDetector));
+                                LOGGER.log(Level.FINER, "o: " + o.getClass().getName() + " ITrans: " + (o instanceof ITransparentDirtyDetector));
                                 if (((ITransparentDirtyDetector) o).___ogm___isDirty()) {
                                     LOGGER.log(Level.FINEST, "objeto {0} marcado como dirty por ASM. Agregarlo a la lista de pendientes.", o.getClass().getName());
                                     this.___setDirty();
@@ -431,7 +439,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     public void ___setDeletedMark() {
         this.___deletedMark = true;
     }
-    
+
     @Override
     public boolean ___isDeleted() {
         return this.___deletedMark;
@@ -442,59 +450,60 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
      */
     @Override
     public synchronized void ___loadLazyLinks() {
-        LOGGER.log(Level.FINER, "iniciando loadLazyLinks...");
-        // marcar que ya se han incorporado todo los links
-        this.___loadLazyLinks = false;
+        if (this.___loadLazyLinks) {
+            LOGGER.log(Level.FINER, "iniciando loadLazyLinks...");
+            // marcar que ya se han incorporado todo los links
+            this.___loadLazyLinks = false;
 
-        if (this.___baseElement instanceof OrientVertex) {
-            OrientVertex ov = (OrientVertex) this.___baseElement;
-            LOGGER.log(Level.FINER, "Base class: " + this.___baseClass.getSimpleName());
-            ClassDef classdef = this.___transaction.getObjectMapper().getClassDef(this.___proxyObject);
+            if (this.___baseElement instanceof OrientVertex) {
+                OrientVertex ov = (OrientVertex) this.___baseElement;
+                LOGGER.log(Level.FINER, "Base class: " + this.___baseClass.getSimpleName());
+                ClassDef classdef = this.___transaction.getObjectMapper().getClassDef(this.___proxyObject);
 
-            // hidratar los atributos @links
-            // procesar todos los links
-            for (Map.Entry<String, Class<?>> entry : classdef.links.entrySet()) {
-//        classdef.links.entrySet().stream().forEach((entry) -> {
-                try {
-                    String field = entry.getKey();
-                    Class<?> fc = entry.getValue();
-                    String graphRelationName = ___baseClass.getSimpleName() + "_" + field;
-                    LOGGER.log(Level.FINER, "Field: {0}   RelationName: {1}", new String[]{field, graphRelationName});
+                // hidratar los atributos @links
+                // procesar todos los links
+                for (Map.Entry<String, Class<?>> entry : classdef.links.entrySet()) {
+                //  classdef.links.entrySet().stream().forEach((entry) -> {
+                    try {
+                        String field = entry.getKey();
+                        Class<?> fc = entry.getValue();
+                        String graphRelationName = ___baseClass.getSimpleName() + "_" + field;
+                        LOGGER.log(Level.FINER, "Field: {0}   RelationName: {1}", new String[]{field, graphRelationName});
 
-                    Field fLink = ReflectionUtils.findField(___baseClass, field);
-                    boolean acc = fLink.isAccessible();
-                    fLink.setAccessible(true);
+                        Field fLink = ReflectionUtils.findField(___baseClass, field);
+                        boolean acc = fLink.isAccessible();
+                        fLink.setAccessible(true);
 
-                    // recuperar de la base el vértice correspondiente
-                    boolean duplicatedLinkGuard = false;
-                    for (Vertex vertice : ov.getVertices(Direction.OUT, graphRelationName)) {
-                        LOGGER.log(Level.FINER, "hydrate innerO: " + vertice.getId());
+                        // recuperar de la base el vértice correspondiente
+                        boolean duplicatedLinkGuard = false;
+                        for (Vertex vertice : ov.getVertices(Direction.OUT, graphRelationName)) {
+                            LOGGER.log(Level.FINER, "hydrate innerO: " + vertice.getId());
 
-                        if (!duplicatedLinkGuard) {
+                            if (!duplicatedLinkGuard) {
 //                        Object innerO = this.hydrate(fc, vertice);
-                            /* FIXME: esto genera una dependencia cruzada. Habría que revisar
+                                /* FIXME: esto genera una dependencia cruzada. Habría que revisar
                            como solucionarlo. Esta llamada se hace para que quede el objeto
                            mapeado 
-                             */
-                            this.___transaction.addToTransactionCache(this.___getRid(), ___proxyObject);
+                                 */
+                                this.___transaction.addToTransactionCache(this.___getRid(), ___proxyObject);
 
-                            // si es una interface llamar a get solo con el RID.
-                            Object innerO = fc.isInterface() ? this.___transaction.get(vertice.getId().toString()) : this.___transaction.get(fc, vertice.getId().toString());
-                            LOGGER.log(Level.FINER, "Inner object " + field + ": " + (innerO == null ? "NULL" : "" + innerO.toString()) + "  FC: " + fc.getSimpleName() + "   innerO.class: " + innerO.getClass().getSimpleName());
-                            fLink.set(this.___proxyObject, fc.cast(innerO));
-                            duplicatedLinkGuard = true;
+                                // si es una interface llamar a get solo con el RID.
+                                Object innerO = fc.isInterface() ? this.___transaction.get(vertice.getId().toString()) : this.___transaction.get(fc, vertice.getId().toString());
+                                LOGGER.log(Level.FINER, "Inner object " + field + ": " + (innerO == null ? "NULL" : "" + innerO.toString()) + "  FC: " + fc.getSimpleName() + "   innerO.class: " + innerO.getClass().getSimpleName());
+                                fLink.set(this.___proxyObject, fc.cast(innerO));
+                                duplicatedLinkGuard = true;
 
-                            ___transaction.decreseTransactionCache();
-                        } else if (false) {
-                            throw new DuplicateLink();
+                                ___transaction.decreseTransactionCache();
+                            } else if (false) {
+                                throw new DuplicateLink();
+                            }
                         }
+                        fLink.setAccessible(acc);
+                    } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
+                        Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
                     }
-                    fLink.setAccessible(acc);
-                } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
-                    Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
-
         }
 
     }
@@ -530,7 +539,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                 Object value = entry.getValue();
 
                 Object vval = vmap.get(key);
-                LOGGER.log(Level.FINER, "value: " + value + " =<>= " + vval);
+                LOGGER.log(Level.FINER, "Object value: " + value + " =<>= vetex: " + vval);
                 if (!value.equals(vval)) {
                     eqMaps = false;
                     break;
@@ -1082,9 +1091,9 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
             // En el Edge, IN proviene del objeto apuntado. Raro pero es así :(
             String outRid = edgeToRemove.getInVertex().getIdentity().toString();
-            LOGGER.log(Level.FINER, "El edge "+edgeToRemove
-                    +" apunta IN: "+edgeToRemove.getInVertex().getIdentity().toString()
-                    +" apunta OUT: "+edgeToRemove.getOutVertex().getIdentity().toString());
+            LOGGER.log(Level.FINER, "El edge " + edgeToRemove
+                    + " apunta IN: " + edgeToRemove.getInVertex().getIdentity().toString()
+                    + " apunta OUT: " + edgeToRemove.getOutVertex().getIdentity().toString());
             // remover primero el eje
             edgeToRemove.remove();
 
@@ -1093,11 +1102,11 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                 LOGGER.log(Level.FINER, "Remove orphan presente");
                 //auditar
                 if (this.___transaction.getSessionManager().isAuditing()) {
-                    this.___transaction.getSessionManager().auditLog(this, AuditType.DELETE, "LINKLIST DELETE: ", f.get(this.___proxyObject));
+                    this.___transaction.getSessionManager().auditLog(this, AuditType.DELETE, "LINKLIST DELETE: ", edgeToRemove + " : " + field + " : " + f.get(this.___proxyObject));
                 }
                 // eliminar el objecto
                 // this.sm.delete(f.get(realObj));
-                if (f.get(this.___proxyObject)!=null) {
+                if (f.get(this.___proxyObject) != null) {
                     LOGGER.log(Level.FINER, "La referencia aún existe. Eliminar el objeto directamente");
                     this.___transaction.delete(f.get(this.___proxyObject));
                 } else {

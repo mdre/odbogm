@@ -25,9 +25,10 @@ public class ArrayListEmbeddedProxy extends ArrayList implements IEmbeddedCalls 
     private static final long serialVersionUID = 3136116168236143774L;
     private final static Logger LOGGER = Logger.getLogger(ArrayListEmbeddedProxy.class.getName());
     static {
-        LOGGER.setLevel(LogginProperties.ArrayListEmbeddedProxy);
+        if (LOGGER.getLevel() == null) {
+            LOGGER.setLevel(LogginProperties.ArrayListEmbeddedProxy);
+        }
     }
-    
     // referencia debil al objeto padre. Se usa para notificar al padre que la colección ha cambiado.
     private WeakReference<IObjectProxy> parent;
     
