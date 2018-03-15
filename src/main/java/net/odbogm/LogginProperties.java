@@ -41,9 +41,10 @@ public class LogginProperties {
     public static Level SObject                     = Level.INFO;
     
     public static Level TransparentDirtyDetector                   = Level.INFO;
-    public static Level TransparentDirtyDetectorAdapter            = Level.INFO;
+    public static Level TransparentDirtyDetectorAdapter            = Level.FINER;
     public static Level TransparentDirtyDetectorInstrumentator     = Level.INFO;
     public static Level TransparentDirtyDetectorAgent              = Level.INFO;
+    public static Level InstrumentableClassDetector                = Level.INFO;
     public static Level WriteAccessActivatorAdapter                = Level.INFO;
     
     

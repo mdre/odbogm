@@ -64,19 +64,25 @@ public class TransparentDirtyDetectorInstrumentator implements ClassFileTransfor
         ClassReader cr = new ClassReader(classfileBuffer);
         if (isInterface(cr)) {
             // No procesar las interfaces
-            LOGGER.log(Level.FINER, "Interface detectada {0}. NO PROCESAR!", className);
+            LOGGER.log(Level.FINEST, "Interface detectada {0}. NO PROCESAR!", className);
             return classfileBuffer;
         }
-        ClassWriter cw = new ClassWriter(cr, ClassWriter.COMPUTE_FRAMES);
-
-        TransparentDirtyDetectorAdapter taa = new TransparentDirtyDetectorAdapter(cw);
-
-        cr.accept(taa, 0);
+        ClassWriter cw = new ClassWriter(cr, 0);
+        InstrumentableClassDetector icd = new InstrumentableClassDetector(cw);
+        cr.accept(icd, 0);
 
 //        LOGGER.log(Level.FINER, "isInstrumentable: "+taa.isInstrumentable());
-        if (taa.isInstrumentable()) {
-            LOGGER.log(Level.FINER, "Redefiniendo on-the-fly {0}...", className);
+        if (icd.isInstrumentable() && !icd.isInstrumented()) {
+            LOGGER.log(Level.FINER, ""
+                    + "\n****************************************************************************"
+                    + "\nRedefiniendo on-the-fly {0}..."
+                    + "\n****************************************************************************", className);
+            cw = new ClassWriter(cr, ClassWriter.COMPUTE_FRAMES);
+            TransparentDirtyDetectorAdapter taa = new TransparentDirtyDetectorAdapter(cw);
+            cr.accept(taa, 0);
+            
             // instrumentar el método ___getDirty()
+            LOGGER.log(Level.FINER, "insertando el método ___isDirty() ...");
             MethodVisitor mv = cw.visitMethod(Opcodes.ACC_PUBLIC, ISDIRTY, "()Z", null, null);
             mv.visitCode();
             mv.visitVarInsn(Opcodes.ALOAD, 0);
@@ -86,6 +92,7 @@ public class TransparentDirtyDetectorInstrumentator implements ClassFileTransfor
             mv.visitEnd();
 
             // instrumentar el método ___setDirty()
+            LOGGER.log(Level.FINER, "insertando el método ___setDirty() ...");
             mv = cw.visitMethod(Opcodes.ACC_PUBLIC, SETDIRTY, "(Z)V", null, null);
             mv.visitCode();
             mv.visitVarInsn(Opcodes.ALOAD, 0);

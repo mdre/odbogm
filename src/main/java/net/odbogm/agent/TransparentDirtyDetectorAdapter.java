@@ -29,7 +29,7 @@ public class TransparentDirtyDetectorAdapter extends ClassVisitor implements ITr
     }
     
     private boolean isFieldPresent = false;
-    private boolean isInstrumetable = false;
+//    private boolean isInstrumetable = false;
 
     public TransparentDirtyDetectorAdapter(ClassVisitor cv) {
         super(Opcodes.ASM4, cv);
@@ -39,18 +39,8 @@ public class TransparentDirtyDetectorAdapter extends ClassVisitor implements ITr
     public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
         String[] addInterfaces = Arrays.copyOf(interfaces, interfaces.length + 1); //create new array from old array and allocate one more element
         addInterfaces[addInterfaces.length - 1] = ITransparentDirtyDetector.class.getName().replace(".", "/");
-        LOGGER.log(Level.FINER, "visitando clase: " + name + " super: " + superName);
+        LOGGER.log(Level.FINER, "visitando clase: " + name + " super: " + superName + " y agregando la interface.");
         cv.visit(version, access, name, signature, superName, addInterfaces);
-    }
-
-    @Override
-    public AnnotationVisitor visitAnnotation(String ann, boolean bln) {
-        LOGGER.log(Level.FINER, "Annotation: >"+ann+"<");
-        if (ann.startsWith("Lnet/odbogm/annotations/Entity")) {
-            LOGGER.log(Level.FINER, ">>>>>>>>>>> marcar como instrumentable");
-            this.isInstrumetable = true;
-        }
-        return super.visitAnnotation(ann, bln); 
     }
 
     @Override
@@ -66,7 +56,7 @@ public class TransparentDirtyDetectorAdapter extends ClassVisitor implements ITr
         MethodVisitor mv;
         LOGGER.log(Level.FINEST, "visitando método: " + name);
         mv = cv.visitMethod(access, name, desc, signature, exceptions);
-        if ((mv != null) && !name.equals("<init>") && !name.equals("<clinit>") && this.isInstrumentable() ) {
+        if ((mv != null) && !name.equals("<init>") && !name.equals("<clinit>") ) {
             LOGGER.log(Level.FINER, ">>>>>>>>>>> Instrumentando método: " + name);
             mv = new WriteAccessActivatorAdapter(mv);
         }
@@ -75,7 +65,7 @@ public class TransparentDirtyDetectorAdapter extends ClassVisitor implements ITr
 
     @Override
     public void visitEnd() {
-        if (!isFieldPresent && (this.isInstrumentable() )) {
+        if (!isFieldPresent) {
             LOGGER.log(Level.FINER, "Agregando el campo");
             FieldVisitor fv = cv.visitField(Opcodes.ACC_PUBLIC, DIRTYMARK, org.objectweb.asm.Type.BOOLEAN_TYPE.getDescriptor(), null, null);
             if (fv != null) {
@@ -86,7 +76,4 @@ public class TransparentDirtyDetectorAdapter extends ClassVisitor implements ITr
         cv.visitEnd();
     }
 
-    public boolean isInstrumentable() {
-        return this.isInstrumetable;
-    }
 }

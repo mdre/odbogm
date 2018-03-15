@@ -83,8 +83,8 @@ public class ClassCache {
                     if ( !(    f.isAnnotationPresent(Ignore.class) 
                             || Modifier.isTransient(f.getModifiers())
                             || (Modifier.isStatic(f.getModifiers()) && Modifier.isFinal(f.getModifiers())
+                            || f.getName().startsWith("___ogm___")
                             )
-//                            || f.getName().startsWith("___")
 //                            || f.getName().startsWith("GCLIB")
                             )
                             ) {

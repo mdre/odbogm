@@ -114,14 +114,27 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
     /**
      * Establece la estrategia a utilizar para detectar los cambios en los objetos.
      * ONMETHODACCESS: cada vez que se invoca a un método se verifica si hay cambio.
- ONCOMMIT:       cuando se invoca a un método se marca el objeto para ser verificado en el commit
+     * ONCOMMIT:       cuando se invoca a un método se marca el objeto para ser verificado en el commit
      * 
      * @param as Estrategia de detección de dirty
      * @return this
      */
     public SessionManager setActivationStrategy(ActivationStrategy as) {
+        return this.setActivationStrategy(as, true);
+    }
+
+    /**
+     * Establece la estrategia a utilizar para detectar los cambios en los objetos.
+     * ONMETHODACCESS: cada vez que se invoca a un método se verifica si hay cambio.
+ ONCOMMIT:       cuando se invoca a un método se marca el objeto para ser verificado en el commit
+     * 
+     * @param as Estrategia de detección de dirty
+     * @param loadAgent determina si se debe cargar el agente.
+     * @return this
+     */    
+    public SessionManager setActivationStrategy(ActivationStrategy as, boolean loadAgent) {
         this.activationStrategy = as;
-        if (this.activationStrategy == ActivationStrategy.CLASS_INSTRUMENTATION) {
+        if (this.activationStrategy == ActivationStrategy.CLASS_INSTRUMENTATION && loadAgent) {
             TransparentDirtyDetectorAgent.initialize();
         }
         return this;
