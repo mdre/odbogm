@@ -98,7 +98,7 @@ dependencies {
     //compile("net.bytebuddy:byte-buddy:1.3.18")
     //compile("net.bytebuddy:byte-buddy-agent:1.3.18")
     compile("cglib:cglib:3.2.5")
-    
+    compile("com.github.mdre:odbogm-agent:0.9.12.18")
     //compile("com.esotericsoftware:kryo-shaded:4.0.1")
     
     compile("com.orientechnologies:orientdb-graphdb:2.2.29")
@@ -106,10 +106,10 @@ dependencies {
     // https://mvnrepository.com/artifact/org.objenesis/objenesis
     compile group: 'org.objenesis', name: 'objenesis', version: '2.6'
     
-    compile "com.sun:tools:1.8.0"
+//    compile "com.sun:tools:1.8.0"
     
     // https://mvnrepository.com/artifact/com.ea.agentloader/ea-agent-loader
-    compile group: 'com.ea.agentloader', name: 'ea-agent-loader', version: '1.0.3'
+//    compile group: 'com.ea.agentloader', name: 'ea-agent-loader', version: '1.0.3'
     
     //compile("com.arshadow:UtilityLib:1.0")
     testCompile("junit:junit:[4,)")
@@ -136,30 +136,30 @@ test {
     }
 }
 
-jar {
-    manifest {
-        attributes(
-      'Class-Path': configurations.compile.collect { it.getName() }.join(' '),
-      'Premain-Class':'net.odbogm.agent.TransparentDirtyDetectorAgent',
-      'Agent-Class':'net.odbogm.agent.TransparentDirtyDetectorAgent',
-      'Can-Redefine-Classes':true,
-      'Can-Retransform-Classes':true
-        )
-    }
-}
+//jar {
+//    manifest {
+//        attributes(
+//      'Class-Path': configurations.compile.collect { it.getName() }.join(' '),
+//      'Premain-Class':'net.odbogm.agent.TransparentDirtyDetectorAgent',
+//      'Agent-Class':'net.odbogm.agent.TransparentDirtyDetectorAgent',
+//      'Can-Redefine-Classes':true,
+//      'Can-Retransform-Classes':true
+//        )
+//    }
+//}
 
 
 //create a single Jar with all dependencies
 task fatJar(type: Jar) {
-    manifest {
-        attributes(
-      'Class-Path': configurations.compile.collect { it.getName() }.join(' '),
-      'Premain-Class':'net.odbogm.agent.TransparentDirtyDetectorAgent',
-      'Agent-Class':'net.odbogm.agent.TransparentDirtyDetectorAgent',
-      'Can-Redefine-Classes':true,
-      'Can-Retransform-Classes':true
-        )
-    }
+//    manifest {
+//        attributes(
+//      'Class-Path': configurations.compile.collect { it.getName() }.join(' '),
+//      'Premain-Class':'net.odbogm.agent.TransparentDirtyDetectorAgent',
+//      'Agent-Class':'net.odbogm.agent.TransparentDirtyDetectorAgent',
+//      'Can-Redefine-Classes':true,
+//      'Can-Retransform-Classes':true
+//        )
+//    }
     baseName = project.name + '-all'
     from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
     with jar
