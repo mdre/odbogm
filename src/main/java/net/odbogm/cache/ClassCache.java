@@ -164,7 +164,11 @@ public class ClassCache {
                         
                     } else {
                         if (!(f.isAnnotationPresent(Ignore.class)))
-                            LOGGER.log(Level.WARNING, "Ignorado: {0}", f.getName());
+                            if (f.getName().startsWith("___ogm___")) {
+                                LOGGER.log(Level.FINER, "Ignorado: {0}", f.getName());
+                            } else {
+                                LOGGER.log(Level.WARNING, "Ignorado: {0}", f.getName());
+                            }
                     }
 
                 } catch (IllegalArgumentException ex) {

@@ -67,8 +67,12 @@ task autoBuildNumber {
 if (! project.gradle.startParameter.taskNames.join(",").toLowerCase().contains("release") ) {
     build.dependsOn autoBuildNumber
 }
-
-
+build.doLast {
+        println "***************************************************************"
+        println "SISTEMA: " + name
+        println "VERSION: " + version
+        println "***************************************************************"
+}
 
 // seteo carpeta de fuentes para sonar
 //sonarqube {
@@ -81,14 +85,14 @@ if (! project.gradle.startParameter.taskNames.join(",").toLowerCase().contains("
 javadoc.enabled = true
 
 repositories {
-//    maven {
-//        url "$sonatypeURLRelease"
-//            
-//        credentials {
-//            username = "$sonatypeUser"
-//            password = "$sonatypePassword"
-//        }
-//    }
+    //    maven {
+    //        url "$sonatypeURLRelease"
+    //            
+    //        credentials {
+    //            username = "$sonatypeUser"
+    //            password = "$sonatypePassword"
+    //        }
+    //    }
     mavenLocal()
     mavenCentral()
 }
@@ -97,8 +101,8 @@ repositories {
 dependencies {
     //compile("net.bytebuddy:byte-buddy:1.3.18")
     //compile("net.bytebuddy:byte-buddy-agent:1.3.18")
-    compile("cglib:cglib:3.2.5")
-    compile("com.github.mdre:odbogm-agent:1.0.0")
+    compile("cglib:cglib:3.2.6")
+    compile("com.github.mdre:odbogm-agent:1.0.0.17")
     //compile("com.esotericsoftware:kryo-shaded:4.0.1")
     
     compile("com.orientechnologies:orientdb-graphdb:2.2.29")
@@ -106,10 +110,10 @@ dependencies {
     // https://mvnrepository.com/artifact/org.objenesis/objenesis
     compile group: 'org.objenesis', name: 'objenesis', version: '2.6'
     
-//    compile "com.sun:tools:1.8.0"
+    //    compile "com.sun:tools:1.8.0"
     
     // https://mvnrepository.com/artifact/com.ea.agentloader/ea-agent-loader
-//    compile group: 'com.ea.agentloader', name: 'ea-agent-loader', version: '1.0.3'
+    //    compile group: 'com.ea.agentloader', name: 'ea-agent-loader', version: '1.0.3'
     
     //compile("com.arshadow:UtilityLib:1.0")
     testCompile("junit:junit:[4,)")
@@ -151,15 +155,15 @@ test {
 
 //create a single Jar with all dependencies
 task fatJar(type: Jar) {
-//    manifest {
-//        attributes(
-//      'Class-Path': configurations.compile.collect { it.getName() }.join(' '),
-//      'Premain-Class':'net.odbogm.agent.TransparentDirtyDetectorAgent',
-//      'Agent-Class':'net.odbogm.agent.TransparentDirtyDetectorAgent',
-//      'Can-Redefine-Classes':true,
-//      'Can-Retransform-Classes':true
-//        )
-//    }
+    //    manifest {
+    //        attributes(
+    //      'Class-Path': configurations.compile.collect { it.getName() }.join(' '),
+    //      'Premain-Class':'net.odbogm.agent.TransparentDirtyDetectorAgent',
+    //      'Agent-Class':'net.odbogm.agent.TransparentDirtyDetectorAgent',
+    //      'Can-Redefine-Classes':true,
+    //      'Can-Retransform-Classes':true
+    //        )
+    //    }
     baseName = project.name + '-all'
     from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
     with jar
@@ -185,11 +189,11 @@ artifacts {
 signing {
     //required { gradle.taskGraph.hasTask("uploadArchives")}
     
-//    ext."signing.keyId"= credentials.gpgKeyId
-//    ext."signing.password"= credentials.gpgKeyPassword
-//    ext."signing.secretKeyRingFile" = credentials.gpgKeyRingFile                
+    //    ext."signing.keyId"= credentials.gpgKeyId
+    //    ext."signing.password"= credentials.gpgKeyPassword
+    //    ext."signing.secretKeyRingFile" = credentials.gpgKeyRingFile                
 
-//    println ext."signing.keyId"
+    //    println ext."signing.keyId"
     
     sign(configurations.archives)
 }
