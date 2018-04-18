@@ -1077,6 +1077,39 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     }
 
     /**
+         * Ejecuta un prepared query y devuelve una lista de la clase indicada.
+         * Esta consulta acepta parámetros por nombre. 
+         * Ej:
+         * <pre> {@code 
+         *  Map<String, Object> params = new HashMap<String, Object>();
+         *  params.put("theName", "John");
+         *  params.put("theSurname", "Smith");
+         *
+         *  graph.command(
+         *       new OCommandSQL("UPDATE Customer SET local = true WHERE name = :theName and surname = :theSurname")
+         *      ).execute(params)
+         *  );
+         *  }
+         * </pre>
+         * @param <T> clase de referencia para crear la lista de resultados
+         * @param clase clase de referencia
+         * @param sql comando a ejecutar
+         * @param param parámetros extras para el query parametrizado.
+         * @return una lista de la clase solicitada con los objetos lazy inicializados.
+         */
+    @Override
+    public <T> List<T> query(Class<T> clase, String sql, HashMap<String,Object> param) {
+        OSQLSynchQuery<ODocument> query = new OSQLSynchQuery<>(sql);
+        ArrayList<T> ret = new ArrayList<>();
+
+        LOGGER.log(Level.FINER, sql);
+        for (Vertex v : (Iterable<Vertex>) this.orientdbTransact.command(query).execute(param)) {
+            ret.add(this.get(clase, v.getId().toString()));
+        }
+        return ret;
+    }
+
+    /**
      * Devuelve el objecto de definición de la clase en la base.
      *
      * @param clase nombre de la clase

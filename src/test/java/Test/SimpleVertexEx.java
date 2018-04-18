@@ -54,6 +54,7 @@ public class SimpleVertexEx extends SimpleVertex {
     
     public HashMap<String,String> hmString;
     
+    @RemoveOrphan
     @CascadeDelete
     public ArrayList<SimpleVertex> alSV;
     

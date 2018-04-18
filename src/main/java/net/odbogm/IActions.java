@@ -8,6 +8,7 @@ package net.odbogm;
 import net.odbogm.exceptions.IncorrectRIDField;
 import net.odbogm.exceptions.UnknownRID;
 import com.tinkerpop.blueprints.impls.orient.OrientEdge;
+import java.util.HashMap;
 import java.util.List;
 import net.odbogm.exceptions.VertexJavaClassNotFound;
 
@@ -112,6 +113,29 @@ public interface IActions {
          * @return una lista de la clase solicitada con los objetos lazy inicializados.
          */
         public <T> List<T> query(Class<T> clase, String sql, Object... param);
+        
+        /**
+         * Ejecuta un prepared query y devuelve una lista de la clase indicada.
+         * Esta consulta acepta parámetros por nombre. 
+         * Ej:
+         * <pre> {@code 
+         *  Map<String, Object> params = new HashMap<String, Object>();
+         *  params.put("theName", "John");
+         *  params.put("theSurname", "Smith");
+         *
+         *  graph.command(
+         *       new OCommandSQL("UPDATE Customer SET local = true WHERE name = :theName and surname = :theSurname")
+         *      ).execute(params)
+         *  );
+         *  }
+         * </pre>
+         * @param <T> clase de referencia para crear la lista de resultados
+         * @param clase clase de referencia
+         * @param sql comando a ejecutar
+         * @param param parámetros extras para el query parametrizado.
+         * @return una lista de la clase solicitada con los objetos lazy inicializados.
+         */
+        public <T> List<T> query(Class<T> clase, String sql, HashMap<String,Object> param);
     }
 
 }

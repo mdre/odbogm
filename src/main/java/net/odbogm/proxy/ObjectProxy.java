@@ -897,6 +897,8 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                     inter.addAll((Collection) oCol);
                                     //preparar la interface para que se continúe con el acceso.
                                     col = (ILazyCollectionCalls) inter;
+                                    // reasignar el objeto oCol
+                                    oCol = f.get(this.___proxyObject);
                                 }
 
                                 List lCol = (List) oCol;
@@ -909,6 +911,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                     if (colState.get(colObject) == ObjectCollectionState.ADDED) {
                                         // si se agregó uno, determinar si era o no manejado por el SM
                                         if (!(colObject instanceof IObjectProxy)) {
+                                            LOGGER.log(Level.FINER, "Objeto nuevo. Insertando en la base y reemplazando el original...");
                                             // no es un objeto que se haya almacenado.
                                             colObject = this.___transaction.store(colObject);
                                             // reemplazar en la colección el objeto por uno administrado
@@ -936,21 +939,20 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                     ObjectCollectionState colObjState = entry1.getValue();
 
                                     if (colObjState == ObjectCollectionState.REMOVED) {
+                                        // remover el link
+                                        for (Edge edge : ((OrientVertex) this.___baseElement).getEdges(((IObjectProxy) colObject).___getVertex(), Direction.OUT, graphRelationName)) {
+                                            if (this.___transaction.getSessionManager().isAuditing()) {
+                                                this.___transaction.getSessionManager().auditLog(this, AuditType.WRITE, "LINKLIST REMOVE: " + graphRelationName, edge);
+                                            }
+                                            edge.remove();
+                                        }
+                                        // si existe la anotación, remover tambien el vertex
                                         if (f.isAnnotationPresent(RemoveOrphan.class)) {
                                             if (this.___transaction.getSessionManager().isAuditing()) {
                                                 this.___transaction.getSessionManager().auditLog(this, AuditType.DELETE, "LINKLIST DELETE: " + graphRelationName, colObject);
                                             }
                                             this.___transaction.delete(colObject);
-                                        } else {
-                                            // remover solo el link
-
-                                            for (Edge edge : ((OrientVertex) this.___baseElement).getEdges(((IObjectProxy) colObject).___getVertex(), Direction.OUT, graphRelationName)) {
-                                                if (this.___transaction.getSessionManager().isAuditing()) {
-                                                    this.___transaction.getSessionManager().auditLog(this, AuditType.WRITE, "LINKLIST REMOVE: " + graphRelationName, edge);
-                                                }
-                                                edge.remove();
-                                            }
-                                        }
+                                        } 
                                     }
                                 }
 
@@ -1024,10 +1026,15 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                             break;
 
                                         case REMOVED:
+                                            // quitar el Edge
+                                            OrientEdge oeRemove = keyToEdge.get(imk);
+                                            if (this.___transaction.getSessionManager().isAuditing()) {
+                                                this.___transaction.getSessionManager().auditLog(this, AuditType.WRITE, "LINKLIST REMOVE: " + graphRelationName, oeRemove);
+                                            }
+                                            oeRemove.remove();
                                             // el link se ha removido. Se debe eliminar y verificar si corresponde borrar 
                                             // el vértice en caso de estar marcado con @RemoveOrphan.
-                                            if (f.isAnnotationPresent(RemoveOrphan.class
-                                            )) {
+                                            if (f.isAnnotationPresent(RemoveOrphan.class)) {
                                                 if (entitiesState.get(imk) == ObjectCollectionState.REMOVED) {
                                                     this.___transaction.delete(entitiesState.get(imk));
                                                     if (this.___transaction.getSessionManager().isAuditing()) {
@@ -1035,12 +1042,6 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                                     }
                                                 }
                                             }
-                                            // quitar el Edge
-                                            OrientEdge oeRemove = keyToEdge.get(imk);
-                                            if (this.___transaction.getSessionManager().isAuditing()) {
-                                                this.___transaction.getSessionManager().auditLog(this, AuditType.WRITE, "LINKLIST REMOVE: " + graphRelationName, oeRemove);
-                                            }
-                                            oeRemove.remove();
                                             break;
                                     }
                                 }

@@ -19,6 +19,7 @@ import com.tinkerpop.blueprints.impls.orient.OrientGraph;
 import com.tinkerpop.blueprints.impls.orient.OrientGraphFactory;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -120,6 +121,7 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
      * @return this
      */
     public SessionManager setActivationStrategy(ActivationStrategy as) {
+        
         return this.setActivationStrategy(as, true);
     }
 
@@ -134,6 +136,7 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
      */    
     public SessionManager setActivationStrategy(ActivationStrategy as, boolean loadAgent) {
         this.activationStrategy = as;
+        LOGGER.log(Level.INFO, "ActivationStrategy using "+as);
         if (this.activationStrategy == ActivationStrategy.CLASS_INSTRUMENTATION && loadAgent) {
             TransparentDirtyDetectorAgent.initialize();
         }
@@ -456,6 +459,33 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
         return this.publicTransaction.query(clase, sql, param);
     }
 
+    /**
+         * Ejecuta un prepared query y devuelve una lista de la clase indicada.
+         * Esta consulta acepta parámetros por nombre. 
+         * Ej:
+         * <pre> {@code 
+         *  Map<String, Object> params = new HashMap<String, Object>();
+         *  params.put("theName", "John");
+         *  params.put("theSurname", "Smith");
+         *
+         *  graph.command(
+         *       new OCommandSQL("UPDATE Customer SET local = true WHERE name = :theName and surname = :theSurname")
+         *      ).execute(params)
+         *  );
+         *  }
+         * </pre>
+         * @param <T> clase de referencia para crear la lista de resultados
+         * @param clase clase de referencia
+         * @param sql comando a ejecutar
+         * @param param parámetros extras para el query parametrizado.
+         * @return una lista de la clase solicitada con los objetos lazy inicializados.
+         */
+        public <T> List<T> query(Class<T> clase, String sql, HashMap<String,Object> param) {
+            return this.publicTransaction.query(clase, sql, param);
+        }
+    
+    
+    
     /**
      * Devuelve el objecto de definición de la clase en la base.
      *

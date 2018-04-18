@@ -25,6 +25,7 @@ import java.util.logging.Logger;
 import net.odbogm.DbManager;
 import net.odbogm.Transaction;
 import net.odbogm.exceptions.ReferentialIntegrityViolation;
+import net.odbogm.exceptions.UnknownRID;
 import net.odbogm.security.AccessRight;
 import net.odbogm.security.GroupSID;
 import net.odbogm.security.UserSID;
@@ -743,10 +744,7 @@ public class Test {
         String rirSVEXrid = sm.getRID(rirSVEX);
         System.out.println("Referencia creada: "+rirSVEXrid+"-->"+irSVrid);
         
-        System.out.println("presione ENTER para continuar...");
-        Scanner scanner = new Scanner(System.in);
-        scanner.nextLine();
-        
+        pause();
         
         // intentar eliminar el objeto dependiente
         try {
@@ -755,9 +753,49 @@ public class Test {
             System.out.println("El objeto fue borrado y debería haber saltado una excepción");
         } catch(ReferentialIntegrityViolation riv) {
             System.out.println("ReferencialIntegrityViolation ");
+            sm.rollback();
         }
+        
+        System.out.println("Verificar el RemoveOrphan sobre los vectores");
+        System.out.println("rid principal: "+sm.getRID(rirSVEX));
+        
+        
+        // persistir todo.
+        System.out.println("inicializar el array list...");
+        rirSVEX.initArrayList();
+        sm.commit();
+        
+        rirSVEX = sm.get(SimpleVertexEx.class,sm.getRID(rirSVEX));
+        String sRSV1 = sm.getRID(rirSVEX.getAlSV().get(0));
+        SimpleVertex svToRemove = rirSVEX.getAlSV().get(1);
+        String sRSV2 = sm.getRID(svToRemove);
+        System.out.println("rid sv1: "+sRSV1);
+        System.out.println("rid sv2: "+sRSV2);
+        
+        System.out.println("fin de la presistencia con los objetos referenciados");
+        pause(); 
+        
+        System.out.println("quitar uno de los objetos...");
+        System.out.println("resultado: "+rirSVEX.getAlSV().remove(svToRemove));
+        
+        System.out.println("persistir...");
+        sm.commit();
+        
+        System.out.println("verificar que el objeto no exista");
+        try {
+            SimpleVertex rsv1borrado = sm.get(SimpleVertex.class, sRSV1);
+        } catch (UnknownRID urid) {
+            System.out.println("Exito! El objeto fue borrado.");
+        }
+        
     }
 
+    
+    private void pause() {
+        System.out.println("presione ENTER para continuar...");
+        Scanner scanner = new Scanner(System.in);
+        scanner.nextLine();
+    }
     /**
      * soporte desde JUnit
      *

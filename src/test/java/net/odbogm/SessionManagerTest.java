@@ -1462,6 +1462,50 @@ public class SessionManagerTest {
             System.out.println("El objeto Orphan fue borrado!");
         }
         
+        
+        System.out.println("\n\nVerificar el RemoveOrphan sobre los vectores");
+        SimpleVertexEx svro = new SimpleVertexEx(); 
+        SimpleVertexEx storedSVE = sm.store(svro);
+        sm.commit();
+        
+        String ridRO = sm.getRID(storedSVE);
+        
+        svro = null;
+        storedSVE = null;
+        
+        SimpleVertexEx rirSVEX = sm.get(SimpleVertexEx.class, ridRO);
+        svro = null;
+        
+        System.out.println("rid principal: "+sm.getRID(rirSVEX));
+        
+        
+        // persistir todo.
+        System.out.println("inicializar el array list...");
+        rirSVEX.initArrayList();
+        sm.commit();
+        
+        rirSVEX = sm.get(SimpleVertexEx.class,sm.getRID(rirSVEX));
+        String sRSV1 = sm.getRID(rirSVEX.getAlSV().get(0));
+        SimpleVertex svToRemove = rirSVEX.getAlSV().get(1);
+        String sRSV2 = sm.getRID(svToRemove);
+        System.out.println("rid sv1: "+sRSV1);
+        System.out.println("rid sv2: "+sRSV2);
+        
+        System.out.println("fin de la presistencia con los objetos referenciados");
+        
+        System.out.println("quitar uno de los objetos...");
+        System.out.println("resultado: "+rirSVEX.getAlSV().remove(svToRemove));
+        
+        System.out.println("persistir...");
+        sm.commit();
+        
+        System.out.println("verificar que el objeto no exista");
+        try {
+            SimpleVertex rsv1borrado = sm.get(SimpleVertex.class, sRSV1);
+        } catch (UnknownRID urid) {
+            System.out.println("Exito! El objeto fue borrado.");
+        }
+        
     }
     
     
