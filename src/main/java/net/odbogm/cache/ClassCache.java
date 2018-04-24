@@ -12,6 +12,7 @@ import static net.odbogm.Primitives.PRIMITIVE_MAP;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -114,10 +115,18 @@ public class ClassCache {
                                 ParameterizedType listType = (ParameterizedType) f.getGenericType();
                                 Class<?> listClass = (Class<?>) listType.getActualTypeArguments()[0];
                                 if ((Primitives.PRIMITIVE_MAP.get(listClass)!=null)
+                                        ||(listClass.isEnum())
                                         ||(f.isAnnotationPresent(Embedded.class))) {
                                     LOGGER.log(Level.FINER, "\n**********************************************************");
-                                    LOGGER.log(Level.FINER, "Es una colección de primitivas: "+listClass.getSimpleName());
-                                    LOGGER.log(Level.FINER, "Se procede a embeberla.");
+                                    if (f.isAnnotationPresent(Embedded.class)) {
+                                        LOGGER.log(Level.FINER, "Clase anotada como Embedded: "+listClass.getSimpleName());
+                                    } else {
+                                        LOGGER.log(Level.FINER, "Es una colección de primitivas: "
+                                                +listClass.getSimpleName()
+                                                +(listClass.isEnum()?" de tipo ENUM":"")
+                                        );
+                                        LOGGER.log(Level.FINER, "Se procede a embeberla.");
+                                    }
                                     LOGGER.log(Level.FINER, "\n**********************************************************");
                                     setAsEmbedded = true;
                                 }

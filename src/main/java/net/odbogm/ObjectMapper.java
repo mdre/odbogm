@@ -288,7 +288,7 @@ public class ObjectMapper {
             String prop = entry.getKey();
             Class<? extends Object> fieldClazz = entry.getValue();
             
-            LOGGER.log(Level.FINER, "Buscando campo {0} ....", new String[]{prop});
+            LOGGER.log(Level.FINER, "Buscando campo {0} de tipo {1}....", new String[]{prop, fieldClazz.getSimpleName()});
             Object value = v.getProperty(prop);
             
             if (value != null) {
@@ -304,9 +304,23 @@ public class ObjectMapper {
 //                    f.set(oproxied, Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString()));
                     this.setFieldValue(oproxied, prop, Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString()));
                 } else if (f.getType().isAssignableFrom(List.class)) {
+                    // si la lista fuera de Enum, es necesario realizar la conversión antes dado que se guarda como string.
+                    ParameterizedType listType = (ParameterizedType) f.getGenericType();
+                    Class<?> listClass = (Class<?>) listType.getActualTypeArguments()[0];
+                    if (listClass.isEnum()) {
+                        // reemplazar todos los valores por el emum correspondiente
+                        for (int i = 0; i < ((List)value).size(); i++) {
+                            if (((List)value).get(i) instanceof String) {
+                                // solo si el objeto contenido en la lista es un String.
+                                String sVal = (String)((List)value).get(i);
+                                ((List)value).set(i, Enum.valueOf(listClass.asSubclass(Enum.class), sVal));
+                            }
+                        }
+                    }
                     // se debe hacer una copia del la lista para no quede referenciando al objeto original
                     // dado que en la asignación solo se pasa la referencia del objeto.
                     LOGGER.log(Level.FINER, "EmbeddedList detectada: realizando una copia del contenido...");
+                    LOGGER.log(Level.FINER, "value: "+value.getClass());
                     this.setFieldValue(oproxied, prop, new ArrayListEmbeddedProxy((IObjectProxy)oproxied,(List)value));
                 } else if (f.getType().isAssignableFrom(Map.class)) {
                     // se debe hacer una copia del la lista para no quede referenciando al objeto original
@@ -317,6 +331,23 @@ public class ObjectMapper {
                 } else{
                     LOGGER.log(Level.FINER, "hidratado campo: " + prop + "=" + value);
                     this.setFieldValue(oproxied, prop, value);
+                }
+                f.setAccessible(acc);
+            } else {
+                // si el valor es null verificar que no se trate de una Lista embebida 
+                // que pueda haber sido inicializada en el constructor.
+                f = ReflectionUtils.findField(toHydrate, prop);
+                
+                boolean acc = f.isAccessible();
+                f.setAccessible(true);
+                if ((f.get(oproxied)!=null) && (f.getType().isAssignableFrom(List.class))) {
+                    // se trata de una lista embebida. Proceder a reemplazarlar con una que esté preparada.
+                    LOGGER.log(Level.FINER, "Se ha detectado una lista embebida que no tiene valores. Se la reemplaza por una Embedded.");
+                    this.setFieldValue(oproxied, prop, new ArrayListEmbeddedProxy((IObjectProxy)oproxied,(List)f.get(oproxied)));
+                } else if ((f.get(oproxied)!=null) && (f.getType().isAssignableFrom(Map.class))) {
+                    // se trata de un Map embebido. Proceder a reemplazarlo con uno que esté preparado.
+                    LOGGER.log(Level.FINER, "Se ha detectado un Map embebido que no tiene valores. Se lo reemplaza por uno Embedded.");
+                    this.setFieldValue(oproxied, prop, new HashMapEmbeddedProxy((IObjectProxy)oproxied,(Map)f.get(oproxied)));
                 }
                 f.setAccessible(acc);
             }

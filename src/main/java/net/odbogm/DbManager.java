@@ -13,14 +13,17 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.ParameterizedType;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import static net.odbogm.Primitives.PRIMITIVE_MAP;
+import net.odbogm.annotations.Embedded;
 import net.odbogm.annotations.FieldAttributes;
 import net.odbogm.annotations.FieldAttributes.Bool;
 import net.odbogm.annotations.Ignore;
@@ -241,8 +244,31 @@ public class DbManager {
                 FieldAttributes fa = field.getAnnotation(FieldAttributes.class);
                 
                 String currentProp = className + "." + field.getName();
-                if ((PRIMITIVE_MAP.get(field.getType())!=null)||(field.getType().isEnum())) {
+                
+                boolean embeddedList = false;
+                if (List.class.isAssignableFrom(field.getType())) {
+                    ParameterizedType listType = (ParameterizedType) field.getGenericType();
+                    Class<?> listClass = (Class<?>) listType.getActualTypeArguments()[0];
+                    embeddedList = listClass.isEnum();
+                }
+                
+                if ((PRIMITIVE_MAP.get(field.getType())!=null)
+                        ||(field.getType().isEnum())
+                        ||(field.isAnnotationPresent(Embedded.class))
+                        ||(embeddedList)) {
                     // crear el statement para el campo si corresponde
+                    String type;
+                    if (field.getType().isEnum()) {
+                        type = "string";
+                    } else if (field.isAnnotationPresent(Embedded.class)) {
+                        type = "embedded";
+                    } else if (List.class.isAssignableFrom(field.getType())) {
+                        type = "embeddedlist";
+                    } else if (Map.class.isAssignableFrom(field.getType())) {
+                        type = "embeddedmap";
+                    } else {
+                        type = PRIMITIVE_MAP.get(field.getType()).toString();
+                    }
                     String statement = "\n"
                                     +"let exist = select from "
                                                         + "(select expand(properties) "
@@ -250,7 +276,7 @@ public class DbManager {
                                                         + " from metadata:schema) "
                                                         + " where name = '"+className+"') where name = '"+field.getName()+"'\n"
                                     + "if ($exist.size()=0) {\n"
-                                    + "     create property " + currentProp + " " + (field.getType().isEnum()?" string ": PRIMITIVE_MAP.get(field.getType()))
+                                    + "     create property " + currentProp + " " + type 
                                     + "\n}\n ";
                     clazzStruct.properties.add(statement);
 

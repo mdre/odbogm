@@ -331,7 +331,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                             case CLASS_INSTRUMENTATION:
                                 // si se está usando la instrumentación de clase, directamente verificar en el objeto
                                 // cual es su estado.
-                                LOGGER.log(Level.FINER, "o: " + o.getClass().getName() + " ITrans: " + (o instanceof ITransparentDirtyDetector));
+                                LOGGER.log(Level.FINEST, "o: " + o.getClass().getName() + " ITrans: " + (o instanceof ITransparentDirtyDetector));
                                 if (((ITransparentDirtyDetector) o).___ogm___isDirty()) {
                                     LOGGER.log(Level.FINEST, "objeto {0} marcado como dirty por ASM. Agregarlo a la lista de pendientes.", o.getClass().getName());
                                     this.___setDirty();
@@ -717,7 +717,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 //        ODatabaseRecordThreadLocal.INSTANCE.set(this.___sm.getGraphdb().getRawGraph());
         LOGGER.log(Level.FINER, "Iniciando ___commit() ....");
         LOGGER.log(Level.FINER, "valid: " + this.___isValidObject);
-
+        
         if (this.___dirty) {
             this.___transaction.getSessionManager().getGraphdb().getRawGraph().activateOnCurrentThread();
             // asegurarse que está atachado
