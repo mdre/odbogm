@@ -63,7 +63,7 @@ public class Test {
           testDelete();
 //        testEmbeddded();
 //        setUpGroups();
-//        testSObjects();
+        testSObjects();
 //        testLongQuery();
 //        testMultiTran();
 //        testRollbackEmbedded();

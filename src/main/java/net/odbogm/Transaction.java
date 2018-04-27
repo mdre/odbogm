@@ -308,6 +308,15 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     public synchronized <T> T store(T o) throws IncorrectRIDField, NoOpenTx, ClassToVertexNotFound {
 //        graphdb.getRawGraph().activateOnCurrentThread();
         T proxied = null;
+        
+        // si el objeto ya fue guardado con anterioridad, devolver la instancia creada previamente.
+        proxied = (T)this.commitedObject.get(o);
+        if (proxied != null) {
+            // devolver la instancia recuperada
+            LOGGER.log(Level.FINER, "El objeto original ya había sido persistido. Se devuelve la instancia creada inicialmente.");
+            return proxied;
+        }
+        
         try {
             // si no hay una tx abierta, disparar una excepción
             if (this.orientdbTransact == null) {
@@ -1069,7 +1078,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         OSQLSynchQuery<ODocument> query = new OSQLSynchQuery<>(sql);
         ArrayList<T> ret = new ArrayList<>();
 
-        LOGGER.log(Level.FINER, sql);
+        LOGGER.log(Level.FINER, sql + " param: "+param);
         for (Vertex v : (Iterable<Vertex>) this.orientdbTransact.command(query).execute(param)) {
             ret.add(this.get(clase, v.getId().toString()));
         }
