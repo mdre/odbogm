@@ -105,18 +105,20 @@ public abstract class SObject {
     public final int validate(ISecurityCredentials sc) {
         LOGGER.log(Level.FINER, "validando los permisos de acceso...");
         int partialState = 0;
-        int gal = 0;
+        Integer gal = 0;
         HashMap<String, Integer> acls = this.getAcls();
-        LOGGER.log(Level.FINER, "Lista de acls: "+acls.size());
+        LOGGER.log(Level.FINER, "Lista de acls: "+acls.size()+" : "+acls);
         if (acls.size() != 0) {
             for (String securityCredential : sc.showSecurityCredentials()) {
                 gal = acls.get(securityCredential);
-                LOGGER.log(Level.FINER, "SecurityCredential: "+securityCredential+" "+gal);
-                if (gal == AccessRight.NOACCESS) {
-                    partialState = 0;
-                    break;
+                LOGGER.log(Level.FINER, "SecurityCredential access: "+securityCredential+" "+gal);
+                if (gal != null) {
+                    if (gal == AccessRight.NOACCESS) {
+                        partialState = 0;
+                        break;
+                    }
+                    partialState |= gal;
                 }
-                partialState |= gal;
             }
         } else {
             // si no hay ACLs definidos, se conceden todos los permisos por defectos.

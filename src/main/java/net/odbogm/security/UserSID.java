@@ -23,7 +23,7 @@ public class UserSID extends SID implements ISecurityCredentials {
         }
     }
     
-    private List<GroupSID> groups;
+    private List<GroupSID> groups = new ArrayList<>();;
             
     public UserSID() {
         super();
@@ -34,17 +34,16 @@ public class UserSID extends SID implements ISecurityCredentials {
     }
     
     public void addGroup(GroupSID gsid) {
-        if (this.groups==null) {
-            this.groups = new ArrayList<>();
-        }
-        if (!this.groups.contains(gsid))
+        // ojo con las referencias cruzadas entre UserSID y GroupSID
+        if (!this.groups.contains(gsid)) {
             this.groups.add(gsid);
-        gsid.add(this);
+            gsid.add(this);
+        }
     }
     
     public void removeGroup(GroupSID gsid) {
-        if (this.groups!=null) {
-            this.groups.remove(gsid);
+        // ojo con las referencias cruzadas entre UserSID y GroupSID
+        if (this.groups.remove(gsid)) {
             gsid.remove(this);
         }
     }
@@ -57,7 +56,14 @@ public class UserSID extends SID implements ISecurityCredentials {
     public List<String> showSecurityCredentials() {
         // recuperar todos los grupos a los que pertenece el UserSID actual.
         // FIXME: la lista retornada debería ser inmutable.
-        return this.groups.stream().map(gid -> gid.getUUID()).collect(Collectors.toList());
+        List<String> sc = new ArrayList<>();
+        if (this.groups != null) {
+            sc = this.groups.stream().map(gid -> gid.getUUID()).collect(Collectors.toList());
+        }
+        for (GroupSID group : this.groups) {
+            sc.addAll(group.getIndirectCredentialsGroups());
+        }
+        return sc;
     }
     
     /**
@@ -66,7 +72,11 @@ public class UserSID extends SID implements ISecurityCredentials {
      */
     public List<GroupSID> getGroups() {
         // FIXME: existe algún riesgo en esto?
-        return this.groups.stream().map(gid -> gid).collect(Collectors.toList());
+        List<GroupSID> gr = new ArrayList<>();
+        if (this.groups!=null) {
+             gr = this.groups.stream().map(gid -> gid).collect(Collectors.toList());
+        }
+        return gr;
     }
 
 }

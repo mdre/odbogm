@@ -26,7 +26,10 @@ public class GroupSID extends SID {
             LOGGER.setLevel(LogginProperties.GroupSID);
         }
     }
-    private List<SID> participants;
+    private List<SID> participants = new ArrayList<>();;
+    
+    // lista de grupo a los que fue agregado el presente
+    private List<GroupSID> addedTo = new ArrayList<>();
 
     public GroupSID() {
         super();
@@ -42,20 +45,60 @@ public class GroupSID extends SID {
      * 
      * @param user reference to user.
      */
-    public final void add(SID user) {
-        if (participants == null) 
-            this.participants = new ArrayList<>();
-        this.participants.add(user);
+    public final void add(UserSID user) {
+        // verificar que el SID no exista
+        if (!this.participants.contains(user)) {
+            this.participants.add(user);
+            user.addGroup(this);
+        }
+    }
+    
+    public final void add(GroupSID gsid) {
+        // verificar que el SID no exista
+        if (!this.participants.contains(gsid)) {
+            this.participants.add(gsid);
+            gsid.addedTo(this);
+        }
     }
     
     public final void remove(SID user) {
-        this.participants.remove(user);
+        if (this.participants.remove(user)) {
+            // si lo que se está removiendo es un Grupo, eliminar la doble referencia.
+            if (user instanceof GroupSID) {
+                ((GroupSID)user).removeAddedTo(this);
+            } else {
+                ((UserSID)user).removeGroup(this);
+            }
+        }
     }
     
     public final List<SID> getParticipants() {
         // FIXME: ojo que se está retornando la lista de participantes y esto permite que se acceda a los objetos
         // internos de la misma.
-        return this.participants.stream().map(sid -> sid).collect(Collectors.toList());
+        List<SID> p = new ArrayList<>();
+        if (this.participants != null) {
+             p = this.participants.stream().map(sid -> sid).collect(Collectors.toList());
+        }
+        return p;
     }
     
+    final void addedTo(GroupSID gAddedTo) {
+        if (!this.addedTo.contains(gAddedTo)) {
+            this.addedTo.add(gAddedTo);
+        }
+    }
+    
+    final void removeAddedTo(GroupSID gAddedTo) {
+        this.addedTo.remove(gAddedTo);
+    }
+    
+    // devuelve las credenciales de todos los grupos a los que fue agregado este grupo.
+    final List<String> getIndirectCredentialsGroups() {
+        ArrayList<String> indirect = new ArrayList<>();
+        for (GroupSID gsid : this.addedTo) {
+            indirect.add(gsid.getUUID());
+            indirect.addAll(gsid.getIndirectCredentialsGroups());
+        }
+        return indirect;
+    }
 }

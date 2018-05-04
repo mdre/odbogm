@@ -5,9 +5,9 @@
  */
 package net.odbogm;
 
+import Test.BidiVertex;
 import Test.EdgeAttrib;
 import Test.EnumTest;
-import Test.GroupEx;
 import Test.SSimpleVertex;
 import Test.SimpleVertex;
 import Test.SimpleVertexEx;
@@ -19,9 +19,12 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.logging.Level;
 import net.odbogm.agent.ITransparentDirtyDetector;
 import net.odbogm.exceptions.ReferentialIntegrityViolation;
 import net.odbogm.exceptions.UnknownRID;
+import net.odbogm.proxy.ArrayListLazyProxy;
+import net.odbogm.proxy.ObjectProxy;
 import net.odbogm.security.*;
 import net.odbogm.utils.DateHelper;
 import org.junit.After;
@@ -61,6 +64,11 @@ public class SessionManagerTest {
         System.out.println("Iniciando session manager...");
         sm = new SessionManager("remote:localhost/Test", "root", "toor")
                 .setActivationStrategy(SessionManager.ActivationStrategy.CLASS_INSTRUMENTATION)
+//                .setClassLevelLog(ObjectMapper.class, Level.FINER)
+//                .setClassLevelLog(ObjectProxy.class, Level.FINER)
+//                .setClassLevelLog(Transaction.class, Level.FINER)
+//                .setClassLevelLog(ArrayListLazyProxy.class, Level.FINER)
+                .setClassLevelLog(SObject.class, Level.FINER)
                 ;
 
         System.out.println("Begin");
@@ -1146,6 +1154,58 @@ public class SessionManagerTest {
         assertTrue(ssvw.getSecurityState() == AccessRight.WRITE);
 
         rssv.removeAcl(sgna);
+        sm.commit();
+
+
+        // Verificar la transitividad de los grupos.
+        // la idea es que un usuario U1 es agregado al grupo g1
+        // g1 es agregado a g2
+        // g2 es agregado a g3
+        // finalmente se agrega un ACL para g3 
+        // y el usuario U1 debería poder acceder al SObject por transitividad.
+        System.out.println("Preparando las entidads para probar la transitividad de permisos...");
+        GroupSID g1 = new GroupSID("g1", "g1");
+        GroupSID sg1 = sm.store(g1);
+        GroupSID g2 = new GroupSID("g2", "g2");
+        GroupSID sg2 = sm.store(g2);
+        GroupSID g3 = new GroupSID("g3", "g3");
+        GroupSID sg3 = sm.store(g3);
+        UserSID u1 = new UserSID("u1", "u1");
+        UserSID su1 = sm.store(u1);
+        sm.commit();
+        
+        System.out.println("creando la transitividad...");
+//        su1.addGroup(sg1);
+        sg1.add(su1);
+        sg2.add(sg1);
+        sg3.add(sg2);
+        sm.commit();
+        
+        System.out.println("logueando el usuario...");
+        sm.setLoggedInUser(su1);
+        
+        System.out.println("creando el objeto...");
+        
+        SSimpleVertex testTransitivity = new SSimpleVertex();
+        testTransitivity.setAcl(g3, new AccessRight().setRights(AccessRight.WRITE));
+        SSimpleVertex stt = sm.store(testTransitivity);
+        sm.commit();
+        
+        String sttRID = sm.getRID(stt);
+        System.out.println("RID: "+sttRID);
+        stt = null;
+        
+        
+        System.out.println("verificando los permisos...");
+        for (String showSecurityCredential : su1.showSecurityCredentials()) {
+            System.out.println(":: "+showSecurityCredential);
+        }
+        
+        SSimpleVertex rtt = sm.get(SSimpleVertex.class,sttRID);
+        int se = rtt.getSecurityState();
+        System.out.println("Security state: "+se);
+        assertTrue(se>0);
+        
     }
 
     @Test
@@ -1579,6 +1639,31 @@ public class SessionManagerTest {
         System.out.println("15. Finalizado!");
     }
 
+    
+    @Test
+    public void testBidi() {
+        BidiVertex bd1 = new BidiVertex();
+        BidiVertex bd2 = new BidiVertex();
+        bd1.getBidilink().add(bd2);
+        BidiVertex sbidi = sm.store(bd1);
+        sm.commit();
+        String rid = sm.getRID(sbidi);
+        System.out.println("RID: "+rid);
+        bd1 = null;
+        bd2 = null;
+        sbidi = null;
+        
+        System.out.println("recuperando nuevamenta las instancias desde la base...");
+        sbidi = sm.get(BidiVertex.class, rid);
+        System.out.println(""+sbidi.getBidilink().getClass().getName());
+        System.out.println("BiDi1.AL size: "+sbidi.getBidilink().size());
+        BidiVertex rbidi2 = sbidi.getBidilink().get(0);
+        System.out.println("Bidi2 RID:"+sm.getRID(rbidi2));
+        System.out.println("BiDi2.AL size: "+sbidi.getBidilink().size());
+        
+        System.out.println("Desde BiDi2: ");
+        
+    }
 //    @Test
 //    public void testTransactions() {
 //        try {

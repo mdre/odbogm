@@ -28,6 +28,7 @@ import java.util.function.BiConsumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.annotations.Audit;
+import net.odbogm.annotations.Bidirectional;
 import net.odbogm.annotations.CascadeDelete;
 import net.odbogm.annotations.RemoveOrphan;
 import net.odbogm.auditory.Auditor;
@@ -367,6 +368,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             // que no se genere un loop con objetos internos que lo referencien.
             this.commitedObject.put(o, proxied);
 
+            // utlizado para analizar las anotations de campo.
+            Field f;
             /* 
             procesar los objetos internos. Primero se debe determinar
             si los objetos ya existían en el contexto actual. Si no existen
@@ -417,7 +420,26 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             for (Map.Entry<String, Object> link : oStruct.linkLists.entrySet()) {
                 String field = link.getKey();
                 Object value = link.getValue();
-                final String graphRelationName = classname + "_" + field;
+                
+                // variable intermedia para crear el graphRelationName
+                String grn = null;
+                try {
+                    f = ReflectionUtils.findField(o.getClass(), field);
+                    boolean acc = f.isAccessible();
+                    f.setAccessible(true);
+                    // preprarar el nombre de la relación
+                    if (f.isAnnotationPresent(Bidirectional.class)) {
+                        Bidirectional bidi = f.getAnnotation(Bidirectional.class);
+                        grn = bidi.name();
+                    } else {
+                        grn = classname + "_" + field;
+                    }
+                } catch (NoSuchFieldException ex) {
+                    Logger.getLogger(Transaction.class.getName()).log(Level.SEVERE, null, ex);
+                }
+                final String graphRelationName = grn;
+                //----------------------------------------------------
+                
                 LOGGER.log(Level.FINER, "field: " + field + " clase: " + value.getClass().getName());
                 if (value instanceof List) {
                     // crear un objeto de la colección correspondiente para poder trabajarlo

@@ -33,6 +33,7 @@ import net.odbogm.ObjectMapper;
 import net.odbogm.Transaction;
 import net.odbogm.agent.ITransparentDirtyDetector;
 import net.odbogm.annotations.Audit.AuditType;
+import net.odbogm.annotations.Bidirectional;
 import net.odbogm.annotations.RemoveOrphan;
 import net.odbogm.exceptions.DuplicateLink;
 import net.odbogm.exceptions.InvalidObjectReference;
@@ -852,7 +853,6 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                 for (Map.Entry<String, Class<?>> entry : cDef.linkLists.entrySet()) {
                     try {
                         String field = entry.getKey();
-                        final String graphRelationName = this.___baseClass.getSimpleName() + "_" + field;
                         Class<? extends Object> fieldClass = entry.getValue();
 
                         // f = ReflectionUtils.findField(this.realObj.getClass(), field);
@@ -861,7 +861,15 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                         f = ReflectionUtils.findField(this.___proxyObject.getClass(), field);
                         boolean acc = f.isAccessible();
                         f.setAccessible(true);
-
+                        final String graphRelationName;
+                        // preprarar el nombre de la relación
+                        if (f.isAnnotationPresent(Bidirectional.class)) {
+                            Bidirectional bidi = f.getAnnotation(Bidirectional.class);
+                            graphRelationName = bidi.name();
+                        } else {
+                            graphRelationName = this.___baseClass.getSimpleName() + "_" + field;
+                        }
+                        
                         // Object oCol = f.get(this.realObj);
                         Object oCol = f.get(this.___proxyObject);
 
@@ -940,7 +948,10 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
                                     if (colObjState == ObjectCollectionState.REMOVED) {
                                         // remover el link
-                                        for (Edge edge : ((OrientVertex) this.___baseElement).getEdges(((IObjectProxy) colObject).___getVertex(), Direction.OUT, graphRelationName)) {
+                                        for (Edge edge : ((OrientVertex) this.___baseElement)
+                                                        .getEdges(((IObjectProxy) colObject).___getVertex(), 
+                                                                  f.isAnnotationPresent(Bidirectional.class)?Direction.BOTH:Direction.OUT, 
+                                                                  graphRelationName)) {
                                             if (this.___transaction.getSessionManager().isAuditing()) {
                                                 this.___transaction.getSessionManager().auditLog(this, AuditType.WRITE, "LINKLIST REMOVE: " + graphRelationName, edge);
                                             }

@@ -20,6 +20,7 @@ import java.util.logging.Logger;
 import com.tinkerpop.blueprints.impls.orient.OrientEdge;
 import java.util.HashMap;
 import java.util.List;
+import net.odbogm.annotations.Bidirectional;
 import net.odbogm.exceptions.DuplicateClassDefinition;
 import net.odbogm.proxy.ArrayListEmbeddedProxy;
 import net.odbogm.proxy.HashMapEmbeddedProxy;
@@ -390,12 +391,25 @@ public class ObjectMapper {
                 Class<?> fc = entry.getValue();
                 LOGGER.log(Level.FINER, "Field: {0}   Class: {1}", new String[]{field, fc.getName()});
                 Field fLink = ReflectionUtils.findField(toHydrate, field);
-                String graphRelationName = toHydrate.getSimpleName() + "_" + field;
+                
                 boolean acc = fLink.isAccessible();
                 fLink.setAccessible(true);
-
+                
+                String graphRelationName = null;
+                Direction RelationDirection = Direction.OUT;
+                
+                // detectar si se ha establecido una relación bidireccional.
+                if (fLink.isAnnotationPresent(Bidirectional.class)) {
+                    Bidirectional bidi = fLink.getAnnotation(Bidirectional.class);
+                    graphRelationName = bidi.name();
+                    RelationDirection = Direction.BOTH;
+                } else {
+                    graphRelationName = toHydrate.getSimpleName() + "_" + field;
+                }
+                
+                
                 // si hay Vértices conectados o si el constructor del objeto ha inicializado los vectores, convertirlos
-                if ((v.countEdges(Direction.OUT, graphRelationName) > 0) || (fLink.get(oproxied) != null)) {
+                if ((v.countEdges(RelationDirection, graphRelationName) > 0) || (fLink.get(oproxied) != null)) {
                     this.colecctionToLazy(oproxied, field, fc, v, t);
                 }
 
@@ -451,9 +465,20 @@ public class ObjectMapper {
             }
 
             Field fLink = ReflectionUtils.findField(c, field);
-            String graphRelationName = c.getSimpleName() + "_" + field;
             boolean acc = fLink.isAccessible();
             fLink.setAccessible(true);
+            
+            String graphRelationName = null;
+            Direction RelationDirection = Direction.OUT;
+
+            // detectar si se ha establecido una relación bidireccional.
+            if (fLink.isAnnotationPresent(Bidirectional.class)) {
+                Bidirectional bidi = fLink.getAnnotation(Bidirectional.class);
+                graphRelationName = bidi.name();
+                RelationDirection = Direction.BOTH;
+            } else {
+                graphRelationName = c.getSimpleName() + "_" + field;
+            }
 
             Class<?> lazyClass = Primitives.LAZY_COLLECTION.get(fc);
             LOGGER.log(Level.FINER, "lazyClass: " + lazyClass.getName());

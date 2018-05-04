@@ -60,10 +60,10 @@ public class Test {
 //        lab();
 //        testQuery();
 //        store();
-          testDelete();
+//          testDelete();
 //        testEmbeddded();
 //        setUpGroups();
-        testSObjects();
+//        testSObjects();
 //        testLongQuery();
 //        testMultiTran();
 //        testRollbackEmbedded();
@@ -71,6 +71,7 @@ public class Test {
 //        testTimeLoad();
 //        testComplexHashMap();
 //        testSimpleQuery();
+        testBidi();
         sm.shutdown();
     }
 
@@ -1001,5 +1002,26 @@ public class Test {
         }
         endTime = System.currentTimeMillis();
         System.out.println("Tiempo: "+(endTime - initTime) + "\n\n");
+    }
+    
+    private void testBidi() {
+        BidiVertex bd1 = new BidiVertex();
+        BidiVertex bd2 = new BidiVertex();
+        bd1.getBidilink().add(bd2);
+        BidiVertex sbidi = sm.store(bd1);
+        String rid = sm.getRID(sbidi);
+        System.out.println("RID: "+rid);
+        bd1 = null;
+        bd2 = null;
+        sbidi = null;
+        
+        System.out.println("recuperando nuevamenta las instancias desde la base...");
+        sbidi = sm.get(BidiVertex.class, rid);
+        
+        System.out.println("BiDi1.AL size: "+sbidi.getBidilink().size());
+        BidiVertex rbidi2 = sbidi.getBidilink().get(0);
+        System.out.println("Bidi2 RID:"+sm.getRID(rbidi2));
+        System.out.println("BiDi2.AL size: "+sbidi.getBidilink().size());
+        
     }
 }
