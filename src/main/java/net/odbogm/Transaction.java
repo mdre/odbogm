@@ -315,6 +315,13 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         if (proxied != null) {
             // devolver la instancia recuperada
             LOGGER.log(Level.FINER, "El objeto original ya había sido persistido. Se devuelve la instancia creada inicialmente.");
+            
+            // Aplicar los controles de seguridad.
+            if ((this.sm.getLoggedInUser() != null) && (proxied instanceof SObject)) {
+                LOGGER.log(Level.FINER, "SObject detectado. Aplicando seguridad de acuerdo al usuario logueado: " + this.sm.getLoggedInUser().getName());
+                ((SObject) proxied).validate(this.sm.getLoggedInUser());
+            }
+            
             return proxied;
         }
         
@@ -527,6 +534,13 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         }
 
         LOGGER.log(Level.FINER, "FIN del Store ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
+        
+        // Aplicar los controles de seguridad.
+        if ((this.sm.getLoggedInUser() != null) && (proxied instanceof SObject)) {
+            LOGGER.log(Level.FINER, "SObject detectado. Aplicando seguridad de acuerdo al usuario logueado: " + this.sm.getLoggedInUser().getName());
+            ((SObject) proxied).validate(this.sm.getLoggedInUser());
+        }
+        
         return proxied;
     }
 
