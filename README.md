@@ -110,7 +110,7 @@ public class Ex2 extends Ex1 {
 ```
 Now, the field ***inner*** will be mapped to a new vertex of class ***Ex1*** and the edge that link the current vertex with the new vertex will be labeled with the ***classname + _ + fieldname***. In this case, the resulting graph will be:
 ```Java
-(Ex2)  ← Ex2_inner → (Ex1)
+(Ex2)  -- Ex2_inner --> (Ex1)
 ```
 Where (Ex2) is a Vertex of class Ex2. The (Ex2) vertex will have one atribute called ex2String stored in it.
 
@@ -140,6 +140,25 @@ in this case, the resulting graph is:
 ```
 If the collection is a ***Map***, the strategy is the same but the key value are stored as a field in the edge. The key could be an object to but this object must be simple.
 At this time only ***HashMap*** is implemented.
+
+In some case, is necesary to have and indirect reference to another object. For example, a Group can add anothers groups in it, and a Group have a reference to the groups to it has been added. This cross reference can be a problem to handle if we have to delete some object. To solve this, exists the ***@Indirect*** annotation.
+This annotation let us to mark a field as a indirect reference. In this case, the indirect field will be loaded when the object is retrieved but will be ignored at saved time. The responsability over the relation will be managed by the object that have the direct link.
+The annotation must have the name of the edges class used to fill the field.
+
+```Java
+public class Group extends SID {
+    String name;
+    ArrayList<SID> participants;
+
+    @Indirect(name = "addedTo")
+    ArrayList<Group> addedTo;
+
+    ...
+}
+```
+In this example we have a circular relation over the same object. Using the @Indirect, the graph remain as a normal relation but the addedTo field will be loaded with the IN("addedTo") reference over the vertex. Any change over ***addedTo*** wil be ignored.
+
+
 
 ## Getting Objects.
 The most simple way to retrieve an object is the use of the ***get*** method. To use it we must pass the class to map to the vertex and the vertex RID.
