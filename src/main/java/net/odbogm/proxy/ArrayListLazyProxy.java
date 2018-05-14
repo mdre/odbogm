@@ -34,26 +34,30 @@ import net.odbogm.utils.ThreadHelper;
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
 public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCalls {
+
     private static final long serialVersionUID = -3396834078126983330L;
 
     private final static Logger LOGGER = Logger.getLogger(ArrayListLazyProxy.class.getName());
+
     static {
         if (LOGGER.getLevel() == null) {
             LOGGER.setLevel(LogginProperties.ArrayListLazyProxy);
         }
     }
     private boolean dirty = false;
-    
+
     private boolean lazyLoad = true;
     private boolean lazyLoading = false;
-    
+
     private Transaction transaction;
     private OrientVertex relatedTo;
     private String field;
     private Class<?> fieldClass;
-    
+    private Direction direction;
+
     // referencia debil al objeto padre. Se usa para notificar al padre que la colección ha cambiado.
     private WeakReference<IObjectProxy> parent;
+
     /**
      * Crea un ArrayList lazy.
      *
@@ -63,17 +67,19 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
      * @param c: clase genérica de la colección.
      */
     @Override
-    public synchronized void init(Transaction t, OrientVertex relatedTo, IObjectProxy parent, String field, Class<?> c) {
+    public synchronized void init(Transaction t, OrientVertex relatedTo, IObjectProxy parent, String field, Class<?> c, Direction d) {
         try {
-            if (relatedTo==null)
-                throw new RelatedToNullException("Se ha detectado un ArraylistLazyProxy sin relación con un vértice!\n field: "+field+" Class: "+c.getSimpleName());
+            if (relatedTo == null) {
+                throw new RelatedToNullException("Se ha detectado un ArraylistLazyProxy sin relación con un vértice!\n field: " + field + " Class: " + c.getSimpleName());
+            }
             this.transaction = t;
             this.relatedTo = relatedTo;
             this.parent = new WeakReference<>(parent);
             this.field = field;
             this.fieldClass = c;
+            this.direction = d;
             LOGGER.log(Level.FINER, "relatedTo: {0} - field: {1} - Class: {2}", new Object[]{relatedTo, field, c.getSimpleName()});
-            LOGGER.log(Level.FINER, "relatedTo.getGraph : "+relatedTo.getGraph());
+            LOGGER.log(Level.FINER, "relatedTo.getGraph : " + relatedTo.getGraph());
         } catch (Exception ex) {
             Logger.getLogger(ArrayListLazyProxy.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -81,25 +87,24 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
 
     //********************* change control **************************************
     private Map<Object, ObjectCollectionState> listState = new ConcurrentHashMap<>();
-    
+
     private synchronized void lazyLoad() {
         this.transaction.getSessionManager().getGraphdb().getRawGraph().activateOnCurrentThread();
-        LOGGER.log(Level.FINER, "getGraph: "+relatedTo.getGraph());
-        if (relatedTo.getGraph()==null)
+        LOGGER.log(Level.FINER, "getGraph: " + relatedTo.getGraph());
+        if (relatedTo.getGraph() == null) {
             this.transaction.getSessionManager().getGraphdb().attach(relatedTo);
-        
+        }
+
 //        LOGGER.log(Level.FINER, "getRawGraph: "+relatedTo.getGraph().getRawGraph());
-        
 //        ODatabaseDocument database = (ODatabaseDocument) ODatabaseRecordThreadLocal.INSTANCE.get();
 //        database.activateOnCurrentThread();
 //        LOGGER.log(Level.FINER, "ODatabase: "+database+" activated");
-
 //        LOGGER.log(Level.INFO, "Lazy Load.....");
         this.lazyLoad = false;
         this.lazyLoading = true;
         LOGGER.log(Level.FINER, "relatedTo: {0} - field: {1} - Class: {2}", new Object[]{relatedTo, field, fieldClass.getSimpleName()});
         // recuperar todos los elementos desde el vértice y agregarlos a la colección
-        Iterable<Vertex> rt = relatedTo.getVertices(Direction.OUT, field);
+        Iterable<Vertex> rt = relatedTo.getVertices(this.direction, field);
 //        for (Iterator<Vertex> iterator = relatedTo.getVertices(Direction.OUT, field).iterator(); iterator.hasNext();) {
         for (Iterator<Vertex> iterator = rt.iterator(); iterator.hasNext();) {
             OrientVertex next = (OrientVertex) iterator.next();
@@ -130,14 +135,14 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
         }
         return this.listState;
     }
-    
+
     /**
      * Vuelve establecer el punto de verificación.
      */
     @Override
     public synchronized void clearState() {
         this.dirty = false;
-        
+
         this.listState.clear();
 
         for (Object o : this) {
@@ -147,19 +152,24 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
             }
         }
     }
-    
+
     private synchronized void setDirty() {
-        LOGGER.log(Level.FINER, "Colección marcada como Dirty. Avisar al padre.");
-        this.dirty = true;
-        LOGGER.log(Level.FINER, "weak:"+this.parent.get());
-        // si el padre no está marcado como garbage, notificarle el cambio de la colección.
-        if (this.parent.get()!=null) {
-            this.parent.get().___setDirty();
-            
-            LOGGER.log(Level.FINER, ThreadHelper.getCurrentStackTrace());
+        // Si es una colección sobre una dirección saliente proceder a marcar
+        // en caso contrario se la considera como un Indirect no NO REPORTA 
+        // las modificaciones
+        if (this.direction == Direction.OUT) {
+            LOGGER.log(Level.FINER, "Colección marcada como Dirty. Avisar al padre.");
+            this.dirty = true;
+            LOGGER.log(Level.FINER, "weak:" + this.parent.get());
+            // si el padre no está marcado como garbage, notificarle el cambio de la colección.
+            if (this.parent.get() != null) {
+                this.parent.get().___setDirty();
+
+                LOGGER.log(Level.FINER, ThreadHelper.getCurrentStackTrace());
+            }
         }
     }
-    
+
     @Override
     public synchronized boolean isDirty() {
         return this.dirty;
@@ -173,10 +183,8 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
         this.dirty = false;
         this.lazyLoad = true;
     }
-    
-    
-    //====================================================================================
 
+    //====================================================================================
     public ArrayListLazyProxy() {
         super();
     }
@@ -260,8 +268,9 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
             this.lazyLoad();
         }
         boolean removed = super.removeIf(filter);
-        if (removed)
+        if (removed) {
             this.setDirty();
+        }
         return removed;
     }
 
@@ -319,8 +328,9 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
             this.lazyLoad();
         }
         boolean changeDetected = super.retainAll(c);
-        if (changeDetected)
+        if (changeDetected) {
             this.setDirty();
+        }
         return changeDetected;
     }
 
@@ -330,8 +340,9 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
             this.lazyLoad();
         }
         boolean changeDetected = super.removeAll(c);
-        if (changeDetected)
+        if (changeDetected) {
             this.setDirty();
+        }
         return changeDetected;
     }
 
@@ -376,10 +387,11 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
         if (lazyLoad) {
             this.lazyLoad();
         }
-        
+
         boolean changeDetected = super.remove(o);
-        if (changeDetected)
+        if (changeDetected) {
             this.setDirty();
+        }
         return changeDetected;
     }
 
@@ -406,8 +418,8 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
         if (lazyLoad) {
             this.lazyLoad();
         }
-        if(!this.lazyLoading) {
-            LOGGER.log(Level.FINER, "DIRTY: Elemento nuevo agregado: "+e.toString());
+        if (!this.lazyLoading) {
+            LOGGER.log(Level.FINER, "DIRTY: Elemento nuevo agregado: " + e.toString());
             this.setDirty();
         }
         return super.add(e);
@@ -511,5 +523,4 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
         super.trimToSize();
     }
 
-    
 }

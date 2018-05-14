@@ -51,6 +51,7 @@ public class VectorLazyProxy extends Vector implements ILazyCollectionCalls {
     private OrientVertex relatedTo;
     private String field;
     private Class<?> fieldClass;
+    private Direction direction;
     
     // referencia debil al objeto padre. Se usa para notificar al padre que la colección ha cambiado.
     private WeakReference<IObjectProxy> parent;
@@ -63,13 +64,14 @@ public class VectorLazyProxy extends Vector implements ILazyCollectionCalls {
      * @param c: clase genérica de la colección.
      */
     @Override
-    public void init(Transaction t, OrientVertex relatedTo, IObjectProxy parent, String field, Class<?> c) {
+    public void init(Transaction t, OrientVertex relatedTo, IObjectProxy parent, String field, Class<?> c, Direction d) {
         try {
             this.transaction = t;
             this.relatedTo = relatedTo;
             this.parent = new WeakReference<>(parent);
             this.field = field;
             this.fieldClass = c;
+            this.direction = d;
             LOGGER.log(Level.FINER, "relatedTo: {0} - field: {1} - Class: {2}", new Object[]{relatedTo, field, c.getSimpleName()});
             LOGGER.log(Level.FINER, "relatedTo.getGraph : "+relatedTo.getGraph());
         } catch (Exception ex) {

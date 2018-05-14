@@ -5,6 +5,7 @@
  */
 package net.odbogm.proxy;
 
+import com.tinkerpop.blueprints.Direction;
 import com.tinkerpop.blueprints.impls.orient.OrientVertex;
 import java.util.Map;
 import net.odbogm.Transaction;
@@ -14,7 +15,17 @@ import net.odbogm.Transaction;
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
 public interface ILazyCollectionCalls extends ILazyCalls {
-    public void init(Transaction sm, OrientVertex relatedTo, IObjectProxy parent, String field, Class<?> c);
+    /**
+     * Inicializa la colección y la establece como lazy.
+     * @param sm        Transacción sobre la cual realizar los pedidos 
+     * @param relatedTo vértice sobre el cual se encuentran las realaciones
+     * @param parent    Objeto relacionado al que notificar los cambios
+     * @param field     campo a procesar
+     * @param c         clase asociada al campo
+     * @param d         Si es OUT, se notifican los cambios. Si es IN, se toma como una colección 
+     *                  indirecta y SE IGNORAN LOS CAMBIOS.
+     */
+    public void init(Transaction sm, OrientVertex relatedTo, IObjectProxy parent, String field, Class<?> c, Direction d);
     public Map<Object,ObjectCollectionState> collectionState();
     
 }

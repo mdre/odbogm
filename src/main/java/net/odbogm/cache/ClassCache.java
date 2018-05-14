@@ -20,6 +20,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.LogginProperties;
 import net.odbogm.annotations.Embedded;
+import net.odbogm.annotations.Indirect;
 
 /**
  *
@@ -28,12 +29,13 @@ import net.odbogm.annotations.Embedded;
 public class ClassCache {
 
     private final static Logger LOGGER = Logger.getLogger(ClassCache.class.getName());
+
     static {
         if (LOGGER.getLevel() == null) {
             LOGGER.setLevel(LogginProperties.ClassCache);
         }
     }
-    
+
     private final HashMap<Class<?>, ClassDef> classCache = new HashMap<>();
 
     public ClassCache() {
@@ -54,11 +56,13 @@ public class ClassCache {
             this.classCache.put(c, cached);
         }
         LOGGER.log(Level.FINER, "Class struc:");
-        LOGGER.log(Level.FINER, "Class: "+c.getName());
-        LOGGER.log(Level.FINER, "Fields: "+cached.fields.size());
-        LOGGER.log(Level.FINER, "enums: "+cached.enumFields.size());
-        LOGGER.log(Level.FINER, "Links: "+cached.links.size());
-        LOGGER.log(Level.FINER, "LinkList: "+cached.linkLists.size());
+        LOGGER.log(Level.FINER, "Class: " + c.getName());
+        LOGGER.log(Level.FINER, "Fields: " + cached.fields.size());
+        LOGGER.log(Level.FINER, "enums: " + cached.enumFields.size());
+        LOGGER.log(Level.FINER, "Links: " + cached.links.size());
+        LOGGER.log(Level.FINER, "LinkList: " + cached.linkLists.size());
+        LOGGER.log(Level.FINER, "Indirect Link: " + cached.indirectLinks.size());
+        LOGGER.log(Level.FINER, "Indirect LinkList: " + cached.indirectLinkLists.size());
         LOGGER.log(Level.FINER, "-------------------------------------");
         return cached;
     }
@@ -69,7 +73,7 @@ public class ClassCache {
      * @param c reference class.
      */
     private ClassDef cacheClass(Class<?> c) {
-        
+
         ClassDef classdef = new ClassDef();
         this.cacheClass(c, classdef);
         return classdef;
@@ -81,49 +85,46 @@ public class ClassCache {
             for (Field f : fields) {
                 try {
                     // determinar si se debe o no procesar el campo. No se aceptan los trascient y static final
-                    if ( !(    f.isAnnotationPresent(Ignore.class) 
+                    if (!(f.isAnnotationPresent(Ignore.class)
                             || Modifier.isTransient(f.getModifiers())
                             || (Modifier.isStatic(f.getModifiers()) && Modifier.isFinal(f.getModifiers())
-                            || f.getName().startsWith("___ogm___")
-                            )
-//                            || f.getName().startsWith("GCLIB")
-                            )
-                            ) {
+                            || f.getName().startsWith("___ogm___")) //                            || f.getName().startsWith("GCLIB")
+                            )) {
                         boolean acc = f.isAccessible();
                         f.setAccessible(true);
-                        
+
                         // determinar si es un campo permitido
                         // FIXME: falta considerar la posibilidad de los Embedded Object
-                        LOGGER.log(Level.FINER, "Field: "+f.getName()+"  Type: "+f.getType()+(f.getType().isEnum()?"<<<<<<<<<<< ENUM":""));
+                        LOGGER.log(Level.FINER, "Field: " + f.getName() + "  Type: " + f.getType() + (f.getType().isEnum() ? "<<<<<<<<<<< ENUM" : ""));
                         if (PRIMITIVE_MAP.get(f.getType()) != null) {
                             cached.fields.put(f.getName(), f.getType());
                         } else if (f.getType().isEnum()) {
                             cached.enumFields.put(f.getName(), f.getType());
-                        } else if (Primitives.LAZY_COLLECTION.get(f.getType())!=null) {
+                        } else if (Primitives.LAZY_COLLECTION.get(f.getType()) != null) {
                             // FIXME: ojo que si se tratara de una extensión de AL o HM 
                             // no lo vería como tal y lo vincularía con un link
-                            
+
                             // primero verificar si se trata de una colección de objeto primitivos
                             // ej: ArrayList<String> ... 
                             // En este caso, no correspondería crear Edges. La colección completa
                             // se va a guardar embebida en el Vertex.
-                            LOGGER.log(Level.FINER, "Colección detectada: "+f.getName());
+                            LOGGER.log(Level.FINER, "Colección detectada: " + f.getName());
                             boolean setAsEmbedded = false;
                             if (List.class.isAssignableFrom(f.getType())) {
                                 LOGGER.log(Level.FINER, "se trata de una Lista...");
                                 // se trata de una lista. Verificar el subtipo o el @Embedded
                                 ParameterizedType listType = (ParameterizedType) f.getGenericType();
                                 Class<?> listClass = (Class<?>) listType.getActualTypeArguments()[0];
-                                if ((Primitives.PRIMITIVE_MAP.get(listClass)!=null)
-                                        ||(listClass.isEnum())
-                                        ||(f.isAnnotationPresent(Embedded.class))) {
+                                if ((Primitives.PRIMITIVE_MAP.get(listClass) != null)
+                                        || (listClass.isEnum())
+                                        || (f.isAnnotationPresent(Embedded.class))) {
                                     LOGGER.log(Level.FINER, "\n**********************************************************");
                                     if (f.isAnnotationPresent(Embedded.class)) {
-                                        LOGGER.log(Level.FINER, "Clase anotada como Embedded: "+listClass.getSimpleName());
+                                        LOGGER.log(Level.FINER, "Clase anotada como Embedded: " + listClass.getSimpleName());
                                     } else {
                                         LOGGER.log(Level.FINER, "Es una colección de primitivas: "
-                                                +listClass.getSimpleName()
-                                                +(listClass.isEnum()?" de tipo ENUM":"")
+                                                + listClass.getSimpleName()
+                                                + (listClass.isEnum() ? " de tipo ENUM" : "")
                                         );
                                         LOGGER.log(Level.FINER, "Se procede a embeberla.");
                                     }
@@ -137,16 +138,14 @@ public class ClassCache {
                                 ParameterizedType listType = (ParameterizedType) f.getGenericType();
                                 Class<?> keyClass = (Class<?>) listType.getActualTypeArguments()[0];
                                 Class<?> valClass = (Class<?>) listType.getActualTypeArguments()[1];
-                                
+
                                 // para que un map pueda ser embebido tiene que tener el key: string y si el value es una primitiva
                                 // directamente lo embebemos. En caso contrario, si existe el annotation @Embedded tambien
                                 // lo marcamos como campo.
-                                if ( (keyClass == String.class)
-                                        && ((Primitives.PRIMITIVE_MAP.get(valClass)!=null)
-                                            || (f.isAnnotationPresent(Embedded.class))
-                                            )
-                                        ) {
-                                    LOGGER.log(Level.FINER, "Es una colección de embebida: "+valClass.getSimpleName());
+                                if ((keyClass == String.class)
+                                        && ((Primitives.PRIMITIVE_MAP.get(valClass) != null)
+                                        || (f.isAnnotationPresent(Embedded.class)))) {
+                                    LOGGER.log(Level.FINER, "Es una colección de embebida: " + valClass.getSimpleName());
                                     setAsEmbedded = true;
                                 }
                             }
@@ -155,29 +154,38 @@ public class ClassCache {
                                 cached.fields.put(f.getName(), f.getType());
                                 // FIXME: verificar si se puede unificar y no registrar en dos lados.
                                 cached.embeddedFields.put(f.getName(), f.getType());
+                            } else if (f.isAnnotationPresent(Indirect.class)) {
+                                // es una colección de objetos indirectos.
+                                LOGGER.log(Level.FINER, "Es una colección de objetos indirectos.");
+                                cached.indirectLinkLists.put(f.getName(), f.getType());
                             } else {
                                 // es una colección de objetos.
                                 LOGGER.log(Level.FINER, "Es una colección de objetos que genera Vértices y Ejes.");
                                 cached.linkLists.put(f.getName(), f.getType());
                             }
                         } else {
-                            // FIXME: los @Embedded sobre las propiedades pueden generar problemas para detectar los cambios en los 
-                            // objetos embebidos. Ojo con como se procesan.
-                            cached.links.put(f.getName(), f.getType());
-//                        } else {
-//                            LOGGER.log(Level.WARNING, "NO PERSISTIDO: {0}.{1}", new Object[]{c.getName(), f.getName()});
+                            if (f.isAnnotationPresent(Indirect.class)) {
+                                // es una colección de objetos indirectos.
+                                LOGGER.log(Level.FINER, "Es una objeto indirecto.");
+                                cached.indirectLinks.put(f.getName(), f.getType());
+                            } else {
+                                // FIXME: los @Embedded sobre las propiedades pueden generar problemas para detectar los cambios en los 
+                                // objetos embebidos. Ojo con como se procesan.
+                                cached.links.put(f.getName(), f.getType());
+                            }
                         }
 
                         // resstablecer el campo
                         f.setAccessible(acc);
-                        
+
                     } else {
-                        if (!(f.isAnnotationPresent(Ignore.class)))
+                        if (!(f.isAnnotationPresent(Ignore.class))) {
                             if (f.getName().startsWith("___ogm___")) {
                                 LOGGER.log(Level.FINER, "Ignorado: {0}", f.getName());
                             } else {
                                 LOGGER.log(Level.WARNING, "Ignorado: {0}", f.getName());
                             }
+                        }
                     }
 
                 } catch (IllegalArgumentException ex) {

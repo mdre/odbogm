@@ -28,7 +28,6 @@ import java.util.function.BiConsumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.annotations.Audit;
-import net.odbogm.annotations.Bidirectional;
 import net.odbogm.annotations.CascadeDelete;
 import net.odbogm.annotations.RemoveOrphan;
 import net.odbogm.auditory.Auditor;
@@ -394,7 +393,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                     LOGGER.log(Level.FINER, field + ": No existe el objeto en el cache de objetos creados.");
                     innerO = link.getValue();
                 }
-
+                
                 // verificar si ya está en el contexto
                 if (!(innerO instanceof IObjectProxy)) {
                     LOGGER.log(Level.FINER, "innerO nuevo. Crear un vértice y un link");
@@ -428,24 +427,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                 String field = link.getKey();
                 Object value = link.getValue();
                 
-                // variable intermedia para crear el graphRelationName
-                String grn = null;
-                try {
-                    f = ReflectionUtils.findField(o.getClass(), field);
-                    boolean acc = f.isAccessible();
-                    f.setAccessible(true);
-                    // preprarar el nombre de la relación
-                    if (f.isAnnotationPresent(Bidirectional.class)) {
-                        Bidirectional bidi = f.getAnnotation(Bidirectional.class);
-                        grn = bidi.name();
-                    } else {
-                        grn = classname + "_" + field;
-                    }
-                } catch (NoSuchFieldException ex) {
-                    Logger.getLogger(Transaction.class.getName()).log(Level.SEVERE, null, ex);
-                }
-                final String graphRelationName = grn;
-                //----------------------------------------------------
+                final String graphRelationName = classname + "_" + field;
                 
                 LOGGER.log(Level.FINER, "field: " + field + " clase: " + value.getClass().getName());
                 if (value instanceof List) {

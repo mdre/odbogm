@@ -34,26 +34,28 @@ import net.odbogm.Transaction;
 public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMapCalls {
 
     private final static Logger LOGGER = Logger.getLogger(HashMapLazyProxy.class.getName());
+
     static {
         if (LOGGER.getLevel() == null) {
             LOGGER.setLevel(LogginProperties.HashMapLazyProxy);
         }
     }
-    
+
     private boolean dirty = false;
-    
+
     private boolean lazyLoad = true;
     private boolean lazyLoading = false;
-    
+
     private Transaction transaction;
     private OrientVertex relatedTo;
     private String field;
     private Class<?> keyClass;
     private Class<?> valueClass;
+    private Direction direction;
 
     // referencia debil al objeto padre. Se usa para notificar al padre que la colección ha cambiado.
     private WeakReference<IObjectProxy> parent;
-    
+
     /**
      * Crea un ArrayList lazy.
      *
@@ -64,13 +66,14 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
      * @param v: clase del value.
      */
     @Override
-    public void init(Transaction t, OrientVertex relatedTo, IObjectProxy parent, String field, Class<?> k, Class<?> v) {
+    public void init(Transaction t, OrientVertex relatedTo, IObjectProxy parent, String field, Class<?> k, Class<?> v, Direction d) {
         this.transaction = t;
         this.relatedTo = relatedTo;
         this.parent = new WeakReference<>(parent);
         this.field = field;
         this.keyClass = k;
         this.valueClass = v;
+        this.direction = d;
     }
 
     //********************* change control **************************************
@@ -84,17 +87,17 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         this.lazyLoading = true;
 
         // recuperar todos los elementos desde el vértice y agregarlos a la colección
-        for (Iterator<Vertex> iterator = relatedTo.getVertices(Direction.OUT, field).iterator(); iterator.hasNext();) {
+        for (Iterator<Vertex> iterator = relatedTo.getVertices(this.direction, field).iterator(); iterator.hasNext();) {
             OrientVertex next = (OrientVertex) iterator.next();
 //            LOGGER.log(Level.FINER, "loading: " + next.getId().toString());
 
             Object o = transaction.get(valueClass, next.getId().toString());
 
             // para cada vértice conectado, es necesario mapear todos los Edges que los unen.
-            for (Edge edge : relatedTo.getEdges(next, Direction.OUT, field)) {
+            for (Edge edge : relatedTo.getEdges(next, this.direction, field)) {
                 OrientEdge oe = (OrientEdge) edge;
                 Object k = null;
-                LOGGER.log(Level.FINER, "edge keyclass: "+this.keyClass+"  OE RID:"+oe.getId().toString());
+                LOGGER.log(Level.FINER, "edge keyclass: " + this.keyClass + "  OE RID:" + oe.getId().toString());
                 // si el keyClass no es de tipo nativo, hidratar un objeto.
                 if (Primitives.PRIMITIVE_MAP.containsKey(this.keyClass)) {
                     LOGGER.log(Level.FINER, "primitive!!");
@@ -121,39 +124,40 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
     }
 
     /**
-     * Vuelve  establecer el punto de verificación.
+     * Vuelve establecer el punto de verificación.
      */
     public void clearState() {
         this.entitiesState.clear();
         this.keyState.clear();
-        Map<Object, OrientEdge> newOE  = new ConcurrentHashMap<>();
-        
+        Map<Object, OrientEdge> newOE = new ConcurrentHashMap<>();
+
         for (Entry<Object, Object> entry : this.entrySet()) {
             Object k = entry.getKey();
             Object o = entry.getValue();
-            
+
             this.keyState.put(k, ObjectCollectionState.REMOVED);
-            
+
             // verificar si existe una relación con en Edge
-            if (this.keyToEdge.get(k)!=null)
-                newOE.put(k,this.keyToEdge.get(k));
-            
+            if (this.keyToEdge.get(k) != null) {
+                newOE.put(k, this.keyToEdge.get(k));
+            }
+
             // como puede estar varias veces un objecto agregado al map con distintos keys
             // primero verificamos su existencia para no duplicarlos.
             if (this.entitiesState.get(o) == null) {
                 // se asume que todos fueron borrados
                 this.entitiesState.put(o, ObjectCollectionState.REMOVED);
             }
-            
+
         }
         this.keyToEdge = newOE;
         this.dirty = false;
     }
-    
+
     /**
      * Actualiza el estado de todo el MAP y devuelve la referencia al estado de los keys
-     * 
-     * @return  retorna un mapa con el estado de la colección
+     *
+     * @return retorna un mapa con el estado de la colección
      */
     @Override
     public Map<Object, ObjectCollectionState> collectionState() {
@@ -169,9 +173,9 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
                 // el objeto existe. Marcarlo como sin cambio para la colección
                 this.keyState.replace(key, ObjectCollectionState.NOCHANGE);
             }
-            
+
             // actualizar el estado del valor
-            if (this.entitiesState.get(value) == null ) {
+            if (this.entitiesState.get(value) == null) {
                 // se agregó un objeto
                 this.entitiesState.put(value, ObjectCollectionState.ADDED);
             } else {
@@ -193,21 +197,24 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
     public Map<Object, OrientEdge> getKeyToEdge() {
         return keyToEdge;
     }
-    
+
     private void setDirty() {
-        LOGGER.log(Level.FINER, "Colección marcada como Dirty. Avisar al padre.");
-        this.dirty = true;
-        LOGGER.log(Level.FINER, "weak:"+this.parent.get());
-        // si el padre no está marcado como garbage, notificarle el cambio de la colección.
-        if (this.parent.get()!=null)
-            this.parent.get().___setDirty();
+        if (this.direction == Direction.OUT) {
+            LOGGER.log(Level.FINER, "Colección marcada como Dirty. Avisar al padre.");
+            this.dirty = true;
+            LOGGER.log(Level.FINER, "weak:" + this.parent.get());
+            // si el padre no está marcado como garbage, notificarle el cambio de la colección.
+            if (this.parent.get() != null) {
+                this.parent.get().___setDirty();
+            }
+        }
     }
-    
+
     @Override
     public boolean isDirty() {
         return this.dirty;
     }
-    
+
     @Override
     public void rollback() {
         //FIXME: Analizar si se puede implementar una versión que no borre todos los elementos
@@ -218,9 +225,8 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         this.dirty = false;
         this.lazyLoad = true;
     }
-    
-    //====================================================================================
 
+    //====================================================================================
     /**
      * Crea un map utilizando los atributos del Edge como key. Si se utiliza un objeto para representar los atributos, se debe declarar en el
      * annotation.
@@ -251,7 +257,9 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        if(!this.lazyLoading) this.setDirty();
+        if (!this.lazyLoading) {
+            this.setDirty();
+        }
         super.replaceAll(function); //To change body of generated methods, choose Tools | Templates.
     }
 
@@ -268,7 +276,9 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        if(!this.lazyLoading) this.setDirty();
+        if (!this.lazyLoading) {
+            this.setDirty();
+        }
         return super.merge(key, value, remappingFunction); //To change body of generated methods, choose Tools | Templates.
     }
 
@@ -301,7 +311,9 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        if(!this.lazyLoading) this.setDirty();
+        if (!this.lazyLoading) {
+            this.setDirty();
+        }
         return super.replace(key, value); //To change body of generated methods, choose Tools | Templates.
     }
 
@@ -310,7 +322,9 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        if(!this.lazyLoading) this.setDirty();
+        if (!this.lazyLoading) {
+            this.setDirty();
+        }
         return super.replace(key, oldValue, newValue); //To change body of generated methods, choose Tools | Templates.
     }
 
@@ -319,7 +333,9 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        if(!this.lazyLoading) this.setDirty();
+        if (!this.lazyLoading) {
+            this.setDirty();
+        }
         return super.remove(key, value); //To change body of generated methods, choose Tools | Templates.
     }
 
@@ -329,8 +345,9 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
             this.lazyLoad();
         }
         Object res = super.putIfAbsent(key, value); //To change body of generated methods, choose Tools | Templates.
-        if (res!=null)
+        if (res != null) {
             this.setDirty();
+        }
         return res;
     }
 

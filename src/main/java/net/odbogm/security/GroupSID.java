@@ -8,11 +8,11 @@ package net.odbogm.security;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import net.odbogm.LogginProperties;
 import net.odbogm.annotations.Entity;
+import net.odbogm.annotations.Indirect;
 
 /**
  *
@@ -29,6 +29,7 @@ public class GroupSID extends SID {
     private List<SID> participants = new ArrayList<>();;
     
     // lista de grupo a los que fue agregado el presente
+    @Indirect(linkName = "GroupSID_addedTo")
     private List<GroupSID> addedTo = new ArrayList<>();
 
     public GroupSID() {

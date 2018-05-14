@@ -5,9 +5,9 @@
  */
 package net.odbogm;
 
-import Test.BidiVertex;
 import Test.EdgeAttrib;
 import Test.EnumTest;
+import Test.IndirectObject;
 import Test.SSimpleVertex;
 import Test.SimpleVertex;
 import Test.SimpleVertexEx;
@@ -23,8 +23,6 @@ import java.util.logging.Level;
 import net.odbogm.agent.ITransparentDirtyDetector;
 import net.odbogm.exceptions.ReferentialIntegrityViolation;
 import net.odbogm.exceptions.UnknownRID;
-import net.odbogm.proxy.ArrayListLazyProxy;
-import net.odbogm.proxy.ObjectProxy;
 import net.odbogm.security.*;
 import net.odbogm.utils.DateHelper;
 import org.junit.After;
@@ -1641,27 +1639,64 @@ public class SessionManagerTest {
 
     
     @Test
-    public void testBidi() {
-        BidiVertex bd1 = new BidiVertex();
-        BidiVertex bd2 = new BidiVertex();
-        bd1.getBidilink().add(bd2);
-        BidiVertex sbidi = sm.store(bd1);
+    public void testIndirect() {
+        System.out.println("\n\n\n");
+        System.out.println("***************************************************************");
+        System.out.println("Probar las conecciones Indirectas.");
+        System.out.println("***************************************************************");
+        
+        IndirectObject io = new IndirectObject();
+        IndirectObject ioLinked = new IndirectObject();
+        
+        ioLinked.setDirectLink(io);
+        
+        IndirectObject sioLinked = sm.store(ioLinked);
         sm.commit();
-        String rid = sm.getRID(sbidi);
-        System.out.println("RID: "+rid);
-        bd1 = null;
-        bd2 = null;
-        sbidi = null;
+        String dLinked = sm.getRID(sioLinked);
+        String inLinked = sm.getRID(sioLinked.getDirectLink());
+        System.out.println("Linked RID: "+dLinked);
+        System.out.println("Indirect RID: "+inLinked);
         
-        System.out.println("recuperando nuevamenta las instancias desde la base...");
-        sbidi = sm.get(BidiVertex.class, rid);
-        System.out.println(""+sbidi.getBidilink().getClass().getName());
-        System.out.println("BiDi1.AL size: "+sbidi.getBidilink().size());
-        BidiVertex rbidi2 = sbidi.getBidilink().get(0);
-        System.out.println("Bidi2 RID:"+sm.getRID(rbidi2));
-        System.out.println("BiDi2.AL size: "+sbidi.getBidilink().size());
         
-        System.out.println("Desde BiDi2: ");
+        IndirectObject sioIndirectLinked = sm.get(IndirectObject.class,inLinked);
+        assertNotNull(sioIndirectLinked.getIndirectLink());
+        System.out.println("IndirectLinked to RID: "+sm.getRID(sioIndirectLinked.getIndirectLink()));
+        
+        IndirectObject indirectLinked = sioLinked.getDirectLink();
+        
+        // test sobre los ArrayList
+        IndirectObject ioAlLinked1 = new IndirectObject();
+        IndirectObject ioAlLinked2 = new IndirectObject();
+        ioAlLinked1.getAlDirectLinked().add(indirectLinked);
+        ioAlLinked2.getAlDirectLinked().add(indirectLinked);
+        
+        sm.store(ioAlLinked1);
+        sm.store(ioAlLinked2);
+        
+        sm.commit();
+        
+        // refrescar el objeto indirecto
+        indirectLinked = sm.get(IndirectObject.class, inLinked);
+        assertEquals(indirectLinked.getAlIndirectLinked().size(), 2);
+        
+        // Test sobre los HashMap
+        IndirectObject ioHMLinked1 = new IndirectObject();
+        IndirectObject ioHMLinked2 = new IndirectObject();
+        
+        ioHMLinked1.getHmDirectLinked().put("1", indirectLinked);
+        ioHMLinked2.getHmDirectLinked().put("2", indirectLinked);
+        
+        ioHMLinked1 = sm.store(ioHMLinked1);
+        ioHMLinked2 = sm.store(ioHMLinked2);
+        
+        sm.commit();
+        
+        System.out.println("Direct HM 1: "+sm.getRID(ioHMLinked1));
+        System.out.println("Direct HM 2: "+sm.getRID(ioHMLinked2));
+        
+        // refrescar el objeto indirecto
+        indirectLinked = sm.get(IndirectObject.class, inLinked);
+        assertEquals(indirectLinked.getHmIndirectLinked().size(), 2);
         
     }
 //    @Test

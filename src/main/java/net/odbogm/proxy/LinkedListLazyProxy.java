@@ -5,7 +5,6 @@
  */
 package net.odbogm.proxy;
 
-import net.odbogm.SessionManager;
 import com.tinkerpop.blueprints.Direction;
 import com.tinkerpop.blueprints.Vertex;
 import com.tinkerpop.blueprints.impls.orient.OrientVertex;
@@ -35,24 +34,27 @@ import net.odbogm.Transaction;
 public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCalls {
 
     private final static Logger LOGGER = Logger.getLogger(LinkedListLazyProxy.class.getName());
+
     static {
         if (LOGGER.getLevel() == null) {
             LOGGER.setLevel(LogginProperties.LinkedListLazyProxy);
         }
     }
-    
+
     private boolean dirty = false;
-    
+
     private boolean lazyLoad = true;
     private boolean lazyLoading = false;
-    
+
     private Transaction transaction;
     private OrientVertex relatedTo;
     private String field;
     private Class<?> fieldClass;
-    
+    private Direction direction;
+
     // referencia debil al objeto padre. Se usa para notificar al padre que la colección ha cambiado.
     private WeakReference<IObjectProxy> parent;
+
     /**
      * Crea un ArrayList lazy.
      *
@@ -62,15 +64,16 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
      * @param c: clase genérica de la colección.
      */
     @Override
-    public void init(Transaction t, OrientVertex relatedTo, IObjectProxy parent, String field, Class<?> c) {
+    public void init(Transaction t, OrientVertex relatedTo, IObjectProxy parent, String field, Class<?> c, Direction d) {
         try {
             this.transaction = t;
             this.relatedTo = relatedTo;
             this.parent = new WeakReference<>(parent);
             this.field = field;
             this.fieldClass = c;
+            this.direction = d;
             LOGGER.log(Level.FINER, "relatedTo: {0} - field: {1} - Class: {2}", new Object[]{relatedTo, field, c.getSimpleName()});
-            LOGGER.log(Level.FINER, "relatedTo.getGraph : "+relatedTo.getGraph());
+            LOGGER.log(Level.FINER, "relatedTo.getGraph : " + relatedTo.getGraph());
         } catch (Exception ex) {
             Logger.getLogger(LinkedListLazyProxy.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -78,15 +81,16 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
 
     //********************* change control **************************************
     private Map<Object, ObjectCollectionState> listState = new ConcurrentHashMap<>();
-    
+
     private void lazyLoad() {
         this.transaction.getSessionManager().getGraphdb().getRawGraph().activateOnCurrentThread();
-        LOGGER.log(Level.FINER, "getGraph: "+relatedTo.getGraph());
-        if (relatedTo.getGraph()==null)
+        LOGGER.log(Level.FINER, "getGraph: " + relatedTo.getGraph());
+        if (relatedTo.getGraph() == null) {
             this.transaction.getSessionManager().getGraphdb().attach(relatedTo);
-        
-        LOGGER.log(Level.FINER, "getRawGraph: "+relatedTo.getGraph().getRawGraph());
-        
+        }
+
+        LOGGER.log(Level.FINER, "getRawGraph: " + relatedTo.getGraph().getRawGraph());
+
         relatedTo.getGraph().getRawGraph().activateOnCurrentThread();
 //        ODatabaseDocument database = (ODatabaseDocument) ODatabaseRecordThreadLocal.INSTANCE.get();
 //        database.activateOnCurrentThread();
@@ -97,7 +101,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         this.lazyLoading = true;
         LOGGER.log(Level.FINER, "relatedTo: {0} - field: {1} - Class: {2}", new Object[]{relatedTo, field, fieldClass.getSimpleName()});
         // recuperar todos los elementos desde el vértice y agregarlos a la colección
-        Iterable<Vertex> rt = relatedTo.getVertices(Direction.OUT, field);
+        Iterable<Vertex> rt = relatedTo.getVertices(this.direction, field);
 //        for (Iterator<Vertex> iterator = relatedTo.getVertices(Direction.OUT, field).iterator(); iterator.hasNext();) {
         for (Iterator<Vertex> iterator = rt.iterator(); iterator.hasNext();) {
             OrientVertex next = (OrientVertex) iterator.next();
@@ -128,14 +132,14 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         }
         return this.listState;
     }
-    
+
     /**
      * Vuelve establecer el punto de verificación.
      */
     @Override
     public void clearState() {
         this.dirty = false;
-        
+
         this.listState.clear();
 
         for (Object o : this) {
@@ -145,22 +149,27 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
             }
         }
     }
-    
+
     private void setDirty() {
-        LOGGER.log(Level.FINER, "Colección marcada como Dirty. Avisar al padre.");
-        this.dirty = true;
-        LOGGER.log(Level.FINER, "weak:"+this.parent.get());
-        // si el padre no está marcado como garbage, notificarle el cambio de la colección.
-        if (this.parent.get()!=null)
-            this.parent.get().___setDirty();
+        // Si es una colección sobre una dirección saliente proceder a marcar
+        // en caso contrario se la considera como un Indirect no NO REPORTA 
+        // las modificaciones
+        if (this.direction == Direction.OUT) {
+            LOGGER.log(Level.FINER, "Colección marcada como Dirty. Avisar al padre.");
+            this.dirty = true;
+            LOGGER.log(Level.FINER, "weak:" + this.parent.get());
+            // si el padre no está marcado como garbage, notificarle el cambio de la colección.
+            if (this.parent.get() != null) {
+                this.parent.get().___setDirty();
+            }
+        }
     }
-    
+
     @Override
     public boolean isDirty() {
         return this.dirty;
     }
-    
-    
+
     @Override
     public void rollback() {
         //FIXME: Analizar si se puede implementar una versión que no borre todos los elementos
@@ -180,7 +189,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        return super.spliterator(); 
+        return super.spliterator();
     }
 
     @Override
@@ -188,7 +197,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        return super.toArray(a); 
+        return super.toArray(a);
     }
 
     @Override
@@ -196,7 +205,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        return super.toArray(); 
+        return super.toArray();
     }
 
     @Override
@@ -204,7 +213,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        return super.clone(); 
+        return super.clone();
     }
 
     @Override
@@ -212,7 +221,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        return super.descendingIterator(); 
+        return super.descendingIterator();
     }
 
     @Override
@@ -220,7 +229,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        return super.listIterator(index); 
+        return super.listIterator(index);
     }
 
     @Override
@@ -229,7 +238,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
             this.lazyLoad();
         }
         this.setDirty();
-        return super.removeLastOccurrence(o); 
+        return super.removeLastOccurrence(o);
     }
 
     @Override
@@ -238,7 +247,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
             this.lazyLoad();
         }
         this.setDirty();
-        return super.removeFirstOccurrence(o); 
+        return super.removeFirstOccurrence(o);
     }
 
     @Override
@@ -247,7 +256,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
             this.lazyLoad();
         }
         this.setDirty();
-        return super.pop(); 
+        return super.pop();
     }
 
     @Override
@@ -256,7 +265,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
             this.lazyLoad();
         }
         this.setDirty();
-        super.push(e); 
+        super.push(e);
     }
 
     @Override
@@ -265,7 +274,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
             this.lazyLoad();
         }
         this.setDirty();
-        return super.pollLast(); 
+        return super.pollLast();
     }
 
     @Override
@@ -274,7 +283,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
             this.lazyLoad();
         }
         this.setDirty();
-        return super.pollFirst(); 
+        return super.pollFirst();
     }
 
     @Override
@@ -282,7 +291,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        return super.peekLast(); 
+        return super.peekLast();
     }
 
     @Override
@@ -290,7 +299,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        return super.peekFirst(); 
+        return super.peekFirst();
     }
 
     @Override
@@ -299,7 +308,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
             this.lazyLoad();
         }
         this.setDirty();
-        return super.offerLast(e); 
+        return super.offerLast(e);
     }
 
     @Override
@@ -308,7 +317,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
             this.lazyLoad();
         }
         this.setDirty();
-        return super.offerFirst(e); 
+        return super.offerFirst(e);
     }
 
     @Override
@@ -317,7 +326,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
             this.lazyLoad();
         }
         this.setDirty();
-        return super.offer(e); 
+        return super.offer(e);
     }
 
     @Override
@@ -326,7 +335,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
             this.lazyLoad();
         }
         this.setDirty();
-        return super.remove(); 
+        return super.remove();
     }
 
     @Override
@@ -334,7 +343,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        return super.poll(); 
+        return super.poll();
     }
 
     @Override
@@ -342,7 +351,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        return super.element(); 
+        return super.element();
     }
 
     @Override
@@ -350,7 +359,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        return super.peek(); 
+        return super.peek();
     }
 
     @Override
@@ -358,7 +367,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        return super.lastIndexOf(o); 
+        return super.lastIndexOf(o);
     }
 
     @Override
@@ -366,7 +375,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        return super.indexOf(o); 
+        return super.indexOf(o);
     }
 
     @Override
@@ -375,7 +384,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
             this.lazyLoad();
         }
         this.setDirty();
-        return super.remove(index); 
+        return super.remove(index);
     }
 
     @Override
@@ -384,7 +393,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
             this.lazyLoad();
         }
         this.setDirty();
-        super.add(index, element); 
+        super.add(index, element);
     }
 
     @Override
@@ -393,7 +402,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
             this.lazyLoad();
         }
         this.setDirty();
-        return super.set(index, element); 
+        return super.set(index, element);
     }
 
     @Override
@@ -401,7 +410,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        return super.get(index); 
+        return super.get(index);
     }
 
     @Override
@@ -410,7 +419,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
             this.lazyLoad();
         }
         this.setDirty();
-        super.clear(); 
+        super.clear();
     }
 
     @Override
@@ -419,7 +428,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
             this.lazyLoad();
         }
         this.setDirty();
-        return super.addAll(index, c); 
+        return super.addAll(index, c);
     }
 
     @Override
@@ -428,7 +437,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
             this.lazyLoad();
         }
         this.setDirty();
-        return super.addAll(c); 
+        return super.addAll(c);
     }
 
     @Override
@@ -437,7 +446,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
             this.lazyLoad();
         }
         this.setDirty();
-        return super.remove(o); 
+        return super.remove(o);
     }
 
     @Override
@@ -445,8 +454,10 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        if(!this.lazyLoading) this.setDirty();
-        return super.add(e); 
+        if (!this.lazyLoading) {
+            this.setDirty();
+        }
+        return super.add(e);
     }
 
     @Override
@@ -454,7 +465,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        return super.size(); 
+        return super.size();
     }
 
     @Override
@@ -462,7 +473,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        return super.contains(o); 
+        return super.contains(o);
     }
 
     @Override
@@ -471,7 +482,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
             this.lazyLoad();
         }
         this.setDirty();
-        super.addLast(e); 
+        super.addLast(e);
     }
 
     @Override
@@ -480,7 +491,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
             this.lazyLoad();
         }
         this.setDirty();
-        super.addFirst(e); 
+        super.addFirst(e);
     }
 
     @Override
@@ -489,7 +500,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
             this.lazyLoad();
         }
         this.setDirty();
-        return super.removeLast(); 
+        return super.removeLast();
     }
 
     @Override
@@ -498,7 +509,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
             this.lazyLoad();
         }
         this.setDirty();
-        return super.removeFirst(); 
+        return super.removeFirst();
     }
 
     @Override
@@ -506,7 +517,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        return super.getLast(); 
+        return super.getLast();
     }
 
     @Override
@@ -514,7 +525,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        return super.getFirst(); 
+        return super.getFirst();
     }
 
     @Override
@@ -522,7 +533,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        return super.iterator(); 
+        return super.iterator();
     }
 
     @Override
@@ -531,7 +542,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
             this.lazyLoad();
         }
         this.setDirty();
-        super.removeRange(fromIndex, toIndex); 
+        super.removeRange(fromIndex, toIndex);
     }
 
     @Override
@@ -539,7 +550,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        return super.hashCode(); 
+        return super.hashCode();
     }
 
     @Override
@@ -547,7 +558,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        return super.equals(o); 
+        return super.equals(o);
     }
 
     @Override
@@ -555,7 +566,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        return super.subList(fromIndex, toIndex); 
+        return super.subList(fromIndex, toIndex);
     }
 
     @Override
@@ -563,7 +574,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        return super.listIterator(); 
+        return super.listIterator();
     }
 
     @Override
@@ -571,7 +582,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        super.sort(c); 
+        super.sort(c);
     }
 
     @Override
@@ -580,7 +591,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
             this.lazyLoad();
         }
         this.setDirty();
-        super.replaceAll(operator); 
+        super.replaceAll(operator);
     }
 
     @Override
@@ -588,7 +599,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        return super.toString(); 
+        return super.toString();
     }
 
     @Override
@@ -597,7 +608,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
             this.lazyLoad();
         }
         this.setDirty();
-        return super.retainAll(c); 
+        return super.retainAll(c);
     }
 
     @Override
@@ -606,7 +617,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
             this.lazyLoad();
         }
         this.setDirty();
-        return super.removeAll(c); 
+        return super.removeAll(c);
     }
 
     @Override
@@ -614,7 +625,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        return super.containsAll(c); 
+        return super.containsAll(c);
     }
 
     @Override
@@ -622,7 +633,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        return super.isEmpty(); 
+        return super.isEmpty();
     }
 
     @Override
@@ -630,7 +641,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        return super.parallelStream(); 
+        return super.parallelStream();
     }
 
     @Override
@@ -638,7 +649,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        return super.stream(); 
+        return super.stream();
     }
 
     @Override
@@ -647,7 +658,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
             this.lazyLoad();
         }
         this.setDirty();
-        return super.removeIf(filter); 
+        return super.removeIf(filter);
     }
 
     @Override
@@ -655,7 +666,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        super.forEach(action); 
+        super.forEach(action);
     }
 
     @Override
@@ -663,9 +674,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        super.finalize(); 
+        super.finalize();
     }
-
-    
 
 }

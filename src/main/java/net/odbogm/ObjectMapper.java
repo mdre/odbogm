@@ -20,7 +20,7 @@ import java.util.logging.Logger;
 import com.tinkerpop.blueprints.impls.orient.OrientEdge;
 import java.util.HashMap;
 import java.util.List;
-import net.odbogm.annotations.Bidirectional;
+import net.odbogm.annotations.Indirect;
 import net.odbogm.exceptions.DuplicateClassDefinition;
 import net.odbogm.proxy.ArrayListEmbeddedProxy;
 import net.odbogm.proxy.HashMapEmbeddedProxy;
@@ -37,6 +37,7 @@ import org.objenesis.ObjenesisStd;
 public class ObjectMapper {
 
     private final static Logger LOGGER = Logger.getLogger(ObjectMapper.class.getName());
+
     static {
         if (LOGGER.getLevel() == null) {
             LOGGER.setLevel(LogginProperties.ObjectMapper);
@@ -44,18 +45,17 @@ public class ObjectMapper {
     }
 //    private static int newObjectCounter = 0;
 //    private Kryo kryo = new Kryo();
-    
+
 //    private SessionManager sessionManager;
     private ClassCache classCache;
-    
+
     // usado para no llamar a Class.forName para clases ya cargadas.
     private HashMap<String, Class> classLoaded = new HashMap<>();
-    
+
     // Clase encargada de la instanciación de los objetos.
     // http://objenesis.org/
     private ObjenesisStd objenesis = new ObjenesisStd();
-    
-    
+
     public ObjectMapper() {
 //        LOGGER.setLevel(Level.INFO);
 
@@ -122,7 +122,7 @@ public class ObjectMapper {
     /**
      * Devuelve un Map con todos los K,V de cada campo del objeto.
      *
-     * @param o objeto a analizar 
+     * @param o objeto a analizar
      * @return un objeto con la estructura del objeto analizado.
      */
     public ObjectStruct objectStruct(Object o) {
@@ -155,17 +155,17 @@ public class ObjectMapper {
                 String field = entry.getKey();
                 Class<?> c = entry.getValue();
                 Field f = ReflectionUtils.findField(o.getClass(), field);
-                
+
                 boolean acc = f.isAccessible();
                 f.setAccessible(true);
-                
+
                 // determinar si no es nulo
                 if (f.get(o) != null) {
-                    LOGGER.log(Level.FINER, "Field: "+field+" Class: "+c.getSimpleName()+": "+f.get(o));
+                    LOGGER.log(Level.FINER, "Field: " + field + " Class: " + c.getSimpleName() + ": " + f.get(o));
                     oStruct.fields.put(f.getName(), f.get(o));
                 }
                 f.setAccessible(acc);
-                
+
             } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
                 Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
             }
@@ -276,28 +276,28 @@ public class ObjectMapper {
 
         // crear un proxy sobre el objeto y devolverlo
         Object oproxied = ObjectProxyFactory.create(toHydrate, v, t);
-        
+
         LOGGER.log(Level.FINER, "**************************************************");
         LOGGER.log(Level.FINER, "Hydratando: {0} - Class: {1}", new Object[]{c.getName(), toHydrate});
         LOGGER.log(Level.FINER, "**************************************************");
         // recuperar la definición de la clase desde el caché
         ClassDef classdef = classCache.get(toHydrate);
         Map<String, Class<?>> fieldmap = classdef.fields;
-        
+
         Field f;
         for (Map.Entry<String, Class<?>> entry : fieldmap.entrySet()) {
             String prop = entry.getKey();
             Class<? extends Object> fieldClazz = entry.getValue();
-            
+
             LOGGER.log(Level.FINER, "Buscando campo {0} de tipo {1}....", new String[]{prop, fieldClazz.getSimpleName()});
             Object value = v.getProperty(prop);
-            
+
             if (value != null) {
                 // obtener la clase a la que pertenece el campo
                 Class<?> fc = fieldmap.get(prop);
-                
+
                 f = ReflectionUtils.findField(toHydrate, prop);
-                
+
                 boolean acc = f.isAccessible();
                 f.setAccessible(true);
                 if (f.getType().isEnum()) {
@@ -310,26 +310,26 @@ public class ObjectMapper {
                     Class<?> listClass = (Class<?>) listType.getActualTypeArguments()[0];
                     if (listClass.isEnum()) {
                         // reemplazar todos los valores por el emum correspondiente
-                        for (int i = 0; i < ((List)value).size(); i++) {
-                            if (((List)value).get(i) instanceof String) {
+                        for (int i = 0; i < ((List) value).size(); i++) {
+                            if (((List) value).get(i) instanceof String) {
                                 // solo si el objeto contenido en la lista es un String.
-                                String sVal = (String)((List)value).get(i);
-                                ((List)value).set(i, Enum.valueOf(listClass.asSubclass(Enum.class), sVal));
+                                String sVal = (String) ((List) value).get(i);
+                                ((List) value).set(i, Enum.valueOf(listClass.asSubclass(Enum.class), sVal));
                             }
                         }
                     }
                     // se debe hacer una copia del la lista para no quede referenciando al objeto original
                     // dado que en la asignación solo se pasa la referencia del objeto.
                     LOGGER.log(Level.FINER, "EmbeddedList detectada: realizando una copia del contenido...");
-                    LOGGER.log(Level.FINER, "value: "+value.getClass());
-                    this.setFieldValue(oproxied, prop, new ArrayListEmbeddedProxy((IObjectProxy)oproxied,(List)value));
+                    LOGGER.log(Level.FINER, "value: " + value.getClass());
+                    this.setFieldValue(oproxied, prop, new ArrayListEmbeddedProxy((IObjectProxy) oproxied, (List) value));
                 } else if (f.getType().isAssignableFrom(Map.class)) {
                     // se debe hacer una copia del la lista para no quede referenciando al objeto original
                     // dado que en la asignación solo se pasa la referencia del objeto.
                     LOGGER.log(Level.FINER, "EmbeddedMap detectado: realizando una copia del contenido...");
                     // FIXME: Ojo que se hace solo un shalow copy!! no se está conando la clave y el value
-                    this.setFieldValue(oproxied, prop, new HashMapEmbeddedProxy((IObjectProxy)oproxied,(Map)value));
-                } else{
+                    this.setFieldValue(oproxied, prop, new HashMapEmbeddedProxy((IObjectProxy) oproxied, (Map) value));
+                } else {
                     LOGGER.log(Level.FINER, "hidratado campo: " + prop + "=" + value);
                     this.setFieldValue(oproxied, prop, value);
                 }
@@ -338,17 +338,17 @@ public class ObjectMapper {
                 // si el valor es null verificar que no se trate de una Lista embebida 
                 // que pueda haber sido inicializada en el constructor.
                 f = ReflectionUtils.findField(toHydrate, prop);
-                
+
                 boolean acc = f.isAccessible();
                 f.setAccessible(true);
-                if ((f.get(oproxied)!=null) && (f.getType().isAssignableFrom(List.class))) {
+                if ((f.get(oproxied) != null) && (f.getType().isAssignableFrom(List.class))) {
                     // se trata de una lista embebida. Proceder a reemplazarlar con una que esté preparada.
                     LOGGER.log(Level.FINER, "Se ha detectado una lista embebida que no tiene valores. Se la reemplaza por una Embedded.");
-                    this.setFieldValue(oproxied, prop, new ArrayListEmbeddedProxy((IObjectProxy)oproxied,(List)f.get(oproxied)));
-                } else if ((f.get(oproxied)!=null) && (f.getType().isAssignableFrom(Map.class))) {
+                    this.setFieldValue(oproxied, prop, new ArrayListEmbeddedProxy((IObjectProxy) oproxied, (List) f.get(oproxied)));
+                } else if ((f.get(oproxied) != null) && (f.getType().isAssignableFrom(Map.class))) {
                     // se trata de un Map embebido. Proceder a reemplazarlo con uno que esté preparado.
                     LOGGER.log(Level.FINER, "Se ha detectado un Map embebido que no tiene valores. Se lo reemplaza por uno Embedded.");
-                    this.setFieldValue(oproxied, prop, new HashMapEmbeddedProxy((IObjectProxy)oproxied,(Map)f.get(oproxied)));
+                    this.setFieldValue(oproxied, prop, new HashMapEmbeddedProxy((IObjectProxy) oproxied, (Map) f.get(oproxied)));
                 }
                 f.setAccessible(acc);
             }
@@ -356,7 +356,9 @@ public class ObjectMapper {
         // insertar el objeto en el transactionCache
         t.transactionCache.put(v.getId().toString(), oproxied);
 
+        // ********************************************************************************************
         // procesar los enum
+        // ********************************************************************************************
         for (Map.Entry<String, Class<?>> entry : classdef.enumFields.entrySet()) {
             String prop = entry.getKey();
             Class<? extends Object> fieldClazz = entry.getValue();
@@ -380,10 +382,17 @@ public class ObjectMapper {
             }
         }
 
+        // ********************************************************************************************
         // hidratar las colecciones
         // procesar todos los linkslist
+        // ********************************************************************************************
         LOGGER.log(Level.FINER, "preparando las colecciones...");
-        for (Map.Entry<String, Class<?>> entry : classdef.linkLists.entrySet()) {
+        Map<String, Class<?>> lnklst = new HashMap<>();
+
+        lnklst.putAll(classdef.linkLists);
+        lnklst.putAll(classdef.indirectLinkLists);
+
+        for (Map.Entry<String, Class<?>> entry : lnklst.entrySet()) {
 
             try {
                 // FIXME: se debería considerar agregar una annotation EAGER!
@@ -391,23 +400,15 @@ public class ObjectMapper {
                 Class<?> fc = entry.getValue();
                 LOGGER.log(Level.FINER, "Field: {0}   Class: {1}", new String[]{field, fc.getName()});
                 Field fLink = ReflectionUtils.findField(toHydrate, field);
-                
+
                 boolean acc = fLink.isAccessible();
                 fLink.setAccessible(true);
-                
+
                 String graphRelationName = null;
                 Direction RelationDirection = Direction.OUT;
-                
-                // detectar si se ha establecido una relación bidireccional.
-                if (fLink.isAnnotationPresent(Bidirectional.class)) {
-                    Bidirectional bidi = fLink.getAnnotation(Bidirectional.class);
-                    graphRelationName = bidi.name();
-                    RelationDirection = Direction.BOTH;
-                } else {
-                    graphRelationName = toHydrate.getSimpleName() + "_" + field;
-                }
-                
-                
+
+                graphRelationName = toHydrate.getSimpleName() + "_" + field;
+
                 // si hay Vértices conectados o si el constructor del objeto ha inicializado los vectores, convertirlos
                 if ((v.countEdges(RelationDirection, graphRelationName) > 0) || (fLink.get(oproxied) != null)) {
                     this.colecctionToLazy(oproxied, field, fc, v, t);
@@ -429,7 +430,7 @@ public class ObjectMapper {
     }
 
     public void colecctionToLazy(Object o, String field, OrientVertex v, Transaction t) {
-        LOGGER.log(Level.FINER, "convertir colection a Lazy: "+field);
+        LOGGER.log(Level.FINER, "convertir colection a Lazy: " + field);
         ClassDef classdef;
         if (o instanceof IObjectProxy) {
             classdef = classCache.get(o.getClass().getSuperclass());
@@ -454,7 +455,7 @@ public class ObjectMapper {
      */
     public void colecctionToLazy(Object o, String field, Class<?> fc, OrientVertex v, Transaction t) {
         LOGGER.log(Level.FINER, "***************************************************************");
-        LOGGER.log(Level.FINER, "convertir colection a Lazy: "+field+" class: "+fc.getName());
+        LOGGER.log(Level.FINER, "convertir colection a Lazy: " + field + " class: " + fc.getName());
         LOGGER.log(Level.FINER, "***************************************************************");
         try {
             Class<?> c;
@@ -467,17 +468,19 @@ public class ObjectMapper {
             Field fLink = ReflectionUtils.findField(c, field);
             boolean acc = fLink.isAccessible();
             fLink.setAccessible(true);
-            
-            String graphRelationName = null;
-            Direction RelationDirection = Direction.OUT;
 
-            // detectar si se ha establecido una relación bidireccional.
-            if (fLink.isAnnotationPresent(Bidirectional.class)) {
-                Bidirectional bidi = fLink.getAnnotation(Bidirectional.class);
-                graphRelationName = bidi.name();
-                RelationDirection = Direction.BOTH;
-            } else {
-                graphRelationName = c.getSimpleName() + "_" + field;
+            String graphRelationName = null;
+
+            graphRelationName = c.getSimpleName() + "_" + field;
+            // Determinar la dirección
+            Direction direction = Direction.OUT;
+
+            if (fLink.isAnnotationPresent(Indirect.class)) {
+                // si es un indirect se debe reemplazar el nombre de la relación por 
+                // el propuesto por la anotation
+                Indirect in = fLink.getAnnotation(Indirect.class);
+                graphRelationName = in.linkName();
+                direction = Direction.IN;
             }
 
             Class<?> lazyClass = Primitives.LAZY_COLLECTION.get(fc);
@@ -488,7 +491,7 @@ public class ObjectMapper {
                 ParameterizedType listType = (ParameterizedType) fLink.getGenericType();
                 Class<?> listClass = (Class<?>) listType.getActualTypeArguments()[0];
                 // inicializar la colección
-                ((ILazyCollectionCalls) col).init(t, v, (IObjectProxy) o, graphRelationName, listClass);
+                ((ILazyCollectionCalls) col).init(t, v, (IObjectProxy) o, graphRelationName, listClass, direction);
 
 //                LOGGER.log(Level.FINER, "col: "+col.getDBClass());
             } else if (col instanceof Map) {
@@ -496,7 +499,7 @@ public class ObjectMapper {
                 Class<?> keyClass = (Class<?>) listType.getActualTypeArguments()[0];
                 Class<?> valClass = (Class<?>) listType.getActualTypeArguments()[1];
                 // inicializar la colección
-                ((ILazyMapCalls) col).init(t, v, (IObjectProxy) o, graphRelationName, keyClass, valClass);
+                ((ILazyMapCalls) col).init(t, v, (IObjectProxy) o, graphRelationName, keyClass, valClass, direction);
             } else {
                 throw new CollectionNotSupported();
             }
@@ -511,8 +514,9 @@ public class ObjectMapper {
 
     /**
      * Convierte todas las colecciones identificadas como embedded en el ClassDef a sus correspondientes proxies
+     *
      * @param o the object to be analyzed
-     * @param classDef  the class struct
+     * @param classDef the class struct
      * @param t the current transaction
      */
     public void collectionsToEmbedded(Object o, ClassDef classDef, Transaction t) {
@@ -522,23 +526,23 @@ public class ObjectMapper {
             try {
                 String field = entry.getKey();
                 Class<? extends Object> value = entry.getValue();
-                
+
                 Class<?> c;
                 if (o instanceof IObjectProxy) {
                     c = o.getClass().getSuperclass();
                 } else {
                     c = o.getClass();
                 }
-                LOGGER.log(Level.FINER, "Procesando campo: {0} type: {1}",new String[]{field,value.getName()});
+                LOGGER.log(Level.FINER, "Procesando campo: {0} type: {1}", new String[]{field, value.getName()});
                 f = ReflectionUtils.findField(c, field);
                 acc = f.isAccessible();
                 f.setAccessible(true);
                 // realizar la conversión solo si el campo tiene un valor.
-                if (f.get(o)!=null) {
-                    if (value.isAssignableFrom(List.class)) { 
+                if (f.get(o) != null) {
+                    if (value.isAssignableFrom(List.class)) {
                         LOGGER.log(Level.FINER, "convirtiendo en ArrayListEmbeddedProxy...");
                         f.set(o, new ArrayListEmbeddedProxy((IObjectProxy) o, (List) f.get(o)));
-                    } else if (value.isAssignableFrom(Map.class)) { 
+                    } else if (value.isAssignableFrom(Map.class)) {
                         LOGGER.log(Level.FINER, "convirtiendo en HashMapEmbeddedProxy");
                         f.set(o, new HashMapEmbeddedProxy((IObjectProxy) o, (Map) f.get(o)));
                     }
@@ -553,7 +557,7 @@ public class ObjectMapper {
             }
         }
     }
-    
+
     /**
      * Hidrata un objeto a partir de los atributos guardados en un Edge
      *
@@ -562,7 +566,7 @@ public class ObjectMapper {
      * @param e : Edge desde el que recuperar los datos
      * @param t Vínculo a la transacción actual
      * @return objeto completado a partir de la base de datos
-     * @throws InstantiationException si no se puede instanciar. 
+     * @throws InstantiationException si no se puede instanciar.
      * @throws IllegalAccessException si no se puede acceder
      * @throws NoSuchFieldException si no se encuentra alguno de los campos.
      */

@@ -21,6 +21,7 @@ import java.lang.reflect.Field;
 
 import java.lang.reflect.Method;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
@@ -33,7 +34,7 @@ import net.odbogm.ObjectMapper;
 import net.odbogm.Transaction;
 import net.odbogm.agent.ITransparentDirtyDetector;
 import net.odbogm.annotations.Audit.AuditType;
-import net.odbogm.annotations.Bidirectional;
+import net.odbogm.annotations.Indirect;
 import net.odbogm.annotations.RemoveOrphan;
 import net.odbogm.exceptions.DuplicateLink;
 import net.odbogm.exceptions.InvalidObjectReference;
@@ -462,22 +463,35 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                 ClassDef classdef = this.___transaction.getObjectMapper().getClassDef(this.___proxyObject);
 
                 // hidratar los atributos @links
-                // procesar todos los links
-                for (Map.Entry<String, Class<?>> entry : classdef.links.entrySet()) {
+                // procesar todos los links y los indirectLinks
+                Map<String, Class<?>> lnks = new HashMap<>();
+                lnks.putAll(classdef.links);
+                lnks.putAll(classdef.indirectLinks);
+                
+                for (Map.Entry<String, Class<?>> entry : lnks.entrySet()) {
                 //  classdef.links.entrySet().stream().forEach((entry) -> {
                     try {
                         String field = entry.getKey();
                         Class<?> fc = entry.getValue();
-                        String graphRelationName = ___baseClass.getSimpleName() + "_" + field;
-                        LOGGER.log(Level.FINER, "Field: {0}   RelationName: {1}", new String[]{field, graphRelationName});
-
+                        
                         Field fLink = ReflectionUtils.findField(___baseClass, field);
                         boolean acc = fLink.isAccessible();
                         fLink.setAccessible(true);
-
+                        
+                        String graphRelationName = ___baseClass.getSimpleName() + "_" + field;
+                        Direction direction = Direction.OUT;
+                        if (fLink.isAnnotationPresent(Indirect.class)) {
+                            // si es un indirect se debe reemplazar el nombre de la relación por 
+                            // el propuesto por la anotation
+                            Indirect in = fLink.getAnnotation(Indirect.class);
+                            graphRelationName = in.linkName();
+                            direction = Direction.IN;
+                        } 
+                        LOGGER.log(Level.FINER, "Field: {0}   RelationName: {1}", new String[]{field, graphRelationName});
+                        
                         // recuperar de la base el vértice correspondiente
                         boolean duplicatedLinkGuard = false;
-                        for (Vertex vertice : ov.getVertices(Direction.OUT, graphRelationName)) {
+                        for (Vertex vertice : ov.getVertices(direction, graphRelationName)) {
                             LOGGER.log(Level.FINER, "hydrate innerO: " + vertice.getId());
 
                             if (!duplicatedLinkGuard) {
@@ -862,13 +876,9 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                         boolean acc = f.isAccessible();
                         f.setAccessible(true);
                         final String graphRelationName;
+                        
                         // preprarar el nombre de la relación
-                        if (f.isAnnotationPresent(Bidirectional.class)) {
-                            Bidirectional bidi = f.getAnnotation(Bidirectional.class);
-                            graphRelationName = bidi.name();
-                        } else {
-                            graphRelationName = this.___baseClass.getSimpleName() + "_" + field;
-                        }
+                        graphRelationName = this.___baseClass.getSimpleName() + "_" + field;
                         
                         // Object oCol = f.get(this.realObj);
                         Object oCol = f.get(this.___proxyObject);
@@ -950,7 +960,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                         // remover el link
                                         for (Edge edge : ((OrientVertex) this.___baseElement)
                                                         .getEdges(((IObjectProxy) colObject).___getVertex(), 
-                                                                  f.isAnnotationPresent(Bidirectional.class)?Direction.BOTH:Direction.OUT, 
+                                                                  Direction.OUT, 
                                                                   graphRelationName)) {
                                             if (this.___transaction.getSessionManager().isAuditing()) {
                                                 this.___transaction.getSessionManager().auditLog(this, AuditType.WRITE, "LINKLIST REMOVE: " + graphRelationName, edge);
