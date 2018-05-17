@@ -55,6 +55,7 @@ public class GroupSID extends SID {
     }
     
     public final void add(GroupSID gsid) {
+        //FIXME: controla que el grupo agregado no sea el mismo grupo
         // verificar que el SID no exista
         if (!this.participants.contains(gsid)) {
             this.participants.add(gsid);
@@ -62,15 +63,14 @@ public class GroupSID extends SID {
         }
     }
     
-    public final void remove(SID user) {
+    public final void remove(UserSID user) {
         if (this.participants.remove(user)) {
-            // si lo que se está removiendo es un Grupo, eliminar la doble referencia.
-            if (user instanceof GroupSID) {
-                ((GroupSID)user).removeAddedTo(this);
-            } else {
-                ((UserSID)user).removeGroup(this);
-            }
+            user.removeGroup(this);
         }
+    }
+    
+    public final boolean remove(GroupSID user) {
+        return this.participants.remove(user);
     }
     
     public final List<SID> getParticipants() {

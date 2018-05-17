@@ -8,11 +8,11 @@ package net.odbogm.security;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import net.odbogm.LogginProperties;
 import net.odbogm.annotations.Entity;
+import net.odbogm.annotations.Indirect;
 
 @Entity
 public class UserSID extends SID implements ISecurityCredentials {
@@ -22,7 +22,7 @@ public class UserSID extends SID implements ISecurityCredentials {
             LOGGER.setLevel(LogginProperties.UserSID);
         }
     }
-    
+    @Indirect(linkName = "GroupSID_participants")
     private List<GroupSID> groups = new ArrayList<>();;
             
     public UserSID() {

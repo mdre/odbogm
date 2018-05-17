@@ -1154,7 +1154,23 @@ public class SessionManagerTest {
         rssv.removeAcl(sgna);
         sm.commit();
 
-
+        // probar la eliminación de grupos.
+        String unaRID = sm.getRID(una);
+        sm.delete(sgna);
+        sm.commit();
+        una = sm.get(UserSID.class,unaRID);
+        
+        assertEquals(una.getGroups().size(), 1);
+        
+        // probar remover una 
+        String urwRID = sm.getRID(urw);
+        urw.removeGroup(sgw);
+        sm.commit();
+        urw = sm.get(UserSID.class,urwRID);
+        
+        assertEquals(urw.getGroups().size(), 1);
+        
+        
         // Verificar la transitividad de los grupos.
         // la idea es que un usuario U1 es agregado al grupo g1
         // g1 es agregado a g2
