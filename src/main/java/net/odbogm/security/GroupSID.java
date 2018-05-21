@@ -19,7 +19,7 @@ import net.odbogm.annotations.Indirect;
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
 @Entity
-public class GroupSID extends SID {
+public final class GroupSID extends SID {
     private final static Logger LOGGER = Logger.getLogger(GroupSID.class .getName());
     static {
         if (LOGGER.getLevel() == null) {
@@ -29,7 +29,7 @@ public class GroupSID extends SID {
     private List<SID> participants = new ArrayList<>();;
     
     // lista de grupo a los que fue agregado el presente
-    @Indirect(linkName = "GroupSID_addedTo")
+    @Indirect(linkName = "GroupSID_participants")
     private List<GroupSID> addedTo = new ArrayList<>();
 
     public GroupSID() {

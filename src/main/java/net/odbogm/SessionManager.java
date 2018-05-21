@@ -360,8 +360,21 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
         return this.publicTransaction.get(type, rid);
     }
     
+    /**
+     * Recupera un objeto a partir de la clase y el RID correspondiente.
+     *
+     * @param <T> clase a devolver
+     * @param type clase a devolver
+     * @param rid RID del vértice de la base
+     * @param force fuerza la recuperación desde la base y refresca el cache.
+     * @return objeto de la clase T
+     */
+    @Override
+    public <T> T get(Class<T> type, String rid, boolean force) throws UnknownRID {
+        return this.publicTransaction.get(type, rid, force);
+    }
     
-
+    
     @Override
     public <T> T getEdgeAsObject(Class<T> type, OrientEdge e) {
         return this.publicTransaction.getEdgeAsObject(type, e);

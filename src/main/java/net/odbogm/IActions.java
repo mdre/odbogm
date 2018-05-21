@@ -48,6 +48,8 @@ public interface IActions {
         Object get(String rid) throws UnknownRID;
 
         <T> T get(Class<T> type, String rid) throws UnknownRID, VertexJavaClassNotFound;
+        
+        <T> T get(Class<T> type, String rid, boolean force) throws UnknownRID, VertexJavaClassNotFound;
 
         public <T> T getEdgeAsObject(Class<T> type, OrientEdge e);
     }

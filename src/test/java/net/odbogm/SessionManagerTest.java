@@ -1068,7 +1068,6 @@ public class SessionManagerTest {
         GroupSID gna = new GroupSID("gna", "gna");
         GroupSID gr = new GroupSID("gr", "gr");
         GroupSID gw = new GroupSID("gw", "gw");
-        System.out.println("gna dirty:"+((ITransparentDirtyDetector)gna).___ogm___isDirty());
         System.out.println("CL group: " + gna.getClass().getClassLoader()+" > "+gna.getClass().getCanonicalName());
         System.out.println("\n\n\nGuardando los grupos ----------------------------------");
 
@@ -1206,9 +1205,22 @@ public class SessionManagerTest {
         sm.commit();
         
         String sttRID = sm.getRID(stt);
-        System.out.println("RID: "+sttRID);
+        System.out.println("SObject Transitivity RID: "+sttRID);
         stt = null;
         
+        
+        System.out.println("refrescar los grupos");
+        String sg1RID = sm.getRID(sg1);
+        String sg2RID = sm.getRID(sg2);
+        String sg3RID = sm.getRID(sg3);
+        sg3 = sm.get(GroupSID.class,sg3RID,true);
+        sg2 = sm.get(GroupSID.class,sg2RID,true);
+        sg1 = sm.get(GroupSID.class,sg1RID,true);
+        
+        String su1RID = sm.getRID(su1);
+        System.out.println("refrescar el usuario "+su1RID+"...");
+        su1 = sm.get(UserSID.class,su1RID,true);
+        sm.setLoggedInUser(su1);
         
         System.out.println("verificando los permisos...");
         for (String showSecurityCredential : su1.showSecurityCredentials()) {
@@ -1233,7 +1245,7 @@ public class SessionManagerTest {
         // test rollback
         UserSID usidRollback = new UserSID("rollback", "rollback");
         UserSID rusid = this.sm.store(usidRollback);
-
+        
         System.out.println("Haciendo rollback...");
         this.sm.rollback();
         try {

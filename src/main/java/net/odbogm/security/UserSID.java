@@ -15,7 +15,7 @@ import net.odbogm.annotations.Entity;
 import net.odbogm.annotations.Indirect;
 
 @Entity
-public class UserSID extends SID implements ISecurityCredentials {
+public final class UserSID extends SID implements ISecurityCredentials {
     private final static Logger LOGGER = Logger.getLogger(UserSID.class .getName());
     static {
         if (LOGGER.getLevel() == null) {

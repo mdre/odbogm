@@ -308,22 +308,22 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     public synchronized <T> T store(T o) throws IncorrectRIDField, NoOpenTx, ClassToVertexNotFound {
 //        graphdb.getRawGraph().activateOnCurrentThread();
         T proxied = null;
-        
+
         // si el objeto ya fue guardado con anterioridad, devolver la instancia creada previamente.
-        proxied = (T)this.commitedObject.get(o);
+        proxied = (T) this.commitedObject.get(o);
         if (proxied != null) {
             // devolver la instancia recuperada
             LOGGER.log(Level.FINER, "El objeto original ya había sido persistido. Se devuelve la instancia creada inicialmente.");
-            
+
             // Aplicar los controles de seguridad.
             if ((this.sm.getLoggedInUser() != null) && (proxied instanceof SObject)) {
                 LOGGER.log(Level.FINER, "SObject detectado. Aplicando seguridad de acuerdo al usuario logueado: " + this.sm.getLoggedInUser().getName());
                 ((SObject) proxied).validate(this.sm.getLoggedInUser());
             }
-            
+
             return proxied;
         }
-        
+
         try {
             // si no hay una tx abierta, disparar una excepción
             if (this.orientdbTransact == null) {
@@ -393,7 +393,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                     LOGGER.log(Level.FINER, field + ": No existe el objeto en el cache de objetos creados.");
                     innerO = link.getValue();
                 }
-                
+
                 // verificar si ya está en el contexto
                 if (!(innerO instanceof IObjectProxy)) {
                     LOGGER.log(Level.FINER, "innerO nuevo. Crear un vértice y un link");
@@ -426,9 +426,9 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             for (Map.Entry<String, Object> link : oStruct.linkLists.entrySet()) {
                 String field = link.getKey();
                 Object value = link.getValue();
-                
+
                 final String graphRelationName = classname + "_" + field;
-                
+
                 LOGGER.log(Level.FINER, "field: " + field + " clase: " + value.getClass().getName());
                 if (value instanceof List) {
                     // crear un objeto de la colección correspondiente para poder trabajarlo
@@ -516,13 +516,13 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         }
 
         LOGGER.log(Level.FINER, "FIN del Store ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
-        
+
         // Aplicar los controles de seguridad.
         if ((this.sm.getLoggedInUser() != null) && (proxied instanceof SObject)) {
             LOGGER.log(Level.FINER, "SObject detectado. Aplicando seguridad de acuerdo al usuario logueado: " + this.sm.getLoggedInUser().getName());
             ((SObject) proxied).validate(this.sm.getLoggedInUser());
         }
-        
+
         return proxied;
     }
 
@@ -550,7 +550,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
             // analizar el objeto
             Field f;
-            
+
             for (Map.Entry<String, Class<?>> entry : classDef.links.entrySet()) {
                 try {
                     String field = entry.getKey();
@@ -581,7 +581,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                     LOGGER.log(Level.FINER, "procesando campo: " + field);
 
                     // si hay una colección y corresponde hacer la cascada.
-                    if (f.isAnnotationPresent(CascadeDelete.class)||f.isAnnotationPresent(RemoveOrphan.class)) {
+                    if (f.isAnnotationPresent(CascadeDelete.class) || f.isAnnotationPresent(RemoveOrphan.class)) {
                         LOGGER.log(Level.FINER, "CascadeDelete|RemoveOrphan presente. Activando el objeto...");
                         // activar el campo.
                         Collection oCol = (Collection) f.get(toRemove);
@@ -594,7 +594,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                 }
             }
             // fin de la activación.
-            
+
             // elimino el nodo de la base para que se actualicen los vértices a los que apuntaba.
             // de esta forma, los inner quedan libres y pueden ser borrados por un delete simple
             ovToRemove.remove();
@@ -863,6 +863,20 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     @Override
     public <T> T get(Class<T> type, String rid) throws UnknownRID {
+        return this.get(type, rid, false);
+    }
+
+    /**
+     * Recupera un objeto a partir de la clase y el RID correspondiente.
+     *
+     * @param <T> clase a devolver
+     * @param type clase a devolver
+     * @param rid RID del vértice de la base
+     * @param force fuerza la recuperación desde la base y refresca el cache.
+     * @return objeto de la clase T
+     */
+    @Override
+    public <T> T get(Class<T> type, String rid, boolean force) throws UnknownRID {
         if (this.orientdbTransact == null) {
             throw new NoOpenTx();
         }
@@ -871,24 +885,29 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         }
         T o = null;
 
-        // si está en el caché, devolver la referencia desde ahí.
-        if (objectCache.get(rid) != null) {
-            if (objectCache.get(rid).get() != null) {
-                LOGGER.log(Level.FINER, "Objeto Recupeardo del caché.");
-                o = (T) objectCache.get(rid).get();
+        if (!force) {
+            // si está en el caché, devolver la referencia desde ahí.
+            if (objectCache.get(rid) != null) {
+                if (objectCache.get(rid).get() != null) {
+                    LOGGER.log(Level.FINER, "Objeto Recupeardo del caché.");
+                    o = (T) objectCache.get(rid).get();
 
-                // si fue recuperado del caché, determinar si se ha modificado.
-                // si no fue modificado, hacer un reload para actualizar con la última 
-                // versión de la base de datos.
-                if (!((IObjectProxy) o).___isDirty()) {
-                    ((IObjectProxy) o).___reload();
+                    // si fue recuperado del caché, determinar si se ha modificado.
+                    // si no fue modificado, hacer un reload para actualizar con la última 
+                    // versión de la base de datos.
+                    if (!((IObjectProxy) o).___isDirty()) {
+                        ((IObjectProxy) o).___reload();
+                    }
+
+                } else {
+                    objectCache.remove(rid);
                 }
-
-            } else {
-                objectCache.remove(rid);
             }
+        } else {
+            // remover si existe el rid y proceder a crearlo nuevamente.
+            objectCache.remove(rid);
         }
-
+        
         if (o == null) {
             // iniciar el conteo de gets. Todos los gets se guardan en un mapa 
             // para impedir que un único get entre en un loop cuando un objeto
@@ -1096,7 +1115,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         OSQLSynchQuery<ODocument> query = new OSQLSynchQuery<>(sql);
         ArrayList<T> ret = new ArrayList<>();
 
-        LOGGER.log(Level.FINER, sql + " param: "+param);
+        LOGGER.log(Level.FINER, sql + " param: " + param);
         for (Vertex v : (Iterable<Vertex>) this.orientdbTransact.command(query).execute(param)) {
             ret.add(this.get(clase, v.getId().toString()));
         }
@@ -1104,28 +1123,27 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     }
 
     /**
-         * Ejecuta un prepared query y devuelve una lista de la clase indicada.
-         * Esta consulta acepta parámetros por nombre. 
-         * Ej:
-         * <pre> {@code 
-         *  Map<String, Object> params = new HashMap<String, Object>();
-         *  params.put("theName", "John");
-         *  params.put("theSurname", "Smith");
-         *
-         *  graph.command(
-         *       new OCommandSQL("UPDATE Customer SET local = true WHERE name = :theName and surname = :theSurname")
-         *      ).execute(params)
-         *  );
-         *  }
-         * </pre>
-         * @param <T> clase de referencia para crear la lista de resultados
-         * @param clase clase de referencia
-         * @param sql comando a ejecutar
-         * @param param parámetros extras para el query parametrizado.
-         * @return una lista de la clase solicitada con los objetos lazy inicializados.
-         */
+     * Ejecuta un prepared query y devuelve una lista de la clase indicada. Esta consulta acepta parámetros por nombre. Ej:
+     * <pre> {@code
+     *  Map<String, Object> params = new HashMap<String, Object>();
+     *  params.put("theName", "John");
+     *  params.put("theSurname", "Smith");
+     *
+     *  graph.command(
+     *       new OCommandSQL("UPDATE Customer SET local = true WHERE name = :theName and surname = :theSurname")
+     *      ).execute(params)
+     *  );
+     *  }
+     * </pre>
+     *
+     * @param <T> clase de referencia para crear la lista de resultados
+     * @param clase clase de referencia
+     * @param sql comando a ejecutar
+     * @param param parámetros extras para el query parametrizado.
+     * @return una lista de la clase solicitada con los objetos lazy inicializados.
+     */
     @Override
-    public <T> List<T> query(Class<T> clase, String sql, HashMap<String,Object> param) {
+    public <T> List<T> query(Class<T> clase, String sql, HashMap<String, Object> param) {
         OSQLSynchQuery<ODocument> query = new OSQLSynchQuery<>(sql);
         ArrayList<T> ret = new ArrayList<>();
 
