@@ -4,7 +4,7 @@
  * and open the template in the editor.
  */
 
-package Test;
+package test;
 
 import java.util.List;
 import java.util.logging.Level;

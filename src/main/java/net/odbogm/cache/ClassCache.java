@@ -12,7 +12,6 @@ import static net.odbogm.Primitives.PRIMITIVE_MAP;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
-import java.lang.reflect.Type;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -81,6 +80,7 @@ public class ClassCache {
 
     private void cacheClass(Class<?> c, ClassDef cached) {
         if (c != Object.class) {
+            LOGGER.log(Level.FINER, "Clase: "+c.getName());
             Field[] fields = c.getDeclaredFields();
             for (Field f : fields) {
                 try {
@@ -165,12 +165,13 @@ public class ClassCache {
                             }
                         } else {
                             if (f.isAnnotationPresent(Indirect.class)) {
-                                // es una colección de objetos indirectos.
-                                LOGGER.log(Level.FINER, "Es una objeto indirecto.");
+                                // es un objetos indirectos.
+                                LOGGER.log(Level.FINER, "Es un objeto indirecto.");
                                 cached.indirectLinks.put(f.getName(), f.getType());
                             } else {
                                 // FIXME: los @Embedded sobre las propiedades pueden generar problemas para detectar los cambios en los 
                                 // objetos embebidos. Ojo con como se procesan.
+                                LOGGER.log(Level.FINER, "Link detectado!");
                                 cached.links.put(f.getName(), f.getType());
                             }
                         }
@@ -192,7 +193,9 @@ public class ClassCache {
                     Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
+            LOGGER.log(Level.FINER, "Analizandos superclass...");
             this.cacheClass(c.getSuperclass(), cached);
+            LOGGER.log(Level.FINER, "Fin clase "+c.getName()+" <<<<<<<<<<<<<<<<<");
         }
     }
 

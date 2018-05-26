@@ -5,14 +5,14 @@
  */
 package net.odbogm;
 
-import Test.EdgeAttrib;
-import Test.EnumTest;
-import Test.IndirectObject;
-import Test.SSimpleVertex;
-import Test.SimpleVertex;
-import Test.SimpleVertexEx;
-import Test.SimpleVertexInterfaceAttr;
-import Test.SimpleVertexWithEmbedded;
+import test.EdgeAttrib;
+import test.EnumTest;
+import test.IndirectObject;
+import test.SSimpleVertex;
+import test.SimpleVertex;
+import test.SimpleVertexEx;
+import test.SimpleVertexInterfaceAttr;
+import test.SimpleVertexWithEmbedded;
 import com.orientechnologies.orient.core.sql.OCommandSQL;
 import net.odbogm.proxy.IObjectProxy;
 import java.util.ArrayList;
@@ -74,9 +74,7 @@ public class SessionManagerTest {
 
         System.out.println("fin setup.");
 //        this.sm.setAuditOnUser("userAuditado");
-
-        // GroupSID todos los vértices 
-//        this.sm.getGraphdb().command(new OCommandSQL("delete vertex V")).execute();
+//        crearEstructura();
     }
 
     @After
@@ -84,6 +82,18 @@ public class SessionManagerTest {
         sm.shutdown();
     }
 
+    
+    public void crearEstructura(){
+        System.out.println("Conectando con la base de datos...");
+        DbManager dbm = new DbManager("remote:localhost/test", "root", "toor",false);
+//        dbm.generateToConsole(new String[]{"com.quiencotiza.entities"});
+        System.out.println("generando la estructura...");
+        dbm.generateDBSQL("/tmp/1/DBScript.sql",new String[]{
+            "test"
+        });
+        System.out.println("finalizado!");
+    }
+     
 //    /**
 //     * Test of begin method, of class SessionManager.
 //     */

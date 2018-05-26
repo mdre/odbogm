@@ -3,14 +3,9 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package Test;
 
-/**
- *
- * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
- */
-public enum EnumTest {
-    UNO,
-    DOS,
-    TRES
+package test;
+
+public interface InterfaceTest {
+    public void foo();
 }

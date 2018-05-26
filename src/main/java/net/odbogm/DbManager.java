@@ -24,6 +24,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import static net.odbogm.Primitives.PRIMITIVE_MAP;
 import net.odbogm.annotations.Embedded;
+import net.odbogm.annotations.Entity;
 import net.odbogm.annotations.FieldAttributes;
 import net.odbogm.annotations.FieldAttributes.Bool;
 import net.odbogm.annotations.Ignore;
@@ -101,7 +102,7 @@ public class DbManager {
         for (Class<?> clazz : classes) {
             // verificar que la clase exista en la base.
             String className = clazz.getSimpleName();
-            if (!clazz.isAnnotationPresent(IgnoreClass.class))
+            if (clazz.isAnnotationPresent(Entity.class))
                 buildDBScript(clazz);
         }
         
@@ -216,31 +217,33 @@ public class DbManager {
         this.orderedRegisteredClass.add(clazzStruct);
         // preparar orden de dropeo. Solo se ejecuta si la clase existe
         clazzStruct.drop = (!this.withDrops?"/*\n":"\n")
-                +"let exist = select from (select expand(classes) from metadata:schema) where name = '"+className+"'\n"
+                +"let exist = select from (select expand(classes) from metadata:schema) where name = '"+className+"';\n"
                 + "if ($exist.size()>0) {\n"
-                + "     delete vertex "+className+"\n"
-                + "     drop class "+className+"\n"
+                + "     delete vertex "+className+";\n"
+                + "     drop class "+className+";\n"
                 + "}"
                 + (!this.withDrops?"\n */":"\n");
         
         // order de create. Solo se ejecuta si no existe la clase
         clazzStruct.create = "\n"
-                +"let exist = select from (select expand(classes) from metadata:schema) where name = '"+className+"'\n"
+                +"let exist = select from (select expand(classes) from metadata:schema) where name = '"+className+"';\n"
                 + "if ($exist.size()=0) {\n"
-                + "     create class "+className+(superName.isEmpty()?" extends V":" extends "+superName)
-                + "\n}\n "
-                + "alter class "+className+" custom javaClass='"+clazz.getCanonicalName()+"'\n"
-                + (superName.isEmpty()?" ":"alter class "+className+" superclass "+superName+"\n");
+                + "     create class "+className+(superName.isEmpty()?" extends V":" extends "+superName)+";\n"
+                + "}"
+                + "\n "
+                + "alter class "+className+" custom javaClass='"+clazz.getCanonicalName()+"';\n"
+                + (superName.isEmpty()?" ":"alter class "+className+" superclass "+superName+";\n");
 
         // procesar todos los campos del la clase.
         Field[] fields = clazz.getDeclaredFields();
         for (Field field : fields) {
             field.setAccessible(true);
             
-            if (!(  field.isAnnotationPresent(Ignore.class) 
+            if (!(field.isAnnotationPresent(Ignore.class)
                             || Modifier.isTransient(field.getModifiers())
-                            || (Modifier.isStatic(field.getModifiers()) && Modifier.isFinal(field.getModifiers()))
-                    )) {
+                            || (Modifier.isStatic(field.getModifiers()) && Modifier.isFinal(field.getModifiers())
+                            || field.getName().startsWith("___ogm___")) //                            || f.getName().startsWith("GCLIB")
+                            )) {
                 FieldAttributes fa = field.getAnnotation(FieldAttributes.class);
                 
                 String currentProp = className + "." + field.getName();
@@ -274,24 +277,24 @@ public class DbManager {
                                                         + "(select expand(properties) "
                                                         + " from (select expand(classes) "
                                                         + " from metadata:schema) "
-                                                        + " where name = '"+className+"') where name = '"+field.getName()+"'\n"
+                                                        + " where name = '"+className+"') where name = '"+field.getName()+"';\n"
                                     + "if ($exist.size()=0) {\n"
-                                    + "     create property " + currentProp + " " + type 
+                                    + "     create property " + currentProp + " " + type +";"
                                     + "\n}\n ";
                     clazzStruct.properties.add(statement);
 
                     if (fa != null) {
                         if (!fa.min().isEmpty()) {
-                            clazzStruct.properties.add("alter property "+currentProp+" min "+fa.min());
+                            clazzStruct.properties.add("alter property "+currentProp+" min "+fa.min()+";");
                         }
 
                         if (!fa.max().isEmpty()) {
-                            clazzStruct.properties.add("alter property "+currentProp+" max "+fa.max());
+                            clazzStruct.properties.add("alter property "+currentProp+" max "+fa.max()+";");
                         }
 
     //                    Bool mandatory() default Bool.UNDEF;
                         if (fa.mandatory() != Bool.UNDEF) {
-                            clazzStruct.properties.add("alter property "+currentProp+" mandatory "+fa.mandatory());
+                            clazzStruct.properties.add("alter property "+currentProp+" mandatory "+fa.mandatory()+";");
                         }
 
     ////                    String name() default "";
@@ -301,12 +304,12 @@ public class DbManager {
     //                    dbClazz.getProperty(field.getName()).setMin(fa.sMin());
     //                    Bool notNull() default Bool.UNDEF;
                         if (fa.notNull() != Bool.UNDEF) {
-                            clazzStruct.properties.add("alter property "+currentProp+" NotNull "+fa.notNull());
+                            clazzStruct.properties.add("alter property "+currentProp+" NotNull "+fa.notNull()+";");
                         }
 
     //                    String regexp() default "";
                         if (!fa.regexp().isEmpty()) {
-                            clazzStruct.properties.add("alter property "+currentProp+" regexp "+fa.regexp());
+                            clazzStruct.properties.add("alter property "+currentProp+" regexp "+fa.regexp()+";");
                         }
 
     ////                    String type() default "";
@@ -314,17 +317,17 @@ public class DbManager {
     //                    dbClazz.getProperty(field.getName()).setType( );
     //                    String collate() default "";
                         if (!fa.collate().isEmpty()) {
-                           clazzStruct.properties.add("alter property "+currentProp+" collate "+fa.collate());
+                           clazzStruct.properties.add("alter property "+currentProp+" collate "+fa.collate()+";");
                         }
 
     //                    Bool readOnly() default Bool.UNDEF;
                         if (fa.readOnly() != Bool.UNDEF) {
-                            clazzStruct.properties.add("alter property "+currentProp+" readonly "+fa.readOnly());
+                            clazzStruct.properties.add("alter property "+currentProp+" readonly "+fa.readOnly()+";");
                         }
 
     //                    String defaultVal() default "";
                         if (!fa.defaultVal().isEmpty()) {
-                            clazzStruct.properties.add("alter property "+currentProp+" default "+fa.defaultVal());
+                            clazzStruct.properties.add("alter property "+currentProp+" default "+fa.defaultVal()+";");
                         }
 
     //                    String linkedClass() default "";
@@ -335,18 +338,18 @@ public class DbManager {
 //                    if (Primitives.LAZY_COLLECTION.get(field.getType())!=null) {
                     // FIXME: ojo que si se tratara de una extensión de AL o HM no lo vería como tal y lo vincularía con un link
                     clazzStruct.properties.add("\n"
-                        +"let exist = select from (select expand(classes) from metadata:schema) where name = '"+className+"_"+field.getName()+"'\n"
+                        +"let exist = select from (select expand(classes) from metadata:schema) where name = '"+className+"_"+field.getName()+"';\n"
                         + "if ($exist.size()=0) {\n"
-                        + "     create class "+className+"_"+field.getName()+" extends E"
+                        + "     create class "+className+"_"+field.getName()+" extends E;"
                         + "\n}\n "
                         );
                 }
                 if (field.isAnnotationPresent(Indexed.class)) {
                     Indexed idx = field.getAnnotation(Indexed.class);
                     clazzStruct.properties.add("\n"
-                        +"let exist = select from(select expand(indexes) from metadata:indexmanager) where name = '"+currentProp+"'\n"
+                        +"let exist = select from(select expand(indexes) from metadata:indexmanager) where name = '"+currentProp+"';\n"
                         + "if ($exist.size()=0) {\n"
-                        + "     create index "+currentProp+" "+idx.type()
+                        + "     create index "+currentProp+" on "+className+"("+field.getName()+") "+idx.type()+";"
                         + "\n}\n "
                         );
                 }

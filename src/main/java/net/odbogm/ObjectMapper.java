@@ -28,7 +28,6 @@ import net.odbogm.proxy.ILazyCollectionCalls;
 import net.odbogm.proxy.ILazyMapCalls;
 import net.odbogm.proxy.IObjectProxy;
 import net.odbogm.proxy.ObjectProxyFactory;
-import org.objenesis.ObjenesisStd;
 
 /**
  *
@@ -54,7 +53,7 @@ public class ObjectMapper {
 
     // Clase encargada de la instanciación de los objetos.
     // http://objenesis.org/
-    private ObjenesisStd objenesis = new ObjenesisStd();
+//    private ObjenesisStd objenesis = new ObjenesisStd();
 
     public ObjectMapper() {
 //        LOGGER.setLevel(Level.INFO);

@@ -4,7 +4,7 @@
  * and open the template in the editor.
  */
 
-package Test;
+package test;
 
 import net.odbogm.annotations.Ignore;
 import java.util.logging.Logger;

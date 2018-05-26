@@ -105,10 +105,10 @@ dependencies {
     compile("com.github.mdre:odbogm-agent:1.0.4")
     //compile("com.esotericsoftware:kryo-shaded:4.0.1")
     
-    compile("com.orientechnologies:orientdb-graphdb:2.2.29")
+    compile("com.orientechnologies:orientdb-graphdb:3.0.1")
     
     // https://mvnrepository.com/artifact/org.objenesis/objenesis
-    compile group: 'org.objenesis', name: 'objenesis', version: '2.6'
+//    compile group: 'org.objenesis', name: 'objenesis', version: '2.6'
     
     //    compile "com.sun:tools:1.8.0"
     

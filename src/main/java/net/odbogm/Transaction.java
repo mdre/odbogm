@@ -385,6 +385,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             for (Map.Entry<String, Object> link : oStruct.links.entrySet()) {
                 String field = link.getKey();
                 String graphRelationName = classname + "_" + field;
+                LOGGER.log(Level.FINER, "Link: "+field);
 
                 // verificar si no formaba parte de los objetos que se están comiteando
                 Object innerO = this.commitedObject.get(link.getValue());
