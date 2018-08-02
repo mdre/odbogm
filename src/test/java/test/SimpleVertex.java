@@ -6,7 +6,10 @@
 
 package test;
 
+import java.time.LocalDate;
 import java.util.Date;
+import java.util.Objects;
+import java.util.UUID;
 import net.odbogm.annotations.Ignore;
 import java.util.logging.Logger;
 import net.odbogm.annotations.Audit;
@@ -22,6 +25,7 @@ public class SimpleVertex {
     @Ignore
     private final static Logger LOGGER = Logger.getLogger(SimpleVertex.class .getName());
 
+    private String uuid;
     private String rid;
     private String s;
     public int i;
@@ -72,6 +76,7 @@ public class SimpleVertex {
         this.oI = oI;
         this.oF = oF;
         this.oB = oB;
+        this.uuid = UUID.randomUUID().toString();
     }
 
     public SimpleVertex(){
@@ -82,6 +87,7 @@ public class SimpleVertex {
         this.oI = new Integer(100);
         this.oF = new Float(1.1);
         this.oB = new Boolean(true);
+        this.uuid = UUID.randomUUID().toString();
     }
     
     public SimpleVertex(String s) {
@@ -136,6 +142,30 @@ public class SimpleVertex {
 
     public void setoB(Boolean oB) {
         this.oB = oB;
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 7;
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final SimpleVertex other = (SimpleVertex) obj;
+        if (!Objects.equals(this.uuid, other.uuid)) {
+            return false;
+        }
+        return true;
     }
     
     

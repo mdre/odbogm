@@ -344,7 +344,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                     break;
             }
         } else {
-            throw new ObjectMarkedAsDeleted("The object " + this.___baseElement.getId().toString() + " was deleted from the database.");
+            throw new ObjectMarkedAsDeleted("The object " + this.___baseElement.getId().toString() + " was deleted from the database. Trying to call to "+method.getName());
         }
         // AFTER
         // print how long it took to execute the method on the proxified object

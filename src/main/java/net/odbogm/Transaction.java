@@ -199,6 +199,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * @throws NoOpenTx si no hay una trnasacción abierta.
      */
     public synchronized void commit() throws NoOpenTx, OConcurrentModificationException {
+        LOGGER.log(Level.FINER, "COMMIT");
         if (this.nestedTransactionLevel == 0) {
             if (this.orientdbTransact == null) {
                 throw new NoOpenTx();
@@ -214,9 +215,12 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             for (Map.Entry<String, Object> e : dirty.entrySet()) {
                 String rid = e.getKey();
                 IObjectProxy o = (IObjectProxy) e.getValue();
-                LOGGER.log(Level.FINER, "Commiting: " + rid + "   class: " + o.___getBaseClass() + " isValid: " + o.___isValid());
-                // actualizar todos los objetos antes de bajarlos.
-                o.___commit();
+                if (!o.___isDeleted() && o.___isValid()) {
+                    LOGGER.log(Level.FINER, "Commiting: " + rid + "   class: " + o.___getBaseClass() + " isValid: " + o.___isValid());
+
+                    // actualizar todos los objetos antes de bajarlos.
+                    o.___commit();
+                }
             }
             LOGGER.log(Level.FINER, "Fin persistencia. <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
             // comitear los vértices
@@ -254,6 +258,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             this.objectCache.clear();
             newrids.clear();
         } else {
+            LOGGER.log(Level.FINER, "TransactionLevel: "+this.nestedTransactionLevel);
             this.nestedTransactionLevel--;
         }
         LOGGER.log(Level.FINER, "FIN DE COMMIT! ----------------------------");
@@ -599,10 +604,10 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             // elimino el nodo de la base para que se actualicen los vértices a los que apuntaba.
             // de esta forma, los inner quedan libres y pueden ser borrados por un delete simple
             ovToRemove.remove();
-
+            
             //Lista de vértices a remover
             List<OrientVertex> vertexToRemove = new ArrayList<>();
-
+            
             // procesar los links
             for (Map.Entry<String, Class<?>> entry : classDef.links.entrySet()) {
                 try {
@@ -721,6 +726,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             //ovToRemove.remove(); movido arriba.
             // si tengo un RID, proceder a removerlo de las colecciones.
             this.dirty.remove(((IObjectProxy) toRemove).___getVertex().getId().toString());
+
             // invalidar el objeto
             ((IObjectProxy) toRemove).___setDeletedMark();
         } else {

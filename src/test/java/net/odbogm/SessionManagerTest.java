@@ -601,6 +601,8 @@ public class SessionManagerTest {
         assertEquals(retrieved.getAlSVE().size(), stored.getAlSVE().size());
         // validar que no se modifique la lista
         assertNull(stored.lSV);
+        
+        
     }
 
     @Test
@@ -1469,6 +1471,62 @@ public class SessionManagerTest {
                 System.out.println("Todo ok!");
             }    
         }
+
+        System.out.println("Verificando el borrado de objetos que han sido modificados durante la operación...");
+        SimpleVertex svmodificado_a_borrar = sm.store(new SimpleVertex());
+        SimpleVertexEx svExConVector = sm.store(new SimpleVertexEx());
+        svExConVector.initArrayList();
+        
+        sm.commit();
+        
+        String svModif = sm.getRID(svmodificado_a_borrar);
+        String svExCon = sm.getRID(svExConVector);
+        
+        System.out.println("svExCon "+svExCon);
+        System.out.println("svModif "+svModif);
+        
+        System.out.println("agregando el sv al SVEx...");
+        svExConVector.alSV.add(svmodificado_a_borrar);
+        System.out.println("size: "+svExConVector.alSV.size());
+        
+        System.out.println("commit...");
+        sm.commit();
+        System.out.println("size: "+svExConVector.alSV.size());
+        
+        // liberar los objetos.
+        svmodificado_a_borrar = null;
+        svExConVector = null;
+        
+        // recupear de la base
+        System.out.println("recuperar nuevamente...");
+        svExConVector = sm.get(SimpleVertexEx.class, svExCon);
+        System.out.println("size: "+svExConVector.alSV.size());
+        
+        for (SimpleVertex simpleVertex : svExConVector.alSV) {
+            System.out.println(":: "+sm.getRID(simpleVertex));
+        }
+        
+        svmodificado_a_borrar = sm.get(SimpleVertex.class, svModif);
+        
+        System.out.println("realizando una modificación previo al borrado");
+        svmodificado_a_borrar.setS("modificado previo borrado");
+        
+        System.out.println("borrando...");
+        svExConVector.alSV.remove(svmodificado_a_borrar);
+        System.out.println("size: "+svExConVector.alSV.size());
+        
+        System.out.println("realizando commit...");
+        sm.commit();
+        svmodificado_a_borrar = null;
+        svExConVector = null;
+        
+        try {
+            svmodificado_a_borrar = sm.get(SimpleVertex.class, svModif);
+            fail("El objeto aún existe!!! ");
+        } catch (Exception e) {
+            System.out.println("todo ok.");
+        }
+        
         
         spaces(5);
         System.out.println("--- En Maps ---");

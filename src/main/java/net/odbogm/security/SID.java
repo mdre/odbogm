@@ -10,6 +10,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.LogginProperties;
 import net.odbogm.annotations.Entity;
+import net.odbogm.annotations.Indexed;
 
 @Entity
 public abstract class SID {
@@ -19,8 +20,9 @@ public abstract class SID {
             LOGGER.setLevel(LogginProperties.SID);
         }
     }
-    
+    @Indexed(type = Indexed.IndexType.UNIQUE)
     private String name = "";
+    @Indexed(type = Indexed.IndexType.UNIQUE)
     private String uuid = "";
     
     @Deprecated
