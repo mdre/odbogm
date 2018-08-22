@@ -5,20 +5,11 @@
  */
 package net.odbogm.proxy;
 
-import net.odbogm.SessionManager;
 import com.tinkerpop.blueprints.impls.orient.OrientElement;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.lang.reflect.Method;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.sf.cglib.proxy.Enhancer;
 import net.odbogm.LogginProperties;
 import net.odbogm.Transaction;
-import net.odbogm.agent.ITransparentDirtyDetector;
-import net.odbogm.agent.TransparentDirtyDetectorInstrumentator;
-import net.sf.cglib.core.DefaultGeneratorStrategy;
-import net.sf.cglib.proxy.CallbackFilter;
 
 /**
  *

@@ -6,7 +6,6 @@
 
 package net.odbogm.security;
 
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.LogginProperties;
 import net.odbogm.annotations.Entity;

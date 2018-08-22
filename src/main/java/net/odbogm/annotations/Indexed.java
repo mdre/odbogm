@@ -18,7 +18,16 @@ import java.lang.annotation.Target;
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.FIELD})
 public @interface Indexed {
-    public enum IndexType{UNIQUE,NOTUNIQUE,FULLTEXT}
+    public enum IndexType{UNIQUE,NOTUNIQUE,FULLTEXT,LUCENE}
     
     IndexType type() default IndexType.NOTUNIQUE;
+    /**
+     * Must be filled with a valid METADATA String for the index.
+     * Ej: '{"index": "org.apache.lucene.analysis.en.EnglishAnalyzer",'+
+     *     ' "query": "org.apache.lucene.analysis.standard.StandardAnalyzer"'+
+     *     '}"'
+     * 
+     * @return METADATA String
+     */
+    String metadata() default "";
 }

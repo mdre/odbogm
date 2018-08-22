@@ -56,6 +56,16 @@ public class ClassDef {
      */
     public HashMap<String, Class<?>> indirectLinkLists = new HashMap<>();
     
+    /**
+     * Mapa de links indirectos. Son referencias IN hacia el objeto actual.
+     */
+    public HashMap<String, Class<?>> indirectOnQueryLinks = new HashMap<>();
+    
+    /**
+     * Mapa de links indirectos. Son referencias IN hacia el objeto actual.
+     */
+    public HashMap<String, Class<?>> indirectOnQueryLinkLists = new HashMap<>();
+    
     @Override
     public ClassDef clone() {
         ClassDef cd = new ClassDef();

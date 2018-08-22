@@ -1049,7 +1049,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         if (retVal.isEmpty()) {
             retVal = ov.getProperties().keySet().iterator().next();
         }
-
+        
         return ov.getProperty(retVal);
     }
 

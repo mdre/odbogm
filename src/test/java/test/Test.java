@@ -71,6 +71,7 @@ public class Test {
 //        testTimeLoad();
 //        testComplexHashMap();
 //        testSimpleQuery();
+//        testCmd();
         sm.shutdown();
     }
 
@@ -115,6 +116,11 @@ public class Test {
 
     }
 
+    public void testCmd() {
+        Object o = sm.query("select from SimpleVertex");
+        System.out.println("o: "+o.getClass());
+    }
+    
     public void testSimpleQuery() {
         System.out.println("\n\n\n");
         System.out.println("***************************************************************");

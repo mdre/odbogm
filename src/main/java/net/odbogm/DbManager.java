@@ -11,6 +11,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
@@ -23,6 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import static net.odbogm.Primitives.PRIMITIVE_MAP;
+import net.odbogm.annotations.ClassIndex;
 import net.odbogm.annotations.Embedded;
 import net.odbogm.annotations.Entity;
 import net.odbogm.annotations.FieldAttributes;
@@ -124,6 +126,9 @@ public class DbManager {
             for (String property : orderedRegisteredClas.properties) {
                 System.out.println(property);
             }
+            for (String index : orderedRegisteredClas.classIndexes) {
+                System.out.println(index);
+            }
             System.out.println("");
         }
     }
@@ -143,6 +148,10 @@ public class DbManager {
             for (String property : orderedRegisteredClas.properties) {
                 statements.add(property);
             }
+            for (String index : orderedRegisteredClas.classIndexes) {
+                statements.add(index);
+            }
+            
         }
         return statements;
     }
@@ -167,6 +176,9 @@ public class DbManager {
                 pw.println(orderedRegisteredClas.create);
                 for (String property : orderedRegisteredClas.properties) {
                     pw.println(property);
+                }
+                for (String classIndexes : orderedRegisteredClas.classIndexes) {
+                    pw.println(classIndexes);
                 }
                 pw.println("");
             }
@@ -346,14 +358,22 @@ public class DbManager {
                 }
                 if (field.isAnnotationPresent(Indexed.class)) {
                     Indexed idx = field.getAnnotation(Indexed.class);
+                    
+                    String engine = idx.type()==Indexed.IndexType.LUCENE?" FULLTEXT ENGINE LUCENE ":""+idx.type();
+                    engine += (!idx.metadata().isEmpty()?"METADATA "+idx.metadata():"");
+                    
                     clazzStruct.properties.add("\n"
                         +"let exist = select from(select expand(indexes) from metadata:indexmanager) where name = '"+currentProp+"';\n"
                         + "if ($exist.size()=0) {\n"
-                        + "     create index "+currentProp+" on "+className+"("+field.getName()+") "+idx.type()+";"
+                        + "     create index "+currentProp+" on "+className+"("+field.getName()+") "+engine+";"
                         + "\n}\n "
                         );
                 }
             }
+        }
+        // procesar las anotaciones de clase buscando índices compuestos.
+        for (Annotation annotation : clazz.getAnnotationsByType(ClassIndex.class)) {
+            clazzStruct.classIndexes.add(((ClassIndex)annotation).indexExpr());
         }
     }
 
@@ -407,6 +427,7 @@ public class DbManager {
         public String drop;
         public String create;
         public ArrayList<String> properties = new ArrayList<>();
+        public ArrayList<String> classIndexes = new ArrayList<>();
 //        public ArrayList<String> propertiesModifiers = new ArrayList<>();
 
         public ClassStruct(String className) {
