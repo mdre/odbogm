@@ -25,15 +25,19 @@ public class IndirectObject {
             LOGGER.setLevel(Level.INFO);
         }
     }
+    
+    private String testData;
+    
     private IndirectObject directLink;
     private ArrayList<IndirectObject> alDirectLinked = new ArrayList<>();
     private HashMap<String,IndirectObject> hmDirectLinked = new HashMap<>();
     
-    public IndirectObject() {
-    }
     
     @Indirect(linkName = "IndirectObject_directLink")
     private IndirectObject indirectLink;
+    
+    @Indirect(linkName = "IndirectObject_alDirectLinked")
+    private IndirectObject indirectLinkedFromAL;
     
     @Indirect(linkName = "IndirectObject_alDirectLinked")
     private ArrayList<IndirectObject> alIndirectLinked = new ArrayList<>();
@@ -41,6 +45,16 @@ public class IndirectObject {
     @Indirect(linkName = "IndirectObject_hmDirectLinked")
     private HashMap<String,IndirectObject> hmIndirectLinked = new HashMap<>();
 
+    public IndirectObject() {
+    }
+    
+    public String getTestData() {
+        return testData;
+    }
+
+    public void setTestData(String testData) {
+        this.testData = testData;
+    }
     
     public ArrayList<IndirectObject> getAlDirectLinked() {
         return alDirectLinked;
@@ -89,4 +103,10 @@ public class IndirectObject {
     public void setIndirectLink(IndirectObject indirectLink) {
         this.indirectLink = indirectLink;
     }
+
+    public IndirectObject getIndirectLinkedFromAL() {
+        return indirectLinkedFromAL;
+    }
+    
+    
 }

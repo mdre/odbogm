@@ -119,7 +119,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * @param o objeto de referencia.
      */
     public synchronized void setAsDirty(Object o) throws UnmanagedObject {
-//        graphdb.getRawGraph().activateOnCurrentThread();
+        activateOnCurrentThread();
         if (o instanceof IObjectProxy) {
             String rid = ((IObjectProxy) o).___getVertex().getId().toString();
             LOGGER.log(Level.FINER, "Marcando como dirty: " + o.getClass().getSimpleName() + " - " + o.toString());
@@ -190,6 +190,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * Finaliza la comunicación contra la base de datos.
      */
     public synchronized void close() {
+        activateOnCurrentThread();
         this.orientdbTransact.shutdown();
     }
 
@@ -204,7 +205,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             if (this.orientdbTransact == null) {
                 throw new NoOpenTx();
             }
-//        this.graphdb.getRawGraph().activateOnCurrentThread();
+            activateOnCurrentThread();
 
             // bajar todos los objetos a los vértices
             // this.commitObjectChanges();
@@ -273,7 +274,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         if (this.orientdbTransact == null) {
             throw new NoOpenTx();
         }
-
+        activateOnCurrentThread();
         this.orientdbTransact.rollback();
 
         // refrescar todos los objetos
@@ -311,7 +312,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     @Override
     public synchronized <T> T store(T o) throws IncorrectRIDField, NoOpenTx, ClassToVertexNotFound {
-//        graphdb.getRawGraph().activateOnCurrentThread();
+        activateOnCurrentThread();
         T proxied = null;
 
         // si el objeto ya fue guardado con anterioridad, devolver la instancia creada previamente.
@@ -539,7 +540,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     public void delete(Object toRemove) throws ReferentialIntegrityViolation, UnknownObject {
         LOGGER.log(Level.FINER, "Remove: " + toRemove.getClass().getName());
-
+        activateOnCurrentThread();
+        
         // si no hereda de IObjectProxy, el objeto no pertenece a la base y no se debe hacer nada.
         if (toRemove instanceof IObjectProxy) {
             // verificar que la integridad referencial no se viole.
@@ -818,6 +820,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             if (rid == null) {
                 throw new UnknownRID();
             }
+            activateOnCurrentThread();
             Object ret = null;
 
             if (objectCache.get(rid) != null) {
@@ -892,6 +895,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         }
         T o = null;
 
+        activateOnCurrentThread();
         if (!force) {
             // si está en el caché, devolver la referencia desde ahí.
             if (objectCache.get(rid) != null) {
@@ -970,7 +974,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         if (this.orientdbTransact == null) {
             throw new NoOpenTx();
         }
-
+        activateOnCurrentThread();
         T o = null;
         try {
             // verificar si ya no se ha cargado
@@ -1003,6 +1007,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         if (this.orientdbTransact == null) {
             throw new NoOpenTx();
         }
+        activateOnCurrentThread();
         flush();
 
         OCommandSQL osql = new OCommandSQL(sql);
@@ -1022,6 +1027,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         if (this.orientdbTransact == null) {
             throw new NoOpenTx();
         }
+        activateOnCurrentThread();
         flush();
 
         OCommandSQL osql = new OCommandSQL(sql);
@@ -1042,6 +1048,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         if (this.orientdbTransact == null) {
             throw new NoOpenTx();
         }
+        activateOnCurrentThread();
         this.flush();
 
         OCommandSQL osql = new OCommandSQL(sql);
@@ -1065,6 +1072,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         if (this.orientdbTransact == null) {
             throw new NoOpenTx();
         }
+        activateOnCurrentThread();
         this.flush();
 
         long init = System.currentTimeMillis();
@@ -1094,6 +1102,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         if (this.orientdbTransact == null) {
             throw new NoOpenTx();
         }
+        activateOnCurrentThread();
         this.flush();
 
         ArrayList<T> ret = new ArrayList<>();
@@ -1119,9 +1128,11 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     @Override
     public <T> List<T> query(Class<T> clase, String sql, Object... param) {
+        activateOnCurrentThread();
+        
         OSQLSynchQuery<ODocument> query = new OSQLSynchQuery<>(sql);
         ArrayList<T> ret = new ArrayList<>();
-
+        
         LOGGER.log(Level.FINER, sql + " param: " + param);
         for (Vertex v : (Iterable<Vertex>) this.orientdbTransact.command(query).execute(param)) {
             ret.add(this.get(clase, v.getId().toString()));
@@ -1151,6 +1162,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     @Override
     public <T> List<T> query(Class<T> clase, String sql, HashMap<String, Object> param) {
+        activateOnCurrentThread();
+        
         OSQLSynchQuery<ODocument> query = new OSQLSynchQuery<>(sql);
         ArrayList<T> ret = new ArrayList<>();
 
@@ -1220,5 +1233,11 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
     Auditor getAuditor() {
         return this.auditor;
+    }
+    
+    private void activateOnCurrentThread() {
+        if (!this.orientdbTransact.getRawGraph().isActiveOnCurrentThread()) {
+            orientdbTransact.getRawGraph().activateOnCurrentThread();
+        }
     }
 }

@@ -1794,6 +1794,66 @@ public class SessionManagerTest {
         indirectLinked = sm.get(IndirectObject.class, inLinked);
         assertEquals(indirectLinked.getHmIndirectLinked().size(), 2);
         
+        //=====================================================
+        // crear un objeto que aputa a otros dos a través de un AL.
+        // Los objeto que es indirectamente referenciado debe mantener 
+        // la consistencia con el objeto origen de las referencias.
+        IndirectObject origen = new IndirectObject();
+        
+        IndirectObject ind1 = new IndirectObject();
+        IndirectObject ind2 = new IndirectObject();
+        IndirectObject ind3 = new IndirectObject();
+        
+        origen.getAlDirectLinked().add(ind1);
+        origen.getAlDirectLinked().add(ind2);
+        origen.getAlDirectLinked().add(ind3);
+        
+        // guardar todo
+        IndirectObject sOrigen = sm.store(origen);
+        sm.commit();
+        
+        String origenRID = sm.getRID(sOrigen);
+        
+        // dereferenciar todo.
+        ind1 = null;
+        ind2 = null;
+        ind3 = null;
+        
+        origen = null;
+        
+        // recupear el origen
+        origen = sm.get(IndirectObject.class, origenRID);
+        origen.setTestData("modificado");
+        
+        ind1 = origen.getAlDirectLinked().get(0);
+        String ind1RID = sm.getRID(ind1);
+        ind2 = origen.getAlDirectLinked().get(1);
+        String ind2RID = sm.getRID(ind2);
+        ind3 = origen.getAlDirectLinked().get(2);
+        String ind3RID = sm.getRID(ind3);
+        
+        assertEquals(ind1.getIndirectLinkedFromAL().getTestData(), ind2.getIndirectLinkedFromAL().getTestData());
+        assertEquals(ind1.getIndirectLinkedFromAL().getTestData(), ind3.getIndirectLinkedFromAL().getTestData());
+        
+        //-----------------------------------------------------
+        // dereferenciar todo nuevamente
+        ind1 = null;
+        ind2 = null;
+        origen = null;
+        
+        // ahora recupear un objeto indirecto y desde éste recuper el origen. 
+        ind1 = sm.get(IndirectObject.class, ind1RID);
+        
+        origen = ind1.getIndirectLinkedFromAL();
+        origen.setTestData("modif2");
+        
+        ind2 = sm.get(IndirectObject.class, ind2RID);
+        
+        assertEquals(ind1.getIndirectLinkedFromAL().getTestData(), ind2.getIndirectLinkedFromAL().getTestData());
+        
+        //=====================================================
+        
+        
     }
 //    @Test
 //    public void testTransactions() {
