@@ -179,7 +179,7 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
      * @return un objeto Transaction para operar.
      */    
     public Transaction getTransaction() {
-        return new Transaction(this);
+        return new Transaction(this, this.getGraphdb());
     }
     
     /**

@@ -107,6 +107,18 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     }
 
     /**
+     * Devuelve una transacción inicializada sobre una conexión existente.
+     * @param sm
+     * @param db 
+     */
+    Transaction(SessionManager sm, OrientGraph db) {
+        this.sm = sm;
+        orientdbTransact = db;
+        this.objectMapper = this.sm.getObjectMapper();
+    }
+    
+    
+    /**
      * Elimina cualquier objeto que esté marcado como dirty en esta transacción
      */
     public void clear() {
@@ -744,6 +756,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         if (this.orientdbTransact == null) {
             throw new NoOpenTx();
         }
+        activateOnCurrentThread();
         for (Map.Entry<String, Object> e : dirty.entrySet()) {
             String rid = e.getKey();
             IObjectProxy o = (IObjectProxy) e.getValue();
@@ -1236,8 +1249,9 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     }
     
     private void activateOnCurrentThread() {
-        if (!this.orientdbTransact.getRawGraph().isActiveOnCurrentThread()) {
-            orientdbTransact.getRawGraph().activateOnCurrentThread();
-        }
+        
+//        if (!this.orientdbTransact.getRawGraph().isActiveOnCurrentThread()) {
+//            orientdbTransact.getRawGraph().activateOnCurrentThread();
+//        }
     }
 }
