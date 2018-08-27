@@ -467,7 +467,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                 Map<String, Class<?>> lnks = new HashMap<>();
                 lnks.putAll(classdef.links);
                 lnks.putAll(classdef.indirectLinks);
-                
+                LOGGER.log(Level.FINER, "procesando {0} links y {1} indirected links", new Object[]{classdef.links.size(), classdef.indirectLinks.size()});
                 for (Map.Entry<String, Class<?>> entry : lnks.entrySet()) {
                 //  classdef.links.entrySet().stream().forEach((entry) -> {
                     try {
@@ -486,8 +486,9 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                             Indirect in = fLink.getAnnotation(Indirect.class);
                             graphRelationName = in.linkName();
                             direction = Direction.IN;
+                            LOGGER.log(Level.FINER, "Se ha detectado un indirect. Linkname = {0}",new Object[]{in.linkName()});
                         } 
-                        LOGGER.log(Level.FINER, "Field: {0}   RelationName: {1}", new String[]{field, graphRelationName});
+                        LOGGER.log(Level.FINER, "Field: {0}.{1}   RelationName: {2}", new String[]{this.___baseClass.getSimpleName(),field, graphRelationName});
                         
                         // recuperar de la base el vértice correspondiente
                         boolean duplicatedLinkGuard = false;
