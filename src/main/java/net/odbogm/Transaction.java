@@ -946,7 +946,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             if (o == null) {
                 // recuperar el vértice solicitado
                 OrientVertex v = this.orientdbTransact.getVertex(rid);
-
+                if (force) {v.reload();}
+                
                 // hidratar un objeto
                 try {
                     o = objectMapper.hydrate(type, v, this);
