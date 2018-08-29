@@ -16,13 +16,13 @@ import com.tinkerpop.blueprints.impls.orient.OrientDynaElementIterable;
 import com.tinkerpop.blueprints.impls.orient.OrientEdge;
 import com.tinkerpop.blueprints.impls.orient.OrientGraph;
 import com.tinkerpop.blueprints.impls.orient.OrientVertex;
-import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.logging.Level;
@@ -69,7 +69,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
     // cache de los objetos recuperados de la base. Si se encuentra en el caché en un get, se recupera desde 
     // acá. En caso contrario se recupera desde la base.
-    private ConcurrentHashMap<String, WeakReference<Object>> objectCache = new ConcurrentHashMap<>();
+    private WeakHashMap<String, Object> objectCache = new WeakHashMap<>();
 
     private ConcurrentHashMap<String, Object> dirty = new ConcurrentHashMap<>();
 
@@ -148,7 +148,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * @param rid record id
      * @param o objeto a referenciar
      */
-    public synchronized void addToCache(String rid, WeakReference<Object> o) {
+    public synchronized void addToCache(String rid, Object o) {
         this.objectCache.put(rid, o);
     }
 
@@ -528,7 +528,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             }
 
             // guardar el objeto en el cache. Se usa el RID como clave
-            objectCache.put(v.getId().toString(), new WeakReference<>(proxied));
+            objectCache.put(v.getId().toString(), proxied);
 
         } catch (IllegalArgumentException ex) {
             Logger.getLogger(SessionManager.class.getName()).log(Level.SEVERE, null, ex);
@@ -837,7 +837,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             Object ret = null;
 
             if (objectCache.get(rid) != null) {
-                ret = objectCache.get(rid).get();
+                ret = objectCache.get(rid);
                 // si fue recuperado del caché, determinar si se ha modificado.
                 // si no fue modificado, hacer un reload para actualizar con la última 
                 // versión de la base de datos.
@@ -912,9 +912,9 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         if (!force) {
             // si está en el caché, devolver la referencia desde ahí.
             if (objectCache.get(rid) != null) {
-                if (objectCache.get(rid).get() != null) {
+                if (objectCache.get(rid) != null) {
                     LOGGER.log(Level.FINER, "Objeto Recupeardo del caché.");
-                    o = (T) objectCache.get(rid).get();
+                    o = (T) objectCache.get(rid);
 
                     // si fue recuperado del caché, determinar si se ha modificado.
                     // si no fue modificado, hacer un reload para actualizar con la última 
@@ -965,7 +965,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             }
 
             // cuardar el objeto en el caché
-            objectCache.put(rid, new WeakReference<>(o));
+            objectCache.put(rid, o);
         }
 
         // Aplicar los controles de seguridad.
