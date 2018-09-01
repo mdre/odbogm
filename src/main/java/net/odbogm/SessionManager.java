@@ -5,13 +5,6 @@
  */
 package net.odbogm;
 
-import net.odbogm.exceptions.NoOpenTx;
-import net.odbogm.exceptions.IncorrectRIDField;
-import net.odbogm.exceptions.ReferentialIntegrityViolation;
-import net.odbogm.exceptions.UnknownObject;
-import net.odbogm.exceptions.UnknownRID;
-import net.odbogm.exceptions.UnmanagedObject;
-import net.odbogm.proxy.IObjectProxy;
 import com.orientechnologies.orient.core.exception.OConcurrentModificationException;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
 import com.tinkerpop.blueprints.impls.orient.OrientEdge;
@@ -26,8 +19,15 @@ import java.util.logging.Logger;
 import net.odbogm.agent.TransparentDirtyDetectorAgent;
 import net.odbogm.auditory.Auditor;
 import net.odbogm.exceptions.ClassToVertexNotFound;
+import net.odbogm.exceptions.IncorrectRIDField;
+import net.odbogm.exceptions.NoOpenTx;
 import net.odbogm.exceptions.NoUserLoggedIn;
+import net.odbogm.exceptions.ReferentialIntegrityViolation;
+import net.odbogm.exceptions.UnknownObject;
+import net.odbogm.exceptions.UnknownRID;
+import net.odbogm.exceptions.UnmanagedObject;
 import net.odbogm.exceptions.VertexJavaClassNotFound;
+import net.odbogm.proxy.IObjectProxy;
 import net.odbogm.security.UserSID;
 
 /**
@@ -180,6 +180,15 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
      */    
     public Transaction getTransaction() {
         return new Transaction(this, this.getGraphdb());
+    }
+    
+    /**
+     * Devuelve una transacción sobre una nueva conexión a la base
+     * solicitada al pool de transacciones
+     * @return 
+     */
+    public Transaction getNewTxTransaction() {
+        return new Transaction(this);
     }
     
     /**

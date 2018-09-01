@@ -5,8 +5,6 @@
  */
 package net.odbogm.proxy;
 
-import net.odbogm.Primitives;
-import net.odbogm.SessionManager;
 import com.tinkerpop.blueprints.Direction;
 import com.tinkerpop.blueprints.Edge;
 import com.tinkerpop.blueprints.Vertex;
@@ -25,6 +23,7 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.LogginProperties;
+import net.odbogm.Primitives;
 import net.odbogm.Transaction;
 
 /**
@@ -78,10 +77,10 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
 
     //********************* change control **************************************
     private Map<Object, ObjectCollectionState> entitiesState = new ConcurrentHashMap<>();
-    private Map<Object, ObjectCollectionState> keyState = new ConcurrentHashMap<>();
+    private ConcurrentHashMap<Object, ObjectCollectionState> keyState = new ConcurrentHashMap<>();
     private Map<Object, OrientEdge> keyToEdge = new ConcurrentHashMap<>();
 
-    private void lazyLoad() {
+    private synchronized void lazyLoad() {
 //        LOGGER.log(Level.FINER, "Lazy Load.....");
         this.lazyLoad = false;
         this.lazyLoading = true;
@@ -126,7 +125,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
     /**
      * Vuelve establecer el punto de verificación.
      */
-    public void clearState() {
+    public synchronized void clearState() {
         this.entitiesState.clear();
         this.keyState.clear();
         Map<Object, OrientEdge> newOE = new ConcurrentHashMap<>();
@@ -160,7 +159,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
      * @return retorna un mapa con el estado de la colección
      */
     @Override
-    public Map<Object, ObjectCollectionState> collectionState() {
+    public synchronized Map<Object, ObjectCollectionState> collectionState() {
         for (Entry<Object, Object> entry : this.entrySet()) {
             Object key = entry.getKey();
             Object value = entry.getValue();
@@ -216,7 +215,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
     }
 
     @Override
-    public void rollback() {
+    public synchronized void rollback() {
         //FIXME: Analizar si se puede implementar una versión que no borre todos los elementos
         this.clear();
         this.entitiesState.clear();
