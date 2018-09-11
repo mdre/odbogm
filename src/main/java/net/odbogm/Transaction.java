@@ -102,8 +102,10 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     Transaction(SessionManager sm) {
         this.sm = sm;
+        LOGGER.log(Level.FINER, "current thread: "+Thread.currentThread().getName());
         orientdbTransact = this.sm.getFactory().getTx();
         this.objectMapper = this.sm.getObjectMapper();
+        
     }
 
     /**
@@ -112,6 +114,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * @param db 
      */
     Transaction(SessionManager sm, OrientGraph db) {
+        LOGGER.log(Level.FINER, "current thread: "+Thread.currentThread().getName());
         this.sm = sm;
         orientdbTransact = db;
         this.objectMapper = this.sm.getObjectMapper();
@@ -1196,6 +1199,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * @return OClass o null si la clase no existe
      */
     public OClass getDBClass(String clase) {
+        activateOnCurrentThread();
         return this.getGraphdb().getRawGraph().getMetadata().getSchema().getClass(clase);
     }
 
@@ -1250,10 +1254,16 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         return this.auditor;
     }
     
+    /**
+     * Asegurarse que la base esté activa en el thread en el que 
+     * se encuentra la transacción
+     */
     private void activateOnCurrentThread() {
-        
-//        if (!this.orientdbTransact.getRawGraph().isActiveOnCurrentThread()) {
-//            orientdbTransact.getRawGraph().activateOnCurrentThread();
-//        }
+        LOGGER.log(Level.FINER, "Activando en el Thread actual...");
+        LOGGER.log(Level.FINER, "current thread: "+Thread.currentThread().getName());
+        if (!this.orientdbTransact.getRawGraph().isActiveOnCurrentThread()) {
+            LOGGER.log(Level.FINER, "No estaba activo. se invoca a activateOnCurrentThread()");
+            orientdbTransact.getRawGraph().activateOnCurrentThread();
+        }
     }
 }

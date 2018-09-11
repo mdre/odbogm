@@ -185,7 +185,7 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
     /**
      * Devuelve una transacción sobre una nueva conexión a la base
      * solicitada al pool de transacciones
-     * @return 
+     * @return Transaction
      */
     public Transaction getNewTxTransaction() {
         return new Transaction(this);

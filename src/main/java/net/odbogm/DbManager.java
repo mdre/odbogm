@@ -87,10 +87,17 @@ public class DbManager {
     private void init(String url, String user, String passwd){
         this.factory = new OrientGraphFactory(url, user, passwd).setupPool(1, 10);
     }
+    
     public void begin() {
         graphdb = factory.getTx();
     }
 
+    public DbManager setClassLevelLog(Class<?> clazz, Level level) {
+        Logger L = LOGGER.getLogger( clazz.getName() );
+        L.setLevel(level);
+        return this;
+    }
+    
     /**
      * recorrer el vector analizando todas las clases que se encuentran referenciadas y crea
      * las sentencias correspondientes para su creación            
@@ -215,7 +222,7 @@ public class DbManager {
             superName = (clazz.getSuperclass()==null?"":clazz.getSuperclass().getSimpleName());
         } 
             
-
+        
         // procesar todos los campos de la clase actual.
         String className = clazz.getSimpleName();
 
@@ -245,6 +252,9 @@ public class DbManager {
                 + "\n "
                 + "alter class "+className+" custom javaClass='"+clazz.getCanonicalName()+"';\n"
                 + (superName.isEmpty()?" ":"alter class "+className+" superclass "+superName+";\n");
+
+        // se utilizará para registrar todas las clases de atributos que no sean primitivos
+        ArrayList<Class<?>> postProcess = new ArrayList<>();
 
         // procesar todos los campos del la clase.
         Field[] fields = clazz.getDeclaredFields();
@@ -355,6 +365,14 @@ public class DbManager {
                         + "     create class "+className+"_"+field.getName()+" extends E;"
                         + "\n}\n "
                         );
+                    // y se debe analizar si no se trata de una clase marcada como Entidad
+                    // que no se encuentra entre los paquetes indicados como parámetros
+                    // Ej. UserSID / GroupSID
+                    LOGGER.log(Level.FINER, "field type: "+field.getType());
+                    if (field.getType().isAnnotationPresent(Entity.class) 
+                            && registeredClass.get(field.getType().getSimpleName())==null) {
+                        postProcess.add(field.getType());
+                    }
                 }
                 if (field.isAnnotationPresent(Indexed.class)) {
                     Indexed idx = field.getAnnotation(Indexed.class);
@@ -371,9 +389,16 @@ public class DbManager {
                 }
             }
         }
+        
+        
         // procesar las anotaciones de clase buscando índices compuestos.
         for (Annotation annotation : clazz.getAnnotationsByType(ClassIndex.class)) {
             clazzStruct.classIndexes.add(((ClassIndex)annotation).indexExpr());
+        }
+        
+        // procesar los tipos decubiertos durante la exploración de los campos.
+        for (Class<?> discoveredType : postProcess) {
+            buildDBScript(discoveredType);
         }
     }
 
@@ -422,6 +447,7 @@ public class DbManager {
      */
     class ClassStruct {
 
+        public int order;
         public String className;
 //        public String deleteVertex;
         public String drop;
