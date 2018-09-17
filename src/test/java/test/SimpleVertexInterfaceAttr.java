@@ -21,11 +21,18 @@ public class SimpleVertexInterfaceAttr extends SimpleVertex {
 
     public SimpleVertexInterfaceAttr() {
         super();
-        this.setS("simple vertex with interface attr");
+    }
+    
+    public SimpleVertexInterfaceAttr(String text) {
+        super();
+        this.setS(text);
         
         itest = new SimpleVertexWithImplement();
     }
 
+    
+    
+    
     @Override
     public String toString() {
         return "SimpleVertexImplAtrr{" + "itest=" + itest + '}';

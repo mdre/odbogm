@@ -174,7 +174,8 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
 
     /**
      * Devuelve una transacción privada. Los objetos solicitados a través de esta transacción se mantienen en 
-     * forma independiente de los recuperados en otras.
+     * forma independiente de los recuperados en otras, pero se comparte la comunicación subyacente a la base 
+     * de datos.
      * 
      * @return un objeto Transaction para operar.
      */    
@@ -347,6 +348,19 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
 
     /**
      * Recupera un objecto desde la base a partir del RID del Vértice.
+     * El objeto se recupera desde la base de datos como una nueva instancia
+     * reemplazando la referencia al objeto en el cache si existiera.
+     *
+     * @param rid: ID del vértice a recupear
+     * @return Retorna un objeto de la clase javaClass del vértice.
+     */
+    @Override
+    public Object dbget(String rid) throws UnknownRID, VertexJavaClassNotFound {
+        return this.publicTransaction.dbget(rid);
+    }
+    
+    /**
+     * Recupera un objecto desde la base a partir del RID del Vértice.
      *
      * @param rid: ID del vértice a recupear
      * @return Retorna un objeto de la clase javaClass del vértice.
@@ -356,6 +370,22 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
         return this.publicTransaction.get(rid);
     }
 
+    /**
+     * Recupera un objeto a partir de la clase y el RID correspondiente.
+     * El objeto se recupera desde la base de datos como una nueva instancia
+     * reemplazando la referencia al objeto en el cache si existiera.
+     *
+     * @param <T> clase a devolver
+     * @param type clase a devolver
+     * @param rid RID del vértice de la base
+     * @return objeto de la clase T
+     */
+    @Override
+    public <T> T dbget(Class<T> type, String rid) throws UnknownRID {
+        return this.publicTransaction.dbget(type, rid);
+    }
+    
+    
     /**
      * Recupera un objeto a partir de la clase y el RID correspondiente.
      *

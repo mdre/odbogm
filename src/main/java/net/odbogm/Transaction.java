@@ -20,6 +20,7 @@ import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
@@ -78,7 +79,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
     // se utiliza para guardar los objetos recuperados durante un get a fin de evitar los loops
     private int getTransactionCount = 0;
-    ConcurrentHashMap<String, Object> transactionCache = new ConcurrentHashMap<>();
+    ConcurrentHashMap<String, Object> transactionLoopCache = new ConcurrentHashMap<>();
 
     // Los RIDs temporales deben ser convertidos a los permanentes en el proceso de commit
     List<String> newrids = new ArrayList<>();
@@ -127,7 +128,19 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     public void clear() {
         this.dirty.clear();
     }
+    
+    /**
+     * Quita todas las referencias del cache. Todas los futuros get's recuperarán 
+     * instancias nuevas de objetos dentro de la transacción.
+     * Las referencias existentes seguirán funcionando normalmente.
+     */
+    public void clearCache() {
+        this.objectCache.clear();
+    }
 
+    
+    
+    
     /**
      * Marca un objecto como dirty para ser procesado en el commit
      *
@@ -155,6 +168,20 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         this.objectCache.put(rid, o);
     }
 
+    /**
+     * Agrega un objeto al cache de la transacción
+     *
+     * @param rid record id
+     * @param o objeto a referenciar
+     */
+    public synchronized void removeFromCache(Object o) {
+        if (o instanceof IObjectProxy) {
+            this.objectCache.remove(((IObjectProxy)o).___getRid());
+        }
+    }
+
+    
+    
     /**
      * Vuelve a cargar todos los objetos que han sido marcados como modificados con los datos desde las base. Los objetos marcados como Dirty forman
      * parte del siguiente commit
@@ -203,10 +230,19 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
     /**
      * Finaliza la comunicación contra la base de datos.
+     * @param closeDb true si se debe cerrar la conexión a la base
+     */
+    public synchronized void close(boolean closeDb) {
+        activateOnCurrentThread();
+        this.orientdbTransact.shutdown(closeDb);
+    }
+    
+    /**
+     * Finaliza la comunicación contra la base de datos.
      */
     public synchronized void close() {
         activateOnCurrentThread();
-        this.orientdbTransact.shutdown();
+        this.orientdbTransact.shutdown(true);
     }
 
     /**
@@ -256,22 +292,22 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             this.commiting = false;
             this.commitedObject.clear();
 
-//        // refrescar las referencias del caché
-//        String newRid;
-//        for (Iterator<String> iterator = newrids.iterator(); iterator.hasNext();) {
-//            String tempRid = iterator.next();
-//            if (objectCache.get(tempRid).get()!=null) {
-//                // reemplazar el rid con el que le asignó la base luego de persistir el objeto
-//                Object o = objectCache.get(tempRid).get();
-//                objectCache.remove(tempRid);
-//                newRid = this.getRID(o);
-//                objectCache.put(newRid, new WeakReference<>(o));
-//            }
-//        }
+            // refrescar las referencias del caché
+            String newRid;
+            for (Iterator<String> iterator = newrids.iterator(); iterator.hasNext();) {
+                String tempRid = iterator.next();
+                if (objectCache.get(tempRid) != null) {
+                    // reemplazar el rid con el que le asignó la base luego de persistir el objeto
+                    Object o = objectCache.get(tempRid);
+                    objectCache.remove(tempRid);
+                    newRid = sm.getRID(o);
+                    addToCache(newRid, o);
+                }
+            }
             // se opta por eliminar el caché de objetos recuperados de la base en un commit o rollback
             // por lo que futuros pedidos a la base fuera de la transacción devolverá una nueva instancia
             // del objeto.
-            this.objectCache.clear();
+//            this.objectCache.clear();
             newrids.clear();
         } else {
             LOGGER.log(Level.FINER, "TransactionLevel: "+this.nestedTransactionLevel);
@@ -299,10 +335,10 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             value.___rollback();
         }
 
-        // se opta por eliminar el caché de objetos recuperados de la base en un commit o rollback
-        // por lo que futuros pedidos a la base fuera de la transacción devolverá una nueva instancia
-        // del objeto.
-        this.objectCache.clear();
+//        // se opta por eliminar el caché de objetos recuperados de la base en un commit o rollback
+//        // por lo que futuros pedidos a la base fuera de la transacción devolverá una nueva instancia
+//        // del objeto.
+//        this.objectCache.clear();
 
         // limpiar el caché de objetos modificados
         this.dirty.clear();
@@ -743,7 +779,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             //ovToRemove.remove(); movido arriba.
             // si tengo un RID, proceder a removerlo de las colecciones.
             this.dirty.remove(((IObjectProxy) toRemove).___getVertex().getId().toString());
-
+            this.removeFromCache(toRemove);
+            
             // invalidar el objeto
             ((IObjectProxy) toRemove).___setDeletedMark();
         } else {
@@ -796,9 +833,9 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     public void addToTransactionCache(String rid, Object o) {
         getTransactionCount++;
-        if (this.transactionCache.get(rid) == null) {
+        if (this.transactionLoopCache.get(rid) == null) {
             LOGGER.log(Level.FINER, "Forzando el agregado al TransactionCache de " + rid);
-            this.transactionCache.put(rid, o);
+            this.transactionLoopCache.put(rid, o);
         }
     }
 
@@ -808,7 +845,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     public void decreseTransactionCache() {
         getTransactionCount--;
         if (getTransactionCount == 0) {
-            transactionCache.clear();
+            transactionLoopCache.clear();
         }
     }
 
@@ -820,9 +857,61 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     public int getDirtyCount() {
         return this.dirty.size();
     }
+    
+    /**
+     * Retorna el cache de objestos marcados como dirty. Utilizado para actividades
+     * de debug.
+     * @return map de objetos marcados como dirty
+     */
+    public ConcurrentHashMap<String, Object> getDirtyCache() {
+        return this.dirty;
+    }
+
 
     /**
      * Recupera un objecto desde la base a partir del RID del Vértice.
+     * El objeto se recupera desde la base de datos como una nueva instancia
+     * reemplazando la referencia al objeto en el cache si existiera.
+     *
+     * @param rid: ID del vértice a recupear
+     * @return Retorna un objeto de la clase javaClass del vértice.
+     */
+    @Override
+    public Object dbget(String rid) throws UnknownRID, VertexJavaClassNotFound {
+        try {
+            if (this.orientdbTransact == null) {
+                throw new NoOpenTx();
+            }
+            if (rid == null) {
+                throw new UnknownRID();
+            }
+            activateOnCurrentThread();
+            Object ret = null;
+
+            OrientVertex v = this.orientdbTransact.getVertex(rid);
+            if (v == null) {
+                throw new UnknownRID(rid);
+            }
+            String javaClass = v.getType().getCustom("javaClass");
+            if (javaClass == null) {
+                throw new VertexJavaClassNotFound("La clase del Vértice no tiene la propiedad javaClass");
+            }
+            javaClass = javaClass.replaceAll("[\'\"]", "");
+            Class<?> c = Class.forName(javaClass);
+            ret = this.get(c, rid, true);
+ 
+            return ret;
+
+        } catch (ClassNotFoundException ex) {
+            Logger.getLogger(SessionManager.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return null;
+    }
+    
+    
+    /**
+     * Recupera un objecto desde la base a partir del RID del Vértice.
+     * El objeto se recupera a partir del cache de objetos de la transacción.
      *
      * @param rid: ID del vértice a recupear
      * @return Retorna un objeto de la clase javaClass del vértice.
@@ -851,7 +940,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
             // si ret == null, recuperar el objeto desde la base, en caso contrario devolver el objeto desde el caché
             if (ret == null) {
-                objectCache.remove(rid);
 
                 OrientVertex v = this.orientdbTransact.getVertex(rid);
                 if (v == null) {
@@ -881,6 +969,22 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
     /**
      * Recupera un objeto a partir de la clase y el RID correspondiente.
+     * El objeto se recupera desde la base de datos como una nueva instancia
+     * reemplazando la referencia al objeto en el cache si existiera.
+     *
+     * @param <T> clase a devolver
+     * @param type clase a devolver
+     * @param rid RID del vértice de la base
+     * @return objeto de la clase T
+     */
+    @Override
+    public <T> T dbget(Class<T> type, String rid) throws UnknownRID {
+        return this.get(type, rid, true);
+    }
+    
+    /**
+     * Recupera un objeto a partir de la clase y el RID correspondiente.
+     * El objeto se recupera a partir del cache de objetos de la transacción.
      *
      * @param <T> clase a devolver
      * @param type clase a devolver
@@ -894,6 +998,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
     /**
      * Recupera un objeto a partir de la clase y el RID correspondiente.
+     * El objeto se recupera a partir del cache de objetos de la transacción si force es falso
+     * o desde la base de datos en caso contrario.
      *
      * @param <T> clase a devolver
      * @param type clase a devolver
@@ -915,8 +1021,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         if (!force) {
             // si está en el caché, devolver la referencia desde ahí.
             if (objectCache.get(rid) != null) {
-                if (objectCache.get(rid) != null) {
-                    LOGGER.log(Level.FINER, "Objeto Recupeardo del caché.");
+                    LOGGER.log(Level.FINER, "Objeto Recupeardo del caché: "+rid);
                     o = (T) objectCache.get(rid);
 
                     // si fue recuperado del caché, determinar si se ha modificado.
@@ -926,9 +1031,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                         ((IObjectProxy) o).___reload();
                     }
 
-                } else {
-                    objectCache.remove(rid);
-                }
             }
         } else {
             // remover si existe el rid y proceder a crearlo nuevamente.
@@ -944,7 +1046,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             LOGGER.log(Level.FINER, "Obteniendo objeto type: " + type.getSimpleName() + " en RID: " + rid);
 
             // verificar si ya no se ha cargado
-            o = (T) this.transactionCache.get(rid);
+            o = (T) this.transactionLoopCache.get(rid);
 
             if (o == null) {
                 // recuperar el vértice solicitado
@@ -965,8 +1067,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             }
             getTransactionCount--;
             if (getTransactionCount == 0) {
-                LOGGER.log(Level.FINER, "Fin de la transacción. Reseteando el cache.....................");
-                this.transactionCache.clear();
+                LOGGER.log(Level.FINER, "Fin de la transacción. Reseteando el loop cache.....................");
+                this.transactionLoopCache.clear();
             }
 
             // cuardar el objeto en el caché
@@ -983,7 +1085,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             this.auditLog((IObjectProxy) o, Audit.AuditType.READ, "READ", "");
         }
 
-        LOGGER.log(Level.FINER, "Fin get -------------------------------------\n");
+        LOGGER.log(Level.FINER, "Fin get: " + rid +"  hashCode: "+o.hashCode()+" -------------------------------------\n");
         return o;
     }
 
@@ -1258,12 +1360,21 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * Asegurarse que la base esté activa en el thread en el que 
      * se encuentra la transacción
      */
-    private void activateOnCurrentThread() {
+    public void activateOnCurrentThread() {
         LOGGER.log(Level.FINER, "Activando en el Thread actual...");
         LOGGER.log(Level.FINER, "current thread: "+Thread.currentThread().getName());
         if (!this.orientdbTransact.getRawGraph().isActiveOnCurrentThread()) {
             LOGGER.log(Level.FINER, "No estaba activo. se invoca a activateOnCurrentThread()");
-            orientdbTransact.getRawGraph().activateOnCurrentThread();
+//            orientdbTransact.getRawGraph().activateOnCurrentThread();
+            orientdbTransact.makeActive();
         }
+    }
+    
+    /**
+     * Retorna el caché actual de objetos existentes en la transacción.
+     * Se utiliza para debug.
+     */
+    public WeakHashMap<String, Object> getObjectCache() {
+        return this.objectCache;
     }
 }

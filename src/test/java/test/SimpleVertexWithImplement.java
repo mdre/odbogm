@@ -6,9 +6,9 @@
 
 package test;
 
-import net.odbogm.annotations.Ignore;
 import java.util.logging.Logger;
 import net.odbogm.annotations.Entity;
+import net.odbogm.annotations.Ignore;
 
 /**
  *
@@ -23,7 +23,10 @@ public class SimpleVertexWithImplement extends SimpleVertex implements Interface
         super(s, i, f, b, oI, oF, oB);
     }
 
-    public SimpleVertexWithImplement(){
+    public SimpleVertexWithImplement() {
+    }
+    
+    public SimpleVertexWithImplement(String text){
         super();
         this.setS("SV with interface implementation");
     }

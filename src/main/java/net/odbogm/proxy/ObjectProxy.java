@@ -6,11 +6,6 @@
 package net.odbogm.proxy;
 
 //import net.odbogm.annotations.RemoveOrphan;
-import net.odbogm.ObjectStruct;
-import net.odbogm.SessionManager;
-import net.odbogm.cache.ClassDef;
-import net.odbogm.exceptions.CollectionNotSupported;
-import net.odbogm.utils.ReflectionUtils;
 import com.tinkerpop.blueprints.Direction;
 import com.tinkerpop.blueprints.Edge;
 import com.tinkerpop.blueprints.Vertex;
@@ -18,7 +13,6 @@ import com.tinkerpop.blueprints.impls.orient.OrientEdge;
 import com.tinkerpop.blueprints.impls.orient.OrientElement;
 import com.tinkerpop.blueprints.impls.orient.OrientVertex;
 import java.lang.reflect.Field;
-
 import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.HashMap;
@@ -26,19 +20,21 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-//import net.bytebuddy.implementation.bind.annotation.Origin;
-//import net.bytebuddy.implementation.bind.annotation.RuntimeType;
-//import net.bytebuddy.implementation.bind.annotation.SuperCall;
 import net.odbogm.LogginProperties;
 import net.odbogm.ObjectMapper;
+import net.odbogm.ObjectStruct;
+import net.odbogm.SessionManager;
 import net.odbogm.Transaction;
 import net.odbogm.agent.ITransparentDirtyDetector;
 import net.odbogm.annotations.Audit.AuditType;
 import net.odbogm.annotations.Indirect;
 import net.odbogm.annotations.RemoveOrphan;
+import net.odbogm.cache.ClassDef;
+import net.odbogm.exceptions.CollectionNotSupported;
 import net.odbogm.exceptions.DuplicateLink;
 import net.odbogm.exceptions.InvalidObjectReference;
 import net.odbogm.exceptions.ObjectMarkedAsDeleted;
+import net.odbogm.utils.ReflectionUtils;
 import net.odbogm.utils.ThreadHelper;
 import net.odbogm.utils.VertexUtils;
 import net.sf.cglib.proxy.MethodInterceptor;
@@ -453,13 +449,13 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     @Override
     public synchronized void ___loadLazyLinks() {
         if (this.___loadLazyLinks) {
+            LOGGER.log(Level.FINER, "Base class: " + this.___baseClass.getSimpleName());
             LOGGER.log(Level.FINER, "iniciando loadLazyLinks...");
             // marcar que ya se han incorporado todo los links
             this.___loadLazyLinks = false;
 
             if (this.___baseElement instanceof OrientVertex) {
                 OrientVertex ov = (OrientVertex) this.___baseElement;
-                LOGGER.log(Level.FINER, "Base class: " + this.___baseClass.getSimpleName());
                 ClassDef classdef = this.___transaction.getObjectMapper().getClassDef(this.___proxyObject);
 
                 // hidratar los atributos @links
@@ -505,7 +501,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
                                 // si es una interface llamar a get solo con el RID.
                                 Object innerO = fc.isInterface() ? this.___transaction.get(vertice.getId().toString()) : this.___transaction.get(fc, vertice.getId().toString());
-                                LOGGER.log(Level.FINER, "Inner object " + field + ": " + (innerO == null ? "NULL" : "" + innerO.toString()) + "  FC: " + fc.getSimpleName() + "   innerO.class: " + innerO.getClass().getSimpleName());
+                                LOGGER.log(Level.FINER, "Inner object " + field + ": " + (innerO == null ? "NULL" : "" + innerO.toString()) + "  FC: " + fc.getSimpleName() + "   innerO.class: " + innerO.getClass().getSimpleName()+" hashCode: "+System.identityHashCode(innerO));
                                 fLink.set(this.___proxyObject, fc.cast(innerO));
                                 duplicatedLinkGuard = true;
 
@@ -513,6 +509,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                             } else if (false) {
                                 throw new DuplicateLink();
                             }
+                            LOGGER.log(Level.FINER, "FIN hydrate innerO: " + vertice.getId()+"^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
                         }
                         fLink.setAccessible(acc);
                     } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
@@ -525,12 +522,13 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     }
 
     private synchronized void commitObjectChange() {
-        this.___transaction.getSessionManager().getGraphdb().getRawGraph().activateOnCurrentThread();
+//        this.___transaction.getSessionManager().getGraphdb().getRawGraph().activateOnCurrentThread();
+        this.___transaction.activateOnCurrentThread();
         LOGGER.log(Level.FINER, "iniciando commit interno " + this.___baseElement.getId() + ".... (dirty mark:" + ___dirty + ")");
         // si ya estaba marcado como dirty no volver a procesarlo.
         if (!___dirty) {
             if (this.___baseElement.getGraph() == null) {
-                this.___transaction.getSessionManager().getGraphdb().attach(this.___baseElement);
+                this.___transaction.getGraphdb().attach(this.___baseElement);
             }
             // FIXME: debería pasar este map como propiedad para optimizar la velocidad?
             Map<String, Object> vmap = this.___baseElement.getProperties();
@@ -735,10 +733,13 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         LOGGER.log(Level.FINER, "valid: " + this.___isValidObject);
         
         if (this.___dirty) {
-            this.___transaction.getSessionManager().getGraphdb().getRawGraph().activateOnCurrentThread();
+            // asegurarse que está activa la base.
+            this.___transaction.activateOnCurrentThread();
+            
             // asegurarse que está atachado
             if (this.___baseElement.getGraph() == null) {
-                this.___transaction.getSessionManager().getGraphdb().attach(this.___baseElement);
+                LOGGER.log(Level.FINER, "El objeto no está atachado!");
+                this.___transaction.getGraphdb().attach(this.___baseElement);
             }
 
             // obtener la definición de la clase
@@ -853,7 +854,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                 ((ITransparentDirtyDetector) innerO).___ogm___setDirty(false);
                             }
 
-                            OrientEdge oe = this.___transaction.getSessionManager().getGraphdb().addEdge("class:" + graphRelationName, ov, ((IObjectProxy) innerO).___getVertex(), graphRelationName);
+                            OrientEdge oe = this.___transaction.getGraphdb().addEdge("class:" + graphRelationName, ov, ((IObjectProxy) innerO).___getVertex(), graphRelationName);
                             if (this.___transaction.getSessionManager().isAuditing()) {
                                 this.___transaction.getSessionManager().auditLog(this, AuditType.WRITE, "ADD LINK: " + graphRelationName, oe);
                             }
@@ -944,7 +945,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                         }
 
                                         // vincular el nodo
-                                        OrientEdge oe = this.___transaction.getSessionManager().getGraphdb().addEdge("class:" + graphRelationName, this.___getVertex(), ((IObjectProxy) colObject).___getVertex(), graphRelationName);
+                                        OrientEdge oe = this.___transaction.getGraphdb().addEdge("class:" + graphRelationName, this.___getVertex(), ((IObjectProxy) colObject).___getVertex(), graphRelationName);
 
                                         if (this.___transaction.getSessionManager().isAuditing()) {
                                             this.___transaction.getSessionManager().auditLog(this, AuditType.WRITE, "LINKLIST ADD: " + graphRelationName, oe);
@@ -1034,7 +1035,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                             // crear un link entre los dos objetos.
                                             LOGGER.log(Level.FINER, "-----> agregando un LinkList al Map!");
                                             //                                        oe = SessionManager.this.graphdb.addEdge("", fVertexs.get(frid), fVertexs.get(llRID), ffield);
-                                            oe = this.___transaction.getSessionManager().getGraphdb().addEdge("class:" + graphRelationName, (OrientVertex) this.___baseElement, ((IObjectProxy) linkedO).___getVertex(), graphRelationName);
+                                            oe = this.___transaction.getGraphdb().addEdge("class:" + graphRelationName, (OrientVertex) this.___baseElement, ((IObjectProxy) linkedO).___getVertex(), graphRelationName);
                                             // actualizar el edge con los datos de la key.
                                             oe.setProperties(this.___transaction.getObjectMapper().simpleMap(imk));
 
@@ -1095,6 +1096,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
      */
     @Override
     public void ___reload() {
+        this.___transaction.activateOnCurrentThread();
         this.___baseElement.reload();
     }
 
@@ -1156,6 +1158,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     @Override
     public synchronized void ___rollback() {
         LOGGER.log(Level.FINER, "\n\n******************* ROLLBACK *******************\n\n");
+        this.___transaction.activateOnCurrentThread();
         // si es un objeto nuevo
         LOGGER.log(Level.FINER, "RID: " + this.___baseElement.getIdentity().toString() + " Nueva?: " + this.___baseElement.getIdentity().isNew());
         if (this.___baseElement.getIdentity().isNew()) {

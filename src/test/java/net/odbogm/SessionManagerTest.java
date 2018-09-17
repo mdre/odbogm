@@ -5,6 +5,23 @@
  */
 package net.odbogm;
 
+import com.orientechnologies.orient.core.sql.OCommandSQL;
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import net.odbogm.agent.ITransparentDirtyDetector;
+import net.odbogm.exceptions.ReferentialIntegrityViolation;
+import net.odbogm.exceptions.UnknownRID;
+import net.odbogm.proxy.IObjectProxy;
+import net.odbogm.security.*;
+import net.odbogm.utils.DateHelper;
+import org.junit.After;
+import org.junit.AfterClass;
+import static org.junit.Assert.*;
+import org.junit.Before;
+import org.junit.BeforeClass;
+import org.junit.Test;
 import test.EdgeAttrib;
 import test.EnumTest;
 import test.IndirectObject;
@@ -13,24 +30,6 @@ import test.SimpleVertex;
 import test.SimpleVertexEx;
 import test.SimpleVertexInterfaceAttr;
 import test.SimpleVertexWithEmbedded;
-import com.orientechnologies.orient.core.sql.OCommandSQL;
-import net.odbogm.proxy.IObjectProxy;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.logging.Level;
-import net.odbogm.agent.ITransparentDirtyDetector;
-import net.odbogm.exceptions.ReferentialIntegrityViolation;
-import net.odbogm.exceptions.UnknownRID;
-import net.odbogm.security.*;
-import net.odbogm.utils.DateHelper;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
-import static org.junit.Assert.*;
 
 /**
  *
@@ -66,7 +65,8 @@ public class SessionManagerTest {
 //                .setClassLevelLog(ObjectProxy.class, Level.FINER)
 //                .setClassLevelLog(Transaction.class, Level.FINER)
 //                .setClassLevelLog(ArrayListLazyProxy.class, Level.FINER)
-                .setClassLevelLog(SObject.class, Level.FINER)
+//                .setClassLevelLog(SObject.class, Level.FINER)
+//                .setClassLevelLog(TransparentDirtyDetectorInstrumentator.class, Level.FINER)
                 ;
 
         System.out.println("Begin");
@@ -132,7 +132,7 @@ public class SessionManagerTest {
 
         System.out.println("Recuperar el objeto de la base");
         String rid = ((IObjectProxy) result).___getRid();
-        expResult = this.sm.get(SimpleVertex.class, rid);
+        expResult = this.sm.dbget(SimpleVertex.class, rid);
 
         assertEquals(0, sm.getDirtyCount());
 
@@ -162,13 +162,16 @@ public class SessionManagerTest {
         SimpleVertex expResult = sv;
 
         SimpleVertex result = sm.store(sv);
-
+        System.out.println("result hc: "+System.identityHashCode(sv));
+        
         assertEquals(expResult.getFecha(), result.getFecha());
         sm.commit();
         assertEquals(expResult.getFecha(), result.getFecha());
         String rid = sm.getRID(result);
 
-        SimpleVertex ret = sm.get(SimpleVertex.class, rid);
+        SimpleVertex ret = sm.dbget(SimpleVertex.class, rid);
+        System.out.println("dbget hc: "+System.identityHashCode(ret));
+        
         assertEquals(expResult.getFecha(), ret.getFecha());
 
     }
@@ -202,7 +205,7 @@ public class SessionManagerTest {
 
         System.out.println("Recuperar el objeto de la base");
         String rid = ((IObjectProxy) result).___getRid();
-        expResult = this.sm.get(SimpleVertexEx.class, rid);
+        expResult = this.sm.dbget(SimpleVertexEx.class, rid);
 
         assertEquals(0, sm.getDirtyCount());
 
@@ -236,7 +239,7 @@ public class SessionManagerTest {
         System.out.println("Recuperar el objeto de la base");
         String rid = ((IObjectProxy) result).___getRid();
 
-        SimpleVertexEx expResult = this.sm.get(SimpleVertexEx.class, rid);
+        SimpleVertexEx expResult = this.sm.dbget(SimpleVertexEx.class, rid);
 
         assertEquals(0, sm.getDirtyCount());
         // verificar que el resultado implemente la interface 
@@ -289,8 +292,8 @@ public class SessionManagerTest {
 
         // recuperar los objetos desde la base.
         System.out.println("Recuperar los objetos sin vincular....");
-        SimpleVertex rsv = sm.get(SimpleVertex.class, svRid);
-        SimpleVertexEx rsve = sm.get(SimpleVertexEx.class, sveRid);
+        SimpleVertex rsv = sm.dbget(SimpleVertex.class, svRid);
+        SimpleVertexEx rsve = sm.dbget(SimpleVertexEx.class, sveRid);
         System.out.println("rsv: " + sm.getRID(rsv));
         System.out.println("rsve: " + sm.getRID(rsve));
         System.out.println("\n\n");
@@ -305,7 +308,7 @@ public class SessionManagerTest {
 
         // recuperar nuevamente
         System.out.println("Recupearndo el objeto vinculado...");
-        SimpleVertexEx completo = sm.get(SimpleVertexEx.class, sveRid);
+        SimpleVertexEx completo = sm.dbget(SimpleVertexEx.class, sveRid);
         System.out.println("c.svinner: " + completo.getSvinner());
         assertNotNull(completo.getSvinner());
         System.out.println("c.svinner: " + sm.getRID(completo.getSvinner()) + " <---> " + svRid);
@@ -346,7 +349,7 @@ public class SessionManagerTest {
         System.out.println("Objeto almacenado en: " + rid);
         System.out.println("");
         System.out.println("");
-        SimpleVertexEx expResult = sm.get(SimpleVertexEx.class, rid);
+        SimpleVertexEx expResult = sm.dbget(SimpleVertexEx.class, rid);
 
         System.out.println("");
         System.out.println("");
@@ -426,7 +429,7 @@ public class SessionManagerTest {
         System.out.println("");
         System.out.println("");
         System.out.println("========= comienzo del get =================================================");
-        SimpleVertexEx expResult = sm.get(SimpleVertexEx.class, rid);
+        SimpleVertexEx expResult = sm.dbget(SimpleVertexEx.class, rid);
         assertEquals(0, sm.getDirtyCount());
         System.out.println("========= fin del get =================================================");
 
@@ -474,7 +477,7 @@ public class SessionManagerTest {
         sm.commit();
         assertEquals(0, sm.getDirtyCount());
 
-        SimpleVertexEx expResult = sm.get(SimpleVertexEx.class, rid);
+        SimpleVertexEx expResult = sm.dbget(SimpleVertexEx.class, rid);
 
         assertEquals(expResult.i, result.i);
         assertEquals(expResult.alSV.size(), result.alSV.size());
@@ -521,7 +524,7 @@ public class SessionManagerTest {
         System.out.println("Objeto almacenado en: " + rid + " loop rid: " + looprid);
         System.out.println("");
         System.out.println("");
-        SimpleVertexEx expResult = sm.get(SimpleVertexEx.class, rid);
+        SimpleVertexEx expResult = sm.dbget(SimpleVertexEx.class, rid);
 
         System.out.println("");
         System.out.println("");
@@ -577,7 +580,7 @@ public class SessionManagerTest {
         // validar que no se modifique la lista
         assertNull(stored.lSV);
         
-        SimpleVertexEx retrieved = sm.get(SimpleVertexEx.class, rid);
+        SimpleVertexEx retrieved = sm.dbget(SimpleVertexEx.class, rid);
         System.out.println("retrieved: " + retrieved + " : " + retrieved.getAlSVE());
         System.out.println("stored: " + stored + " : " + stored.getAlSVE() + "\n\n");
         int iretSize = retrieved.getAlSVE().size();
@@ -593,10 +596,14 @@ public class SessionManagerTest {
         sm.commit();
         System.out.println("tercer commit ----------------------------------------------------------\n");
         
-        retrieved = sm.get(SimpleVertexEx.class, rid);
+        System.out.println("stored hc: "+stored.hashCode());
+        System.out.println("cache: "+sm.getCurrentTransaction().getObjectCache());
         
-        System.out.println("retrieved: " + retrieved + " : " + retrieved.getAlSVE());
-        System.out.println("stored: " + stored + " : " + stored.getAlSVE());
+        System.out.println("recuperar objetos.");
+        retrieved = sm.get(SimpleVertexEx.class, rid,true);
+
+        System.out.println("retrieved: " + retrieved + " : " + retrieved.getAlSVE()+"  hc: "+retrieved.hashCode());
+        System.out.println("stored: " + stored + " : " + stored.getAlSVE()+"  hc: "+stored.hashCode());
         
         assertEquals(retrieved.getAlSVE().size(), stored.getAlSVE().size());
         // validar que no se modifique la lista
@@ -633,7 +640,7 @@ public class SessionManagerTest {
         sm.commit();
         System.out.println("segundo commit finalizado ----------------------------------------------------------\n");
 
-        SimpleVertexEx retrieved = sm.get(SimpleVertexEx.class, rid);
+        SimpleVertexEx retrieved = sm.dbget(SimpleVertexEx.class, rid);
         System.out.println("retrieved: " + retrieved + " : " + retrieved.getHmSVE());
         System.out.println("stored: " + stored + " : " + stored.getHmSVE() + "\n\n");
         int iretSize = retrieved.getHmSVE().size();
@@ -650,7 +657,7 @@ public class SessionManagerTest {
         sm.commit();
         System.out.println("tercer commit ----------------------------------------------------------\n");
 
-        retrieved = sm.get(SimpleVertexEx.class, rid);
+        retrieved = sm.dbget(SimpleVertexEx.class, rid);
 
         System.out.println("retrieved: " + retrieved + " : " + retrieved.getHmSVE());
         System.out.println("stored: " + stored + " : " + stored.getHmSVE());
@@ -687,10 +694,10 @@ public class SessionManagerTest {
         sm.commit();
         System.out.println("segundo commit finalizado ----------------------------------------------------------\n");
 
-        SimpleVertexEx retrieved = sm.get(SimpleVertexEx.class, rid);
+        SimpleVertexEx retrieved = sm.dbget(SimpleVertexEx.class, rid);
         System.out.println("1 ----------");
 //        System.out.println("retrieved: " + retrieved + " : " + retrieved.getOhmSVE());
-        System.out.println("retrieved: " + retrieved + " : ");
+        System.out.println("retrieved: " + retrieved + " : " + retrieved.getOhmSVE());
         System.out.println("2 ----------");
         System.out.println("stored: " + stored + " : " + stored.getOhmSVE() + "\n\n");
         System.out.println("3 ----------");
@@ -708,10 +715,10 @@ public class SessionManagerTest {
         sm.commit();
         System.out.println("tercer commit ----------------------------------------------------------\n");
 
-        retrieved = sm.get(SimpleVertexEx.class, rid);
+        retrieved = sm.get(SimpleVertexEx.class, rid,true);
 
-        System.out.println("retrieved: " + retrieved + " : " + retrieved.getOhmSVE());
-        System.out.println("stored: " + stored + " : " + stored.getOhmSVE());
+        System.out.println("retrieved: " + retrieved + " : " + retrieved.getOhmSVE()+"  hc: "+retrieved.hashCode());
+        System.out.println("stored: " + stored + " : " + stored.getOhmSVE()+"  hc: "+stored.hashCode());
 
         assertEquals(retrieved.getOhmSVE().size(), stored.getOhmSVE().size());
 
@@ -731,7 +738,7 @@ public class SessionManagerTest {
 
         String rid = sm.getRID(stored);
 
-        Object getted = this.sm.get(rid);
+        Object getted = this.sm.dbget(rid);
         assertTrue(getted instanceof SimpleVertexEx);
 
         System.out.println("***************************************************************");
@@ -941,7 +948,7 @@ public class SessionManagerTest {
         System.out.println("store objeto with Interface as attr (SimpleVertexWithInterfaceAttr)");
         System.out.println("***************************************************************");
 
-        SimpleVertexInterfaceAttr sv = new SimpleVertexInterfaceAttr();
+        SimpleVertexInterfaceAttr sv = new SimpleVertexInterfaceAttr("simple vertex with interface attr");
         SimpleVertexInterfaceAttr expResult = sv;
 
         assertEquals(0, sm.getDirtyCount());
@@ -958,22 +965,33 @@ public class SessionManagerTest {
 
         System.out.println("Recuperar el objeto de la base");
         String rid = ((IObjectProxy) result).___getRid();
-        expResult = this.sm.get(SimpleVertexInterfaceAttr.class, rid);
+        expResult = this.sm.dbget(SimpleVertexInterfaceAttr.class, rid);
 
         assertEquals(0, sm.getDirtyCount());
 
+        System.out.println("1 dirty: "+sm.getDirtyCount());
+        System.out.println("hc: "+expResult.hashCode());
+        System.out.println("2 dirty: "+sm.getDirtyCount());
+        
         // verificar que el resultado implemente la interface 
         assertTrue(expResult instanceof IObjectProxy);
 
         // verificar que todos los valores sean iguales
         assertEquals(((IObjectProxy) expResult).___getRid(), ((IObjectProxy) result).___getRid());
+        System.out.println("3 dirty: "+sm.getDirtyCount()+" "+sm.getCurrentTransaction().getDirtyCache());
 
         assertEquals(expResult.getI(), sv.getI());
+        System.out.println("4 dirty: "+sm.getDirtyCount()+" "+sm.getCurrentTransaction().getDirtyCache());
 //        assertEquals((float)expResult.getF(), (float)sv.getF());
         assertEquals(expResult.getS(), sv.getS());
+        System.out.println("5 dirty: "+sm.getDirtyCount());
         assertEquals(expResult.getoB(), sv.getoB());
+        System.out.println("6 dirty: "+sm.getDirtyCount());
         assertEquals(expResult.getoF(), sv.getoF());
+        System.out.println("7 dirty: "+sm.getDirtyCount());
         assertEquals(expResult.getoI(), sv.getoI());
+        System.out.println("8 dirty: "+sm.getDirtyCount());
+        
     }
 
     /**
@@ -1000,7 +1018,7 @@ public class SessionManagerTest {
 
         String rid = ((IObjectProxy) result).___getRid();
 
-        SimpleVertexWithEmbedded ret = this.sm.get(SimpleVertexWithEmbedded.class, rid);
+        SimpleVertexWithEmbedded ret = this.sm.dbget(SimpleVertexWithEmbedded.class, rid);
 
         assertEquals(svemb.getStringlist().size(), ret.getStringlist().size());
         assertEquals(svemb.getSimplemap().size(), ret.getSimplemap().size());
@@ -1034,7 +1052,7 @@ public class SessionManagerTest {
         // verificar el rollback con embedded.
         // agrego una string a la lista
         System.out.println("Verificando rollback....");
-        SimpleVertexWithEmbedded retRollback = this.sm.get(SimpleVertexWithEmbedded.class, rid);
+        SimpleVertexWithEmbedded retRollback = this.sm.dbget(SimpleVertexWithEmbedded.class, rid);
         int size = retRollback.getStringlist().size();
         System.out.println("Elementos en la lista: " + size);
         retRollback.getStringlist().add("rollback");
@@ -1132,7 +1150,7 @@ public class SessionManagerTest {
 
         String reg = ((IObjectProxy) ssv).___getRid();
         System.out.println("RID: " + reg);
-        SSimpleVertex rssv = this.sm.get(SSimpleVertex.class, reg);
+        SSimpleVertex rssv = this.sm.dbget(SSimpleVertex.class, reg);
 
         System.out.println("SecurityState: "+rssv.getSecurityState());
         
@@ -1146,19 +1164,19 @@ public class SessionManagerTest {
 
         this.sm.setLoggedInUser(una);
         System.out.println("Login UserNoAccess");
-        SSimpleVertex ssvna = this.sm.get(SSimpleVertex.class, reg);
+        SSimpleVertex ssvna = this.sm.dbget(SSimpleVertex.class, reg);
         System.out.println("State: " + ssvna.getSecurityState());
         assertTrue(ssvna.getSecurityState() == AccessRight.NOACCESS);
 
         System.out.println("Login UserRead");
         this.sm.setLoggedInUser(ur);
-        SSimpleVertex ssvr = this.sm.get(SSimpleVertex.class, reg);
+        SSimpleVertex ssvr = this.sm.dbget(SSimpleVertex.class, reg);
         System.out.println("State: " + ssvr.getSecurityState());
         assertTrue(ssvr.getSecurityState() == AccessRight.READ);
 
         this.sm.setLoggedInUser(uw);
         System.out.println("Login UserWrite");
-        SSimpleVertex ssvw = this.sm.get(SSimpleVertex.class, reg);
+        SSimpleVertex ssvw = this.sm.dbget(SSimpleVertex.class, reg);
         System.out.println("State: " + ssvw.getSecurityState());
         assertTrue(ssvw.getSecurityState() == AccessRight.WRITE);
 
@@ -1169,7 +1187,7 @@ public class SessionManagerTest {
         String unaRID = sm.getRID(una);
         sm.delete(sgna);
         sm.commit();
-        una = sm.get(UserSID.class,unaRID);
+        una = sm.dbget(UserSID.class,unaRID);
         
         assertEquals(una.getGroups().size(), 1);
         
@@ -1177,7 +1195,7 @@ public class SessionManagerTest {
         String urwRID = sm.getRID(urw);
         urw.removeGroup(sgw);
         sm.commit();
-        urw = sm.get(UserSID.class,urwRID);
+        urw = sm.dbget(UserSID.class,urwRID);
         
         assertEquals(urw.getGroups().size(), 1);
         
@@ -1305,7 +1323,7 @@ public class SessionManagerTest {
         String rid = ((IObjectProxy) result).___getRid();
         System.out.println("RID: " + rid);
 
-        expResult = t1.get(SimpleVertex.class, rid);
+        expResult = t1.dbget(SimpleVertex.class, rid);
 
         assertEquals(0, t1.getDirtyCount());
 
@@ -1323,7 +1341,7 @@ public class SessionManagerTest {
         assertEquals(expResult.getoI(), sv.getoI());
 
         // recuperar el mismo registro desde la otra Transacción
-        SimpleVertex expResultT2 = t2.get(SimpleVertex.class, rid);
+        SimpleVertex expResultT2 = t2.dbget(SimpleVertex.class, rid);
 
         // modificar el objeto en la T1
         expResult.setS("modificado en t1");
@@ -1365,14 +1383,14 @@ public class SessionManagerTest {
 
         System.out.println("Recuperar el objeto de la base");
         String rid = ((IObjectProxy) result).___getRid();
-        expResult = this.sm.get(SimpleVertex.class, rid);
+        expResult = this.sm.dbget(SimpleVertex.class, rid);
 
         System.out.println("Eliminar el objeto: " + rid);
         sm.delete(expResult);
         sm.commit();
 
         try {
-            sm.get(rid);
+            sm.dbget(rid);
             fail("El objeto aún exite!!!");
         } catch (UnknownRID urid) {
             System.out.println("El objeto fue borrado!");
@@ -1420,7 +1438,7 @@ public class SessionManagerTest {
         sm.delete(rsva);
         sm.commit();
         try {
-            sm.get(svaRID);
+            sm.dbget(svaRID);
             fail("El objeto aún existe!!!");
         } catch (Exception e) {
             System.out.println("Todo ok!");
@@ -1456,7 +1474,7 @@ public class SessionManagerTest {
         System.out.println("Verificar que todo esté ok");
         
         try {
-            sm.get(csveRid);
+            sm.dbget(csveRid);
             fail("El objeto aún existe!!!");
         } catch (Exception e) {
             System.out.println("Todo ok!");
@@ -1465,7 +1483,7 @@ public class SessionManagerTest {
         System.out.println("Verificar los CascadeDelete...");
         for (String object : alRid) {
             try {
-                sm.get(object);
+                sm.dbget(object);
                 fail("El objeto "+object+" aún existe!!!");
             } catch (Exception e) {
                 System.out.println("Todo ok!");
@@ -1499,14 +1517,14 @@ public class SessionManagerTest {
         
         // recupear de la base
         System.out.println("recuperar nuevamente...");
-        svExConVector = sm.get(SimpleVertexEx.class, svExCon);
+        svExConVector = sm.dbget(SimpleVertexEx.class, svExCon);
         System.out.println("size: "+svExConVector.alSV.size());
         
         for (SimpleVertex simpleVertex : svExConVector.alSV) {
             System.out.println(":: "+sm.getRID(simpleVertex));
         }
         
-        svmodificado_a_borrar = sm.get(SimpleVertex.class, svModif);
+        svmodificado_a_borrar = sm.dbget(SimpleVertex.class, svModif);
         
         System.out.println("realizando una modificación previo al borrado");
         svmodificado_a_borrar.setS("modificado previo borrado");
@@ -1521,7 +1539,7 @@ public class SessionManagerTest {
         svExConVector = null;
         
         try {
-            svmodificado_a_borrar = sm.get(SimpleVertex.class, svModif);
+            svmodificado_a_borrar = sm.dbget(SimpleVertex.class, svModif);
             fail("El objeto aún existe!!! ");
         } catch (Exception e) {
             System.out.println("todo ok.");
@@ -1557,7 +1575,7 @@ public class SessionManagerTest {
         System.out.println("Liberar el objeto  "+result+"...");
         result = null;
         
-        SimpleVertexEx expResult = this.sm.get(SimpleVertexEx.class, rid);
+        SimpleVertexEx expResult = this.sm.dbget(SimpleVertexEx.class, rid);
         System.out.println("Nueva referencia: "+expResult);
         
         SimpleVertex sv = expResult.getSvinner();
@@ -1570,7 +1588,7 @@ public class SessionManagerTest {
         sm.commit();
 
         try {
-            sm.get(svrid);
+            sm.dbget(svrid);
             fail("El objeto aún exite!!!");
         } catch (UnknownRID urid) {
             System.out.println("El objeto fue borrado!");
@@ -1604,13 +1622,13 @@ public class SessionManagerTest {
         sm.commit();
         System.out.println("----------------------------------");
         try {
-            sm.get(srvso);
+            sm.dbget(srvso);
             fail("El objeto padre aún exite!!!");
         } catch (UnknownRID urid) {
             System.out.println("El objeto padre fue borrado!");
         }
         try {
-            sm.get(srsvinner);
+            sm.dbget(srsvinner);
             fail("El objeto Orphan aún exite!!!");
         } catch (UnknownRID urid) {
             System.out.println("El objeto Orphan fue borrado!");
@@ -1627,7 +1645,7 @@ public class SessionManagerTest {
         svro = null;
         storedSVE = null;
         
-        SimpleVertexEx rirSVEX = sm.get(SimpleVertexEx.class, ridRO);
+        SimpleVertexEx rirSVEX = sm.dbget(SimpleVertexEx.class, ridRO);
         svro = null;
         
         System.out.println("rid principal: "+sm.getRID(rirSVEX));
@@ -1638,7 +1656,7 @@ public class SessionManagerTest {
         rirSVEX.initArrayList();
         sm.commit();
         
-        rirSVEX = sm.get(SimpleVertexEx.class,sm.getRID(rirSVEX));
+        rirSVEX = sm.dbget(SimpleVertexEx.class,sm.getRID(rirSVEX));
         String sRSV1 = sm.getRID(rirSVEX.getAlSV().get(0));
         SimpleVertex svToRemove = rirSVEX.getAlSV().get(1);
         String sRSV2 = sm.getRID(svToRemove);
@@ -1655,7 +1673,7 @@ public class SessionManagerTest {
         
         System.out.println("verificar que el objeto no exista");
         try {
-            SimpleVertex rsv1borrado = sm.get(SimpleVertex.class, sRSV1);
+            SimpleVertex rsv1borrado = sm.dbget(SimpleVertex.class, sRSV1);
         } catch (UnknownRID urid) {
             System.out.println("Exito! El objeto fue borrado.");
         }
@@ -1754,7 +1772,7 @@ public class SessionManagerTest {
         System.out.println("Indirect RID: "+inLinked);
         
         
-        IndirectObject sioIndirectLinked = sm.get(IndirectObject.class,inLinked);
+        IndirectObject sioIndirectLinked = sm.dbget(IndirectObject.class,inLinked);
         assertNotNull(sioIndirectLinked.getIndirectLink());
         System.out.println("IndirectLinked to RID: "+sm.getRID(sioIndirectLinked.getIndirectLink()));
         
@@ -1772,7 +1790,7 @@ public class SessionManagerTest {
         sm.commit();
         
         // refrescar el objeto indirecto
-        indirectLinked = sm.get(IndirectObject.class, inLinked);
+        indirectLinked = sm.dbget(IndirectObject.class, inLinked);
         assertEquals(indirectLinked.getAlIndirectLinked().size(), 2);
         
         // Test sobre los HashMap
@@ -1791,7 +1809,7 @@ public class SessionManagerTest {
         System.out.println("Direct HM 2: "+sm.getRID(ioHMLinked2));
         
         // refrescar el objeto indirecto
-        indirectLinked = sm.get(IndirectObject.class, inLinked);
+        indirectLinked = sm.dbget(IndirectObject.class, inLinked);
         assertEquals(indirectLinked.getHmIndirectLinked().size(), 2);
         
         //=====================================================
@@ -1822,7 +1840,7 @@ public class SessionManagerTest {
         origen = null;
         
         // recupear el origen
-        origen = sm.get(IndirectObject.class, origenRID);
+        origen = sm.dbget(IndirectObject.class, origenRID);
         origen.setTestData("modificado");
         
         ind1 = origen.getAlDirectLinked().get(0);
@@ -1842,12 +1860,12 @@ public class SessionManagerTest {
         origen = null;
         
         // ahora recupear un objeto indirecto y desde éste recuper el origen. 
-        ind1 = sm.get(IndirectObject.class, ind1RID);
+        ind1 = sm.dbget(IndirectObject.class, ind1RID);
         
         origen = ind1.getIndirectLinkedFromAL();
         origen.setTestData("modif2");
         
-        ind2 = sm.get(IndirectObject.class, ind2RID);
+        ind2 = sm.dbget(IndirectObject.class, ind2RID);
         
         assertEquals(ind1.getIndirectLinkedFromAL().getTestData(), ind2.getIndirectLinkedFromAL().getTestData());
         
@@ -1855,6 +1873,36 @@ public class SessionManagerTest {
         
         
     }
+
+    @Test
+    public void testTransactionCache() {
+        System.out.println("\n\n\n");
+        System.out.println("***************************************************************");
+        System.out.println("Probar el cache de transacción");
+        System.out.println("***************************************************************");
+        
+        SimpleVertexEx sve = new SimpleVertexEx();
+        SimpleVertexEx ssve = sm.store(sve);
+        System.out.println(""+sm.getCurrentTransaction().getObjectCache());
+        sm.commit();
+        ssve.setS("Referencia");
+        System.out.println(""+sm.getCurrentTransaction().getObjectCache());
+        String rid = sm.getRID(ssve);
+        
+        System.out.println(""+sm.getCurrentTransaction().getObjectCache());
+        // obtener el objeto desde la transacción en curso. Debería ser el mismo que ssve.
+        SimpleVertexEx rsve = sm.get(SimpleVertexEx.class,rid);
+        
+        System.out.println("ssve: "+System.identityHashCode(ssve));
+        System.out.println("ssve: "+System.identityHashCode(rsve));
+        
+        assertEquals(ssve.getS(), rsve.getS());
+        
+    }
+
+
+
+
 //    @Test
 //    public void testTransactions() {
 //        try {

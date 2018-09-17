@@ -5,11 +5,11 @@
  */
 package net.odbogm;
 
-import net.odbogm.exceptions.IncorrectRIDField;
-import net.odbogm.exceptions.UnknownRID;
 import com.tinkerpop.blueprints.impls.orient.OrientEdge;
 import java.util.HashMap;
 import java.util.List;
+import net.odbogm.exceptions.IncorrectRIDField;
+import net.odbogm.exceptions.UnknownRID;
 import net.odbogm.exceptions.VertexJavaClassNotFound;
 
 /**
@@ -44,6 +44,27 @@ public interface IActions {
 
     public interface IGet {
 
+        /**
+         * Recupera una nueva instancia desde la base de datos y cambia la existente en el cache.
+         * 
+         * @param rid
+         * @return
+         * @throws UnknownRID 
+         */
+        Object dbget(String rid) throws UnknownRID;
+        
+        /**
+         * Recupera una nueva instancia desde la base de datos y cambia la existente en el cache.
+         * 
+         * @param <T> Clase del objeto a devolver
+         * @param type clase
+         * @param rid RecordID
+         * @return un objeto de la clase indicada recuperado desde la base de datos.
+         * @throws UnknownRID
+         * @throws VertexJavaClassNotFound 
+         */
+        <T> T dbget(Class<T> type, String rid) throws UnknownRID, VertexJavaClassNotFound;
+        
         // load a single object of Class type, with id id
         Object get(String rid) throws UnknownRID;
 

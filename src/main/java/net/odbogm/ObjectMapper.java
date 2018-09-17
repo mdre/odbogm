@@ -352,8 +352,8 @@ public class ObjectMapper {
                 f.setAccessible(acc);
             }
         }
-        // insertar el objeto en el transactionCache
-        t.transactionCache.put(v.getId().toString(), oproxied);
+        // insertar el objeto en el transactionLoopCache
+        t.transactionLoopCache.put(v.getId().toString(), oproxied);
 
         // ********************************************************************************************
         // procesar los enum

@@ -6,7 +6,6 @@
 
 package test;
 
-import java.time.LocalDate;
 import java.util.Date;
 import java.util.Objects;
 import java.util.UUID;
@@ -144,11 +143,11 @@ public class SimpleVertex {
         this.oB = oB;
     }
 
-    @Override
-    public int hashCode() {
-        int hash = 7;
-        return hash;
-    }
+//    @Override
+//    public int hashCode() {
+//        int hash = 7;
+//        return hash;
+//    }
 
     @Override
     public boolean equals(Object obj) {
