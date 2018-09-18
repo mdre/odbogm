@@ -647,6 +647,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                             String garbage = oCol.toString();
                         }
                     }
+                    f.setAccessible(acc);
                 } catch (NoSuchFieldException | IllegalArgumentException | IllegalAccessException ex) {
                     Logger.getLogger(Transaction.class.getName()).log(Level.SEVERE, null, ex);
                 }
@@ -666,7 +667,9 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                     String field = entry.getKey();
 //                    f = ReflectionUtils.findField(((IObjectProxy) toRemove).___getBaseObject().getClass(), field);
                     f = ReflectionUtils.findField(toRemove.getClass(), field);
-
+                    boolean acc = f.isAccessible();
+                    f.setAccessible(true);
+                    
                     if (f.isAnnotationPresent(CascadeDelete.class)) {
                         // si se apunta a un objeto, removerlo
                         // CascadeDelete fuerza el borrado y falla si no puede. 
@@ -686,7 +689,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                             }
                         }
                     }
-
+                    f.setAccessible(acc);
                 } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
                     Logger.getLogger(Transaction.class.getName()).log(Level.SEVERE, null, ex);
                 }
