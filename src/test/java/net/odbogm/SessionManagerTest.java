@@ -1761,6 +1761,42 @@ public class SessionManagerTest {
         System.out.println("Probar las conecciones Indirectas.");
         System.out.println("***************************************************************");
         
+        // verificar que cuando se recuepera in indirectlinked desde el objeto padre
+        // la indirección apunte exactamente a la instancia ya existente.
+        IndirectObject ioPadre = new IndirectObject();
+        IndirectObject ioIndirecto = new IndirectObject();
+        
+        ioPadre.setDirectLink(ioIndirecto);
+        
+        ioPadre = sm.store(ioPadre);
+        
+        sm.commit();
+        String ridPadre = sm.getRID(ioPadre);
+        
+        // liberar las referencias.
+        ioPadre = null;
+        ioIndirecto = null;
+        
+        System.gc();
+        
+        System.out.println("ObjectCache: "+sm.getCurrentTransaction().getObjectCache());
+        
+        // recupear el padre nuevamente.
+        ioPadre = sm.get(IndirectObject.class, ridPadre);
+        ioIndirecto = ioPadre.getDirectLink();
+        
+        // la referencia indirecta en ioIndirecto debe ser a ioPadre tanto en el nro de vertice con el la referncia a memoria.
+        int ioPadreIdent = System.identityHashCode(ioPadre);
+        int ioIndirectPadreIdent = System.identityHashCode(ioIndirecto.getIndirectLink());
+        System.out.println("Padre: "+sm.getRID(ioPadre)+" ref: "+ioPadreIdent+" ---> "+sm.getRID(ioPadre.getDirectLink()));
+        System.out.println("Indirecto: "+sm.getRID(ioIndirecto)
+                            +" <--- "
+                            +sm.getRID(ioIndirecto.getIndirectLink())
+                            +" ref: "+ioIndirectPadreIdent);
+        
+        assertEquals(ioPadreIdent, ioIndirectPadreIdent);
+        
+        
         IndirectObject io = new IndirectObject();
         IndirectObject ioLinked = new IndirectObject();
         

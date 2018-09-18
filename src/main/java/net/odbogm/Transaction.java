@@ -171,7 +171,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     /**
      * Agrega un objeto al cache de la transacción
      *
-     * @param rid record id
      * @param o objeto a referenciar
      */
     public synchronized void removeFromCache(Object o) {
@@ -1371,8 +1370,9 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     }
     
     /**
-     * Retorna el caché actual de objetos existentes en la transacción.
-     * Se utiliza para debug.
+     * Retorna el caché actual de objetos existentes en la transacción.Se utiliza para debug.
+     *
+     * @return una referencia al WeakHashMap
      */
     public WeakHashMap<String, Object> getObjectCache() {
         return this.objectCache;

@@ -47,9 +47,9 @@ public interface IActions {
         /**
          * Recupera una nueva instancia desde la base de datos y cambia la existente en el cache.
          * 
-         * @param rid
-         * @return
-         * @throws UnknownRID 
+         * @param rid RecordID a recupear
+         * @return Un objeto de acuerdo a la definición de la clase existente en el vértice.
+         * @throws UnknownRID en caso de no encontrar el RID
          */
         Object dbget(String rid) throws UnknownRID;
         
@@ -60,8 +60,8 @@ public interface IActions {
          * @param type clase
          * @param rid RecordID
          * @return un objeto de la clase indicada recuperado desde la base de datos.
-         * @throws UnknownRID
-         * @throws VertexJavaClassNotFound 
+         * @throws UnknownRID en caso de no encontrar el RID
+         * @throws VertexJavaClassNotFound  en caso de no encontrar la clase de vértice indicada.
          */
         <T> T dbget(Class<T> type, String rid) throws UnknownRID, VertexJavaClassNotFound;
         

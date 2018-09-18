@@ -6,21 +6,20 @@
 package net.odbogm;
 
 //import com.esotericsoftware.kryo.Kryo;
-import net.odbogm.cache.ClassCache;
-import net.odbogm.cache.ClassDef;
-import net.odbogm.exceptions.CollectionNotSupported;
-import net.odbogm.utils.ReflectionUtils;
 import com.tinkerpop.blueprints.Direction;
+import com.tinkerpop.blueprints.impls.orient.OrientEdge;
 import com.tinkerpop.blueprints.impls.orient.OrientVertex;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import com.tinkerpop.blueprints.impls.orient.OrientEdge;
-import java.util.HashMap;
-import java.util.List;
 import net.odbogm.annotations.Indirect;
+import net.odbogm.cache.ClassCache;
+import net.odbogm.cache.ClassDef;
+import net.odbogm.exceptions.CollectionNotSupported;
 import net.odbogm.exceptions.DuplicateClassDefinition;
 import net.odbogm.proxy.ArrayListEmbeddedProxy;
 import net.odbogm.proxy.HashMapEmbeddedProxy;
@@ -28,6 +27,7 @@ import net.odbogm.proxy.ILazyCollectionCalls;
 import net.odbogm.proxy.ILazyMapCalls;
 import net.odbogm.proxy.IObjectProxy;
 import net.odbogm.proxy.ObjectProxyFactory;
+import net.odbogm.utils.ReflectionUtils;
 
 /**
  *
@@ -247,7 +247,8 @@ public class ObjectMapper {
     public <T> T hydrate(Class<T> c, OrientVertex v, Transaction t) throws DuplicateClassDefinition, InstantiationException, IllegalAccessException, NoSuchFieldException, CollectionNotSupported {
 //        T o = c.newInstance();
         // activar la base de datos en el hilo actual.
-        v.getGraph().getRawGraph().activateOnCurrentThread();
+        t.activateOnCurrentThread();
+//        v.getGraph().getRawGraph().activateOnCurrentThread();
 
         Class<?> toHydrate = c;
         String vertexClass = (v.getType().getName() == "V" ? c.getSimpleName() : v.getType().getName());
