@@ -83,15 +83,15 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
     private Map<Object, ObjectCollectionState> listState = new ConcurrentHashMap<>();
 
     private void lazyLoad() {
-        this.transaction.getSessionManager().getGraphdb().getRawGraph().activateOnCurrentThread();
+        this.transaction.activateOnCurrentThread();
         LOGGER.log(Level.FINER, "getGraph: " + relatedTo.getGraph());
-        if (relatedTo.getGraph() == null) {
-            this.transaction.getSessionManager().getGraphdb().attach(relatedTo);
-        }
+//        if (relatedTo.getGraph() == null) {
+//            this.transaction.getSessionManager().getGraphdb().attach(relatedTo);
+//        }
 
-        LOGGER.log(Level.FINER, "getRawGraph: " + relatedTo.getGraph().getRawGraph());
+//        LOGGER.log(Level.FINER, "getRawGraph: " + relatedTo.getGraph().getRawGraph());
 
-        relatedTo.getGraph().getRawGraph().activateOnCurrentThread();
+//        relatedTo.getGraph().getRawGraph().activateOnCurrentThread();
 //        ODatabaseDocument database = (ODatabaseDocument) ODatabaseRecordThreadLocal.INSTANCE.get();
 //        database.activateOnCurrentThread();
 //        LOGGER.log(Level.FINER, "ODatabase: "+database+" activated");
@@ -106,7 +106,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         for (Iterator<Vertex> iterator = rt.iterator(); iterator.hasNext();) {
             OrientVertex next = (OrientVertex) iterator.next();
 //            LOGGER.log(Level.INFO, "loading: " + next.getId().toString());
-            Object o = transaction.get(fieldClass, next.getId().toString());
+            Object o = transaction.dbget(fieldClass, next.getId().toString());
             this.add(o);
             // se asume que todos fueron borrados
             this.listState.put(o, ObjectCollectionState.REMOVED);

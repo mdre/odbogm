@@ -500,8 +500,20 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                 this.___transaction.addToTransactionCache(this.___getRid(), ___proxyObject);
 
                                 // si es una interface llamar a get solo con el RID.
-                                Object innerO = fc.isInterface() ? this.___transaction.get(vertice.getId().toString()) : this.___transaction.get(fc, vertice.getId().toString());
-                                LOGGER.log(Level.FINER, "Inner object " + field + ": " + (innerO == null ? "NULL" : "" + innerO.toString()) + "  FC: " + fc.getSimpleName() + "   innerO.class: " + innerO.getClass().getSimpleName()+" hashCode: "+System.identityHashCode(innerO));
+                                Object innerO = null;
+                                if (direction == Direction.IN) {
+                                    // si la dirección es IN se intentará inicialmente recuperar del cache asumiendo que al ser una 
+                                    // indirección, el padre es pobable que ya haya sido cargado.
+                                    innerO = fc.isInterface() ? this.___transaction.get(vertice.getId().toString()) : this.___transaction.get(fc, vertice.getId().toString());
+                                } else {
+                                    // para todos los otros casos, siempre se recupear una nueva instancia desde la base.
+                                    innerO = fc.isInterface() ? this.___transaction.dbget(vertice.getId().toString()) : this.___transaction.dbget(fc, vertice.getId().toString());
+                                }
+                                LOGGER.log(Level.FINER, "Inner object " + field + ": " 
+                                        + (innerO == null ? "NULL" : "" + innerO.toString()) 
+                                        + "  FC: " + fc.getSimpleName() 
+                                        + "   innerO.class: " + innerO.getClass().getSimpleName()
+                                        +" hashCode: "+System.identityHashCode(innerO));
                                 fLink.set(this.___proxyObject, fc.cast(innerO));
                                 duplicatedLinkGuard = true;
 

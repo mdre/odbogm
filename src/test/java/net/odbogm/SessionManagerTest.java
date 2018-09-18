@@ -1523,8 +1523,10 @@ public class SessionManagerTest {
         for (SimpleVertex simpleVertex : svExConVector.alSV) {
             System.out.println(":: "+sm.getRID(simpleVertex));
         }
-        
-        svmodificado_a_borrar = sm.dbget(SimpleVertex.class, svModif);
+        // recupear el objeto desde el cache. Si se recuera desde la base de datos
+        // se obtienen dos instancias y al realizar el borrado por un lado y la modificación
+        // por otro, aparece una inconsistencia dependiendo de como lo acomode el hm dirty.
+        svmodificado_a_borrar = sm.get(SimpleVertex.class, svModif);
         
         System.out.println("realizando una modificación previo al borrado");
         svmodificado_a_borrar.setS("modificado previo borrado");
@@ -1829,6 +1831,8 @@ public class SessionManagerTest {
         // guardar todo
         IndirectObject sOrigen = sm.store(origen);
         sm.commit();
+        System.out.println("hc: "+System.identityHashCode(sOrigen));
+        
         
         String origenRID = sm.getRID(sOrigen);
         
@@ -1838,10 +1842,14 @@ public class SessionManagerTest {
         ind3 = null;
         
         origen = null;
-        
+
+        System.out.println("cache: "+sm.getCurrentTransaction().getObjectCache());
         // recupear el origen
         origen = sm.dbget(IndirectObject.class, origenRID);
+        System.out.println("hc: "+System.identityHashCode(origen));
+        
         origen.setTestData("modificado");
+        System.out.println("cache: "+sm.getCurrentTransaction().getObjectCache());
         
         ind1 = origen.getAlDirectLinked().get(0);
         String ind1RID = sm.getRID(ind1);

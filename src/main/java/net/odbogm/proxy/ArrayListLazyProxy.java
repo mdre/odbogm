@@ -89,11 +89,11 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
     private Map<Object, ObjectCollectionState> listState = new ConcurrentHashMap<>();
 
     private synchronized void lazyLoad() {
-        this.transaction.getSessionManager().getGraphdb().getRawGraph().activateOnCurrentThread();
+        this.transaction.activateOnCurrentThread();
         LOGGER.log(Level.FINER, "getGraph: " + relatedTo.getGraph());
-        if (relatedTo.getGraph() == null) {
-            this.transaction.getSessionManager().getGraphdb().attach(relatedTo);
-        }
+//        if (relatedTo.getGraph() == null) {
+//            this.transaction.getSessionManager().getGraphdb().attach(relatedTo);
+//        }
 
 //        LOGGER.log(Level.FINER, "getRawGraph: "+relatedTo.getGraph().getRawGraph());
 //        ODatabaseDocument database = (ODatabaseDocument) ODatabaseRecordThreadLocal.INSTANCE.get();
@@ -108,8 +108,10 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
 //        for (Iterator<Vertex> iterator = relatedTo.getVertices(Direction.OUT, field).iterator(); iterator.hasNext();) {
         for (Iterator<Vertex> iterator = rt.iterator(); iterator.hasNext();) {
             OrientVertex next = (OrientVertex) iterator.next();
-//            LOGGER.log(Level.INFO, "loading: " + next.getId().toString());
-            Object o = transaction.get(fieldClass, next.getId().toString());
+            // LOGGER.log(Level.INFO, "loading: " + next.getId().toString());
+            // el Lazy SIEMPRE carga los datos desde la base de datos esquivando los objetos que se encuentren en 
+            // el cache.
+            Object o = transaction.dbget(fieldClass, next.getId().toString());
             this.add(o);
             // se asume que todos fueron borrados
             this.listState.put(o, ObjectCollectionState.REMOVED);

@@ -5,7 +5,6 @@
  */
 package net.odbogm.proxy;
 
-import net.odbogm.SessionManager;
 import com.tinkerpop.blueprints.Direction;
 import com.tinkerpop.blueprints.Vertex;
 import com.tinkerpop.blueprints.impls.orient.OrientVertex;
@@ -83,14 +82,15 @@ public class VectorLazyProxy extends Vector implements ILazyCollectionCalls {
     private Map<Object, ObjectCollectionState> listState = new ConcurrentHashMap<>();
     
     private void lazyLoad() {
-        this.transaction.getSessionManager().getGraphdb().getRawGraph().activateOnCurrentThread();
-        LOGGER.log(Level.FINER, "getGraph: "+relatedTo.getGraph());
-        if (relatedTo.getGraph()==null)
-            this.transaction.getSessionManager().getGraphdb().attach(relatedTo);
-        
-        LOGGER.log(Level.FINER, "getRawGraph: "+relatedTo.getGraph().getRawGraph());
-        
-        relatedTo.getGraph().getRawGraph().activateOnCurrentThread();
+        this.transaction.activateOnCurrentThread();
+//        LOGGER.log(Level.FINER, "getGraph: "+relatedTo.getGraph());
+//        if (relatedTo.getGraph()==null)
+//            this.transaction.getSessionManager().getGraphdb().attach(relatedTo);
+//        
+//        LOGGER.log(Level.FINER, "getRawGraph: "+relatedTo.getGraph().getRawGraph());
+//        
+//        relatedTo.getGraph().getRawGraph().activateOnCurrentThread();
+
 //        ODatabaseDocument database = (ODatabaseDocument) ODatabaseRecordThreadLocal.INSTANCE.get();
 //        database.activateOnCurrentThread();
 //        LOGGER.log(Level.FINER, "ODatabase: "+database+" activated");
@@ -105,7 +105,7 @@ public class VectorLazyProxy extends Vector implements ILazyCollectionCalls {
         for (Iterator<Vertex> iterator = rt.iterator(); iterator.hasNext();) {
             OrientVertex next = (OrientVertex) iterator.next();
 //            LOGGER.log(Level.INFO, "loading: " + next.getId().toString());
-            Object o = transaction.get(fieldClass, next.getId().toString());
+            Object o = transaction.dbget(fieldClass, next.getId().toString());
             this.add(o);
             // se asume que todos fueron borrados
             this.listState.put(o, ObjectCollectionState.REMOVED);

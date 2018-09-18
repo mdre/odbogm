@@ -88,9 +88,9 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         // recuperar todos los elementos desde el vértice y agregarlos a la colección
         for (Iterator<Vertex> iterator = relatedTo.getVertices(this.direction, field).iterator(); iterator.hasNext();) {
             OrientVertex next = (OrientVertex) iterator.next();
-//            LOGGER.log(Level.FINER, "loading: " + next.getId().toString());
-
-            Object o = transaction.get(valueClass, next.getId().toString());
+            // LOGGER.log(Level.FINER, "loading: " + next.getId().toString());
+            // el Lazy simpre se hace recuperado los datos desde la base de datos.
+            Object o = transaction.dbget(valueClass, next.getId().toString());
 
             // para cada vértice conectado, es necesario mapear todos los Edges que los unen.
             for (Edge edge : relatedTo.getEdges(next, this.direction, field)) {
