@@ -105,7 +105,13 @@ public class VectorLazyProxy extends Vector implements ILazyCollectionCalls {
         for (Iterator<Vertex> iterator = rt.iterator(); iterator.hasNext();) {
             OrientVertex next = (OrientVertex) iterator.next();
 //            LOGGER.log(Level.INFO, "loading: " + next.getId().toString());
-            Object o = transaction.dbget(fieldClass, next.getId().toString());
+            Object o = null;
+            if (this.direction == Direction.IN) {
+                o = transaction.get(fieldClass, next.getId().toString());
+            } else {
+                o = transaction.dbget(fieldClass, next.getId().toString());
+            }
+            
             this.add(o);
             // se asume que todos fueron borrados
             this.listState.put(o, ObjectCollectionState.REMOVED);

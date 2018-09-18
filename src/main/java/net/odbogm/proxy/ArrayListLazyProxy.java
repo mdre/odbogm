@@ -111,8 +111,14 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
             // LOGGER.log(Level.INFO, "loading: " + next.getId().toString());
             // el Lazy SIEMPRE carga los datos desde la base de datos esquivando los objetos que se encuentren en 
             // el cache.
-            Object o = transaction.dbget(fieldClass, next.getId().toString());
+            Object o = null;
+            if (this.direction == Direction.IN) {
+                o = transaction.get(fieldClass, next.getId().toString());
+            } else {
+                o = transaction.dbget(fieldClass, next.getId().toString());
+            }
             this.add(o);
+            
             // se asume que todos fueron borrados
             this.listState.put(o, ObjectCollectionState.REMOVED);
         }
@@ -238,7 +244,7 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
         }
         return super.stream(); //To change body of generated methods, choose Tools | Templates.
     }
-
+    
     @Override
     protected void finalize() throws Throwable {
         if (lazyLoad) {
