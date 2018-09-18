@@ -1894,7 +1894,14 @@ public class SessionManagerTest {
         ind3 = origen.getAlDirectLinked().get(2);
         String ind3RID = sm.getRID(ind3);
         
-        assertEquals(ind1.getIndirectLinkedFromAL().getTestData(), ind2.getIndirectLinkedFromAL().getTestData());
+        int iOrigen = System.identityHashCode(origen);
+        int iInd1 = System.identityHashCode(ind1.getIndirectLinkedFromAL());
+        int iInd2 = System.identityHashCode(ind2.getIndirectLinkedFromAL());
+        int iInd3 = System.identityHashCode(ind3.getIndirectLinkedFromAL());
+        
+        assertEquals(iOrigen, iInd1);
+        assertEquals(iOrigen, iInd2);
+        assertEquals(iOrigen, iInd3);
         assertEquals(ind1.getIndirectLinkedFromAL().getTestData(), ind3.getIndirectLinkedFromAL().getTestData());
         
         //-----------------------------------------------------
