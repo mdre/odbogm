@@ -6,7 +6,6 @@
 package net.odbogm;
 
 import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * Configuración de los log de cada clase

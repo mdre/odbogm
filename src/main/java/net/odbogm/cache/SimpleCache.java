@@ -7,6 +7,7 @@
 package net.odbogm.cache;
 
 import java.lang.ref.WeakReference;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
@@ -20,11 +21,11 @@ public class SimpleCache implements Cache {
     private final static Logger LOGGER = Logger.getLogger(SimpleCache.class .getName());
     static {
         if (LOGGER.getLevel() == null) {
-            LOGGER.setLevel(Level.FINER);
+            LOGGER.setLevel(Level.INFO);
         }
     }
 
-    private static final int CLEAN_UP_PERIOD_IN_SEC = 1;
+    private int CLEAN_UP_PERIOD_IN_SEC = 3;
  
     private final ConcurrentHashMap<String, WeakReference<Object>> cache = new ConcurrentHashMap<>();
  
@@ -44,9 +45,14 @@ public class SimpleCache implements Cache {
         cleanerThread.start();
     }
  
+    /**
+     * agrega una entrada al cache.
+     * @param key clave a agregar
+     * @param value objeto para el cache
+     */
     @Override
     public void add(String key, Object value) {
-        LOGGER.log(Level.FINER, "adding: "+key+" "+value.getClass().getSimpleName()+" value: "+value);
+        LOGGER.log(Level.FINER, "adding: {0} {1} value: {2}", new Object[]{key, value.getClass().getSimpleName()});
         if (key == null) {
             return;
         }
@@ -58,11 +64,20 @@ public class SimpleCache implements Cache {
         }
     }
  
+    /**
+     * remueve una entrada en el cache.
+     * @param key clave a remover
+     */
     @Override
     public void remove(String key) {
         cache.remove(key);
     }
  
+    /**
+     * obtiene un objeto desde el cache. Si el objeto no existe devuelve null.
+     * @param key clave a buscar.
+     * @return el objeto solicitado o null en caso de no encontrarlo.
+     */
     @Override
     public Object get(String key) {
         Object r = null;
@@ -75,11 +90,19 @@ public class SimpleCache implements Cache {
 //        return Optional.ofNullable(cache.get(key)).map(WeakReference::get).filter(cacheObject -> !cacheObject.isExpired()).map(CacheObject::getValue).orElse(null);
     }
  
+    /**
+     * elimina todo el cache.
+     */
     @Override
     public void clear() {
         cache.clear();
     }
  
+    /**
+     * devuevle el tamaño actual del cache. Este tamaño incluye también las entradas
+     * derefereniciadas.
+     * @return long
+     */
     @Override
     public long size() {
 //        return cache.entrySet().stream().filter(entry -> Optional.ofNullable(entry.getValue()).map(WeakReference::get).map(cacheObject -> !cacheObject.isExpired()).orElse(false)).count();
@@ -88,10 +111,27 @@ public class SimpleCache implements Cache {
  
     /**
      * Retorna el Mapa de los objetos que se encuentran en el cache.
-     * @return 
+     * 
+     * @return una referencia al map interno.
      */
-    public Map getCachedObjects() {
-        return this.cache;
+    public Map<String,Object> getCachedObjects() {
+        Map<String,Object> ret = new HashMap<>();
+        for (Map.Entry<String, WeakReference<Object>> entry : this.cache.entrySet()) {
+            String key = entry.getKey();
+            WeakReference<Object> value = entry.getValue();
+            ret.put(key, value.get());
+        }
+        return ret;
+    }
+    
+    /**
+     * Establece el tiempo entre cada ejecucion del hilo que limpia el caché.
+     * @param seconds segundos entre cada ejecución
+     * @return this
+     */
+    public SimpleCache setTimeInterval(int seconds) {
+        this.CLEAN_UP_PERIOD_IN_SEC = seconds;
+        return this;
     }
 //    private static class CacheObject {
 // 

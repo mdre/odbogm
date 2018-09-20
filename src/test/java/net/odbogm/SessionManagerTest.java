@@ -64,16 +64,16 @@ public class SessionManagerTest {
         System.out.println("Iniciando session manager...");
         sm = new SessionManager("remote:localhost/Test", "root", "toor")
                 .setActivationStrategy(SessionManager.ActivationStrategy.CLASS_INSTRUMENTATION)
-//                .setClassLevelLog(ObjectMapper.class, Level.FINER)
+//                .setClassLevelLog(Transaction.class, Level.FINER)
 //                .setClassLevelLog(ObjectProxy.class, Level.FINER)
-                .setClassLevelLog(Transaction.class, Level.FINER)
 //                .setClassLevelLog(ArrayListLazyProxy.class, Level.FINER)
+//                .setClassLevelLog(ObjectMapper.class, Level.FINER)
 //                .setClassLevelLog(SObject.class, Level.FINER)
 //                .setClassLevelLog(TransparentDirtyDetectorInstrumentator.class, Level.FINER)
                 ;
-
         System.out.println("Begin");
         this.sm.begin();
+        sm.getCurrentTransaction().setCacheCleanInterval(1);
 
         System.out.println("fin setup.");
 //        this.sm.setAuditOnUser("userAuditado");
@@ -499,19 +499,27 @@ public class SessionManagerTest {
         assertEquals(7, sm.getDirtyCount());
         sm.commit();
         assertEquals(0, sm.getDirtyCount());
-
+        System.out.println("dc: "+sm.getCurrentTransaction().getDirtyCache());
         String rid = ((IObjectProxy) result).___getRid();
         System.out.println("");
         System.out.println("");
         System.out.println("Objeto almacenado en: " + rid);
         System.out.println("");
         System.out.println("");
-
+        
+        System.out.println("dc: "+sm.getCurrentTransaction().getDirtyCache());
+        
+        System.out.println("AL actual");
+        System.out.println("alSV: "+result.getAlSV());
+        System.out.println("---------");
         result.i++;
+        System.out.println("agregar un elemento...");
         result.getAlSV().add(new SimpleVertex());
-
+        System.out.println("--------------------");
+        System.out.println("dc: "+sm.getCurrentTransaction().getDirtyCache());
         assertEquals(1, sm.getDirtyCount());
         sm.commit();
+        System.out.println("dc: "+sm.getCurrentTransaction().getDirtyCache());
         assertEquals(0, sm.getDirtyCount());
 
         SimpleVertexEx expResult = sm.dbget(SimpleVertexEx.class, rid);
@@ -1807,22 +1815,27 @@ public class SessionManagerTest {
         
         ioPadre = sm.store(ioPadre);
         
+        System.out.println("commit");
         sm.commit();
+        
         String ridPadre = sm.getRID(ioPadre);
+        System.out.println("ridPadre: "+ridPadre);
+        System.out.println("ObjectCache: "+sm.getCurrentTransaction().getObjectCache());
         
         // liberar las referencias.
         ioPadre = null;
         ioIndirecto = null;
         
         System.gc();
-        
+        System.out.println("gc");
         System.out.println("ObjectCache: "+sm.getCurrentTransaction().getObjectCache());
         
-        // recupear el padre nuevamente.
-        ioPadre = sm.get(IndirectObject.class, ridPadre);
+        // recupear el padre nuevamente desde la base de datos.
+        ioPadre = sm.dbget(IndirectObject.class, ridPadre);
         ioIndirecto = ioPadre.getDirectLink();
         
         // la referencia indirecta en ioIndirecto debe ser a ioPadre tanto en el nro de vertice con el la referncia a memoria.
+        System.out.println("ObjectCache: "+sm.getCurrentTransaction().getObjectCache());
         int ioPadreIdent = System.identityHashCode(ioPadre);
         int ioIndirectPadreIdent = System.identityHashCode(ioIndirecto.getIndirectLink());
         System.out.println("Padre: "+sm.getRID(ioPadre)+" ref: "+ioPadreIdent+" ---> "+sm.getRID(ioPadre.getDirectLink()));
@@ -1997,7 +2010,7 @@ public class SessionManagerTest {
             System.out.println("Probar el cache de objetos SimpleCache");
             System.out.println("***************************************************************");
             SimpleCache sc = new SimpleCache();
-            
+            sc.setTimeInterval(1);
             SimpleVertex sv1 = new SimpleVertex();
             SimpleVertex sv2 = new SimpleVertex();
             SimpleVertex sv3 = new SimpleVertex();

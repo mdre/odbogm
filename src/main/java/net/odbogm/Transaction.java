@@ -172,7 +172,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     /**
      * Agrega un objeto al cache de la transacción
      *
-     * @param o objeto a referenciar
+     * @param rid RecordID del objeto a remover
      */
     public synchronized void removeFromCache(String rid) {
             this.objectCache.remove(rid);
@@ -180,8 +180,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
     /**
      * Recupera un objecto desde el cache o devuelve null si no lo encuentra
-     * @param rid
-     * @return 
+     * @param rid RecordID a recuperar
+     * @return el objeto si se encotró o null.
      */
     public Object getFromCache(String rid) {
         Object r = this.objectCache.get(rid);
@@ -1049,6 +1049,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             LOGGER.log(Level.FINER, "**********************************************************************************");
             LOGGER.log(Level.FINER, "Carga FORZADA!!! Se eliminará la instancia anterior y se reemplazará por una nueva");
             LOGGER.log(Level.FINER, "rid: "+rid+" exists: "+getFromCache(rid));
+//            LOGGER.log(Level.FINER, ""+this.objectCache.getCachedObjects());
             LOGGER.log(Level.FINER, "**********************************************************************************");
             removeFromCache(rid); 
         }
@@ -1398,5 +1399,10 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     public Map getObjectCache() {
         return this.objectCache.getCachedObjects();
+    }
+    
+    public Transaction setCacheCleanInterval(int seconds) {
+        this.objectCache.setTimeInterval(seconds);
+        return this;
     }
 }

@@ -451,6 +451,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         if (this.___loadLazyLinks) {
             LOGGER.log(Level.FINER, "Base class: " + this.___baseClass.getSimpleName());
             LOGGER.log(Level.FINER, "iniciando loadLazyLinks...");
+            boolean currentDirtyState = this.___isDirty();
             // marcar que ya se han incorporado todo los links
             this.___loadLazyLinks = false;
 
@@ -529,6 +530,9 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                     }
                 }
             }
+            
+            // resetear dirty si corresponde.
+            this.___dirty = currentDirtyState;
         }
 
     }
