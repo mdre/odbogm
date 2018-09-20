@@ -1069,7 +1069,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                 // recuperar el vértice solicitado
                 OrientVertex v = this.orientdbTransact.getVertex(rid);
                 // si es una carga forzada, asegurarse de tener la última vesión desde la base.
-                if (force) {v.reload();}
+                if (force && !this.commiting) {v.reload();}
                 
                 // hidratar un objeto
                 try {
