@@ -23,7 +23,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.logging.Level;
@@ -33,6 +32,7 @@ import net.odbogm.annotations.CascadeDelete;
 import net.odbogm.annotations.RemoveOrphan;
 import net.odbogm.auditory.Auditor;
 import net.odbogm.cache.ClassDef;
+import net.odbogm.cache.SimpleCache;
 import net.odbogm.exceptions.ClassToVertexNotFound;
 import net.odbogm.exceptions.CollectionNotSupported;
 import net.odbogm.exceptions.IncorrectRIDField;
@@ -70,7 +70,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
     // cache de los objetos recuperados de la base. Si se encuentra en el caché en un get, se recupera desde 
     // acá. En caso contrario se recupera desde la base.
-    private WeakHashMap<String, Object> objectCache = new WeakHashMap<>();
+//    private ConcurrentHashMap<String, WeakReference<Object>> objectCache = new ConcurrentHashMap<>();
+    private SimpleCache objectCache = new SimpleCache();
 
     private ConcurrentHashMap<String, Object> dirty = new ConcurrentHashMap<>();
 
@@ -165,7 +166,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * @param o objeto a referenciar
      */
     public synchronized void addToCache(String rid, Object o) {
-        this.objectCache.put(rid, o);
+        this.objectCache.add(rid, o);
     }
 
     /**
@@ -173,13 +174,19 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      *
      * @param o objeto a referenciar
      */
-    public synchronized void removeFromCache(Object o) {
-        if (o instanceof IObjectProxy) {
-            this.objectCache.remove(((IObjectProxy)o).___getRid());
-        }
+    public synchronized void removeFromCache(String rid) {
+            this.objectCache.remove(rid);
     }
 
-    
+    /**
+     * Recupera un objecto desde el cache o devuelve null si no lo encuentra
+     * @param rid
+     * @return 
+     */
+    public Object getFromCache(String rid) {
+        Object r = this.objectCache.get(rid);
+        return r;
+    }
     
     /**
      * Vuelve a cargar todos los objetos que han sido marcados como modificados con los datos desde las base. Los objetos marcados como Dirty forman
@@ -293,12 +300,13 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
             // refrescar las referencias del caché
             String newRid;
+            LOGGER.log(Level.FINER, "NewRIDs: "+newrids.size());
             for (Iterator<String> iterator = newrids.iterator(); iterator.hasNext();) {
                 String tempRid = iterator.next();
-                if (objectCache.get(tempRid) != null) {
+                if (getFromCache(tempRid) != null) {
                     // reemplazar el rid con el que le asignó la base luego de persistir el objeto
-                    Object o = objectCache.get(tempRid);
-                    objectCache.remove(tempRid);
+                    Object o = getFromCache(tempRid);
+                    removeFromCache(tempRid);
                     newRid = sm.getRID(o);
                     addToCache(newRid, o);
                 }
@@ -566,7 +574,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             }
 
             // guardar el objeto en el cache. Se usa el RID como clave
-            objectCache.put(v.getId().toString(), proxied);
+            addToCache(v.getId().toString(), proxied);
+//            objectCache.put(v.getId().toString(), proxied);
 
         } catch (IllegalArgumentException ex) {
             Logger.getLogger(SessionManager.class.getName()).log(Level.SEVERE, null, ex);
@@ -780,8 +789,9 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
             //ovToRemove.remove(); movido arriba.
             // si tengo un RID, proceder a removerlo de las colecciones.
-            this.dirty.remove(((IObjectProxy) toRemove).___getVertex().getId().toString());
-            this.removeFromCache(toRemove);
+            String ridToRemove = ((IObjectProxy) toRemove).___getVertex().getId().toString();
+            this.dirty.remove(ridToRemove);
+            this.removeFromCache(ridToRemove);
             
             // invalidar el objeto
             ((IObjectProxy) toRemove).___setDeletedMark();
@@ -836,7 +846,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     public void addToTransactionCache(String rid, Object o) {
         getTransactionCount++;
         if (this.transactionLoopCache.get(rid) == null) {
-            LOGGER.log(Level.FINER, "Forzando el agregado al TransactionCache de " + rid);
+            LOGGER.log(Level.FINER, "Forzando el agregado al TransactionLoopCache de " + rid+"  hc:"+System.identityHashCode(o));
             this.transactionLoopCache.put(rid, o);
         }
     }
@@ -930,8 +940,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             activateOnCurrentThread();
             Object ret = null;
 
-            if (objectCache.get(rid) != null) {
-                ret = objectCache.get(rid);
+            if (getFromCache(rid) != null) {
+                ret = getFromCache(rid);
                 // si fue recuperado del caché, determinar si se ha modificado.
                 // si no fue modificado, hacer un reload para actualizar con la última 
                 // versión de la base de datos.
@@ -1010,7 +1020,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * @return objeto de la clase T
      */
     @Override
-    public <T> T get(Class<T> type, String rid, boolean force) throws UnknownRID {
+    public synchronized <T> T get(Class<T> type, String rid, boolean force) throws UnknownRID {
         if (this.orientdbTransact == null) {
             throw new NoOpenTx();
         }
@@ -1022,9 +1032,9 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         activateOnCurrentThread();
         if (!force) {
             // si está en el caché, devolver la referencia desde ahí.
-            if (objectCache.get(rid) != null) {
-                    LOGGER.log(Level.FINER, "Objeto Recupeardo del caché: "+rid);
-                    o = (T) objectCache.get(rid);
+            if (getFromCache(rid) != null) {
+                    LOGGER.log(Level.FINER, "Objeto Recupeardo del caché: "+rid+" "+type.getSimpleName());
+                    o = (T) getFromCache(rid);
 
                     // si fue recuperado del caché, determinar si se ha modificado.
                     // si no fue modificado, hacer un reload para actualizar con la última 
@@ -1036,7 +1046,11 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             }
         } else {
             // remover si existe el rid y proceder a crearlo nuevamente.
-            objectCache.remove(rid);
+            LOGGER.log(Level.FINER, "**********************************************************************************");
+            LOGGER.log(Level.FINER, "Carga FORZADA!!! Se eliminará la instancia anterior y se reemplazará por una nueva");
+            LOGGER.log(Level.FINER, "rid: "+rid+" exists: "+getFromCache(rid));
+            LOGGER.log(Level.FINER, "**********************************************************************************");
+            removeFromCache(rid); 
         }
         
         if (o == null) {
@@ -1065,29 +1079,34 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                     Logger.getLogger(SessionManager.class.getName()).log(Level.SEVERE, null, ex);
                 }
             } else {
-                LOGGER.log(Level.FINER, "Objeto recuperado del dirty cache! : " + o.getClass().getSimpleName());
+                LOGGER.log(Level.FINER, "Objeto recuperado del loop cache! : " + o.getClass().getSimpleName());
             }
             getTransactionCount--;
             if (getTransactionCount == 0) {
-                LOGGER.log(Level.FINER, "Fin de la transacción. Reseteando el loop cache.....................");
+                LOGGER.log(Level.FINER, "Fin de la transacción. Reseteando el loop cache...");
                 this.transactionLoopCache.clear();
             }
 
             // cuardar el objeto en el caché
-            objectCache.put(rid, o);
+            LOGGER.log(Level.FINER, "Agregando el objeto al cache de objetos de la transacción: "+rid+": ihc: "+System.identityHashCode(o));
+            addToCache(rid, o);
         }
 
         // Aplicar los controles de seguridad.
+        LOGGER.log(Level.FINER, "Verificar la seguridad: LoggedIn: "+(this.sm.getLoggedInUser() != null)+" SObject: "+(o instanceof SObject));
         if ((this.sm.getLoggedInUser() != null) && (o instanceof SObject)) {
             LOGGER.log(Level.FINER, "SObject detectado. Aplicando seguridad de acuerdo al usuario logueado: " + this.sm.getLoggedInUser().getName());
             ((SObject) o).validate(this.sm.getLoggedInUser());
         }
-
+        
+        LOGGER.log(Level.FINER, "Auditar?");
         if (this.isAuditing()) {
+            LOGGER.log(Level.FINER, "loguear datos...");
             this.auditLog((IObjectProxy) o, Audit.AuditType.READ, "READ", "");
         }
+        LOGGER.log(Level.FINER, "fin auditoría.");
 
-        LOGGER.log(Level.FINER, "Fin get: " + rid +"  hashCode: "+o.hashCode()+" -------------------------------------\n");
+        LOGGER.log(Level.FINER, "Fin get: " + rid +" : "+type.getSimpleName()+" ihc: "+System.identityHashCode(o)+"^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n");
         return o;
     }
 
@@ -1363,13 +1382,13 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * se encuentra la transacción
      */
     public void activateOnCurrentThread() {
-        LOGGER.log(Level.FINER, "Activando en el Thread actual...");
-        LOGGER.log(Level.FINER, "current thread: "+Thread.currentThread().getName());
-        if (!this.orientdbTransact.getRawGraph().isActiveOnCurrentThread()) {
-            LOGGER.log(Level.FINER, "No estaba activo. se invoca a activateOnCurrentThread()");
+        LOGGER.log(Level.FINEST, "Activando en el Thread actual...");
+        LOGGER.log(Level.FINEST, "current thread: "+Thread.currentThread().getName());
+//        if (!this.orientdbTransact.getRawGraph().isActiveOnCurrentThread()) {
+//            LOGGER.log(Level.FINER, "No estaba activo. se invoca a activateOnCurrentThread()");
 //            orientdbTransact.getRawGraph().activateOnCurrentThread();
             orientdbTransact.makeActive();
-        }
+//        }
     }
     
     /**
@@ -1377,7 +1396,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      *
      * @return una referencia al WeakHashMap
      */
-    public WeakHashMap<String, Object> getObjectCache() {
-        return this.objectCache;
+    public Map getObjectCache() {
+        return this.objectCache.getCachedObjects();
     }
 }
