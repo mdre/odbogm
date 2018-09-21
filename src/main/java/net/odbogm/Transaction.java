@@ -1068,8 +1068,14 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             if (o == null) {
                 // recuperar el vértice solicitado
                 OrientVertex v = this.orientdbTransact.getVertex(rid);
-                // si es una carga forzada, asegurarse de tener la última vesión desde la base.
-                if (force && !this.commiting) {v.reload();}
+                // desactivo el reload porque he encontrado en varias oportunidades que falla 
+                // al intentar recargar un vertice recién recuperado.
+                // Es un error intermitente y se hace difícil hacer el debug.
+//                // si es una carga forzada, asegurarse de tener la última vesión desde la base.
+//                if (force && !this.commiting && !v.getIdentity().isNew()) {
+//                    LOGGER.log(Level.FINER, "Reload: "+v.getIdentity()+" data: "+v);
+//                    v.reload();
+//                }
                 
                 // hidratar un objeto
                 try {
