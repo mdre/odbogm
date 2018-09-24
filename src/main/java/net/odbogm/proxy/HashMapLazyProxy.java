@@ -91,11 +91,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
             // LOGGER.log(Level.FINER, "loading: " + next.getId().toString());
             // el Lazy simpre se hace recuperado los datos desde la base de datos.
             Object o = null;
-            if (this.direction == Direction.IN) {
-                o = transaction.get(valueClass, next.getId().toString());
-            } else {
-                o = transaction.dbget(valueClass, next.getId().toString());
-            }
+            o = transaction.get(valueClass, next.getId().toString());
             
             
             // para cada vértice conectado, es necesario mapear todos los Edges que los unen.

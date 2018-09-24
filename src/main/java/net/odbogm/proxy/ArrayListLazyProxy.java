@@ -112,11 +112,7 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
             // el Lazy SIEMPRE carga los datos desde la base de datos esquivando los objetos que se encuentren en 
             // el cache.
             Object o = null;
-            if (this.direction == Direction.IN) {
-                o = transaction.get(fieldClass, next.getId().toString());
-            } else {
-                o = transaction.dbget(fieldClass, next.getId().toString());
-            }
+            o = transaction.get(fieldClass, next.getId().toString());
             this.add(o);
             
             // se asume que todos fueron borrados

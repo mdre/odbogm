@@ -8,6 +8,7 @@ package net.odbogm.cache;
 
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
@@ -34,7 +35,7 @@ public class SimpleCache implements Cache {
             while (!Thread.currentThread().isInterrupted()) {
                 try {
                     Thread.sleep(CLEAN_UP_PERIOD_IN_SEC * 1000);
-//                    System.out.println("Thread!!");
+                    LOGGER.log(Level.FINER, "Limpiando el cache...");
                     cache.entrySet().removeIf((t) -> t.getValue().get()==null);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
@@ -114,13 +115,21 @@ public class SimpleCache implements Cache {
      * 
      * @return una referencia al map interno.
      */
-    public Map<String,Object> getCachedObjects() {
+    public synchronized Map<String,Object> getCachedObjects() {
         Map<String,Object> ret = new HashMap<>();
-        for (Map.Entry<String, WeakReference<Object>> entry : this.cache.entrySet()) {
-            String key = entry.getKey();
-            WeakReference<Object> value = entry.getValue();
-            ret.put(key, value.get());
+        
+        for (Iterator<Map.Entry<String, WeakReference<Object>>> iterator = this.cache.entrySet().iterator(); iterator.hasNext();) {
+            Map.Entry<String, WeakReference<Object>> next = iterator.next();
+            
+            String key = next.getKey();
+            WeakReference<Object> value = next.getValue();
+            if (value.get()!=null) {
+                ret.put(key, System.identityHashCode(value.get()));
+            } else {
+                iterator.remove();
+            }
         }
+        
         return ret;
     }
     
