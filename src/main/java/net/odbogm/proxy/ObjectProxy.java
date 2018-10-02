@@ -1108,6 +1108,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     @Override
     public void ___reload() {
         this.___transaction.activateOnCurrentThread();
+        this.___transaction.attach(___baseElement);
         this.___baseElement.reload();
     }
 

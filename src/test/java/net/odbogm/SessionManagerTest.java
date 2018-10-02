@@ -2003,7 +2003,11 @@ public class SessionManagerTest {
         origen = null;
         sOrigen = null;
         System.gc();
-        
+//        try {
+//            Thread.sleep(2000);
+//        } catch (InterruptedException ex) {
+//            Logger.getLogger(SessionManagerTest.class.getName()).log(Level.SEVERE, null, ex);
+//        }
         System.out.println("cache: "+sm.getCurrentTransaction().getObjectCache());
         // recupear el origen
         origen = sm.get(IndirectObject.class, origenRID);
@@ -2019,6 +2023,12 @@ public class SessionManagerTest {
         ind3 = origen.getAlDirectLinked().get(2);
         String ind3RID = sm.getRID(ind3);
         
+        
+        System.out.println("verificando que no sean null la referencias indirectas...");
+        assertNotNull(ind1.getIndirectLinkedFromAL());
+        assertNotNull(ind2.getIndirectLinkedFromAL());
+        assertNotNull(ind3.getIndirectLinkedFromAL());
+        System.out.println("verificar que todas apunten al mismo objeto...");
         int iOrigen = System.identityHashCode(origen);
         int iInd1 = System.identityHashCode(ind1.getIndirectLinkedFromAL());
         int iInd2 = System.identityHashCode(ind2.getIndirectLinkedFromAL());
@@ -2077,7 +2087,7 @@ public class SessionManagerTest {
     }
 
     
-    @Test
+//    @Test
     public void testObjectCache() {
         try {
             System.out.println("\n\n\n");

@@ -3,7 +3,6 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-
 package net.odbogm.cache;
 
 import java.lang.ref.WeakReference;
@@ -16,10 +15,13 @@ import java.util.logging.Logger;
 
 /**
  * Basado en https://explainjava.com/simple-in-memory-cache-java/
+ *
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
 public class SimpleCache implements Cache {
-    private final static Logger LOGGER = Logger.getLogger(SimpleCache.class .getName());
+
+    private final static Logger LOGGER = Logger.getLogger(SimpleCache.class.getName());
+
     static {
         if (LOGGER.getLevel() == null) {
             LOGGER.setLevel(Level.INFO);
@@ -27,16 +29,18 @@ public class SimpleCache implements Cache {
     }
 
     private int CLEAN_UP_PERIOD_IN_SEC = 3;
- 
+
     private final ConcurrentHashMap<String, WeakReference<Object>> cache = new ConcurrentHashMap<>();
- 
+
     public SimpleCache() {
         Thread cleanerThread = new Thread(() -> {
             while (!Thread.currentThread().isInterrupted()) {
                 try {
-                    Thread.sleep(CLEAN_UP_PERIOD_IN_SEC * 1000);
                     LOGGER.log(Level.FINER, "Limpiando el cache...");
-                    cache.entrySet().removeIf((t) -> t.getValue().get()==null);
+                    synchronized (this) {
+                        cache.entrySet().removeIf((t) -> t.getValue().get() == null);
+                    }
+                    Thread.sleep(CLEAN_UP_PERIOD_IN_SEC * 1000);
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
@@ -45,9 +49,10 @@ public class SimpleCache implements Cache {
         cleanerThread.setDaemon(true);
         cleanerThread.start();
     }
- 
+
     /**
      * agrega una entrada al cache.
+     *
      * @param key clave a agregar
      * @param value objeto para el cache
      */
@@ -64,18 +69,20 @@ public class SimpleCache implements Cache {
             cache.put(key, new WeakReference<>(value));
         }
     }
- 
+
     /**
      * remueve una entrada en el cache.
+     *
      * @param key clave a remover
      */
     @Override
     public void remove(String key) {
         cache.remove(key);
     }
- 
+
     /**
      * obtiene un objeto desde el cache. Si el objeto no existe devuelve null.
+     *
      * @param key clave a buscar.
      * @return el objeto solicitado o null en caso de no encontrarlo.
      */
@@ -84,13 +91,15 @@ public class SimpleCache implements Cache {
         Object r = null;
         WeakReference<Object> wr = this.cache.get(key);
         if (wr != null) {
-           r = wr.get();
-           if (r == null) remove(key);
+            r = wr.get();
+            if (r == null) {
+                remove(key);
+            }
         }
         return r;
 //        return Optional.ofNullable(cache.get(key)).map(WeakReference::get).filter(cacheObject -> !cacheObject.isExpired()).map(CacheObject::getValue).orElse(null);
     }
- 
+
     /**
      * elimina todo el cache.
      */
@@ -98,10 +107,10 @@ public class SimpleCache implements Cache {
     public void clear() {
         cache.clear();
     }
- 
+
     /**
-     * devuevle el tamaño actual del cache. Este tamaño incluye también las entradas
-     * derefereniciadas.
+     * devuevle el tamaño actual del cache. Este tamaño incluye también las entradas derefereniciadas.
+     *
      * @return long
      */
     @Override
@@ -109,32 +118,33 @@ public class SimpleCache implements Cache {
 //        return cache.entrySet().stream().filter(entry -> Optional.ofNullable(entry.getValue()).map(WeakReference::get).map(cacheObject -> !cacheObject.isExpired()).orElse(false)).count();
         return cache.size();
     }
- 
+
     /**
      * Retorna el Mapa de los objetos que se encuentran en el cache.
-     * 
+     *
      * @return una referencia al map interno.
      */
-    public synchronized Map<String,Object> getCachedObjects() {
-        Map<String,Object> ret = new HashMap<>();
-        
+    public synchronized Map<String, Object> getCachedObjects() {
+        Map<String, Object> ret = new HashMap<>();
+
         for (Iterator<Map.Entry<String, WeakReference<Object>>> iterator = this.cache.entrySet().iterator(); iterator.hasNext();) {
             Map.Entry<String, WeakReference<Object>> next = iterator.next();
-            
+
             String key = next.getKey();
             WeakReference<Object> value = next.getValue();
-            if (value.get()!=null) {
+            if (value.get() != null) {
                 ret.put(key, System.identityHashCode(value.get()));
             } else {
                 iterator.remove();
             }
         }
-        
+
         return ret;
     }
-    
+
     /**
      * Establece el tiempo entre cada ejecucion del hilo que limpia el caché.
+     *
      * @param seconds segundos entre cada ejecución
      * @return this
      */

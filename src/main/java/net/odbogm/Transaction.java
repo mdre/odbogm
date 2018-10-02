@@ -12,8 +12,10 @@ import com.orientechnologies.orient.core.sql.OCommandSQL;
 import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery;
 import com.tinkerpop.blueprints.Direction;
 import com.tinkerpop.blueprints.Vertex;
+import com.tinkerpop.blueprints.impls.orient.OrientConfigurableGraph;
 import com.tinkerpop.blueprints.impls.orient.OrientDynaElementIterable;
 import com.tinkerpop.blueprints.impls.orient.OrientEdge;
+import com.tinkerpop.blueprints.impls.orient.OrientElement;
 import com.tinkerpop.blueprints.impls.orient.OrientGraph;
 import com.tinkerpop.blueprints.impls.orient.OrientVertex;
 import java.lang.reflect.Field;
@@ -96,6 +98,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
     SessionManager sm;
     OrientGraph orientdbTransact;
+    // indica el nivel de anidamiento de la transacción. Cuando se llega a 0 se cierra.
+    private int orientTransacLevel;
 
     /**
      * Devuelve una transacción ya inicializada contra la base de datos.
@@ -106,6 +110,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         this.sm = sm;
         LOGGER.log(Level.FINER, "current thread: " + Thread.currentThread().getName());
         orientdbTransact = this.sm.getFactory().getTx();
+        orientdbTransact.setThreadMode(OrientConfigurableGraph.THREAD_MODE.ALWAYS_AUTOSET);
         this.objectMapper = this.sm.getObjectMapper();
 
     }
@@ -120,16 +125,19 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         LOGGER.log(Level.FINER, "current thread: " + Thread.currentThread().getName());
         this.sm = sm;
         orientdbTransact = db;
+        orientdbTransact.setThreadMode(OrientConfigurableGraph.THREAD_MODE.ALWAYS_AUTOSET);
         this.objectMapper = this.sm.getObjectMapper();
     }
 
+    
+    
     /**
      * Elimina cualquier objeto que esté marcado como dirty en esta transacción
      */
     public void clear() {
         this.dirty.clear();
     }
-
+    
     /**
      * Quita todas las referencias del cache. Todas los futuros get's recuperarán instancias nuevas de objetos dentro de la transacción. Las
      * referencias existentes seguirán funcionando normalmente.
@@ -252,6 +260,18 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         this.orientdbTransact.shutdown(true);
     }
 
+    /**
+     * Cierra la transacción con la base de datos actual y vuelve a obtener una nueva.
+     */
+    public synchronized void reset() {
+        activateOnCurrentThread();
+        this.orientdbTransact.shutdown(true);
+        orientdbTransact = this.sm.getFactory().getTx();
+        orientdbTransact.setThreadMode(OrientConfigurableGraph.THREAD_MODE.ALWAYS_AUTOSET);
+    }
+    
+    
+    
     /**
      * Persistir la información pendiente en la transacción
      *
@@ -862,6 +882,14 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     }
 
     /**
+     * Vincula el elemento a la transacción actual.
+     * @param e 
+     */
+    public void attach(OrientElement e) {
+        this.orientdbTransact.attach(e);
+    }
+    
+    /**
      * Retorna la cantidad de objetos marcados como Dirty. Utilizado para los test
      *
      * @return retorna la cantidad de objetos marcados para el próximo commit
@@ -951,7 +979,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * @return objeto de la clase T
      */
     @Override
-    public <T> T get(Class<T> type, String rid) throws UnknownRID {
+    public synchronized <T> T get(Class<T> type, String rid) throws UnknownRID {
 
         if (this.orientdbTransact == null) {
             throw new NoOpenTx();

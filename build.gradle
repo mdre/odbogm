@@ -107,6 +107,11 @@ dependencies {
     
     compile("com.orientechnologies:orientdb-graphdb:3.0.7")
     compile("com.orientechnologies:orientdb-graphdb:3.0.7:javadoc")
+    compile("com.orientechnologies:orientdb-graphdb:3.0.7:sources")
+    
+    compile("com.orientechnologies:orientdb-core:3.0.7")
+    compile("com.orientechnologies:orientdb-core:3.0.7:javadoc")
+    compile("com.orientechnologies:orientdb-core:3.0.7:sources")
     
     // https://mvnrepository.com/artifact/org.objenesis/objenesis
 //    compile group: 'org.objenesis', name: 'objenesis', version: '2.6'
