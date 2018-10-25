@@ -5,6 +5,7 @@
  */
 package net.odbogm.cache;
 
+import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -31,7 +32,10 @@ public class SimpleCache implements Cache {
     private int CLEAN_UP_PERIOD_IN_SEC = 3;
 
     private final ConcurrentHashMap<String, WeakReference<Object>> cache = new ConcurrentHashMap<>();
-
+    
+    private ReferenceQueue<Object> referenceQueue = new ReferenceQueue<>();
+    
+    
     public SimpleCache() {
         Thread cleanerThread = new Thread(() -> {
             while (!Thread.currentThread().isInterrupted()) {
@@ -66,7 +70,7 @@ public class SimpleCache implements Cache {
             cache.remove(key);
         } else {
 //            long expiryTime = System.currentTimeMillis() + periodInMillis;
-            cache.put(key, new WeakReference<>(value));
+            cache.put(key, new WeakReference<>(value,referenceQueue));
         }
     }
 
@@ -91,7 +95,9 @@ public class SimpleCache implements Cache {
         Object r = null;
         WeakReference<Object> wr = this.cache.get(key);
         if (wr != null) {
-            r = wr.get();
+            LOGGER.log(Level.FINEST, "\n\n\ncache enqueued: "+wr.isEnqueued()+"\n\n\n");
+            if (!wr.isEnqueued())
+                r = wr.get();
             if (r == null) {
                 remove(key);
             }

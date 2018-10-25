@@ -245,8 +245,11 @@ public class ObjectMapper {
      * @throws NoSuchFieldException no existe el campo.
      */
     public <T> T hydrate(Class<T> c, OrientVertex v, Transaction t) throws DuplicateClassDefinition, InstantiationException, IllegalAccessException, NoSuchFieldException, CollectionNotSupported {
+        t.initInternalTx();
+        LOGGER.log(Level.FINER, "class: {0}  vertex: {1}", new Object[]{c, v});
 //        T o = c.newInstance();
         // activar la base de datos en el hilo actual.
+        
         t.activateOnCurrentThread();
 //        v.getGraph().getRawGraph().activateOnCurrentThread();
 
@@ -426,6 +429,7 @@ public class ObjectMapper {
 
 //        LOGGER.log(Level.FINER, "Objeto hydratado: " + oproxied.toString());
         LOGGER.log(Level.FINER, "******************* FIN HYDRATE *******************");
+        t.closeInternalTx();
         return (T) oproxied;
     }
 

@@ -63,6 +63,9 @@ task autoBuildNumber {
     }
 }
 
+
+
+
 // agregar la dependencia solo si no se trata de un release
 if (! project.gradle.startParameter.taskNames.join(",").toLowerCase().contains("release") ) {
     build.dependsOn autoBuildNumber
@@ -105,13 +108,13 @@ dependencies {
     compile("com.github.mdre:odbogm-agent:1.0.5.4")
     //compile("com.esotericsoftware:kryo-shaded:4.0.1")
     
-    compile("com.orientechnologies:orientdb-graphdb:3.0.7")
-    compile("com.orientechnologies:orientdb-graphdb:3.0.7:javadoc")
-    compile("com.orientechnologies:orientdb-graphdb:3.0.7:sources")
+    compile("com.orientechnologies:orientdb-graphdb:3.0.9")
+    compile("com.orientechnologies:orientdb-graphdb:3.0.9:javadoc")
+//    compile("com.orientechnologies:orientdb-graphdb:3.0.9:sources")
     
-    compile("com.orientechnologies:orientdb-core:3.0.7")
-    compile("com.orientechnologies:orientdb-core:3.0.7:javadoc")
-    compile("com.orientechnologies:orientdb-core:3.0.7:sources")
+    compile("com.orientechnologies:orientdb-core:3.0.9")
+    compile("com.orientechnologies:orientdb-core:3.0.9:javadoc")
+//    compile("com.orientechnologies:orientdb-core:3.0.9:sources")
     
     // https://mvnrepository.com/artifact/org.objenesis/objenesis
 //    compile group: 'org.objenesis', name: 'objenesis', version: '2.6'

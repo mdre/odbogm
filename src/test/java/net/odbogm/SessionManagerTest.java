@@ -13,12 +13,10 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.agent.ITransparentDirtyDetector;
-import net.odbogm.agent.TransparentDirtyDetectorInstrumentator;
 import net.odbogm.cache.SimpleCache;
 import net.odbogm.exceptions.ReferentialIntegrityViolation;
 import net.odbogm.exceptions.UnknownRID;
 import net.odbogm.proxy.IObjectProxy;
-import net.odbogm.proxy.ObjectProxy;
 import net.odbogm.security.*;
 import net.odbogm.utils.DateHelper;
 import org.junit.After;
@@ -66,12 +64,12 @@ public class SessionManagerTest {
         System.out.println("Iniciando session manager...");
         sm = new SessionManager("remote:localhost/Test", "root", "toor")
                 .setActivationStrategy(SessionManager.ActivationStrategy.CLASS_INSTRUMENTATION)
-                .setClassLevelLog(ObjectProxy.class, Level.FINEST)
+//                .setClassLevelLog(ObjectProxy.class, Level.FINEST)
 //                .setClassLevelLog(SimpleCache.class, Level.FINER)
 //                .setClassLevelLog(ArrayListLazyProxy.class, Level.FINER)
 //                .setClassLevelLog(ObjectMapper.class, Level.FINER)
 //                .setClassLevelLog(SObject.class, Level.FINER)
-                .setClassLevelLog(TransparentDirtyDetectorInstrumentator.class, Level.FINER)
+//                .setClassLevelLog(TransparentDirtyDetectorInstrumentator.class, Level.FINER)
                 ;
         System.out.println("Begin");
         this.sm.begin();
@@ -1833,8 +1831,10 @@ public class SessionManagerTest {
         ioPadre = null;
         ioIndirecto = null;
         
+        sm.getCurrentTransaction().removeFromCache(ridPadre);
         System.out.println("gc");
         System.gc();
+
 //        try {
 //            Thread.sleep(5000);
 //        } catch (InterruptedException ex) {
@@ -1858,6 +1858,8 @@ public class SessionManagerTest {
         
         assertEquals(ioPadreIdent, ioIndirectPadreIdent);
         
+        sm.getCurrentTransaction().removeFromCache(sm.getRID(ioPadre));
+        sm.getCurrentTransaction().removeFromCache(sm.getRID(ioIndirecto));
         ioPadre = null;
         ioIndirecto = null;
         
@@ -1873,6 +1875,7 @@ public class SessionManagerTest {
         IndirectObject sioLinked = sm.store(ioLinked);
         System.out.println("precommit:"+sm.getCurrentTransaction().getObjectCache());
         sm.commit();
+        System.out.println("postcommit:"+sm.getCurrentTransaction().getObjectCache());
         String dLinked = sm.getRID(sioLinked);
         
         // liberar los objetos
@@ -1880,10 +1883,12 @@ public class SessionManagerTest {
         ioLinked = null;
         sioLinked = null;
         
-        System.gc();
         
-        // recuperar nuevamente el registro
         
+//        System.gc();
+        
+        
+        System.out.println("recuperar nuevamente el registro "+dLinked);
         IndirectObject rioLinked = sm.get(IndirectObject.class, dLinked);
         
         System.out.println("DM: "+((IObjectProxy)rioLinked).___isDirty());
@@ -1906,8 +1911,8 @@ public class SessionManagerTest {
         
         System.out.println("\ngc...");
         System.gc();
-        System.out.println(sm.getCurrentTransaction().getObjectCache());
-        System.out.println(sm.getCurrentTransaction().getDirtyCache());
+        System.out.println("oc: "+sm.getCurrentTransaction().getObjectCache());
+        System.out.println("dc: "+sm.getCurrentTransaction().getDirtyCache());
         
         System.out.println("\nrecuperar el objeto nuevamente");
         IndirectObject sioIndirectLinked = sm.get(IndirectObject.class,inLinked);
@@ -1935,7 +1940,7 @@ public class SessionManagerTest {
         sioIndirectLinked = null;
         
         System.out.println("limpiar la memoria...");
-        System.gc();
+//        System.gc();
         System.out.println("oc: "+sm.getCurrentTransaction().getObjectCache());
         System.out.println("dc: "+sm.getCurrentTransaction().getDirtyCache());
         
@@ -1965,7 +1970,7 @@ public class SessionManagerTest {
         sioIndirectLinked = null;
         
         System.out.println("limpiar la memoria...");
-        System.gc();
+//        System.gc();
         
         sioIndirectLinked = sm.get(IndirectObject.class, inLinked);
         assertEquals(sioIndirectLinked.getHmIndirectLinked().size(), 2);

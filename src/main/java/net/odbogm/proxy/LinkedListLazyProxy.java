@@ -83,6 +83,8 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
     private Map<Object, ObjectCollectionState> listState = new ConcurrentHashMap<>();
 
     private void lazyLoad() {
+        this.transaction.initInternalTx();
+        
         this.transaction.activateOnCurrentThread();
         LOGGER.log(Level.FINER, "getGraph: " + relatedTo.getGraph());
 //        if (relatedTo.getGraph() == null) {
@@ -115,6 +117,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
             this.listState.put(o, ObjectCollectionState.REMOVED);
         }
         this.lazyLoading = false;
+        this.transaction.closeInternalTx();
     }
 
     public Map<Object, ObjectCollectionState> collectionState() {
@@ -181,6 +184,19 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         this.dirty = false;
         this.lazyLoad = true;
     }
+    
+    /**
+     * Método interno usado por 
+     * fuerza la recarga de todos los elementos del vector. La llamada a este método
+     * produce que se invoque a clear y luego se recarguen todos los objetos.
+     */
+    @Override
+    public void updateIndirect() {
+        super.clear();
+        this.lazyLoad();
+    }
+    
+    
     //====================================================================================
 
     public LinkedListLazyProxy() {
@@ -674,9 +690,9 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
 
     @Override
     protected void finalize() throws Throwable {
-        if (lazyLoad) {
-            this.lazyLoad();
-        }
+//        if (lazyLoad) {
+//            this.lazyLoad();
+//        }
         super.finalize();
     }
 

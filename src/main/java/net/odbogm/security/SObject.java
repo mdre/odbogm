@@ -11,6 +11,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.LogginProperties;
 import net.odbogm.annotations.Entity;
+import net.odbogm.annotations.Ignore;
 
 @Entity
 public abstract class SObject {
@@ -36,6 +37,7 @@ public abstract class SObject {
      * 4: delete
      * 8: list
      */ 
+    @Ignore
     private int __state = 0;
     private SObject __inherit = null;
 

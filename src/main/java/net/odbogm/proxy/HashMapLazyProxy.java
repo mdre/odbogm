@@ -81,6 +81,8 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
     private Map<Object, OrientEdge> keyToEdge = new ConcurrentHashMap<>();
 
     private synchronized void lazyLoad() {
+        this.transaction.initInternalTx();
+        
 //        LOGGER.log(Level.FINER, "Lazy Load.....");
         this.lazyLoad = false;
         this.lazyLoading = true;
@@ -122,6 +124,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
             }
         }
         this.lazyLoading = false;
+        this.transaction.closeInternalTx();
     }
 
     /**
@@ -227,6 +230,19 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         this.lazyLoad = true;
     }
 
+    
+    /**
+     * Método interno usado por 
+     * fuerza la recarga de todos los elementos del vector. La llamada a este método
+     * produce que se invoque a clear y luego se recarguen todos los objetos.
+     */
+    @Override
+    public void updateIndirect() {
+        super.clear();
+        this.lazyLoad();
+    }
+    
+    
     //====================================================================================
     /**
      * Crea un map utilizando los atributos del Edge como key. Si se utiliza un objeto para representar los atributos, se debe declarar en el
@@ -486,9 +502,9 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
 
     @Override
     protected void finalize() throws Throwable {
-        if (lazyLoad) {
-            this.lazyLoad();
-        }
+//        if (lazyLoad) {
+//            this.lazyLoad();
+//        }
         super.finalize(); //To change body of generated methods, choose Tools | Templates.
     }
 

@@ -36,4 +36,6 @@ public interface IObjectProxy {
     public void ___reload();
     public void ___rollback();
     public void ___loadLazyLinks();
+    public void ___updateIndirectLinks();
+    
 }

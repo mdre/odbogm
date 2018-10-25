@@ -246,6 +246,11 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                         this.___loadLazyLinks();
                     }
                     break;
+                case "___updateIndirectLinks":
+                    if (this.___objectReady) {
+                        this.___updateIndirectLinks();
+                    }
+                    break;
                 case "___isDirty":
                     if (this.___objectReady) {
                         res = this.___isDirty();
@@ -340,7 +345,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                     break;
             }
         } else {
-            throw new ObjectMarkedAsDeleted("The object " + this.___baseElement.getId().toString() + " was deleted from the database. Trying to call to "+method.getName());
+            throw new ObjectMarkedAsDeleted("The object " + this.___baseElement.getId().toString() + " was deleted from the database. Trying to call to " + method.getName());
         }
         // AFTER
         // print how long it took to execute the method on the proxified object
@@ -448,7 +453,10 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
      */
     @Override
     public synchronized void ___loadLazyLinks() {
+
         if (this.___loadLazyLinks) {
+            this.___transaction.initInternalTx();
+
             LOGGER.log(Level.FINER, "Base class: " + this.___baseClass.getSimpleName());
             LOGGER.log(Level.FINER, "iniciando loadLazyLinks...");
             boolean currentDirtyState = this.___isDirty();
@@ -466,15 +474,15 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                 lnks.putAll(classdef.indirectLinks);
                 LOGGER.log(Level.FINER, "procesando {0} links y {1} indirected links", new Object[]{classdef.links.size(), classdef.indirectLinks.size()});
                 for (Map.Entry<String, Class<?>> entry : lnks.entrySet()) {
-                //  classdef.links.entrySet().stream().forEach((entry) -> {
+                    //  classdef.links.entrySet().stream().forEach((entry) -> {
                     try {
                         String field = entry.getKey();
                         Class<?> fc = entry.getValue();
-                        
+
                         Field fLink = ReflectionUtils.findField(___baseClass, field);
                         boolean acc = fLink.isAccessible();
                         fLink.setAccessible(true);
-                        
+
                         String graphRelationName = ___baseClass.getSimpleName() + "_" + field;
                         Direction direction = Direction.OUT;
                         if (fLink.isAnnotationPresent(Indirect.class)) {
@@ -483,10 +491,10 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                             Indirect in = fLink.getAnnotation(Indirect.class);
                             graphRelationName = in.linkName();
                             direction = Direction.IN;
-                            LOGGER.log(Level.FINER, "Se ha detectado un indirect. Linkname = {0}",new Object[]{in.linkName()});
-                        } 
-                        LOGGER.log(Level.FINER, "Field: {0}.{1}   RelationName: {2}", new String[]{this.___baseClass.getSimpleName(),field, graphRelationName});
-                        
+                            LOGGER.log(Level.FINER, "Se ha detectado un indirect. Linkname = {0}", new Object[]{in.linkName()});
+                        }
+                        LOGGER.log(Level.FINER, "Field: {0}.{1}   Class: {2}  RelationName: {3}", new String[]{this.___baseClass.getSimpleName(), field, fc.getSimpleName(), graphRelationName});
+
                         // recuperar de la base el vértice correspondiente
                         boolean duplicatedLinkGuard = false;
                         for (Vertex vertice : ov.getVertices(direction, graphRelationName)) {
@@ -502,14 +510,14 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
                                 // si es una interface llamar a get solo con el RID.
                                 Object innerO = null;
-                                
+
                                 innerO = fc.isInterface() ? this.___transaction.get(vertice.getId().toString()) : this.___transaction.get(fc, vertice.getId().toString());
-                                
-                                LOGGER.log(Level.FINER, "Inner object " + field + ": " 
-                                        + (innerO == null ? "NULL" : "" + innerO.toString()) 
-                                        + "  FC: " + fc.getSimpleName() 
+
+                                LOGGER.log(Level.FINER, "Inner object " + field + ": "
+                                        + (innerO == null ? "NULL" : "" + innerO.toString())
+                                        + "  FC: " + fc.getSimpleName()
                                         + "   innerO.class: " + innerO.getClass().getSimpleName()
-                                        +" hashCode: "+System.identityHashCode(innerO));
+                                        + " hashCode: " + System.identityHashCode(innerO));
                                 fLink.set(this.___proxyObject, fc.cast(innerO));
                                 duplicatedLinkGuard = true;
 
@@ -517,7 +525,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                             } else if (false) {
                                 throw new DuplicateLink();
                             }
-                            LOGGER.log(Level.FINER, "FIN hydrate innerO: " + vertice.getId()+"^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
+                            LOGGER.log(Level.FINER, "FIN hydrate innerO: " + vertice.getId() + "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
                         }
                         fLink.setAccessible(acc);
                     } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
@@ -525,11 +533,121 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                     }
                 }
             }
-            
+
             // resetear dirty si corresponde.
             this.___dirty = currentDirtyState;
+
+            this.___transaction.closeInternalTx();
         }
 
+    }
+
+    
+    @Override
+    public void ___updateIndirectLinks() {
+        if (this.___baseElement instanceof OrientVertex) {
+            boolean preservDirtyState = this.___dirty;
+            
+            OrientVertex ov = (OrientVertex) this.___baseElement;
+            ClassDef classdef = this.___transaction.getObjectMapper().getClassDef(this.___proxyObject);
+
+            // hidratar los atributos @indirectLinks
+            Map<String, Class<?>> lnks = new HashMap<>();
+            lnks.putAll(classdef.indirectLinks);
+            LOGGER.log(Level.FINER, "procesando {0} indirected links", new Object[]{classdef.indirectLinks.size()});
+            for (Map.Entry<String, Class<?>> entry : lnks.entrySet()) {
+                //  classdef.links.entrySet().stream().forEach((entry) -> {
+                try {
+                    String field = entry.getKey();
+                    Class<?> fc = entry.getValue();
+
+                    Field fLink = ReflectionUtils.findField(___baseClass, field);
+                    boolean acc = fLink.isAccessible();
+                    fLink.setAccessible(true);
+
+                    String graphRelationName = ___baseClass.getSimpleName() + "_" + field;
+                    Direction direction = Direction.OUT;
+                    if (fLink.isAnnotationPresent(Indirect.class)) {
+                        // si es un indirect se debe reemplazar el nombre de la relación por 
+                        // el propuesto por la anotation
+                        Indirect in = fLink.getAnnotation(Indirect.class);
+                        graphRelationName = in.linkName();
+                        direction = Direction.IN;
+                        LOGGER.log(Level.FINER, "Se ha detectado un indirect. Linkname = {0}", new Object[]{in.linkName()});
+                    }
+                    LOGGER.log(Level.FINER, "Field: {0}.{1}   Class: {2}  RelationName: {3}", new String[]{this.___baseClass.getSimpleName(), field, fc.getSimpleName(), graphRelationName});
+
+                    // recuperar de la base el vértice correspondiente
+                    boolean duplicatedLinkGuard = false;
+                    for (Vertex vertice : ov.getVertices(direction, graphRelationName)) {
+                        LOGGER.log(Level.FINER, "hydrate innerO: " + vertice.getId());
+
+                        if (!duplicatedLinkGuard) {
+//                        Object innerO = this.hydrate(fc, vertice);
+                            /* FIXME: esto genera una dependencia cruzada. Habría que revisar
+                           como solucionarlo. Esta llamada se hace para que quede el objeto
+                           mapeado 
+                             */
+                            this.___transaction.addToTransactionCache(this.___getRid(), ___proxyObject);
+
+                            // si es una interface llamar a get solo con el RID.
+                            Object innerO = null;
+
+                            innerO = fc.isInterface() ? this.___transaction.get(vertice.getId().toString()) : this.___transaction.get(fc, vertice.getId().toString());
+
+                            LOGGER.log(Level.FINER, "Inner object " + field + ": "
+                                    + (innerO == null ? "NULL" : "" + innerO.toString())
+                                    + "  FC: " + fc.getSimpleName()
+                                    + "   innerO.class: " + innerO.getClass().getSimpleName()
+                                    + " hashCode: " + System.identityHashCode(innerO));
+                            fLink.set(this.___proxyObject, fc.cast(innerO));
+                            duplicatedLinkGuard = true;
+
+                            ___transaction.decreseTransactionCache();
+                        } else if (false) {
+                            throw new DuplicateLink();
+                        }
+                        LOGGER.log(Level.FINER, "FIN hydrate innerO: " + vertice.getId() + "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
+                    }
+                    fLink.setAccessible(acc);
+                } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
+                    Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
+                }
+            }
+            
+            
+            // forzar la recarga de las colecciones.
+            LOGGER.log(Level.FINER, "Refrescando las colecciones indirectas...");
+            for (Map.Entry<String, Class<?>> entry : classdef.indirectLinkLists.entrySet()) {
+                try {
+                    String field = entry.getKey();
+                    Class<? extends Object> value = entry.getValue();
+                    
+                    Field fLink = ReflectionUtils.findField(___baseClass, field);
+                    boolean acc = fLink.isAccessible();
+                    fLink.setAccessible(true);
+                    
+                    if (ILazyCalls.class.isAssignableFrom(fLink.get(___proxyObject).getClass())) {
+                        ((ILazyCalls)fLink.get(___proxyObject)).updateIndirect();
+                    }
+                    fLink.setAccessible(acc);
+                    
+                } catch (NoSuchFieldException ex) {
+                    Logger.getLogger(ObjectProxy.class.getName()).log(Level.SEVERE, null, ex);
+                } catch (IllegalArgumentException ex) {
+                    Logger.getLogger(ObjectProxy.class.getName()).log(Level.SEVERE, null, ex);
+                } catch (IllegalAccessException ex) {
+                    Logger.getLogger(ObjectProxy.class.getName()).log(Level.SEVERE, null, ex);
+                }
+                
+            }
+            
+            // volver a establecer el estado de Dirty.
+            this.___dirty = preservDirtyState;
+        }
+        
+        
+        
     }
 
     private synchronized void commitObjectChange() {
@@ -739,14 +857,18 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
     @Override
     public synchronized void ___commit() {
+
 //        ODatabaseRecordThreadLocal.INSTANCE.set(this.___sm.getGraphdb().getRawGraph());
         LOGGER.log(Level.FINER, "Iniciando ___commit() ....");
         LOGGER.log(Level.FINER, "valid: " + this.___isValidObject);
-        
-        if (this.___dirty) {
+        LOGGER.log(Level.FINER, "dirty: " + this.___dirty);
+
+        if (this.___dirty || this.___baseElement.getIdentity().isNew()) {
+            this.___transaction.initInternalTx();
+
             // asegurarse que está activa la base.
             this.___transaction.activateOnCurrentThread();
-            
+
             // asegurarse que está atachado
             if (this.___baseElement.getGraph() == null) {
                 LOGGER.log(Level.FINER, "El objeto no está atachado!");
@@ -889,10 +1011,10 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                         boolean acc = f.isAccessible();
                         f.setAccessible(true);
                         final String graphRelationName;
-                        
+
                         // preprarar el nombre de la relación
                         graphRelationName = this.___baseClass.getSimpleName() + "_" + field;
-                        
+
                         // Object oCol = f.get(this.realObj);
                         Object oCol = f.get(this.___proxyObject);
 
@@ -972,9 +1094,9 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                     if (colObjState == ObjectCollectionState.REMOVED) {
                                         // remover el link
                                         for (Edge edge : ((OrientVertex) this.___baseElement)
-                                                        .getEdges(((IObjectProxy) colObject).___getVertex(), 
-                                                                  Direction.OUT, 
-                                                                  graphRelationName)) {
+                                                .getEdges(((IObjectProxy) colObject).___getVertex(),
+                                                        Direction.OUT,
+                                                        graphRelationName)) {
                                             if (this.___transaction.getSessionManager().isAuditing()) {
                                                 this.___transaction.getSessionManager().auditLog(this, AuditType.WRITE, "LINKLIST REMOVE: " + graphRelationName, edge);
                                             }
@@ -986,7 +1108,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                                 this.___transaction.getSessionManager().auditLog(this, AuditType.DELETE, "LINKLIST DELETE: " + graphRelationName, colObject);
                                             }
                                             this.___transaction.delete(colObject);
-                                        } 
+                                        }
                                     }
                                 }
 
@@ -1098,6 +1220,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             // quitar la marca de dirty
             this.___removeDirtyMark();
 //            this.___dirty = false;
+            this.___transaction.closeInternalTx();
         }
         LOGGER.log(Level.FINER, "fin commit ----");
     }
@@ -1107,9 +1230,12 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
      */
     @Override
     public void ___reload() {
+        this.___transaction.initInternalTx();
+
         this.___transaction.activateOnCurrentThread();
-        this.___transaction.attach(___baseElement);
         this.___baseElement.reload();
+
+        this.___transaction.closeInternalTx();
     }
 
     /**
@@ -1170,6 +1296,10 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     @Override
     public synchronized void ___rollback() {
         LOGGER.log(Level.FINER, "\n\n******************* ROLLBACK *******************\n\n");
+        LOGGER.log(Level.FINER, ThreadHelper.getCurrentStackTrace());
+
+        this.___transaction.initInternalTx();
+
         this.___transaction.activateOnCurrentThread();
         // si es un objeto nuevo
         LOGGER.log(Level.FINER, "RID: " + this.___baseElement.getIdentity().toString() + " Nueva?: " + this.___baseElement.getIdentity().isNew());
@@ -1321,7 +1451,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             }
 
         }
-
+        this.___transaction.closeInternalTx();
     }
 
 }

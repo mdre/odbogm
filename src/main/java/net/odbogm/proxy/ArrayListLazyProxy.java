@@ -89,6 +89,8 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
     private Map<Object, ObjectCollectionState> listState = new ConcurrentHashMap<>();
 
     private synchronized void lazyLoad() {
+        this.transaction.initInternalTx();
+        
         this.transaction.activateOnCurrentThread();
         LOGGER.log(Level.FINER, "getGraph: " + relatedTo.getGraph());
 //        if (relatedTo.getGraph() == null) {
@@ -102,6 +104,7 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
 //        LOGGER.log(Level.INFO, "Lazy Load.....");
         this.lazyLoad = false;
         this.lazyLoading = true;
+        
         LOGGER.log(Level.FINER, "relatedTo: {0} - field: {1} - Class: {2}", new Object[]{relatedTo, field, fieldClass.getSimpleName()});
         // recuperar todos los elementos desde el vértice y agregarlos a la colección
         Iterable<Vertex> rt = relatedTo.getVertices(this.direction, field);
@@ -119,6 +122,7 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
             this.listState.put(o, ObjectCollectionState.REMOVED);
         }
         this.lazyLoading = false;
+        this.transaction.closeInternalTx();
     }
 
     public synchronized Map<Object, ObjectCollectionState> collectionState() {
@@ -156,7 +160,9 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
             }
         }
     }
-
+    
+    
+    
     private synchronized void setDirty() {
         // Si es una colección sobre una dirección saliente proceder a marcar
         // en caso contrario se la considera como un Indirect no NO REPORTA 
@@ -188,6 +194,18 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
         this.lazyLoad = true;
     }
 
+    /**
+     * Método interno usado por 
+     * fuerza la recarga de todos los elementos del vector. La llamada a este método
+     * produce que se invoque a clear y luego se recarguen todos los objetos.
+     */
+    @Override
+    public void updateIndirect() {
+        super.clear();
+        this.lazyLoad();
+    }
+    
+    
     //====================================================================================
     public ArrayListLazyProxy() {
         super();
@@ -243,9 +261,9 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
     
     @Override
     protected void finalize() throws Throwable {
-        if (lazyLoad) {
-            this.lazyLoad();
-        }
+//        if (lazyLoad) {
+//            this.lazyLoad();
+//        }
         super.finalize(); //To change body of generated methods, choose Tools | Templates.
     }
 
@@ -379,6 +397,7 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
 
     @Override
     public void clear() {
+        //FIXME: se puede optimizar. No tiene sentido cargar todo para luego borrar.
         if (lazyLoad) {
             this.lazyLoad();
         }

@@ -162,7 +162,7 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
         // si no hay una transacción creada, abrir una...
         if (this.publicTransaction == null) {
             
-            publicTransaction = new Transaction(this);
+            publicTransaction = getTransaction();
     //        graphdb.getRawGraph().activateOnCurrentThread();
     //        graphdb.setThreadMode(OrientConfigurableGraph.THREAD_MODE.ALWAYS_AUTOSET);
     //        ODatabaseRecordThreadLocal.INSTANCE.set(graphdb.getRawGraph());
@@ -180,17 +180,19 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
      * @return un objeto Transaction para operar.
      */    
     public Transaction getTransaction() {
-        return new Transaction(this, this.getGraphdb());
+        Transaction t = new Transaction(this);
+        openTransactionList.add(new WeakReference<>(t));
+        return t;
     }
     
-    /**
-     * Devuelve una transacción sobre una nueva conexión a la base
-     * solicitada al pool de transacciones
-     * @return Transaction
-     */
-    public Transaction getNewTxTransaction() {
-        return new Transaction(this);
-    }
+//    /**
+//     * Devuelve una transacción sobre una nueva conexión a la base
+//     * solicitada al pool de transacciones
+//     * @return Transaction
+//     */
+//    public Transaction getNewTxTransaction() {
+//        return new Transaction(this);
+//    }
     
     /**
      * Devuelve la transacción por defecto que está utilizando el SessionManager.
@@ -314,15 +316,14 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
      * Todas las transacciones abiertas son ROLLBACK y finalizadas.
      */
     public void shutdown() {
-        for (WeakReference<Transaction> weakReference : openTransactionList) {
-            Transaction t = weakReference.get();
-            if (t!=null) {
-                t.rollback();
-                t.close();
-            }
-        }
+//        for (WeakReference<Transaction> weakReference : openTransactionList) {
+//            Transaction t = weakReference.get();
+//            if (t!=null) {
+//                t.();
+//                t.rollback();
+//            }
+//        }
         this.factory.close();
-        this.publicTransaction.close();
     }
 
     public void getTxConflics() {

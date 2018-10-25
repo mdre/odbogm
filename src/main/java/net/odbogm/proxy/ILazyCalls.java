@@ -13,4 +13,5 @@ public interface ILazyCalls {
     public boolean isDirty();
     public void clearState();
     public void rollback();
+    public void updateIndirect();
 }

@@ -15,7 +15,6 @@ import com.tinkerpop.blueprints.Vertex;
 import com.tinkerpop.blueprints.impls.orient.OrientConfigurableGraph;
 import com.tinkerpop.blueprints.impls.orient.OrientDynaElementIterable;
 import com.tinkerpop.blueprints.impls.orient.OrientEdge;
-import com.tinkerpop.blueprints.impls.orient.OrientElement;
 import com.tinkerpop.blueprints.impls.orient.OrientGraph;
 import com.tinkerpop.blueprints.impls.orient.OrientVertex;
 import java.lang.reflect.Field;
@@ -102,33 +101,59 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     private int orientTransacLevel;
 
     /**
-     * Devuelve una transacción ya inicializada contra la base de datos.
+     * Devuelve una transacción con su propio espacio de caché.
      *
      * @param sm
      */
     Transaction(SessionManager sm) {
         this.sm = sm;
         LOGGER.log(Level.FINER, "current thread: " + Thread.currentThread().getName());
-        orientdbTransact = this.sm.getFactory().getTx();
-        orientdbTransact.setThreadMode(OrientConfigurableGraph.THREAD_MODE.ALWAYS_AUTOSET);
+        
         this.objectMapper = this.sm.getObjectMapper();
 
     }
 
+//    /**
+//     * Devuelve una transacción inicializada sobre una conexión existente.
+//     *
+//     * @param sm
+//     * @param db
+//     */
+//    Transaction(SessionManager sm, OrientGraph db) {
+//        LOGGER.log(Level.FINER, "current thread: " + Thread.currentThread().getName());
+//        this.sm = sm;
+//        orientdbTransact = db;
+//        orientdbTransact.setThreadMode(OrientConfigurableGraph.THREAD_MODE.ALWAYS_AUTOSET);
+//        this.objectMapper = this.sm.getObjectMapper();
+//    }
+
+    public synchronized void initInternalTx() {
+        if (this.orientdbTransact == null) {
+            LOGGER.log(Level.FINEST, "\nAbriendo una transacción...");
+            //inicializar la transacción
+            orientdbTransact = this.sm.getFactory().getTx();
+            orientdbTransact.setThreadMode(OrientConfigurableGraph.THREAD_MODE.ALWAYS_AUTOSET);
+            orientTransacLevel = 0;
+        } else {
+            //aumentar el anidamiento de transacciones
+            LOGGER.log(Level.FINEST, "Anidando transacción: "+orientTransacLevel+" --> "+(orientTransacLevel+1));
+            orientTransacLevel++;
+        }
+    }
+    
     /**
-     * Devuelve una transacción inicializada sobre una conexión existente.
-     *
-     * @param sm
-     * @param db
+     * cierra la transacción sin realizar el commit
      */
-    Transaction(SessionManager sm, OrientGraph db) {
-        LOGGER.log(Level.FINER, "current thread: " + Thread.currentThread().getName());
-        this.sm = sm;
-        orientdbTransact = db;
-        orientdbTransact.setThreadMode(OrientConfigurableGraph.THREAD_MODE.ALWAYS_AUTOSET);
-        this.objectMapper = this.sm.getObjectMapper();
+    public synchronized void closeInternalTx() {
+        if (orientTransacLevel == 0) {
+            LOGGER.log(Level.FINEST, "termnando la transacción\n");
+            orientdbTransact.shutdown(false,false);
+            orientdbTransact = null;
+        } else {
+            LOGGER.log(Level.FINEST, "decrementando la transacción: "+orientTransacLevel+ " --> "+(orientTransacLevel-1));
+            orientTransacLevel--;
+        }
     }
-
     
     
     /**
@@ -152,7 +177,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * @param o objeto de referencia.
      */
     public synchronized void setAsDirty(Object o) throws UnmanagedObject {
-        activateOnCurrentThread();
+//        activateOnCurrentThread();
         if (o instanceof IObjectProxy) {
             String rid = ((IObjectProxy) o).___getVertex().getId().toString();
             LOGGER.log(Level.FINER, "Marcando como dirty: " + o.getClass().getSimpleName() + " - " + o.toString());
@@ -199,9 +224,11 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * parte del siguiente commit
      */
     public synchronized void refreshDirtyObjects() {
-        if (this.orientdbTransact == null) {
-            throw new NoOpenTx();
-        }
+        initInternalTx();
+        
+//        if (this.orientdbTransact == null) {
+//            throw new NoOpenTx();
+//        }
         for (Map.Entry<String, Object> e : dirty.entrySet()) {
             String rid = e.getKey();
             IObjectProxy o = (IObjectProxy) e.getValue();
@@ -210,6 +237,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             // bajarlos efectívamente.
             o.___reload();
         }
+        
+        closeInternalTx();
     }
 
     /**
@@ -219,20 +248,23 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      *
      * @param o objeto recuperado de la base a ser actualizado.
      */
-    public synchronized void refreshObject(IObjectProxy o) {
-        if (this.orientdbTransact == null) {
-            throw new NoOpenTx();
-        }
-        o.___reload();
+    public synchronized void refreshObject(Object o) {
+        initInternalTx();
+//        if (this.orientdbTransact == null) {
+//            throw new NoOpenTx();
+//        }
+        ((IObjectProxy)o).___reload();
+        
+        closeInternalTx();
     }
 
     /**
-     * Devuelve el objeto de comunicación con la base.
+     * Devuelve un objeto de comunicación con la base.
      *
      * @return retorna la referencia directa al driver del la base.
      */
     public OrientGraph getGraphdb() {
-        return orientdbTransact;
+        return sm.getFactory().getTx();
     }
 
     /**
@@ -247,28 +279,31 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      *
      * @param closeDb true si se debe cerrar la conexión a la base
      */
-    public synchronized void close(boolean closeDb) {
-        activateOnCurrentThread();
-        this.orientdbTransact.shutdown(closeDb);
-    }
-
+//    public synchronized void close(boolean closeDb) {
+//        activateOnCurrentThread();
+//        this.orientdbTransact.shutdown(closeDb);
+//    }
+//
     /**
      * Finaliza la comunicación contra la base de datos.
      */
-    public synchronized void close() {
-        activateOnCurrentThread();
-        this.orientdbTransact.shutdown(true);
-    }
+//    public synchronized void close() {
+//        if (this.orientdbTransact!=null) {
+//            activateOnCurrentThread();
+//            closeInternalTx();
+//        }
+//    }
 
+    
     /**
      * Cierra la transacción con la base de datos actual y vuelve a obtener una nueva.
      */
-    public synchronized void reset() {
-        activateOnCurrentThread();
-        this.orientdbTransact.shutdown(true);
-        orientdbTransact = this.sm.getFactory().getTx();
-        orientdbTransact.setThreadMode(OrientConfigurableGraph.THREAD_MODE.ALWAYS_AUTOSET);
-    }
+//    public synchronized void reset() {
+//        activateOnCurrentThread();
+//        this.orientdbTransact.shutdown(true);
+//        orientdbTransact = this.sm.getFactory().getTx();
+//        orientdbTransact.setThreadMode(OrientConfigurableGraph.THREAD_MODE.ALWAYS_AUTOSET);
+//    }
     
     
     
@@ -278,6 +313,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * @throws NoOpenTx si no hay una trnasacción abierta.
      */
     public synchronized void commit() throws NoOpenTx, OConcurrentModificationException {
+        initInternalTx();
+        
         LOGGER.log(Level.FINER, "COMMIT");
         if (this.nestedTransactionLevel == 0) {
             if (this.orientdbTransact == null) {
@@ -342,12 +379,14 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             this.nestedTransactionLevel--;
         }
         LOGGER.log(Level.FINER, "FIN DE COMMIT! ----------------------------");
+        closeInternalTx();
     }
 
     /**
      * realiza un rollback sobre la transacción activa.
      */
     public synchronized void rollback() {
+        initInternalTx();
         LOGGER.log(Level.FINER, "Rollback ------------------------");
         LOGGER.log(Level.FINER, "Dirty objects: " + dirty.size());
         if (this.orientdbTransact == null) {
@@ -371,6 +410,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         this.dirty.clear();
         this.nestedTransactionLevel = 0;
         LOGGER.log(Level.FINER, "FIN ROLLBACK.");
+        closeInternalTx();
     }
 
     /**
@@ -390,6 +430,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     @Override
     public synchronized <T> T store(T o) throws IncorrectRIDField, NoOpenTx, ClassToVertexNotFound {
+        initInternalTx();
+        
         activateOnCurrentThread();
         T proxied = null;
 
@@ -609,6 +651,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             ((SObject) proxied).validate(this.sm.getLoggedInUser());
         }
 
+        closeInternalTx();
         return proxied;
     }
 
@@ -618,6 +661,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * @param toRemove referencia al objeto a remover
      */
     public void delete(Object toRemove) throws ReferentialIntegrityViolation, UnknownObject {
+        initInternalTx();
+        
         LOGGER.log(Level.FINER, "Remove: " + toRemove.getClass().getName());
         activateOnCurrentThread();
 
@@ -818,13 +863,16 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         } else {
             throw new UnknownObject();
         }
-
+        
+        closeInternalTx();
     }
 
     /**
      * Transfiere todos los cambios de los objetos a las estructuras subyacentes.
      */
     public synchronized void flush() {
+        initInternalTx();
+        
         if (this.orientdbTransact == null) {
             throw new NoOpenTx();
         }
@@ -837,6 +885,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             // bajarlos efectívamente.
             o.___commit();
         }
+        
+        closeInternalTx();
     }
 
     /**
@@ -881,13 +931,13 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         }
     }
 
-    /**
-     * Vincula el elemento a la transacción actual.
-     * @param e 
-     */
-    public void attach(OrientElement e) {
-        this.orientdbTransact.attach(e);
-    }
+//    /**
+//     * Vincula el elemento a la transacción actual.
+//     * @param e 
+//     */
+//    public void attach(OrientElement e) {
+//        this.orientdbTransact.attach(e);
+//    }
     
     /**
      * Retorna la cantidad de objetos marcados como Dirty. Utilizado para los test
@@ -921,6 +971,9 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     @Override
     public Object get(String rid) throws UnknownRID, VertexJavaClassNotFound {
+        initInternalTx();
+        Object ret = null;
+        
         try {
             if (this.orientdbTransact == null) {
                 throw new NoOpenTx();
@@ -929,10 +982,13 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                 throw new UnknownRID();
             }
             activateOnCurrentThread();
-            Object ret = null;
 
             if (getFromCache(rid) != null) {
                 ret = getFromCache(rid);
+                
+                // actualizar los indirects
+                ((IObjectProxy)ret).___updateIndirectLinks();
+                
                 // si fue recuperado del caché, determinar si se ha modificado.
                 // si no fue modificado, hacer un reload para actualizar con la última 
                 // versión de la base de datos.
@@ -962,12 +1018,13 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                     ((SObject) ret).validate(this.sm.getLoggedInUser());
                 }
             }
-            return ret;
 
         } catch (ClassNotFoundException ex) {
             Logger.getLogger(SessionManager.class.getName()).log(Level.SEVERE, null, ex);
         }
-        return null;
+        
+        closeInternalTx();
+        return ret;
     }
 
     /**
@@ -980,7 +1037,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     @Override
     public synchronized <T> T get(Class<T> type, String rid) throws UnknownRID {
-
+        initInternalTx();
+        
         if (this.orientdbTransact == null) {
             throw new NoOpenTx();
         }
@@ -996,6 +1054,9 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             LOGGER.log(Level.FINER, "Objeto Recupeardo del caché: " + rid + " " + type.getSimpleName());
             o = (T) getFromCache(rid);
 
+            // actualizar los indirects
+            ((IObjectProxy)o).___updateIndirectLinks();
+            
             // si fue recuperado del caché, determinar si se ha modificado.
             // si no fue modificado, hacer un reload para actualizar con la última 
             // versión de la base de datos.
@@ -1057,11 +1118,14 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         LOGGER.log(Level.FINER, "fin auditoría.");
 
         LOGGER.log(Level.FINER, "Fin get: " + rid + " : " + type.getSimpleName() + " ihc: " + System.identityHashCode(o) + "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n");
+        
+        closeInternalTx();
         return o;
     }
 
     @Override
     public <T> T getEdgeAsObject(Class<T> type, OrientEdge e) {
+        initInternalTx();
         if (this.orientdbTransact == null) {
             throw new NoOpenTx();
         }
@@ -1083,6 +1147,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         } catch (NoSuchFieldException ex) {
             Logger.getLogger(SessionManager.class.getName()).log(Level.SEVERE, null, ex);
         }
+        
+        closeInternalTx();
         return o;
     }
 
@@ -1095,6 +1161,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     @Override
     public <T> T query(String sql) {
+        initInternalTx();
+        
         if (this.orientdbTransact == null) {
             throw new NoOpenTx();
         }
@@ -1102,7 +1170,9 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         flush();
 
         OCommandSQL osql = new OCommandSQL(sql);
-        return this.orientdbTransact.command(osql).execute();
+        T ret = this.orientdbTransact.command(osql).execute();
+        closeInternalTx();
+        return ret;
     }
 
     /**
@@ -1115,6 +1185,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     @Override
     public <T> T query(String sql, Object... param) {
+        initInternalTx();
+        
         if (this.orientdbTransact == null) {
             throw new NoOpenTx();
         }
@@ -1122,7 +1194,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         flush();
 
         OCommandSQL osql = new OCommandSQL(sql);
-        return this.orientdbTransact.command(osql).execute(param);
+        T ret = this.orientdbTransact.command(osql).execute(param);
+        return ret; 
     }
 
     /**
@@ -1136,6 +1209,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     @Override
     public long query(String sql, String retVal) {
+        initInternalTx();
+        
         if (this.orientdbTransact == null) {
             throw new NoOpenTx();
         }
@@ -1147,8 +1222,10 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         if (retVal.isEmpty()) {
             retVal = ov.getProperties().keySet().iterator().next();
         }
-
-        return ov.getProperty(retVal);
+        long ret = ov.getProperty(retVal);
+        
+        closeInternalTx();
+        return ret;
     }
 
     /**
@@ -1160,6 +1237,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     @Override
     public <T> List<T> query(Class<T> clazz) {
+        initInternalTx();
+        
         if (this.orientdbTransact == null) {
             throw new NoOpenTx();
         }
@@ -1177,6 +1256,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 //            LOGGER.log(Level.FINER, "vertex: " + verticesOfClas.getId().toString() + "  class: " + ((OrientVertex) verticesOfClas).getType().getName());
         }
         LOGGER.log(Level.FINER, "Enlapsed time query to List: " + (System.currentTimeMillis() - init));
+        
+        closeInternalTx();
         return ret;
     }
 
@@ -1190,6 +1271,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     @Override
     public <T> List<T> query(Class<T> clase, String body) {
+        initInternalTx();
+        
         if (this.orientdbTransact == null) {
             throw new NoOpenTx();
         }
@@ -1204,7 +1287,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                 new OCommandSQL(cSQL)).execute()) {
             ret.add(this.get(clase, v.getId().toString()));
         }
-
+        closeInternalTx();
         return ret;
     }
 
@@ -1219,6 +1302,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     @Override
     public <T> List<T> query(Class<T> clase, String sql, Object... param) {
+        initInternalTx();
         activateOnCurrentThread();
 
         OSQLSynchQuery<ODocument> query = new OSQLSynchQuery<>(sql);
@@ -1228,6 +1312,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         for (Vertex v : (Iterable<Vertex>) this.orientdbTransact.command(query).execute(param)) {
             ret.add(this.get(clase, v.getId().toString()));
         }
+        
+        closeInternalTx();
         return ret;
     }
 
@@ -1253,6 +1339,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     @Override
     public <T> List<T> query(Class<T> clase, String sql, HashMap<String, Object> param) {
+        initInternalTx();
         activateOnCurrentThread();
 
         OSQLSynchQuery<ODocument> query = new OSQLSynchQuery<>(sql);
@@ -1262,6 +1349,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         for (Vertex v : (Iterable<Vertex>) this.orientdbTransact.command(query).execute(param)) {
             ret.add(this.get(clase, v.getId().toString()));
         }
+        closeInternalTx();
         return ret;
     }
 
@@ -1272,8 +1360,11 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * @return OClass o null si la clase no existe
      */
     public OClass getDBClass(String clase) {
+        initInternalTx();
         activateOnCurrentThread();
-        return this.getGraphdb().getRawGraph().getMetadata().getSchema().getClass(clase);
+        OClass ret = this.getGraphdb().getRawGraph().getMetadata().getSchema().getClass(clase);
+        closeInternalTx();
+        return ret;
     }
 
     // Procesos de auditoría
