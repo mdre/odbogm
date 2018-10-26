@@ -6,6 +6,8 @@
 
 package test;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.annotations.Entity;
@@ -19,6 +21,8 @@ public class SimpleVertexInterfaceAttr extends SimpleVertex {
     
     public InterfaceTest itest;
 
+    public List<InterfaceTest> iList = new ArrayList<>();
+    
     public SimpleVertexInterfaceAttr() {
         super();
     }
@@ -30,8 +34,6 @@ public class SimpleVertexInterfaceAttr extends SimpleVertex {
         itest = new SimpleVertexWithImplement();
     }
 
-    
-    
     
     @Override
     public String toString() {

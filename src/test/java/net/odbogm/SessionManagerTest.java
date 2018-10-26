@@ -33,6 +33,7 @@ import test.SimpleVertex;
 import test.SimpleVertexEx;
 import test.SimpleVertexInterfaceAttr;
 import test.SimpleVertexWithEmbedded;
+import test.SimpleVertexWithImplement;
 
 /**
  *
@@ -1037,6 +1038,30 @@ public class SessionManagerTest {
         assertEquals(expResult.getoI(), sv.getoI());
         System.out.println("8 dirty: "+sm.getDirtyCount());
         
+        
+        System.out.println("\n\nverificar el comportamiento de las listas con objetos interfaces");
+        
+        sv = new SimpleVertexInterfaceAttr("simple vertex with interface list attr");
+        sv.iList.add(new SimpleVertexWithImplement("1"));
+        sv.iList.add(new SimpleVertexWithImplement("2"));
+        
+        System.out.println("persisir el objeto");
+        
+        SimpleVertexInterfaceAttr rsv = sm.store(sv);
+        sm.commit();
+        
+        rid = sm.getRID(rsv);
+        System.out.println("RID: "+rid);
+        
+        rsv = null;
+        sv = null;
+        
+        System.out.println("limpiar el cache...");
+        sm.getCurrentTransaction().clearCache();
+        System.out.println("recupear el objeto nuevamente...");
+        rsv = sm.get(SimpleVertexInterfaceAttr.class, rid);
+        
+        assertEquals(2, rsv.iList.size());
     }
 
     /**
