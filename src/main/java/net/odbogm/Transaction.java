@@ -987,7 +987,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                 ret = getFromCache(rid);
                 
                 // actualizar los indirects
-                ((IObjectProxy)ret).___updateIndirectLinks();
+                // ((IObjectProxy)ret).___updateIndirectLinks();
                 
                 // si fue recuperado del caché, determinar si se ha modificado.
                 // si no fue modificado, hacer un reload para actualizar con la última 
@@ -1055,7 +1055,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             o = (T) getFromCache(rid);
 
             // actualizar los indirects
-            ((IObjectProxy)o).___updateIndirectLinks();
+            // ((IObjectProxy)o).___updateIndirectLinks();
             
             // si fue recuperado del caché, determinar si se ha modificado.
             // si no fue modificado, hacer un reload para actualizar con la última 

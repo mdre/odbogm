@@ -390,12 +390,12 @@ public class ObjectMapper {
         // procesar todos los linkslist
         // ********************************************************************************************
         LOGGER.log(Level.FINER, "preparando las colecciones...");
-        Map<String, Class<?>> lnklst = new HashMap<>();
+//        Map<String, Class<?>> lnklst = new HashMap<>();
+//
+//        lnklst.putAll(classdef.linkLists);
+//        lnklst.putAll(classdef.indirectLinkLists);
 
-        lnklst.putAll(classdef.linkLists);
-        lnklst.putAll(classdef.indirectLinkLists);
-
-        for (Map.Entry<String, Class<?>> entry : lnklst.entrySet()) {
+        for (Map.Entry<String, Class<?>> entry : classdef.linkLists.entrySet()) {
 
             try {
                 // FIXME: se debería considerar agregar una annotation EAGER!
@@ -426,7 +426,43 @@ public class ObjectMapper {
             }
 
         }
+        
+        // ********************************************************************************************
+        // hidratar las colecciones indirectas
+        // procesar todos los indirectLinkslist
+        // ********************************************************************************************
+        for (Map.Entry<String, Class<?>> entry : classdef.indirectLinkLists.entrySet()) {
 
+            try {
+                // FIXME: se debería considerar agregar una annotation EAGER!
+                String field = entry.getKey();
+                Class<?> fc = entry.getValue();
+                LOGGER.log(Level.FINER, "Field: {0}   Class: {1}", new String[]{field, fc.getName()});
+                Field fLink = ReflectionUtils.findField(toHydrate, field);
+
+                boolean acc = fLink.isAccessible();
+                fLink.setAccessible(true);
+
+                String graphRelationName = null;
+                Direction RelationDirection = Direction.IN;
+
+                graphRelationName = toHydrate.getSimpleName() + "_" + field;
+
+                // si hay Vértices conectados o si el constructor del objeto ha inicializado los vectores, convertirlos
+                if ((v.countEdges(RelationDirection, graphRelationName) > 0) || (fLink.get(oproxied) != null)) {
+                    this.colecctionToLazy(oproxied, field, fc, v, t);
+                }
+
+                fLink.setAccessible(acc);
+
+            } catch (NoSuchFieldException ex) {
+                Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (IllegalArgumentException ex) {
+                Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
+            }
+
+        }
+        
 //        LOGGER.log(Level.FINER, "Objeto hydratado: " + oproxied.toString());
         LOGGER.log(Level.FINER, "******************* FIN HYDRATE *******************");
         t.closeInternalTx();

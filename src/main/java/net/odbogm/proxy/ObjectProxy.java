@@ -469,11 +469,10 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
                 // hidratar los atributos @links
                 // procesar todos los links y los indirectLinks
-                Map<String, Class<?>> lnks = new HashMap<>();
-                lnks.putAll(classdef.links);
-                lnks.putAll(classdef.indirectLinks);
-                LOGGER.log(Level.FINER, "procesando {0} links y {1} indirected links", new Object[]{classdef.links.size(), classdef.indirectLinks.size()});
-                for (Map.Entry<String, Class<?>> entry : lnks.entrySet()) {
+//                Map<String, Class<?>> lnks = new HashMap<>();
+//                lnks.putAll(classdef.links);
+                LOGGER.log(Level.FINER, "procesando {0} links ", new Object[]{classdef.links.size()});
+                for (Map.Entry<String, Class<?>> entry : classdef.links.entrySet()) {
                     //  classdef.links.entrySet().stream().forEach((entry) -> {
                     try {
                         String field = entry.getKey();
@@ -485,14 +484,14 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
                         String graphRelationName = ___baseClass.getSimpleName() + "_" + field;
                         Direction direction = Direction.OUT;
-                        if (fLink.isAnnotationPresent(Indirect.class)) {
-                            // si es un indirect se debe reemplazar el nombre de la relación por 
-                            // el propuesto por la anotation
-                            Indirect in = fLink.getAnnotation(Indirect.class);
-                            graphRelationName = in.linkName();
-                            direction = Direction.IN;
-                            LOGGER.log(Level.FINER, "Se ha detectado un indirect. Linkname = {0}", new Object[]{in.linkName()});
-                        }
+//                        if (fLink.isAnnotationPresent(Indirect.class)) {
+//                            // si es un indirect se debe reemplazar el nombre de la relación por 
+//                            // el propuesto por la anotation
+//                            Indirect in = fLink.getAnnotation(Indirect.class);
+//                            graphRelationName = in.linkName();
+//                            direction = Direction.IN;
+//                            LOGGER.log(Level.FINER, "Se ha detectado un indirect. Linkname = {0}", new Object[]{in.linkName()});
+//                        }
                         LOGGER.log(Level.FINER, "Field: {0}.{1}   Class: {2}  RelationName: {3}", new String[]{this.___baseClass.getSimpleName(), field, fc.getSimpleName(), graphRelationName});
 
                         // recuperar de la base el vértice correspondiente
@@ -532,6 +531,9 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                         Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
                     }
                 }
+
+                // actualizar los indirectLinks
+                this.___updateIndirectLinks();
             }
 
             // resetear dirty si corresponde.
@@ -542,12 +544,11 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
     }
 
-    
     @Override
     public void ___updateIndirectLinks() {
         if (this.___baseElement instanceof OrientVertex) {
             boolean preservDirtyState = this.___dirty;
-            
+
             OrientVertex ov = (OrientVertex) this.___baseElement;
             ClassDef classdef = this.___transaction.getObjectMapper().getClassDef(this.___proxyObject);
 
@@ -614,40 +615,51 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                     Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
-            
-            
+
             // forzar la recarga de las colecciones.
             LOGGER.log(Level.FINER, "Refrescando las colecciones indirectas...");
+            // ********************************************************************************************
+            // hidratar las colecciones indirectas
+            // procesar todos los indirectLinkslist
+            // ********************************************************************************************
             for (Map.Entry<String, Class<?>> entry : classdef.indirectLinkLists.entrySet()) {
+
                 try {
+                    // FIXME: se debería considerar agregar una annotation EAGER!
                     String field = entry.getKey();
-                    Class<? extends Object> value = entry.getValue();
-                    
-                    Field fLink = ReflectionUtils.findField(___baseClass, field);
+                    Class<?> fc = entry.getValue();
+                    LOGGER.log(Level.FINER, "Field: {0}   Class: {1}", new String[]{field, fc.getName()});
+                    Field fLink = ReflectionUtils.findField(this.___baseClass, field);
+
                     boolean acc = fLink.isAccessible();
                     fLink.setAccessible(true);
-                    
-                    if (ILazyCalls.class.isAssignableFrom(fLink.get(___proxyObject).getClass())) {
-                        ((ILazyCalls)fLink.get(___proxyObject)).updateIndirect();
+
+                    String graphRelationName = null;
+                    Direction RelationDirection = Direction.IN;
+
+                    graphRelationName = ___baseClass.getSimpleName() + "_" + field;
+
+                    // si hay Vértices conectados o si el constructor del objeto ha inicializado los vectores, convertirlos
+                    if ((ov.countEdges(RelationDirection, graphRelationName) > 0) || (fLink.get(___proxyObject) != null)) {
+                        this.___transaction.getObjectMapper().colecctionToLazy(___proxyObject, field, fc, ov, ___transaction);
                     }
+
                     fLink.setAccessible(acc);
-                    
+
                 } catch (NoSuchFieldException ex) {
-                    Logger.getLogger(ObjectProxy.class.getName()).log(Level.SEVERE, null, ex);
+                    Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
                 } catch (IllegalArgumentException ex) {
-                    Logger.getLogger(ObjectProxy.class.getName()).log(Level.SEVERE, null, ex);
+                    Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
                 } catch (IllegalAccessException ex) {
                     Logger.getLogger(ObjectProxy.class.getName()).log(Level.SEVERE, null, ex);
                 }
-                
+
             }
-            
+
             // volver a establecer el estado de Dirty.
             this.___dirty = preservDirtyState;
         }
-        
-        
-        
+
     }
 
     private synchronized void commitObjectChange() {
