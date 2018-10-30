@@ -431,6 +431,7 @@ public class ObjectMapper {
         // hidratar las colecciones indirectas
         // procesar todos los indirectLinkslist
         // ********************************************************************************************
+        LOGGER.log(Level.FINER, "hidratar las colecciones indirectas...");
         for (Map.Entry<String, Class<?>> entry : classdef.indirectLinkLists.entrySet()) {
 
             try {
@@ -445,9 +446,9 @@ public class ObjectMapper {
 
                 String graphRelationName = null;
                 Direction RelationDirection = Direction.IN;
-
-                graphRelationName = toHydrate.getSimpleName() + "_" + field;
-
+                
+                Indirect in = fLink.getAnnotation(Indirect.class);
+                graphRelationName = in.linkName();
                 // si hay Vértices conectados o si el constructor del objeto ha inicializado los vectores, convertirlos
                 if ((v.countEdges(RelationDirection, graphRelationName) > 0) || (fLink.get(oproxied) != null)) {
                     this.colecctionToLazy(oproxied, field, fc, v, t);

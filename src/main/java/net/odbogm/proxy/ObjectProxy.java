@@ -636,9 +636,10 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
                     String graphRelationName = null;
                     Direction RelationDirection = Direction.IN;
-
-                    graphRelationName = ___baseClass.getSimpleName() + "_" + field;
-
+                    
+                    Indirect in = fLink.getAnnotation(Indirect.class);
+                    graphRelationName = in.linkName();
+                    
                     // si hay Vértices conectados o si el constructor del objeto ha inicializado los vectores, convertirlos
                     if ((ov.countEdges(RelationDirection, graphRelationName) > 0) || (fLink.get(___proxyObject) != null)) {
                         this.___transaction.getObjectMapper().colecctionToLazy(___proxyObject, field, fc, ov, ___transaction);
