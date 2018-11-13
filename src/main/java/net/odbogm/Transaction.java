@@ -1195,6 +1195,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
         OCommandSQL osql = new OCommandSQL(sql);
         T ret = this.orientdbTransact.command(osql).execute(param);
+        closeInternalTx();
         return ret; 
     }
 
