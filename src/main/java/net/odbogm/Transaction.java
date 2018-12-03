@@ -487,8 +487,27 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             // registrar el rid temporal para futuras referencias.
             newrids.add(v.getId().toString());
 
+            //=====================================================
             // transferir todos los valores al proxy
-            ReflectionUtils.copyObject(o, proxied);
+            // reemplazo la llapada por reflexión y utilizo el caché de fields.
+            // ReflectionUtils.copyObject(o, proxied);
+            
+            for (Map.Entry<String, Field> entry : oClassDef.fieldsObject.entrySet()) {
+                String key = entry.getKey();
+                Field f = entry.getValue();
+                boolean acc = f.isAccessible();
+                f.setAccessible(true);
+                try {
+                    
+                    f.set(proxied, f.get(o));
+
+                } catch (IllegalArgumentException | IllegalAccessException e) {
+                }
+                f.setAccessible(acc);
+            }
+            //=====================================================
+            
+            
             // convertir los embedded
             this.sm.getObjectMapper().collectionsToEmbedded(proxied, oClassDef, this);
 
