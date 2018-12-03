@@ -5,6 +5,7 @@
  */
 package net.odbogm.cache;
 
+import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.logging.Logger;
 import net.odbogm.LogginProperties;
@@ -21,6 +22,15 @@ public class ClassDef {
             LOGGER.setLevel(LogginProperties.ClassDef);
         }
     }
+    
+    
+    
+    
+    /**
+     * Mapa de todos los objetos Field
+     */
+    public HashMap<String, Field> fieldsObject = new HashMap<>();
+    
     /**
      * Mapa de atributos básicos
      */

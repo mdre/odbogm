@@ -48,14 +48,22 @@ public class ClassCache {
      */
     public ClassDef get(Class<?> c) {
         LOGGER.log(Level.FINER, "Procesando clase: {0}", c.getName());
-        ClassDef cached = classCache.get(c);
+        
+        Class<?> toProcess = c;
+        // buscar la primera clase que no sea un proxy de CGLIB
+        // para esto, el nombre de la clase no debe tener la cadena $$EnhancerByCGLIB$$
+        if (c.getName().contains("$$EnhancerByCGLIB$$")) {
+            toProcess = c.getSuperclass();
+        }
+        
+        ClassDef cached = classCache.get(toProcess);
         if (cached == null) {
             LOGGER.log(Level.FINER, "Nueva clase detectada. Analizando...");
-            cached = this.cacheClass(c);
-            this.classCache.put(c, cached);
+            cached = this.cacheClass(toProcess);
+            this.classCache.put(toProcess, cached);
         }
         LOGGER.log(Level.FINER, "Class struc:");
-        LOGGER.log(Level.FINER, "Class: " + c.getName());
+        LOGGER.log(Level.FINER, "Class: " + toProcess.getName());
         LOGGER.log(Level.FINER, "Fields: " + cached.fields.size()+ " - " + cached.fields);
         LOGGER.log(Level.FINER, "enums: " + cached.enumFields.size()+ " - " + cached.enumFields);
         LOGGER.log(Level.FINER, "Links: " + cached.links.size()+ " - " + cached.links);
@@ -81,6 +89,13 @@ public class ClassCache {
     private void cacheClass(Class<?> c, ClassDef cached) {
         if (c != Object.class) {
             LOGGER.log(Level.FINER, "Clase: "+c.getName());
+            
+            // iniciamos analizando la superclass y luego seguimos con los campos de la clase 
+            // actual. Esto es así para que los shallow fields se agreguen correctamente 
+            // en los HM del caché de clases.
+            LOGGER.log(Level.FINER, "Analizandos superclass...");
+            this.cacheClass(c.getSuperclass(), cached);
+            
             Field[] fields = c.getDeclaredFields();
             for (Field f : fields) {
                 try {
@@ -91,8 +106,11 @@ public class ClassCache {
                             || f.getName().startsWith("___ogm___")) //                            || f.getName().startsWith("GCLIB")
                             )) {
                         boolean acc = f.isAccessible();
+                        //preservar el field.
+                        cached.fieldsObject.put(f.getName(), f);
+                        
                         f.setAccessible(true);
-
+                                                
                         // determinar si es un campo permitido
                         // FIXME: falta considerar la posibilidad de los Embedded Object
                         LOGGER.log(Level.FINER, "Field: " + f.getName() + "  Type: " + f.getType() + (f.getType().isEnum() ? "<<<<<<<<<<< ENUM" : ""));
@@ -193,8 +211,7 @@ public class ClassCache {
                     Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
-            LOGGER.log(Level.FINER, "Analizandos superclass...");
-            this.cacheClass(c.getSuperclass(), cached);
+            
             LOGGER.log(Level.FINER, "Fin clase "+c.getName()+" <<<<<<<<<<<<<<<<<");
         }
     }

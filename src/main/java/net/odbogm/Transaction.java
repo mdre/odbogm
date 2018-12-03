@@ -110,6 +110,9 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         LOGGER.log(Level.FINER, "current thread: " + Thread.currentThread().getName());
         
         this.objectMapper = this.sm.getObjectMapper();
+        
+        orientdbTransact = this.sm.getFactory().getTx();
+        orientdbTransact.setThreadMode(OrientConfigurableGraph.THREAD_MODE.ALWAYS_AUTOSET);
 
     }
 
@@ -128,31 +131,31 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 //    }
 
     public synchronized void initInternalTx() {
-        if (this.orientdbTransact == null) {
-            LOGGER.log(Level.FINEST, "\nAbriendo una transacción...");
-            //inicializar la transacción
-            orientdbTransact = this.sm.getFactory().getTx();
-            orientdbTransact.setThreadMode(OrientConfigurableGraph.THREAD_MODE.ALWAYS_AUTOSET);
-            orientTransacLevel = 0;
-        } else {
-            //aumentar el anidamiento de transacciones
-            LOGGER.log(Level.FINEST, "Anidando transacción: "+orientTransacLevel+" --> "+(orientTransacLevel+1));
-            orientTransacLevel++;
-        }
+//        if (this.orientdbTransact == null) {
+//            LOGGER.log(Level.FINEST, "\nAbriendo una transacción...");
+//            //inicializar la transacción
+//            orientdbTransact = this.sm.getFactory().getTx();
+//            orientdbTransact.setThreadMode(OrientConfigurableGraph.THREAD_MODE.ALWAYS_AUTOSET);
+//            orientTransacLevel = 0;
+//        } else {
+//            //aumentar el anidamiento de transacciones
+//            LOGGER.log(Level.FINEST, "Anidando transacción: "+orientTransacLevel+" --> "+(orientTransacLevel+1));
+//            orientTransacLevel++;
+//        }
     }
     
     /**
      * cierra la transacción sin realizar el commit
      */
     public synchronized void closeInternalTx() {
-        if (orientTransacLevel == 0) {
-            LOGGER.log(Level.FINEST, "termnando la transacción\n");
-            orientdbTransact.shutdown(false,false);
-            orientdbTransact = null;
-        } else {
-            LOGGER.log(Level.FINEST, "decrementando la transacción: "+orientTransacLevel+ " --> "+(orientTransacLevel-1));
-            orientTransacLevel--;
-        }
+//        if (orientTransacLevel == 0) {
+//            LOGGER.log(Level.FINEST, "termnando la transacción\n");
+//            orientdbTransact.shutdown(false,false);
+//            orientdbTransact = null;
+//        } else {
+//            LOGGER.log(Level.FINEST, "decrementando la transacción: "+orientTransacLevel+ " --> "+(orientTransacLevel-1));
+//            orientTransacLevel--;
+//        }
     }
     
     
@@ -476,7 +479,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                 throw new ClassToVertexNotFound("No se ha encontrado la definición de la clase " + classname + " en la base!");
                 //graphdb.createVertexType(classname);
             }
-
+            LOGGER.log(Level.FINER, "object data: "+omap);
             OrientVertex v = this.orientdbTransact.addVertex("class:" + classname, omap);
 
             proxied = ObjectProxyFactory.create(o, v, this);
@@ -526,11 +529,11 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                     LOGGER.log(Level.FINER, "innerO nuevo. Crear un vértice y un link");
                     innerO = this.store(innerO);
                     // actualizar la referencia del objeto.
-                    ObjectMapper.setFieldValue(proxied, field, innerO);
+                    this.objectMapper.setFieldValue(proxied, field, innerO);
 
 //                    innerRID = ((IObjectProxy)innerO).___getVertex().getId().toString();
                 } else {
-                    ObjectMapper.setFieldValue(proxied, field, innerO);
+                    this.objectMapper.setFieldValue(proxied, field, innerO);
                 }
 
                 // crear un link entre los dos objetos.

@@ -6,8 +6,6 @@
 
 package test;
 
-import net.odbogm.annotations.Ignore;
-import net.odbogm.annotations.RemoveOrphan;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -17,7 +15,9 @@ import net.odbogm.annotations.Audit;
 import net.odbogm.annotations.CascadeDelete;
 import net.odbogm.annotations.Entity;
 import net.odbogm.annotations.FieldAttributes;
+import net.odbogm.annotations.Ignore;
 import net.odbogm.annotations.Indexed;
+import net.odbogm.annotations.RemoveOrphan;
 
 /**
  *
@@ -37,16 +37,8 @@ public class SimpleVertexEx extends SimpleVertex {
     public EnumTest enumTest;
 
     @Indexed(type = Indexed.IndexType.UNIQUE)
-    public String uuid;
+    private String uuid;
 
-    public String getUuid() {
-        return uuid;
-    }
-
-    public void setUuid(String uuid) {
-        this.uuid = uuid;
-    }
-    
     @RemoveOrphan
     public SimpleVertex svinner; 
     
@@ -74,12 +66,15 @@ public class SimpleVertexEx extends SimpleVertex {
         this.svex = svex;
         this.enumTest = EnumTest.UNO;
         this.uuid = UUID.randomUUID().toString();
+//        System.out.println("this uuid: "+this.uuid);
     }
 
     public SimpleVertexEx() {
         super();
         this.svex = "default";
-        this.uuid = UUID.randomUUID().toString();
+        String uid = UUID.randomUUID().toString();
+        this.setUuid(uid);
+//        System.out.println("default: "+this.uuid);
     }
         
     public void initEnum() {
@@ -146,6 +141,10 @@ public class SimpleVertexEx extends SimpleVertex {
         this.svinner = svinner;
     }
 
+    public void setSvex(String s) {
+        this.svex = s;
+    }
+    
     public String getSvex() {
         return svex;
     }
@@ -186,6 +185,13 @@ public class SimpleVertexEx extends SimpleVertex {
         this.looptest = looptest;
     }
 
+    public String getUuid() {
+        return this.uuid;
+    }
+
+    public void setUuid(String uuid) {
+        this.uuid = uuid;
+    }
         
 }
 

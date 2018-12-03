@@ -27,7 +27,6 @@ import net.odbogm.proxy.ILazyCollectionCalls;
 import net.odbogm.proxy.ILazyMapCalls;
 import net.odbogm.proxy.IObjectProxy;
 import net.odbogm.proxy.ObjectProxyFactory;
-import net.odbogm.utils.ReflectionUtils;
 
 /**
  *
@@ -101,7 +100,8 @@ public class ObjectMapper {
                 String field = entry.getKey();
                 Class<?> c = entry.getValue();
 
-                Field f = ReflectionUtils.findField(o.getClass(), field);
+//                Field f = ReflectionUtils.findField(o.getClass(), field);
+                Field f = classmap.fieldsObject.get(field);
                 boolean acc = f.isAccessible();
                 f.setAccessible(true);
 
@@ -111,7 +111,7 @@ public class ObjectMapper {
                 }
                 f.setAccessible(acc);
 
-            } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
+            } catch (SecurityException | IllegalArgumentException | IllegalAccessException ex) {
                 Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
             }
         });
@@ -130,8 +130,10 @@ public class ObjectMapper {
         // buscar la definición de la clase en el caché
         ClassDef classmap;
         if (o instanceof IObjectProxy) {
+            LOGGER.log(Level.FINEST, "Proxy instance. Seaching the orignal class... ("+o.getClass().getSuperclass().getSimpleName()+")");
             classmap = classCache.get(o.getClass().getSuperclass());
         } else {
+            LOGGER.log(Level.FINEST, "Searching the class... ("+o.getClass().getSimpleName()+")");
             classmap = classCache.get(o.getClass());
         }
 
@@ -147,14 +149,13 @@ public class ObjectMapper {
      * @param oStruct objeto de referencia a completar
      */
     private void fastmap(Object o, ClassDef classmap, ObjectStruct oStruct) {
-
         // procesar todos los campos
         classmap.fields.entrySet().stream().forEach((entry) -> {
             try {
                 String field = entry.getKey();
                 Class<?> c = entry.getValue();
-                Field f = ReflectionUtils.findField(o.getClass(), field);
-
+                //Field f = ReflectionUtils.findField(o.getClass(), field);
+                Field f = classmap.fieldsObject.get(field);
                 boolean acc = f.isAccessible();
                 f.setAccessible(true);
 
@@ -165,9 +166,9 @@ public class ObjectMapper {
                 }
                 f.setAccessible(acc);
 
-            } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
+            } catch (SecurityException | IllegalArgumentException | IllegalAccessException ex) {
                 Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
-            }
+            } 
         });
 
         // procesar todos los Enums
@@ -176,7 +177,8 @@ public class ObjectMapper {
                 String field = entry.getKey();
                 Class<?> c = entry.getValue();
 
-                Field f = ReflectionUtils.findField(o.getClass(), field);
+//                Field f = ReflectionUtils.findField(o.getClass(), field);
+                Field f = classmap.fieldsObject.get(field);
                 boolean acc = f.isAccessible();
                 f.setAccessible(true);
                 // determinar si no es nulo
@@ -185,7 +187,7 @@ public class ObjectMapper {
                 }
                 f.setAccessible(acc);
 
-            } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
+            } catch (SecurityException | IllegalArgumentException | IllegalAccessException ex) {
                 Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
             }
         });
@@ -196,7 +198,8 @@ public class ObjectMapper {
                 String field = entry.getKey();
                 Class<?> c = entry.getValue();
 
-                Field f = ReflectionUtils.findField(o.getClass(), field);
+//                Field f = ReflectionUtils.findField(o.getClass(), field);
+                Field f = classmap.fieldsObject.get(field);
                 boolean acc = f.isAccessible();
                 f.setAccessible(true);
                 // determinar si no es nulo
@@ -205,7 +208,7 @@ public class ObjectMapper {
                 }
                 f.setAccessible(acc);
 
-            } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
+            } catch (SecurityException | IllegalArgumentException | IllegalAccessException ex) {
                 Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
             }
         });
@@ -216,7 +219,8 @@ public class ObjectMapper {
                 String field = entry.getKey();
                 Class<?> c = entry.getValue();
 
-                Field f = ReflectionUtils.findField(o.getClass(), field);
+//                Field f = ReflectionUtils.findField(o.getClass(), field);
+                Field f = classmap.fieldsObject.get(field);
                 boolean acc = f.isAccessible();
                 f.setAccessible(true);
                 // determinar si no es nulo
@@ -225,7 +229,7 @@ public class ObjectMapper {
                 }
                 f.setAccessible(acc);
 
-            } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
+            } catch (SecurityException | IllegalArgumentException | IllegalAccessException ex) {
                 Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
             }
         });
@@ -299,8 +303,9 @@ public class ObjectMapper {
                 // obtener la clase a la que pertenece el campo
                 Class<?> fc = fieldmap.get(prop);
 
-                f = ReflectionUtils.findField(toHydrate, prop);
-
+                //f = ReflectionUtils.findField(toHydrate, prop);
+                f = classdef.fieldsObject.get(prop);
+                
                 boolean acc = f.isAccessible();
                 f.setAccessible(true);
                 if (f.getType().isEnum()) {
@@ -340,8 +345,9 @@ public class ObjectMapper {
             } else {
                 // si el valor es null verificar que no se trate de una Lista embebida 
                 // que pueda haber sido inicializada en el constructor.
-                f = ReflectionUtils.findField(toHydrate, prop);
-
+                //f = ReflectionUtils.findField(toHydrate, prop);
+                f = classdef.fieldsObject.get(prop);
+                
                 boolean acc = f.isAccessible();
                 f.setAccessible(true);
                 if ((f.get(oproxied) != null) && (f.getType().isAssignableFrom(List.class))) {
@@ -372,8 +378,8 @@ public class ObjectMapper {
                 // obtener la clase a la que pertenece el campo
                 Class<?> fc = fieldmap.get(prop);
                 // FIXME: este código se puede mejorar. Tratar de usar solo setFieldValue()
-                f = ReflectionUtils.findField(toHydrate, prop);
-//
+                //f = ReflectionUtils.findField(toHydrate, prop);
+                f = classdef.fieldsObject.get(prop);
 //                boolean acc = f.isAccessible();
 //                f.setAccessible(true);
                 LOGGER.log(Level.FINER, "Enum field: " + f.getName() + " type: " + f.getType() + "  value: " + value + "   Enum val: " + Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString()));
@@ -402,8 +408,9 @@ public class ObjectMapper {
                 String field = entry.getKey();
                 Class<?> fc = entry.getValue();
                 LOGGER.log(Level.FINER, "Field: {0}   Class: {1}", new String[]{field, fc.getName()});
-                Field fLink = ReflectionUtils.findField(toHydrate, field);
-
+                //Field fLink = ReflectionUtils.findField(toHydrate, field);
+                Field fLink = classdef.fieldsObject.get(field);
+                
                 boolean acc = fLink.isAccessible();
                 fLink.setAccessible(true);
 
@@ -419,8 +426,7 @@ public class ObjectMapper {
 
                 fLink.setAccessible(acc);
 
-            } catch (NoSuchFieldException ex) {
-                Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
+            
             } catch (IllegalArgumentException ex) {
                 Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
             }
@@ -439,8 +445,9 @@ public class ObjectMapper {
                 String field = entry.getKey();
                 Class<?> fc = entry.getValue();
                 LOGGER.log(Level.FINER, "Field: {0}   Class: {1}", new String[]{field, fc.getName()});
-                Field fLink = ReflectionUtils.findField(toHydrate, field);
-
+                //Field fLink = ReflectionUtils.findField(toHydrate, field);
+                Field fLink = classdef.fieldsObject.get(field);
+                
                 boolean acc = fLink.isAccessible();
                 fLink.setAccessible(true);
 
@@ -455,9 +462,7 @@ public class ObjectMapper {
                 }
 
                 fLink.setAccessible(acc);
-
-            } catch (NoSuchFieldException ex) {
-                Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
+                
             } catch (IllegalArgumentException ex) {
                 Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
             }
@@ -505,8 +510,10 @@ public class ObjectMapper {
             } else {
                 c = o.getClass();
             }
-
-            Field fLink = ReflectionUtils.findField(c, field);
+            
+            //Field fLink = ReflectionUtils.findField(c, field);
+            Field fLink = classCache.get(c).fieldsObject.get(field);
+            
             boolean acc = fLink.isAccessible();
             fLink.setAccessible(true);
 
@@ -548,7 +555,7 @@ public class ObjectMapper {
             fLink.set(o, col);
             fLink.setAccessible(acc);
 
-        } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException | InstantiationException ex) {
+        } catch (SecurityException | IllegalArgumentException | IllegalAccessException | InstantiationException ex) {
             Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
@@ -575,7 +582,8 @@ public class ObjectMapper {
                     c = o.getClass();
                 }
                 LOGGER.log(Level.FINER, "Procesando campo: {0} type: {1}", new String[]{field, value.getName()});
-                f = ReflectionUtils.findField(c, field);
+                //f = ReflectionUtils.findField(c, field);
+                f = classDef.fieldsObject.get(field);
                 acc = f.isAccessible();
                 f.setAccessible(true);
                 // realizar la conversión solo si el campo tiene un valor.
@@ -589,8 +597,7 @@ public class ObjectMapper {
                     }
                 }
                 f.setAccessible(acc);
-            } catch (NoSuchFieldException ex) {
-                Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
+            
             } catch (IllegalArgumentException ex) {
                 Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
             } catch (IllegalAccessException ex) {
@@ -627,8 +634,9 @@ public class ObjectMapper {
             // puede darse el caso que la base cree un atributo sobre los registros (ej: @rid) 
             // y la clave podría no corresponderse con un campo.
             if (fc != null) {
-                f = ReflectionUtils.findField(c, prop);
-
+//                f = ReflectionUtils.findField(c, prop);
+                f = classdef.fieldsObject.get(prop);
+                
                 boolean acc = f.isAccessible();
                 f.setAccessible(true);
                 f.set(oproxied, value);
@@ -639,9 +647,10 @@ public class ObjectMapper {
         return oproxied;
     }
 
-    public static void setFieldValue(Object o, String field, Object value) {
+    public void setFieldValue(Object o, String field, Object value) {
         try {
-            Field f = ReflectionUtils.findField(o.getClass(), field);
+            //Field f = ReflectionUtils.findField(o.getClass(), field);
+            Field f = this.classCache.get(o.getClass()).fieldsObject.get(field);
             boolean acc = f.isAccessible();
             f.setAccessible(true);
 
@@ -649,7 +658,7 @@ public class ObjectMapper {
             f.set(o, value);
 
             f.setAccessible(acc);
-        } catch (NoSuchFieldException | IllegalArgumentException | IllegalAccessException ex) {
+        } catch (IllegalArgumentException | IllegalAccessException ex) {
             Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
         }
     }

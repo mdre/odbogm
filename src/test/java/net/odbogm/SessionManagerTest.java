@@ -6,6 +6,8 @@
 package net.odbogm;
 
 import com.orientechnologies.orient.core.sql.OCommandSQL;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -61,16 +63,17 @@ public class SessionManagerTest {
 //        System.out.println("1-----");
 //        GroupSID gs = new GroupSID("dd", "uu");
 //        System.out.println("2-----");
-               
+
         System.out.println("Iniciando session manager...");
         sm = new SessionManager("remote:localhost/Test", "root", "toor")
-                .setActivationStrategy(SessionManager.ActivationStrategy.CLASS_INSTRUMENTATION)
-//                .setClassLevelLog(ObjectProxy.class, Level.FINEST)
-//                .setClassLevelLog(SimpleCache.class, Level.FINER)
-//                .setClassLevelLog(ArrayListLazyProxy.class, Level.FINER)
-//                .setClassLevelLog(ObjectMapper.class, Level.FINER)
-//                .setClassLevelLog(SObject.class, Level.FINER)
-//                .setClassLevelLog(TransparentDirtyDetectorInstrumentator.class, Level.FINER)
+                .setActivationStrategy(SessionManager.ActivationStrategy.CLASS_INSTRUMENTATION) //                .setClassLevelLog(ObjectProxy.class, Level.FINEST)
+//                                .setClassLevelLog(ClassCache.class, Level.FINER)
+                //                .setClassLevelLog(Transaction.class, Level.FINER)
+                //                .setClassLevelLog(SimpleCache.class, Level.FINER)
+                //                .setClassLevelLog(ArrayListLazyProxy.class, Level.FINER)
+                //                .setClassLevelLog(ObjectMapper.class, Level.FINEST)
+                //                .setClassLevelLog(SObject.class, Level.FINER)
+                //                .setClassLevelLog(TransparentDirtyDetectorInstrumentator.class, Level.FINER)
                 ;
         System.out.println("Begin");
         this.sm.begin();
@@ -86,18 +89,17 @@ public class SessionManagerTest {
         sm.shutdown();
     }
 
-    
-    public void crearEstructura(){
+    public void crearEstructura() {
         System.out.println("Conectando con la base de datos...");
-        DbManager dbm = new DbManager("remote:localhost/test", "root", "toor",false);
+        DbManager dbm = new DbManager("remote:localhost/test", "root", "toor", false);
 //        dbm.generateToConsole(new String[]{"com.quiencotiza.entities"});
         System.out.println("generando la estructura...");
-        dbm.generateDBSQL("/tmp/1/DBScript.sql",new String[]{
+        dbm.generateDBSQL("/tmp/1/DBScript.sql", new String[]{
             "test"
         });
         System.out.println("finalizado!");
     }
-     
+
 //    /**
 //     * Test of begin method, of class SessionManager.
 //     */
@@ -166,18 +168,39 @@ public class SessionManagerTest {
         SimpleVertex expResult = sv;
 
         SimpleVertex result = sm.store(sv);
-        System.out.println("result hc: "+System.identityHashCode(sv));
-        
+        System.out.println("result hc: " + System.identityHashCode(sv));
+
         assertEquals(expResult.getFecha(), result.getFecha());
         sm.commit();
         assertEquals(expResult.getFecha(), result.getFecha());
         String rid = sm.getRID(result);
-
+        System.out.println("RID: " + rid);
         SimpleVertex ret = sm.get(SimpleVertex.class, rid);
-        System.out.println("get hc: "+System.identityHashCode(ret));
-        
+        System.out.println("get hc: " + System.identityHashCode(ret));
+
         assertEquals(expResult.getFecha(), ret.getFecha());
 
+        // quitarlo del caché
+        ret = null;
+        sm.getCurrentTransaction().removeFromCache(rid);
+
+        // verificar fecha y hora.
+        ret = sm.get(SimpleVertex.class, rid);
+        // asignarle una fecha y hora.
+        Date d = new Date(2016, 8, 26, 10, 0, 0);
+        System.out.println("Date: " + d);
+        Date targetDate = Date.from(LocalDateTime.now().atZone(ZoneId.systemDefault()).toInstant());
+        System.out.println("Date: " + targetDate);
+        ret.setFecha(targetDate);
+
+        sm.commit();
+
+        ret = null;
+        sm.getCurrentTransaction().removeFromCache(rid);
+
+        ret = sm.get(SimpleVertex.class, rid);
+        assertEquals(targetDate, ret.getFecha());
+        System.out.println("ret.date: " + ret.getFecha());
     }
 
     @Test
@@ -187,9 +210,9 @@ public class SessionManagerTest {
         System.out.println("store objeto con colecciones de primitivas");
         System.out.println("***************************************************************");
 
-        System.out.println("oc: "+sm.getCurrentTransaction().getObjectCache());
-        System.out.println("dc: "+sm.getCurrentTransaction().getDirtyCache());
-        
+        System.out.println("oc: " + sm.getCurrentTransaction().getObjectCache());
+        System.out.println("dc: " + sm.getCurrentTransaction().getDirtyCache());
+
         SimpleVertexEx sve = new SimpleVertexEx();
         sve.initArrayListString();
         sve.initHashMapString();
@@ -199,14 +222,14 @@ public class SessionManagerTest {
         assertEquals(0, sm.getDirtyCount());
 
         SimpleVertexEx result = sm.store(sve);
-        
+
         System.out.println("store...");
-        System.out.println("oc: "+sm.getCurrentTransaction().getObjectCache());
-        System.out.println("dc: "+sm.getCurrentTransaction().getDirtyCache());
-        
+        System.out.println("oc: " + sm.getCurrentTransaction().getObjectCache());
+        System.out.println("dc: " + sm.getCurrentTransaction().getDirtyCache());
+
         assertEquals(1, sm.getDirtyCount());
         assertTrue(result instanceof IObjectProxy);
-        
+
         // verificar que sean iguales antes de comitear
         assertEquals(expResult.alString.size(), result.alString.size());
         assertEquals(expResult.hmString.size(), result.hmString.size());
@@ -214,17 +237,17 @@ public class SessionManagerTest {
         this.sm.commit();
         assertEquals(0, sm.getDirtyCount());
         System.out.println("commit");
-        System.out.println("oc: "+sm.getCurrentTransaction().getObjectCache());
-        System.out.println("dc: "+sm.getCurrentTransaction().getDirtyCache());
-        
+        System.out.println("oc: " + sm.getCurrentTransaction().getObjectCache());
+        System.out.println("dc: " + sm.getCurrentTransaction().getDirtyCache());
+
         System.out.println("Recuperar el objeto de la base");
         String rid = ((IObjectProxy) result).___getRid();
         expResult = this.sm.get(SimpleVertexEx.class, rid);
-        
-        System.out.println("oc: "+sm.getCurrentTransaction().getObjectCache());
-        System.out.println("dc: "+sm.getCurrentTransaction().getDirtyCache());
+
+        System.out.println("oc: " + sm.getCurrentTransaction().getObjectCache());
+        System.out.println("dc: " + sm.getCurrentTransaction().getDirtyCache());
         assertEquals(0, sm.getDirtyCount());
-        
+
         // verificar que el resultado implemente la interface 
         assertTrue(expResult instanceof IObjectProxy);
 
@@ -290,27 +313,27 @@ public class SessionManagerTest {
         sv.setS("vinculado interno");
         SimpleVertexEx sve = new SimpleVertexEx();
 
-        System.out.println("oc: "+sm.getCurrentTransaction().getObjectCache());
-        System.out.println("dc: "+sm.getCurrentTransaction().getDirtyCache());
+        System.out.println("oc: " + sm.getCurrentTransaction().getObjectCache());
+        System.out.println("dc: " + sm.getCurrentTransaction().getDirtyCache());
         // guardar los objetos.
         System.out.println("guardando los objetos vacíos....");
         SimpleVertex ssv = sm.store(sv);
 //        System.out.println("oc: "+sm.getCurrentTransaction().getObjectCache());
         SimpleVertexEx ssve = sm.store(sve);
-        
-        System.out.println("temp rid ssv: "+sm.getRID(ssv));
-        System.out.println("temp rid ssve: "+sm.getRID(ssve));
-        
-        System.out.println("oc: "+sm.getCurrentTransaction().getObjectCache());
-        System.out.println("dc: "+sm.getCurrentTransaction().getDirtyCache());
-        
+
+        System.out.println("temp rid ssv: " + sm.getRID(ssv));
+        System.out.println("temp rid ssve: " + sm.getRID(ssve));
+
+        System.out.println("oc: " + sm.getCurrentTransaction().getObjectCache());
+        System.out.println("dc: " + sm.getCurrentTransaction().getDirtyCache());
+
         assertEquals(2, sm.getDirtyCount());
         System.out.println("commit...");
         sm.commit();
-        
-        System.out.println("oc: "+sm.getCurrentTransaction().getObjectCache());
-        System.out.println("dc: "+sm.getCurrentTransaction().getDirtyCache());
-        
+
+        System.out.println("oc: " + sm.getCurrentTransaction().getObjectCache());
+        System.out.println("dc: " + sm.getCurrentTransaction().getDirtyCache());
+
         assertEquals(0, sm.getDirtyCount());
         System.out.println("----------------\n\n\n");
 
@@ -318,27 +341,27 @@ public class SessionManagerTest {
         String sveRid = sm.getRID(ssve);
         System.out.println("svRid: " + svRid);
         System.out.println("sveRid: " + sveRid);
-        
-        System.out.println("oc: "+sm.getCurrentTransaction().getObjectCache());
-        System.out.println("dc: "+sm.getCurrentTransaction().getDirtyCache());
+
+        System.out.println("oc: " + sm.getCurrentTransaction().getObjectCache());
+        System.out.println("dc: " + sm.getCurrentTransaction().getDirtyCache());
         assertEquals(0, sm.getDirtyCount());
 
         // recuperar los objetos desde la base.
         System.out.println("Recuperar los objetos sin vincular....");
-        System.out.println("oc: "+sm.getCurrentTransaction().getObjectCache());
-        System.out.println("dc: "+sm.getCurrentTransaction().getDirtyCache());
+        System.out.println("oc: " + sm.getCurrentTransaction().getObjectCache());
+        System.out.println("dc: " + sm.getCurrentTransaction().getDirtyCache());
         SimpleVertex rsv = sm.get(SimpleVertex.class, svRid);
         SimpleVertexEx rsve = sm.get(SimpleVertexEx.class, sveRid);
         System.out.println("rsv: " + sm.getRID(rsv));
         System.out.println("rsve: " + sm.getRID(rsve));
         System.out.println("\n\n");
         // asociar los objetos
-        System.out.println("dc: "+sm.getCurrentTransaction().getDirtyCache());
+        System.out.println("dc: " + sm.getCurrentTransaction().getDirtyCache());
         System.out.println("Vinculando: rsve.setSvinner(rsv)");
         rsve.setSvinner(rsv);
-        System.out.println("dc: "+sm.getCurrentTransaction().getDirtyCache());
+        System.out.println("dc: " + sm.getCurrentTransaction().getDirtyCache());
         assertEquals(1, sm.getDirtyCount());
-        
+
         // guardar
         sm.commit();
         assertEquals(0, sm.getDirtyCount());
@@ -500,27 +523,27 @@ public class SessionManagerTest {
         assertEquals(7, sm.getDirtyCount());
         sm.commit();
         assertEquals(0, sm.getDirtyCount());
-        System.out.println("dc: "+sm.getCurrentTransaction().getDirtyCache());
+        System.out.println("dc: " + sm.getCurrentTransaction().getDirtyCache());
         String rid = ((IObjectProxy) result).___getRid();
         System.out.println("");
         System.out.println("");
         System.out.println("Objeto almacenado en: " + rid);
         System.out.println("");
         System.out.println("");
-        
-        System.out.println("dc: "+sm.getCurrentTransaction().getDirtyCache());
-        
+
+        System.out.println("dc: " + sm.getCurrentTransaction().getDirtyCache());
+
         System.out.println("AL actual");
-        System.out.println("alSV: "+result.getAlSV());
+        System.out.println("alSV: " + result.getAlSV());
         System.out.println("---------");
         result.i++;
         System.out.println("agregar un elemento...");
         result.getAlSV().add(new SimpleVertex());
         System.out.println("--------------------");
-        System.out.println("dc: "+sm.getCurrentTransaction().getDirtyCache());
+        System.out.println("dc: " + sm.getCurrentTransaction().getDirtyCache());
         assertEquals(1, sm.getDirtyCount());
         sm.commit();
-        System.out.println("dc: "+sm.getCurrentTransaction().getDirtyCache());
+        System.out.println("dc: " + sm.getCurrentTransaction().getDirtyCache());
         assertEquals(0, sm.getDirtyCount());
 
         SimpleVertexEx expResult = sm.get(SimpleVertexEx.class, rid);
@@ -607,7 +630,7 @@ public class SessionManagerTest {
         sm.commit();
 
         String rid = ((IObjectProxy) stored).___getRid();
-        
+
         // validar que no se modifique la lista
         assertNull(stored.lSV);
         System.out.println("primer commit finalizado. RID: " + rid + " ------------------------------------------------------------");
@@ -625,37 +648,36 @@ public class SessionManagerTest {
         System.out.println("segundo commit finalizado ----------------------------------------------------------\n");
         // validar que no se modifique la lista
         assertNull(stored.lSV);
-        
+
         SimpleVertexEx retrieved = sm.get(SimpleVertexEx.class, rid);
         System.out.println("retrieved: " + retrieved + " : " + retrieved.getAlSVE());
         System.out.println("stored: " + stored + " : " + stored.getAlSVE() + "\n\n");
         int iretSize = retrieved.getAlSVE().size();
         int istoredSize = stored.getAlSVE().size();
         assertEquals(iretSize, istoredSize);
-        
+
         // eliminar la referencia
         retrieved = null;
-        
+
         System.out.println("\nagregamos un nuevo objeto al arraylist ya inicializado");
         stored.getAlSVE().add(new SimpleVertexEx());
         System.out.println("\ninicio tercer commit ----------------------------------------------------------");
         sm.commit();
         System.out.println("tercer commit ----------------------------------------------------------\n");
-        
-        System.out.println("stored hc: "+stored.hashCode());
-        System.out.println("cache: "+sm.getCurrentTransaction().getObjectCache());
-        
+
+        System.out.println("stored hc: " + stored.hashCode());
+        System.out.println("cache: " + sm.getCurrentTransaction().getObjectCache());
+
         System.out.println("recuperar objetos.");
         retrieved = sm.get(SimpleVertexEx.class, rid);
 
-        System.out.println("retrieved: " + retrieved + " : " + retrieved.getAlSVE()+"  hc: "+retrieved.hashCode());
-        System.out.println("stored: " + stored + " : " + stored.getAlSVE()+"  hc: "+stored.hashCode());
-        
+        System.out.println("retrieved: " + retrieved + " : " + retrieved.getAlSVE() + "  hc: " + retrieved.hashCode());
+        System.out.println("stored: " + stored + " : " + stored.getAlSVE() + "  hc: " + stored.hashCode());
+
         assertEquals(retrieved.getAlSVE().size(), stored.getAlSVE().size());
         // validar que no se modifique la lista
         assertNull(stored.lSV);
-        
-        
+
     }
 
     @Test
@@ -763,8 +785,8 @@ public class SessionManagerTest {
 
         retrieved = sm.get(SimpleVertexEx.class, rid);
 
-        System.out.println("retrieved: " + retrieved + " : " + retrieved.getOhmSVE()+"  hc: "+retrieved.hashCode());
-        System.out.println("stored: " + stored + " : " + stored.getOhmSVE()+"  hc: "+stored.hashCode());
+        System.out.println("retrieved: " + retrieved + " : " + retrieved.getOhmSVE() + "  hc: " + retrieved.hashCode());
+        System.out.println("stored: " + stored + " : " + stored.getOhmSVE() + "  hc: " + stored.hashCode());
 
         assertEquals(retrieved.getOhmSVE().size(), stored.getOhmSVE().size());
 
@@ -1015,52 +1037,51 @@ public class SessionManagerTest {
 
         assertEquals(0, sm.getDirtyCount());
 
-        System.out.println("1 dirty: "+sm.getDirtyCount());
-        System.out.println("hc: "+expResult.hashCode());
-        System.out.println("2 dirty: "+sm.getDirtyCount());
-        
+        System.out.println("1 dirty: " + sm.getDirtyCount());
+        System.out.println("hc: " + expResult.hashCode());
+        System.out.println("2 dirty: " + sm.getDirtyCount());
+
         // verificar que el resultado implemente la interface 
         assertTrue(expResult instanceof IObjectProxy);
 
         // verificar que todos los valores sean iguales
         assertEquals(((IObjectProxy) expResult).___getRid(), ((IObjectProxy) result).___getRid());
-        System.out.println("3 dirty: "+sm.getDirtyCount()+" "+sm.getCurrentTransaction().getDirtyCache());
+        System.out.println("3 dirty: " + sm.getDirtyCount() + " " + sm.getCurrentTransaction().getDirtyCache());
 
         assertEquals(expResult.getI(), sv.getI());
-        System.out.println("4 dirty: "+sm.getDirtyCount()+" "+sm.getCurrentTransaction().getDirtyCache());
+        System.out.println("4 dirty: " + sm.getDirtyCount() + " " + sm.getCurrentTransaction().getDirtyCache());
 //        assertEquals((float)expResult.getF(), (float)sv.getF());
         assertEquals(expResult.getS(), sv.getS());
-        System.out.println("5 dirty: "+sm.getDirtyCount());
+        System.out.println("5 dirty: " + sm.getDirtyCount());
         assertEquals(expResult.getoB(), sv.getoB());
-        System.out.println("6 dirty: "+sm.getDirtyCount());
+        System.out.println("6 dirty: " + sm.getDirtyCount());
         assertEquals(expResult.getoF(), sv.getoF());
-        System.out.println("7 dirty: "+sm.getDirtyCount());
+        System.out.println("7 dirty: " + sm.getDirtyCount());
         assertEquals(expResult.getoI(), sv.getoI());
-        System.out.println("8 dirty: "+sm.getDirtyCount());
-        
-        
+        System.out.println("8 dirty: " + sm.getDirtyCount());
+
         System.out.println("\n\nverificar el comportamiento de las listas con objetos interfaces");
-        
+
         sv = new SimpleVertexInterfaceAttr("simple vertex with interface list attr");
         sv.iList.add(new SimpleVertexWithImplement("1"));
         sv.iList.add(new SimpleVertexWithImplement("2"));
-        
+
         System.out.println("persisir el objeto");
-        
+
         SimpleVertexInterfaceAttr rsv = sm.store(sv);
         sm.commit();
-        
+
         rid = sm.getRID(rsv);
-        System.out.println("RID: "+rid);
-        
+        System.out.println("RID: " + rid);
+
         rsv = null;
         sv = null;
-        
+
         System.out.println("limpiar el cache...");
         sm.getCurrentTransaction().clearCache();
         System.out.println("recupear el objeto nuevamente...");
         rsv = sm.get(SimpleVertexInterfaceAttr.class, rid);
-        
+
         assertEquals(2, rsv.iList.size());
     }
 
@@ -1153,7 +1174,6 @@ public class SessionManagerTest {
         // eliminar los SSVertex
         this.sm.getGraphdb().command(new OCommandSQL("delete vertex SSimpleVertex")).execute();
 
-        
         // crear los grupos y los usuarios.
         System.out.println("\n\n\n\n\n\n\n\n\n\n\n\n\n");
         System.out.println("Creando los grupos ----------------------------------");
@@ -1168,31 +1188,29 @@ public class SessionManagerTest {
         GroupSID gna = new GroupSID("gna", "gna");
         GroupSID gr = new GroupSID("gr", "gr");
         GroupSID gw = new GroupSID("gw", "gw");
-        System.out.println("CL group: " + gna.getClass().getClassLoader()+" > "+gna.getClass().getCanonicalName());
+        System.out.println("CL group: " + gna.getClass().getClassLoader() + " > " + gna.getClass().getCanonicalName());
         System.out.println("\n\n\nGuardando los grupos ----------------------------------");
 
         GroupSID sgna = this.sm.store(gna);
         GroupSID sgr = this.sm.store(gr);
         GroupSID sgw = this.sm.store(gw);
-        
+
         // liberar las referencias
         gna = null;
         gr = null;
         gw = null;
-        
+
         System.out.println("\n\n\nIniciando commit de grupos.............................");
         this.sm.commit();
         System.out.println("fin de grupos -----------------------------------------------\n\n\n");
-        
-        
-        
+
         System.out.println("\n\n\nCreando usuarios ----------------------------------");
         UserSID una = new UserSID("una", "una");
         UserSID ur = new UserSID("ur", "ur");
         UserSID uw = new UserSID("uw", "uw");
         UserSID urw = new UserSID("urw", "urw");
         System.out.println("CL user: " + una.getClass().getClassLoader());
-        
+
         una = this.sm.store(una);
         ur = this.sm.store(ur);
         uw = this.sm.store(uw);
@@ -1222,8 +1240,8 @@ public class SessionManagerTest {
         System.out.println("RID: " + reg);
         SSimpleVertex rssv = this.sm.get(SSimpleVertex.class, reg);
 
-        System.out.println("SecurityState: "+rssv.getSecurityState());
-        
+        System.out.println("SecurityState: " + rssv.getSecurityState());
+
         System.out.println("Agregando los acls...");
         rssv.setOwner(uw);
         rssv.setAcl(sgna, new AccessRight().setRights(AccessRight.NOACCESS));
@@ -1258,21 +1276,20 @@ public class SessionManagerTest {
         una = null;
         sm.delete(sgna);
         sm.commit();
-        
+
         sm.getCurrentTransaction().removeFromCache(unaRID);
-        una = sm.get(UserSID.class,unaRID);
-        
+        una = sm.get(UserSID.class, unaRID);
+
         assertEquals(1, una.getGroups().size());
-        
+
         // probar remover una 
         String urwRID = sm.getRID(urw);
         urw.removeGroup(sgw);
         sm.commit();
-        urw = sm.get(UserSID.class,urwRID);
-        
+        urw = sm.get(UserSID.class, urwRID);
+
         assertEquals(urw.getGroups().size(), 1);
-        
-        
+
         // Verificar la transitividad de los grupos.
         // la idea es que un usuario U1 es agregado al grupo g1
         // g1 es agregado a g2
@@ -1289,52 +1306,51 @@ public class SessionManagerTest {
         UserSID u1 = new UserSID("u1", "u1");
         UserSID su1 = sm.store(u1);
         sm.commit();
-        
+
         System.out.println("creando la transitividad...");
 //        su1.addGroup(sg1);
         sg1.add(su1);
         sg2.add(sg1);
         sg3.add(sg2);
         sm.commit();
-        
+
         System.out.println("logueando el usuario...");
         sm.setLoggedInUser(su1);
-        
+
         System.out.println("creando el objeto...");
-        
+
         SSimpleVertex testTransitivity = new SSimpleVertex();
         testTransitivity.setAcl(g3, new AccessRight().setRights(AccessRight.WRITE));
         SSimpleVertex stt = sm.store(testTransitivity);
         sm.commit();
-        
+
         String sttRID = sm.getRID(stt);
-        System.out.println("SObject Transitivity RID: "+sttRID);
+        System.out.println("SObject Transitivity RID: " + sttRID);
         stt = null;
-        
-        
+
         System.out.println("refrescar los grupos");
         String sg1RID = sm.getRID(sg1);
         String sg2RID = sm.getRID(sg2);
         String sg3RID = sm.getRID(sg3);
-        sg3 = sm.get(GroupSID.class,sg3RID);
-        sg2 = sm.get(GroupSID.class,sg2RID);
-        sg1 = sm.get(GroupSID.class,sg1RID);
-        
+        sg3 = sm.get(GroupSID.class, sg3RID);
+        sg2 = sm.get(GroupSID.class, sg2RID);
+        sg1 = sm.get(GroupSID.class, sg1RID);
+
         String su1RID = sm.getRID(su1);
-        System.out.println("refrescar el usuario "+su1RID+"...");
-        su1 = sm.get(UserSID.class,su1RID);
+        System.out.println("refrescar el usuario " + su1RID + "...");
+        su1 = sm.get(UserSID.class, su1RID);
         sm.setLoggedInUser(su1);
-        
+
         System.out.println("verificando los permisos...");
         for (String showSecurityCredential : su1.showSecurityCredentials()) {
-            System.out.println(":: "+showSecurityCredential);
+            System.out.println(":: " + showSecurityCredential);
         }
-        
-        SSimpleVertex rtt = sm.get(SSimpleVertex.class,sttRID);
+
+        SSimpleVertex rtt = sm.get(SSimpleVertex.class, sttRID);
         int se = rtt.getSecurityState();
-        System.out.println("Security state: "+se);
-        assertTrue(se>0);
-        
+        System.out.println("Security state: " + se);
+        assertTrue(se > 0);
+
     }
 
     @Test
@@ -1348,7 +1364,7 @@ public class SessionManagerTest {
         // test rollback
         UserSID usidRollback = new UserSID("rollback", "rollback");
         UserSID rusid = this.sm.store(usidRollback);
-        
+
         System.out.println("Haciendo rollback...");
         this.sm.rollback();
         try {
@@ -1475,11 +1491,11 @@ public class SessionManagerTest {
         SimpleVertex irSV = sm.store(new SimpleVertex());
         sm.commit();
         String irSVrid = sm.getRID(irSV);
-        
+
         // crear el objeto que referenciará al primero
         SimpleVertexEx irSVEX = new SimpleVertexEx();
         irSVEX.setSvinner(irSV);
-        
+
         SimpleVertexEx rirSVEX = sm.store(irSVEX);
         String rirSVEXrid = sm.getRID(rirSVEX);
 
@@ -1502,10 +1518,10 @@ public class SessionManagerTest {
         System.out.println("*************************");
         sm.setAuditOnUser("DeleteAudit");
         SimpleVertex svaudit = new SimpleVertex("DeleteAudit");
-        SimpleVertex rsva  = sm.store(svaudit);
+        SimpleVertex rsva = sm.store(svaudit);
         sm.commit();
         String svaRID = sm.getRID(rsva);
-        System.out.println("RID: "+svaRID);
+        System.out.println("RID: " + svaRID);
         svaudit = null;
         System.out.println("Eliminando el objeto...");
         sm.delete(rsva);
@@ -1525,14 +1541,14 @@ public class SessionManagerTest {
         SimpleVertexEx cdsve = new SimpleVertexEx();
         cdsve.setS("CascadeDelete");
         cdsve.initArrayList();
-        
+
         SimpleVertexEx csve = sm.store(cdsve);
         System.out.println("commit...");
         sm.commit();
         System.out.println("fin commit.");
-        
+
         String csveRid = sm.getRID(csve);
-        System.out.println("RID: "+csveRid);
+        System.out.println("RID: " + csveRid);
         System.out.println("Referencias de objetos en el AL:");
         ArrayList<String> alRid = new ArrayList<>();
         for (SimpleVertex simpleVertex : csve.getAlSV()) {
@@ -1545,88 +1561,86 @@ public class SessionManagerTest {
         sm.delete(csve);
         sm.commit();
         System.out.println("Verificar que todo esté ok");
-        
+
         try {
             sm.get(csveRid);
             fail("El objeto aún existe!!!");
         } catch (Exception e) {
             System.out.println("Todo ok!");
         }
-        
+
         System.out.println("Verificar los CascadeDelete...");
         for (String object : alRid) {
             try {
                 sm.get(object);
-                fail("El objeto "+object+" aún existe!!!");
+                fail("El objeto " + object + " aún existe!!!");
             } catch (Exception e) {
                 System.out.println("Todo ok!");
-            }    
+            }
         }
 
         System.out.println("Verificando el borrado de objetos que han sido modificados durante la operación...");
         SimpleVertex svmodificado_a_borrar = sm.store(new SimpleVertex());
         SimpleVertexEx svExConVector = sm.store(new SimpleVertexEx());
         svExConVector.initArrayList();
-        
+
         sm.commit();
-        
+
         String svModif = sm.getRID(svmodificado_a_borrar);
         String svExCon = sm.getRID(svExConVector);
-        
-        System.out.println("svExCon "+svExCon);
-        System.out.println("svModif "+svModif);
-        
+
+        System.out.println("svExCon " + svExCon);
+        System.out.println("svModif " + svModif);
+
         System.out.println("agregando el sv al SVEx...");
         svExConVector.alSV.add(svmodificado_a_borrar);
-        System.out.println("size: "+svExConVector.alSV.size());
-        
+        System.out.println("size: " + svExConVector.alSV.size());
+
         System.out.println("commit...");
         sm.commit();
-        System.out.println("size: "+svExConVector.alSV.size());
-        
+        System.out.println("size: " + svExConVector.alSV.size());
+
         // liberar los objetos.
         svmodificado_a_borrar = null;
         svExConVector = null;
-        
+
         // recupear de la base
         System.out.println("recuperar nuevamente...");
         svExConVector = sm.get(SimpleVertexEx.class, svExCon);
-        System.out.println("size: "+svExConVector.alSV.size());
-        
+        System.out.println("size: " + svExConVector.alSV.size());
+
         for (SimpleVertex simpleVertex : svExConVector.alSV) {
-            System.out.println(":: "+sm.getRID(simpleVertex));
+            System.out.println(":: " + sm.getRID(simpleVertex));
         }
         // recupear el objeto desde el cache. Si se recuera desde la base de datos
         // se obtienen dos instancias y al realizar el borrado por un lado y la modificación
         // por otro, aparece una inconsistencia dependiendo de como lo acomode el hm dirty.
         svmodificado_a_borrar = sm.get(SimpleVertex.class, svModif);
-        
+
         System.out.println("realizando una modificación previo al borrado");
         svmodificado_a_borrar.setS("modificado previo borrado");
-        
+
         System.out.println("borrando...");
         svExConVector.alSV.remove(svmodificado_a_borrar);
-        System.out.println("size: "+svExConVector.alSV.size());
-        
+        System.out.println("size: " + svExConVector.alSV.size());
+
         System.out.println("realizando commit...");
         sm.commit();
         svmodificado_a_borrar = null;
         svExConVector = null;
-        
+
         try {
             svmodificado_a_borrar = sm.get(SimpleVertex.class, svModif);
             fail("El objeto aún existe!!! ");
         } catch (Exception e) {
             System.out.println("todo ok.");
         }
-        
-        
+
         spaces(5);
         System.out.println("--- En Maps ---");
-        
+
     }
 
-    
     /**
      * Test of delete method, of class SessionManager.
      */
@@ -1647,18 +1661,18 @@ public class SessionManagerTest {
         System.out.println("Recuperar el objeto de la base");
         String rid = ((IObjectProxy) result).___getRid();
         // liberar el objeto...
-        System.out.println("Liberar el objeto  "+result+"...");
+        System.out.println("Liberar el objeto  " + result + "...");
         result = null;
-        
+
         SimpleVertexEx expResult = this.sm.get(SimpleVertexEx.class, rid);
-        System.out.println("Nueva referencia: "+expResult);
-        
+        System.out.println("Nueva referencia: " + expResult);
+
         SimpleVertex sv = expResult.getSvinner();
         String svrid = this.sm.getRID(sv);
         System.out.println("Objeto referenciado: " + sm.getRID(sv));
         System.out.println("Eliminar la referencia");
         expResult.setSvinner(null);
-        
+
         System.out.println("commit...");
         sm.commit();
 
@@ -1675,22 +1689,22 @@ public class SessionManagerTest {
         System.out.println("**********************************");
         System.out.println("Borrar el objeto raíz y verificar que el objeto dependiente se ha borrado");
         System.out.println("**********************************");
-        
+
         SimpleVertexEx svOuter = new SimpleVertexEx();
         svOuter.setSvinner(new SimpleVertex("toBeRemovedByOrphan"));
         SimpleVertexEx rsvo = sm.store(svOuter);
         svOuter = null;
         System.out.println("Guardando el objeto.......");
         sm.commit();
-        
+
         System.out.println("");
         System.out.println("");
         System.out.println("");
         String srvso = sm.getRID(rsvo);
         String srsvinner = sm.getRID(rsvo.getSvinner());
-        System.out.println("RID: "+ srvso);
-        System.out.println("RID svinner: "+srsvinner);
-        
+        System.out.println("RID: " + srvso);
+        System.out.println("RID svinner: " + srsvinner);
+
         System.out.println("----------------------------------");
         System.out.println("Eliminar el objeto...");
         sm.delete(rsvo);
@@ -1708,57 +1722,51 @@ public class SessionManagerTest {
         } catch (UnknownRID urid) {
             System.out.println("El objeto Orphan fue borrado!");
         }
-        
-        
+
         System.out.println("\n\nVerificar el RemoveOrphan sobre los vectores");
-        SimpleVertexEx svro = new SimpleVertexEx(); 
+        SimpleVertexEx svro = new SimpleVertexEx();
         SimpleVertexEx storedSVE = sm.store(svro);
         sm.commit();
-        
+
         String ridRO = sm.getRID(storedSVE);
-        
+
         svro = null;
         storedSVE = null;
-        
+
         SimpleVertexEx rirSVEX = sm.get(SimpleVertexEx.class, ridRO);
         svro = null;
-        
-        System.out.println("rid principal: "+sm.getRID(rirSVEX));
-        
-        
+
+        System.out.println("rid principal: " + sm.getRID(rirSVEX));
+
         // persistir todo.
         System.out.println("inicializar el array list...");
         rirSVEX.initArrayList();
         sm.commit();
-        
-        rirSVEX = sm.get(SimpleVertexEx.class,sm.getRID(rirSVEX));
+
+        rirSVEX = sm.get(SimpleVertexEx.class, sm.getRID(rirSVEX));
         String sRSV1 = sm.getRID(rirSVEX.getAlSV().get(0));
         SimpleVertex svToRemove = rirSVEX.getAlSV().get(1);
         String sRSV2 = sm.getRID(svToRemove);
-        System.out.println("rid sv1: "+sRSV1);
-        System.out.println("rid sv2: "+sRSV2);
-        
+        System.out.println("rid sv1: " + sRSV1);
+        System.out.println("rid sv2: " + sRSV2);
+
         System.out.println("fin de la presistencia con los objetos referenciados");
-        
+
         System.out.println("quitar uno de los objetos...");
-        System.out.println("resultado: "+rirSVEX.getAlSV().remove(svToRemove));
-        
+        System.out.println("resultado: " + rirSVEX.getAlSV().remove(svToRemove));
+
         System.out.println("persistir...");
         sm.commit();
-        
+
         System.out.println("verificar que el objeto no exista");
         try {
             SimpleVertex rsv1borrado = sm.get(SimpleVertex.class, sRSV1);
         } catch (UnknownRID urid) {
             System.out.println("Exito! El objeto fue borrado.");
         }
-        
+
     }
-    
-    
-    
-    
-    
+
     /**
      * Test Rollback on exception
      */
@@ -1769,21 +1777,42 @@ public class SessionManagerTest {
         System.out.println("test Rollback on Exception");
         System.out.println("***************************************************************");
         SimpleVertexEx sve = new SimpleVertexEx();
-        String uuidExitente = sve.uuid;
-        sm.store(sve);
+        String uuidExitente = sve.getUuid();
+        System.out.println("uuid: "+uuidExitente);
+        sve.setS("otro string");
+        sve.setI(1000);
+        sve.setSvex("otro svex");
+        SimpleVertexEx ssve = sm.store(sve);
+        
+        System.out.println("ssve uuid: "+ssve.getUuid());
+        System.out.println("commit...");
         sm.commit();
-
+        String origRID = sm.getRID(ssve);
+        System.out.println("ssve rid: "+origRID);
+        System.out.println("ssve uuid: "+ssve.getUuid());
+        
+        System.out.println("Eliminar las referencias...");
+        ssve = null;
+        sve = null;
+        sm.getCurrentTransaction().removeFromCache(origRID);
+        
         // crear un nuevo SVE y duplicar el uuid
-        System.out.println("1. Duplicando...");
+        System.out.println("\n1. Duplicando...");
         SimpleVertexEx dup = new SimpleVertexEx();
-        dup.uuid = uuidExitente;
-
+        dup.setUuid(uuidExitente);
+        System.out.println("asignamos el UUIDs Exitente: " + uuidExitente);
+        
         // intentar almacenar
         try {
             System.out.println("2. Haciendo el store...");
             SimpleVertexEx sDup = sm.store(dup);
+            System.out.println("sDup.uuid: "+sDup.getUuid());
             System.out.println("3. haciendo commit");
+            
             sm.commit();
+            System.out.println("sDup rid: "+sm.getRID(sDup));
+            System.out.println("sDup.uuid: "+sDup.getUuid());
+            fail("FAIL! No se detectó la excepción!!!!");
         } catch (Exception e) {
             System.out.println("4. Excepcion!!! ");
             System.out.println("5. invocando a rollback...");
@@ -1796,7 +1825,7 @@ public class SessionManagerTest {
         // probar el error sobre un objeto que ya está administrado por el ogm.
         System.out.println("UUIDs Exitente: " + uuidExitente);
         SimpleVertexEx dup2 = new SimpleVertexEx();
-        System.out.println("UUIDs Nuevo   : " + dup2.uuid);
+        System.out.println("UUIDs Nuevo   : " + dup2.getUuid());
 
         SimpleVertexEx sDup2 = sm.store(dup2);
         String currentUUID = sDup2.getUuid();
@@ -1807,10 +1836,14 @@ public class SessionManagerTest {
         System.out.println("Es válido: " + ((IObjectProxy) sDup2).___isValid());
         System.out.println("9. Objetos marcados: " + sm.getDirtyCount());
         System.out.println("10. haciendo commit");
+        
         sm.commit();
+        
+        rid = ((IObjectProxy) sDup2).___getRid();
+        System.out.println("RID: " + rid);
         System.out.println("current UUID: " + sDup2.getUuid());
 
-        System.out.println("11. cambiando a un uuid existente");
+        System.out.println("\n11. cambiando a un uuid existente");
         sDup2.setUuid(uuidExitente);
         // intentar almacenar
         try {
@@ -1826,7 +1859,6 @@ public class SessionManagerTest {
         System.out.println("15. Finalizado!");
     }
 
-    
     @Test
     public void testIndirect() {
         System.out.println("\n\n\n");
@@ -1835,27 +1867,27 @@ public class SessionManagerTest {
         System.out.println("***************************************************************");
         // limpiar el cache.
         sm.getCurrentTransaction().clearCache();
-        
+
         // verificar que cuando se recuepera in indirectlinked desde el objeto padre
         // la indirección apunte exactamente a la instancia ya existente.
         IndirectObject ioPadre = new IndirectObject();
         IndirectObject ioIndirecto = new IndirectObject();
-        
+
         ioPadre.setDirectLink(ioIndirecto);
-        
+
         ioPadre = sm.store(ioPadre);
-        
+
         System.out.println("commit");
         sm.commit();
-        
+
         String ridPadre = sm.getRID(ioPadre);
-        System.out.println("ridPadre: "+ridPadre);
-        System.out.println("ObjectCache: "+sm.getCurrentTransaction().getObjectCache());
-        
+        System.out.println("ridPadre: " + ridPadre);
+        System.out.println("ObjectCache: " + sm.getCurrentTransaction().getObjectCache());
+
         // liberar las referencias.
         ioPadre = null;
         ioIndirecto = null;
-        
+
         sm.getCurrentTransaction().removeFromCache(ridPadre);
         System.out.println("gc");
         System.gc();
@@ -1865,97 +1897,91 @@ public class SessionManagerTest {
 //        } catch (InterruptedException ex) {
 //            Logger.getLogger(SessionManagerTest.class.getName()).log(Level.SEVERE, null, ex);
 //        }
-        System.out.println("ObjectCache: "+sm.getCurrentTransaction().getObjectCache());
-        
+        System.out.println("ObjectCache: " + sm.getCurrentTransaction().getObjectCache());
+
         // recupear el padre nuevamente desde la base de datos.
         ioPadre = sm.get(IndirectObject.class, ridPadre);
         ioIndirecto = ioPadre.getDirectLink();
-        
+
         // la referencia indirecta en ioIndirecto debe ser a ioPadre tanto en el nro de vertice con el la referncia a memoria.
-        System.out.println("ObjectCache: "+sm.getCurrentTransaction().getObjectCache());
+        System.out.println("ObjectCache: " + sm.getCurrentTransaction().getObjectCache());
         int ioPadreIdent = System.identityHashCode(ioPadre);
         int ioIndirectPadreIdent = System.identityHashCode(ioIndirecto.getIndirectLink());
-        System.out.println("Padre: "+sm.getRID(ioPadre)+" ref: "+ioPadreIdent+" ---> "+sm.getRID(ioPadre.getDirectLink()));
-        System.out.println("Indirecto: "+sm.getRID(ioIndirecto)
-                            +" <--- "
-                            +sm.getRID(ioIndirecto.getIndirectLink())
-                            +" ref: "+ioIndirectPadreIdent);
-        
+        System.out.println("Padre: " + sm.getRID(ioPadre) + " ref: " + ioPadreIdent + " ---> " + sm.getRID(ioPadre.getDirectLink()));
+        System.out.println("Indirecto: " + sm.getRID(ioIndirecto)
+                + " <--- "
+                + sm.getRID(ioIndirecto.getIndirectLink())
+                + " ref: " + ioIndirectPadreIdent);
+
         assertEquals(ioPadreIdent, ioIndirectPadreIdent);
-        
+
         sm.getCurrentTransaction().removeFromCache(sm.getRID(ioPadre));
         sm.getCurrentTransaction().removeFromCache(sm.getRID(ioIndirecto));
         ioPadre = null;
         ioIndirecto = null;
-        
+
         System.gc();
         System.out.println(sm.getCurrentTransaction().getObjectCache());
         System.out.println("Probar la indirección a partir del objeto indirecto y verificar que llega al padre.");
         System.out.println("Crear dos nuevos objetos");
         IndirectObject io = new IndirectObject();
         IndirectObject ioLinked = new IndirectObject();
-        
+
         ioLinked.setDirectLink(io);
-        
+
         IndirectObject sioLinked = sm.store(ioLinked);
-        System.out.println("precommit:"+sm.getCurrentTransaction().getObjectCache());
+        System.out.println("precommit:" + sm.getCurrentTransaction().getObjectCache());
         sm.commit();
-        System.out.println("postcommit:"+sm.getCurrentTransaction().getObjectCache());
+        System.out.println("postcommit:" + sm.getCurrentTransaction().getObjectCache());
         String dLinked = sm.getRID(sioLinked);
-        
+
         // liberar los objetos
         io = null;
         ioLinked = null;
         sioLinked = null;
-        
-        
-        
+
 //        System.gc();
-        
-        
-        System.out.println("recuperar nuevamente el registro "+dLinked);
+        System.out.println("recuperar nuevamente el registro " + dLinked);
         IndirectObject rioLinked = sm.get(IndirectObject.class, dLinked);
-        
-        System.out.println("DM: "+((IObjectProxy)rioLinked).___isDirty());
+
+        System.out.println("DM: " + ((IObjectProxy) rioLinked).___isDirty());
         System.out.println("fin commit.");
-        
-        System.out.println("1 - dc: "+sm.getCurrentTransaction().getDirtyCache());
-        System.out.println("DM: "+((IObjectProxy)rioLinked).___isDirty());
-        System.out.println("DM: "+((IObjectProxy)rioLinked).___isDirty());
-        System.out.println("2 - dc: "+sm.getCurrentTransaction().getDirtyCache());
-        System.out.println("    oc :"+sm.getCurrentTransaction().getObjectCache());
+
+        System.out.println("1 - dc: " + sm.getCurrentTransaction().getDirtyCache());
+        System.out.println("DM: " + ((IObjectProxy) rioLinked).___isDirty());
+        System.out.println("DM: " + ((IObjectProxy) rioLinked).___isDirty());
+        System.out.println("2 - dc: " + sm.getCurrentTransaction().getDirtyCache());
+        System.out.println("    oc :" + sm.getCurrentTransaction().getObjectCache());
         String inLinked = sm.getRID(rioLinked.getDirectLink());
-        System.out.println("3 - dc: "+sm.getCurrentTransaction().getDirtyCache());
-        
-        System.out.println("Linked RID: "+dLinked+"("+System.identityHashCode(rioLinked)
-                            +") ----> "+inLinked+"("+System.identityHashCode(rioLinked.getDirectLink())+")");
+        System.out.println("3 - dc: " + sm.getCurrentTransaction().getDirtyCache());
+
+        System.out.println("Linked RID: " + dLinked + "(" + System.identityHashCode(rioLinked)
+                + ") ----> " + inLinked + "(" + System.identityHashCode(rioLinked.getDirectLink()) + ")");
         System.out.println(sm.getCurrentTransaction().getDirtyCache());
-        
-        
+
         rioLinked = null;
-        
+
         System.out.println("\ngc...");
         System.gc();
-        System.out.println("oc: "+sm.getCurrentTransaction().getObjectCache());
-        System.out.println("dc: "+sm.getCurrentTransaction().getDirtyCache());
-        
+        System.out.println("oc: " + sm.getCurrentTransaction().getObjectCache());
+        System.out.println("dc: " + sm.getCurrentTransaction().getDirtyCache());
+
         System.out.println("\nrecuperar el objeto nuevamente");
-        IndirectObject sioIndirectLinked = sm.get(IndirectObject.class,inLinked);
-        System.out.println(sm.getRID(sioIndirectLinked)+" indirectLinked to RID: "+sm.getRID(sioIndirectLinked.getIndirectLink()));
+        IndirectObject sioIndirectLinked = sm.get(IndirectObject.class, inLinked);
+        System.out.println(sm.getRID(sioIndirectLinked) + " indirectLinked to RID: " + sm.getRID(sioIndirectLinked.getIndirectLink()));
         assertNotNull(sioIndirectLinked.getIndirectLink());
-        
-        
+
         // test sobre los ArrayList
         System.out.println("");
         System.out.println("Test sobre los Arrays");
-        System.out.println("oc: "+sm.getCurrentTransaction().getObjectCache());
-        System.out.println("dc: "+sm.getCurrentTransaction().getDirtyCache());
-        
+        System.out.println("oc: " + sm.getCurrentTransaction().getObjectCache());
+        System.out.println("dc: " + sm.getCurrentTransaction().getDirtyCache());
+
         IndirectObject ioAlLinked1 = new IndirectObject();
         IndirectObject ioAlLinked2 = new IndirectObject();
         ioAlLinked1.getAlDirectLinked().add(sioIndirectLinked);
         ioAlLinked2.getAlDirectLinked().add(sioIndirectLinked);
-        
+
         sm.store(ioAlLinked1);
         sm.store(ioAlLinked2);
         sm.commit();
@@ -1963,43 +1989,43 @@ public class SessionManagerTest {
         ioAlLinked1 = null;
         ioAlLinked2 = null;
         sioIndirectLinked = null;
-        
+
         System.out.println("limpiar la memoria...");
 //        System.gc();
-        System.out.println("oc: "+sm.getCurrentTransaction().getObjectCache());
-        System.out.println("dc: "+sm.getCurrentTransaction().getDirtyCache());
-        
+        System.out.println("oc: " + sm.getCurrentTransaction().getObjectCache());
+        System.out.println("dc: " + sm.getCurrentTransaction().getDirtyCache());
+
         // refrescar el objeto indirecto
-        System.out.println("recuperar nuevamente el objeto: "+inLinked);
+        System.out.println("recuperar nuevamente el objeto: " + inLinked);
         sioIndirectLinked = sm.get(IndirectObject.class, inLinked);
-        assertEquals(2,sioIndirectLinked.getAlIndirectLinked().size());
-        
+        assertEquals(2, sioIndirectLinked.getAlIndirectLinked().size());
+
         // Test sobre los HashMap
         System.out.println("");
         System.out.println("Test sobre los HashMap");
         IndirectObject ioHMLinked1 = new IndirectObject();
         IndirectObject ioHMLinked2 = new IndirectObject();
-        
+
         ioHMLinked1.getHmDirectLinked().put("1", sioIndirectLinked);
         ioHMLinked2.getHmDirectLinked().put("2", sioIndirectLinked);
-        
+
         ioHMLinked1 = sm.store(ioHMLinked1);
         ioHMLinked2 = sm.store(ioHMLinked2);
-        
+
         sm.commit();
-        
-        System.out.println("Direct HM 1: "+sm.getRID(ioHMLinked1));
-        System.out.println("Direct HM 2: "+sm.getRID(ioHMLinked2));
-        
+
+        System.out.println("Direct HM 1: " + sm.getRID(ioHMLinked1));
+        System.out.println("Direct HM 2: " + sm.getRID(ioHMLinked2));
+
         // refrescar el objeto indirecto
         sioIndirectLinked = null;
-        
+
         System.out.println("limpiar la memoria...");
 //        System.gc();
-        
+
         sioIndirectLinked = sm.get(IndirectObject.class, inLinked);
         assertEquals(sioIndirectLinked.getHmIndirectLinked().size(), 2);
-        
+
         //=====================================================
         // crear un objeto que aputa a otros dos a través de un AL.
         // Los objeto que es indirectamente referenciado debe mantener 
@@ -2009,22 +2035,22 @@ public class SessionManagerTest {
         //   \-----> o3
         //
         IndirectObject origen = new IndirectObject();
-        
+
         IndirectObject ind1 = new IndirectObject();
         IndirectObject ind2 = new IndirectObject();
         IndirectObject ind3 = new IndirectObject();
-        
+
         origen.getAlDirectLinked().add(ind1);
         origen.getAlDirectLinked().add(ind2);
         origen.getAlDirectLinked().add(ind3);
-        
+
         // guardar todo
         IndirectObject sOrigen = sm.store(origen);
         sm.commit();
-        System.out.println("hc: "+System.identityHashCode(sOrigen));
-        
+        System.out.println("hc: " + System.identityHashCode(sOrigen));
+
         String origenRID = sm.getRID(sOrigen);
-        
+
         // dereferenciar todo.
         System.out.println("limpiar la memoria...");
         ind1 = null;
@@ -2038,22 +2064,21 @@ public class SessionManagerTest {
 //        } catch (InterruptedException ex) {
 //            Logger.getLogger(SessionManagerTest.class.getName()).log(Level.SEVERE, null, ex);
 //        }
-        System.out.println("cache: "+sm.getCurrentTransaction().getObjectCache());
+        System.out.println("cache: " + sm.getCurrentTransaction().getObjectCache());
         // recupear el origen
         origen = sm.get(IndirectObject.class, origenRID);
-        System.out.println("hc: "+System.identityHashCode(origen));
-        
+        System.out.println("hc: " + System.identityHashCode(origen));
+
         origen.setTestData("modificado");
-        System.out.println("cache: "+sm.getCurrentTransaction().getObjectCache());
-        
+        System.out.println("cache: " + sm.getCurrentTransaction().getObjectCache());
+
         ind1 = origen.getAlDirectLinked().get(0);
         String ind1RID = sm.getRID(ind1);
         ind2 = origen.getAlDirectLinked().get(1);
         String ind2RID = sm.getRID(ind2);
         ind3 = origen.getAlDirectLinked().get(2);
         String ind3RID = sm.getRID(ind3);
-        
-        
+
         System.out.println("verificando que no sean null la referencias indirectas...");
         assertNotNull(ind1.getIndirectLinkedFromAL());
         assertNotNull(ind2.getIndirectLinkedFromAL());
@@ -2063,31 +2088,29 @@ public class SessionManagerTest {
         int iInd1 = System.identityHashCode(ind1.getIndirectLinkedFromAL());
         int iInd2 = System.identityHashCode(ind2.getIndirectLinkedFromAL());
         int iInd3 = System.identityHashCode(ind3.getIndirectLinkedFromAL());
-        
+
         assertEquals(iOrigen, iInd1);
         assertEquals(iOrigen, iInd2);
         assertEquals(iOrigen, iInd3);
         assertEquals(ind1.getIndirectLinkedFromAL().getTestData(), ind3.getIndirectLinkedFromAL().getTestData());
-        
+
         //-----------------------------------------------------
         // dereferenciar todo nuevamente
         ind1 = null;
         ind2 = null;
         origen = null;
-        
+
         // ahora recupear un objeto indirecto y desde éste recuper el origen. 
         ind1 = sm.get(IndirectObject.class, ind1RID);
-        
+
         origen = ind1.getIndirectLinkedFromAL();
         origen.setTestData("modif2");
-        
+
         ind2 = sm.get(IndirectObject.class, ind2RID);
-        
+
         assertEquals(ind1.getIndirectLinkedFromAL().getTestData(), ind2.getIndirectLinkedFromAL().getTestData());
-        
+
         //=====================================================
-        
-        
     }
 
     @Test
@@ -2096,27 +2119,50 @@ public class SessionManagerTest {
         System.out.println("***************************************************************");
         System.out.println("Probar el cache de transacción");
         System.out.println("***************************************************************");
-        
+
         SimpleVertexEx sve = new SimpleVertexEx();
         SimpleVertexEx ssve = sm.store(sve);
-        System.out.println(""+sm.getCurrentTransaction().getObjectCache());
+        System.out.println("" + sm.getCurrentTransaction().getObjectCache());
         sm.commit();
         ssve.setS("Referencia");
-        System.out.println(""+sm.getCurrentTransaction().getObjectCache());
+        System.out.println("" + sm.getCurrentTransaction().getObjectCache());
         String rid = sm.getRID(ssve);
-        
-        System.out.println(""+sm.getCurrentTransaction().getObjectCache());
+
+        System.out.println("" + sm.getCurrentTransaction().getObjectCache());
         // obtener el objeto desde la transacción en curso. Debería ser el mismo que ssve.
-        SimpleVertexEx rsve = sm.get(SimpleVertexEx.class,rid);
-        
-        System.out.println("ssve: "+System.identityHashCode(ssve));
-        System.out.println("ssve: "+System.identityHashCode(rsve));
-        
+        SimpleVertexEx rsve = sm.get(SimpleVertexEx.class, rid);
+
+        System.out.println("ssve: " + System.identityHashCode(ssve));
+        System.out.println("ssve: " + System.identityHashCode(rsve));
+
         assertEquals(ssve.getS(), rsve.getS());
-        
+
     }
 
-    
+    @Test
+    public void speedTest() {
+        System.out.println("\n\n\n");
+        System.out.println("***************************************************************");
+        System.out.println("Test de velocidad");
+        System.out.println("***************************************************************");
+
+        long ldtInit = System.currentTimeMillis();
+        SimpleVertex lsvo = sm.get(SimpleVertex.class, "#33:1573");
+        long ldtEnd = System.currentTimeMillis();
+        System.out.println("enlapsed: " + (ldtEnd - ldtInit));
+
+        ldtInit = System.currentTimeMillis();
+        List<SimpleVertex> lsv = sm.query(SimpleVertex.class);
+        ldtEnd = System.currentTimeMillis();
+        System.out.println("enlapsed: " + (ldtEnd - ldtInit) + " Objects: " + lsv.size());
+
+        ldtInit = System.currentTimeMillis();
+        List<SimpleVertexEx> lsve = sm.query(SimpleVertexEx.class);
+        ldtEnd = System.currentTimeMillis();
+        System.out.println("enlapsed: " + (ldtEnd - ldtInit) + " Objects: " + lsve.size());
+
+    }
+
 //    @Test
     public void testObjectCache() {
         try {
@@ -2133,32 +2179,29 @@ public class SessionManagerTest {
             sc.add("2", sv2);
             sc.add("3", sv3);
             assertEquals(3, sc.size());
-            System.out.println("1: "+sc.getCachedObjects());
-            
-            
+            System.out.println("1: " + sc.getCachedObjects());
+
             Object o = sc.get("1");
-            System.out.println("class: "+o.getClass().getSimpleName());
-            
-            
+            System.out.println("class: " + o.getClass().getSimpleName());
+
             System.out.println("Dereferenciar el objeto 2");
             sv2 = null;
             System.gc();
             Thread.sleep(3000);
             assertEquals(2, sc.size());
-            System.out.println(": "+sc.getCachedObjects());
-            
+            System.out.println(": " + sc.getCachedObjects());
+
             System.out.println("Dereferenciar el objeto 3");
             sv3 = null;
             System.gc();
             Thread.sleep(3000);
             assertEquals(1, sc.size());
-            System.out.println(": "+sc.getCachedObjects());
-            
+            System.out.println(": " + sc.getCachedObjects());
+
         } catch (InterruptedException ex) {
             Logger.getLogger(SessionManagerTest.class.getName()).log(Level.SEVERE, null, ex);
         }
-        
-        
+
     }
 
 //    @Test
