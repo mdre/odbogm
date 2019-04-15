@@ -19,6 +19,7 @@ import net.odbogm.cache.SimpleCache;
 import net.odbogm.exceptions.ReferentialIntegrityViolation;
 import net.odbogm.exceptions.UnknownRID;
 import net.odbogm.proxy.IObjectProxy;
+import net.odbogm.proxy.ObjectProxy;
 import net.odbogm.security.*;
 import net.odbogm.utils.DateHelper;
 import org.junit.After;
@@ -68,7 +69,8 @@ public class SessionManagerTest {
         sm = new SessionManager("remote:localhost/Test", "root", "toor")
                 .setActivationStrategy(SessionManager.ActivationStrategy.CLASS_INSTRUMENTATION) //                .setClassLevelLog(ObjectProxy.class, Level.FINEST)
 //                                .setClassLevelLog(ClassCache.class, Level.FINER)
-                //                .setClassLevelLog(Transaction.class, Level.FINER)
+                                .setClassLevelLog(Transaction.class, Level.FINER)
+                                .setClassLevelLog(ObjectProxy.class, Level.FINER)
                 //                .setClassLevelLog(SimpleCache.class, Level.FINER)
                 //                .setClassLevelLog(ArrayListLazyProxy.class, Level.FINER)
                 //                .setClassLevelLog(ObjectMapper.class, Level.FINEST)
@@ -1511,6 +1513,10 @@ public class SessionManagerTest {
             fail("El objeto fue borrado y debería haber saltado una excepción");
         } catch (ReferentialIntegrityViolation riv) {
             System.out.println("ReferencialIntegrityViolation ");
+            
+            System.out.println("\n\nllamando a ROLLBACK...");
+            sm.rollback();
+            System.out.println("dirtyDeleted: "+sm.getCurrentTransaction().getDirtyDeletedCount());
         }
 
         System.out.println("*************************");
@@ -1531,8 +1537,9 @@ public class SessionManagerTest {
             fail("El objeto aún existe!!!");
         } catch (Exception e) {
             System.out.println("Todo ok!");
+            
         }
-
+        
         spaces(5);
         System.out.println("*************************");
         System.out.println("Verificando el comportamiento de CascadeDelete");

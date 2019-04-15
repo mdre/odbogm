@@ -15,4 +15,12 @@ import java.util.logging.Logger;
 public class ReferentialIntegrityViolation extends RuntimeException{
     private final static Logger LOGGER = Logger.getLogger(ReferentialIntegrityViolation.class .getName());
     private static final long serialVersionUID = 4808259721082709371L;
+
+    public ReferentialIntegrityViolation() {
+    }
+
+    public ReferentialIntegrityViolation(String message) {
+        super(message);
+    }
+    
 }

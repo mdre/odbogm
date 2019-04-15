@@ -198,12 +198,32 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         if (method.getName().equals("___isDeleted")) {
             return this.___isDeleted();
         }
-
+        
+        if (method.getName().equals("___getVertex")) {
+            if (this.___objectReady) {
+                return this.___getVertex();
+            }
+        }
+        
+        if (method.getName().equals("___getBaseClass")) {
+            if (this.___objectReady) {
+                return this.___getBaseClass();
+            }
+        }
+        
         if (!this.___isValidObject) {
             LOGGER.log(Level.FINER, "El objeto está marcado como inválido!!!");
             throw new InvalidObjectReference();
         }
 
+        if (method.getName().equals("___rollback")) {
+            if (this.___objectReady) {
+                this.___rollback();
+                return true;
+            }
+        }
+        
+        
         if (this.___baseElement.getIdentity().isNew()) {
             LOGGER.log(Level.FINER, "RID nuevo. No procesar porque el store preparó todo y no hay nada que recuperar de la base.");
             this.___loadLazyLinks = false;
@@ -215,11 +235,11 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         // modificar el llamado
         if (!this.___deletedMark) {
             switch (method.getName()) {
-                case "___getVertex":
-                    if (this.___objectReady) {
-                        res = this.___getVertex();
-                    }
-                    break;
+//                case "___getVertex":
+//                    if (this.___objectReady) {
+//                        res = this.___getVertex();
+//                    }
+//                    break;
                 case "___getRid":
                     if (this.___objectReady) {
                         res = this.___getRid();
@@ -230,11 +250,11 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                         res = this.___getProxiObject();
                     }
                     break;
-                case "___getBaseClass":
-                    if (this.___objectReady) {
-                        res = this.___getBaseClass();
-                    }
-                    break;
+//                case "___getBaseClass":
+//                    if (this.___objectReady) {
+//                        res = this.___getBaseClass();
+//                    }
+//                    break;
 //                case "___isValid":
 //                        se resuelve arriba.
 //                    if (this.___isValidObject) {
@@ -283,11 +303,11 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                         this.___reload();
                     }
                     break;
-                case "___rollback":
-                    if (this.___objectReady) {
-                        this.___rollback();
-                    }
-                    break;
+//                case "___rollback":
+//                    if (this.___objectReady) {
+//                        this.___rollback();
+//                    }
+//                    break;
                 case "___setDeletedMark":
                     this.___setDeletedMark();
                     break;
@@ -1322,6 +1342,9 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             this.___isValidObject = false;
             return;
         }
+        // asegurarse que la marca de borrado sea eliminada.
+        this.___deletedMark = false;
+        
         // recargar todo.
         this.___baseElement.reload();
 

@@ -76,30 +76,33 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
     private ConcurrentHashMap<String, Object> dirty = new ConcurrentHashMap<>();
 
+    // objetos que han sido registrados para ser eliminados por el commit.
+    private ConcurrentHashMap<String, Object> dirtyDeleted = new ConcurrentHashMap<>();
+    
     // utilizado para determinar si existen transacciones anidadas.
     private int nestedTransactionLevel = 0;
-
+    
     // se utiliza para guardar los objetos recuperados durante un get a fin de evitar los loops
     private int getTransactionCount = 0;
     ConcurrentHashMap<String, Object> transactionLoopCache = new ConcurrentHashMap<>();
-
+    
     // Los RIDs temporales deben ser convertidos a los permanentes en el proceso de commit
     List<String> newrids = new ArrayList<>();
-
+    
     // determina si se está en el proceso de commit.
     private boolean commiting = false;
     private ConcurrentHashMap<Object, Object> commitedObject = new ConcurrentHashMap<>();
-
+    
     int newObjectCount = 0;
-
+    
     // Auditor asociado a la transacción
     private Auditor auditor;
-
+    
     SessionManager sm;
     OrientGraph orientdbTransact;
     // indica el nivel de anidamiento de la transacción. Cuando se llega a 0 se cierra.
     private int orientTransacLevel;
-
+    
     /**
      * Devuelve una transacción con su propio espacio de caché.
      *
@@ -131,31 +134,32 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 //    }
 
     public synchronized void initInternalTx() {
-//        if (this.orientdbTransact == null) {
-//            LOGGER.log(Level.FINEST, "\nAbriendo una transacción...");
-//            //inicializar la transacción
-//            orientdbTransact = this.sm.getFactory().getTx();
-//            orientdbTransact.setThreadMode(OrientConfigurableGraph.THREAD_MODE.ALWAYS_AUTOSET);
-//            orientTransacLevel = 0;
-//        } else {
-//            //aumentar el anidamiento de transacciones
-//            LOGGER.log(Level.FINEST, "Anidando transacción: "+orientTransacLevel+" --> "+(orientTransacLevel+1));
-//            orientTransacLevel++;
-//        }
+        if (this.orientdbTransact == null) {
+            LOGGER.log(Level.FINEST, "\nAbriendo una transacción...");
+            //inicializar la transacción
+            orientdbTransact = this.sm.getFactory().getTx();
+            orientdbTransact.setThreadMode(OrientConfigurableGraph.THREAD_MODE.ALWAYS_AUTOSET);
+            orientTransacLevel = 0;
+        } else {
+            //aumentar el anidamiento de transacciones
+            LOGGER.log(Level.FINEST, "Anidando transacción: "+orientTransacLevel+" --> "+(orientTransacLevel+1));
+            orientTransacLevel++;
+        }
     }
     
     /**
      * cierra la transacción sin realizar el commit
      */
     public synchronized void closeInternalTx() {
-//        if (orientTransacLevel == 0) {
-//            LOGGER.log(Level.FINEST, "termnando la transacción\n");
-//            orientdbTransact.shutdown(false,false);
-//            orientdbTransact = null;
-//        } else {
-//            LOGGER.log(Level.FINEST, "decrementando la transacción: "+orientTransacLevel+ " --> "+(orientTransacLevel-1));
-//            orientTransacLevel--;
-//        }
+        if (orientTransacLevel <= 0 && newrids.size()==0) {
+            LOGGER.log(Level.FINEST, "termnando la transacción\n");
+            orientdbTransact.shutdown(true,false);
+            orientdbTransact = null;
+            orientTransacLevel = 0;
+        } else {
+            LOGGER.log(Level.FINEST, "decrementando la transacción: "+orientTransacLevel+ " --> "+(orientTransacLevel-1));
+            orientTransacLevel--;
+        }
     }
     
     
@@ -319,7 +323,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         initInternalTx();
         
         LOGGER.log(Level.FINER, "COMMIT");
-        if (this.nestedTransactionLevel == 0) {
+        if (this.nestedTransactionLevel <= 0) {
             if (this.orientdbTransact == null) {
                 throw new NoOpenTx();
             }
@@ -331,6 +335,9 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             this.commiting = true;
             LOGGER.log(Level.FINER, "Iniciando COMMIT ==================================");
             LOGGER.log(Level.FINER, "Objetos marcados como Dirty: " + dirty.size());
+            LOGGER.log(Level.FINER, "Objetos marcados como DirtyDeleted: " + dirtyDeleted.size());
+            
+            // procesar todos los objetos dirty
             for (Map.Entry<String, Object> e : dirty.entrySet()) {
                 String rid = e.getKey();
                 IObjectProxy o = (IObjectProxy) e.getValue();
@@ -341,7 +348,21 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                     o.___commit();
                 }
             }
-            LOGGER.log(Level.FINER, "Fin persistencia. <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
+            
+            // procesar todos los objetos a ser eliminados.
+            for (Map.Entry<String, Object> e : dirtyDeleted.entrySet()) {
+                String rid = e.getKey();
+                IObjectProxy o = (IObjectProxy) e.getValue();
+                if (o.___isDeleted() && o.___isValid()) {
+                    LOGGER.log(Level.FINER, "Commiting delete: " + rid);
+
+                    this.internalDelete(e.getValue());
+                }
+            }
+            // vaciar la lista de elementos a eliminar
+            this.dirtyDeleted.clear();
+            
+            LOGGER.log(Level.FINER, "Fin persistencia. <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n");
             // comitear los vértices
             LOGGER.log(Level.FINER, "llamando al commit de la base");
             this.orientdbTransact.commit();
@@ -381,7 +402,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             LOGGER.log(Level.FINER, "TransactionLevel: " + this.nestedTransactionLevel);
             this.nestedTransactionLevel--;
         }
-        LOGGER.log(Level.FINER, "FIN DE COMMIT! ----------------------------");
+        LOGGER.log(Level.FINER, "FIN DE COMMIT! ----------------------------\n\n");
         closeInternalTx();
     }
 
@@ -392,12 +413,14 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         initInternalTx();
         LOGGER.log(Level.FINER, "Rollback ------------------------");
         LOGGER.log(Level.FINER, "Dirty objects: " + dirty.size());
+        LOGGER.log(Level.FINER, "Dirty deleted objects: " + dirtyDeleted.size());
         if (this.orientdbTransact == null) {
             throw new NoOpenTx();
         }
         activateOnCurrentThread();
         this.orientdbTransact.rollback();
 
+        
         // refrescar todos los objetos
         for (Map.Entry<String, Object> entry : dirty.entrySet()) {
             String key = entry.getKey();
@@ -405,12 +428,16 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             value.___rollback();
         }
 
+        
 //        // se opta por eliminar el caché de objetos recuperados de la base en un commit o rollback
 //        // por lo que futuros pedidos a la base fuera de la transacción devolverá una nueva instancia
 //        // del objeto.
 //        this.objectCache.clear();
         // limpiar el caché de objetos modificados
         this.dirty.clear();
+        // lipiar el caché de objetos a borrar.
+        this.dirtyDeleted.clear();
+        
         this.nestedTransactionLevel = 0;
         LOGGER.log(Level.FINER, "FIN ROLLBACK.");
         closeInternalTx();
@@ -679,10 +706,40 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
     /**
      * Remueve un vértice y todos los vértices apuntados por él y marcados con @RemoveOrphan
-     *
+     * o @CascadeDelete.
+     * La eliminación se produce recién cuando se ejecuta commit. Los vértices relacionados 
+     * permanencen inalterados hasta ese momento.
+     * 
      * @param toRemove referencia al objeto a remover
      */
-    public void delete(Object toRemove) throws ReferentialIntegrityViolation, UnknownObject {
+     public void delete(Object toRemove) throws ReferentialIntegrityViolation, UnknownObject {
+        initInternalTx();
+        
+        LOGGER.log(Level.FINER, "Remove: " + toRemove.getClass().getName());
+//         LOGGER.log(Level.FINER, "from Line: "+ThreadHelper.getCurrentStackTrace());
+        activateOnCurrentThread();
+
+        // si no hereda de IObjectProxy, el objeto no pertenece a la base y no se debe hacer nada.
+        if (toRemove instanceof IObjectProxy) {
+            String ridToRemove = ((IObjectProxy) toRemove).___getVertex().getId().toString();
+            
+            this.deleteTree(toRemove);
+            
+            // agregarlo a la lista de vertices a remover.
+            this.dirtyDeleted.put(ridToRemove, toRemove);
+            
+        }
+        closeInternalTx();
+    }
+    
+    /**
+     * método llamado por {@code delete} para marcar todo el árbol al que pertenece el objeto
+     * pero sin agregar los nodos a la lista de dirtyDeleted.
+     * 
+     * @param toRemove
+     * @throws UnknownObject 
+     */ 
+    private void deleteTree(Object toRemove) throws UnknownObject {
         initInternalTx();
         
         LOGGER.log(Level.FINER, "Remove: " + toRemove.getClass().getName());
@@ -691,20 +748,23 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         // si no hereda de IObjectProxy, el objeto no pertenece a la base y no se debe hacer nada.
         if (toRemove instanceof IObjectProxy) {
             // verificar que la integridad referencial no se viole.
-            OrientVertex ovToRemove = ((IObjectProxy) toRemove).___getVertex();
+//            OrientVertex ovToRemove = ((IObjectProxy) toRemove).___getVertex();
             // reacargar preventivamente el objeto.
-            ovToRemove.reload();
-            LOGGER.log(Level.FINER, "Referencias IN: " + ovToRemove.countEdges(Direction.IN));
-            if (ovToRemove.countEdges(Direction.IN) > 0) {
-                throw new ReferentialIntegrityViolation();
-            }
+//            ovToRemove.reload();
+            
+            // la IR se verificará en el internalDelete cuando se haga commit.
+//            LOGGER.log(Level.FINER, "Referencias IN: " + ovToRemove.countEdges(Direction.IN));
+//            if (ovToRemove.countEdges(Direction.IN) > 0) {
+//                throw new ReferentialIntegrityViolation();
+//            }
+
             // Activar todos los campos que estén marcados con CascadeDelete o RemoveOrphan para poder procesarlos.
             // obtener el classDef del objeto
             ClassDef classDef = this.objectMapper.getClassDef(toRemove);
-
+            
             // analizar el objeto
             Field f;
-
+            
             for (Map.Entry<String, Class<?>> entry : classDef.links.entrySet()) {
                 try {
                     String field = entry.getKey();
@@ -749,14 +809,12 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                 }
             }
             // fin de la activación.
-
+            
             // elimino el nodo de la base para que se actualicen los vértices a los que apuntaba.
             // de esta forma, los inner quedan libres y pueden ser borrados por un delete simple
-            ovToRemove.remove();
-
-            //Lista de vértices a remover
-            List<OrientVertex> vertexToRemove = new ArrayList<>();
-
+//            ovToRemove.remove();
+                    
+            
             // procesar los links
             for (Map.Entry<String, Class<?>> entry : classDef.links.entrySet()) {
                 try {
@@ -772,16 +830,17 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                         // Tiene precedencia sobre RemoveOrphan
                         Object value = f.get(toRemove);
                         if (value != null) {
-                            this.delete(value);
+                            this.deleteTree(value);
                         }
                     } else if (f.isAnnotationPresent(RemoveOrphan.class)) {
                         // si se apunta a un objeto, removerlo
                         Object value = f.get(toRemove);
                         if (value != null) {
                             try {
-                                this.delete(value);
+                                this.deleteTree(value);
                             } catch (ReferentialIntegrityViolation riv) {
                                 LOGGER.log(Level.FINER, "RemoveOrphan: El objeto aún tiene vínculos.");
+                                throw new ReferentialIntegrityViolation("RemoveOrphan: El objeto aún tiene vínculos.");
                             }
                         }
                     }
@@ -816,13 +875,13 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                     if ((oCol != null) && (f.isAnnotationPresent(CascadeDelete.class))) {
                         if (oCol instanceof List) {
                             for (Object object : oCol) {
-                                this.delete(object);
+                                this.deleteTree(object);
                             }
 
                         } else if (oCol instanceof Map) {
                             HashMap oMapCol = (HashMap) oCol;
                             oMapCol.forEach((k, v) -> {
-                                this.delete(v);
+                                this.deleteTree(v);
                             });
 
                         } else {
@@ -838,9 +897,10 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                             for (Object object : oCol) {
 
                                 try {
-                                    this.delete(object);
+                                    this.deleteTree(object);
                                 } catch (ReferentialIntegrityViolation riv) {
                                     LOGGER.log(Level.FINER, "RemoveOrphan: El objeto aún tiene vínculos.");
+                                    throw new ReferentialIntegrityViolation("RemoveOrphan: El objeto aún tiene vínculos.");
                                 }
 
                             }
@@ -849,9 +909,10 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                             HashMap oMapCol = (HashMap) oCol;
                             oMapCol.forEach((k, v) -> {
                                 try {
-                                    this.delete(v);
+                                    this.deleteTree(v);
                                 } catch (ReferentialIntegrityViolation riv) {
                                     LOGGER.log(Level.FINER, "RemoveOrphan: El objeto aún tiene vínculos.");
+                                    throw new ReferentialIntegrityViolation("RemoveOrphan: El objeto aún tiene vínculos.");
                                 }
                             });
 
@@ -879,7 +940,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             String ridToRemove = ((IObjectProxy) toRemove).___getVertex().getId().toString();
             this.dirty.remove(ridToRemove);
             this.removeFromCache(ridToRemove);
-
+            
             // invalidar el objeto
             ((IObjectProxy) toRemove).___setDeletedMark();
         } else {
@@ -889,6 +950,231 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         closeInternalTx();
     }
 
+    
+    
+    /**
+     * Este es el método que efectívamente realiza el borrado. Es llamdo desde commit.
+     * el método {@code delete} registra los objetos que luego serán enviados a este proceso 
+     * para su efectiva eliminación.
+     * 
+     * @param toRemove
+     * @throws ReferentialIntegrityViolation
+     * @throws UnknownObject 
+     */
+    private void internalDelete(Object toRemove) throws ReferentialIntegrityViolation, UnknownObject {
+        initInternalTx();
+        
+        LOGGER.log(Level.FINER, "Remove: " + toRemove.getClass().getName());
+        activateOnCurrentThread();
+
+        // si no hereda de IObjectProxy, el objeto no pertenece a la base y no se debe hacer nada.
+        if (toRemove instanceof IObjectProxy) {
+            // verificar que la integridad referencial no se viole.
+            OrientVertex ovToRemove = ((IObjectProxy) toRemove).___getVertex();
+            // reacargar preventivamente el objeto.
+            ovToRemove.reload();
+            LOGGER.log(Level.FINER, "Referencias IN: " + ovToRemove.countEdges(Direction.IN));
+            if (ovToRemove.countEdges(Direction.IN) > 0) {
+                throw new ReferentialIntegrityViolation();
+            }
+            // Activar todos los campos que estén marcados con CascadeDelete o RemoveOrphan para poder procesarlos.
+            // obtener el classDef del objeto
+            ClassDef classDef = this.objectMapper.getClassDef(toRemove);
+            
+            // analizar el objeto
+            Field f;
+            
+//            for (Map.Entry<String, Class<?>> entry : classDef.links.entrySet()) {
+//                try {
+//                    String field = entry.getKey();
+////                    f = ReflectionUtils.findField(((IObjectProxy) toRemove).___getBaseObject().getClass(), field);
+//                    f = ReflectionUtils.findField(toRemove.getClass(), field);
+//
+//                    if (f.isAnnotationPresent(CascadeDelete.class) || f.isAnnotationPresent(RemoveOrphan.class)) {
+//                        LOGGER.log(Level.FINER, "CascadeDelete|RemoveOrphan presente. Activando el objeto...");
+//                        ((IObjectProxy) toRemove).___loadLazyLinks();
+//                    }
+//                } catch (NoSuchFieldException ex) {
+//                    Logger.getLogger(Transaction.class.getName()).log(Level.SEVERE, null, ex);
+//                }
+//            }
+//
+//            // procesar los linkslist
+//            for (Map.Entry<String, Class<?>> entry : classDef.linkLists.entrySet()) {
+//                try {
+//                    String field = entry.getKey();
+//                    final String graphRelationName = toRemove.getClass().getSimpleName() + "_" + field;
+//                    Class<? extends Object> fieldClass = entry.getValue();
+//
+////                    f = ReflectionUtils.findField(((IObjectProxy) toRemove).___getBaseObject().getClass(), field);
+//                    f = ReflectionUtils.findField(toRemove.getClass(), field);
+//                    boolean acc = f.isAccessible();
+//                    f.setAccessible(true);
+//
+//                    LOGGER.log(Level.FINER, "procesando campo: " + field);
+//
+//                    // si hay una colección y corresponde hacer la cascada.
+//                    if (f.isAnnotationPresent(CascadeDelete.class) || f.isAnnotationPresent(RemoveOrphan.class)) {
+//                        LOGGER.log(Level.FINER, "CascadeDelete|RemoveOrphan presente. Activando el objeto...");
+//                        // activar el campo.
+//                        Collection oCol = (Collection) f.get(toRemove);
+//                        if (oCol != null) {
+//                            String garbage = oCol.toString();
+//                        }
+//                    }
+//                    f.setAccessible(acc);
+//                } catch (NoSuchFieldException | IllegalArgumentException | IllegalAccessException ex) {
+//                    Logger.getLogger(Transaction.class.getName()).log(Level.SEVERE, null, ex);
+//                }
+//            }
+            // fin de la activación.
+            
+            // elimino el nodo de la base para que se actualicen los vértices a los que apuntaba.
+            // de esta forma, los inner quedan libres y pueden ser borrados por un delete simple
+            ovToRemove.remove();
+
+            //Lista de vértices a remover
+            List<OrientVertex> vertexToRemove = new ArrayList<>();
+
+            // procesar los links
+            for (Map.Entry<String, Class<?>> entry : classDef.links.entrySet()) {
+                try {
+                    String field = entry.getKey();
+//                    f = ReflectionUtils.findField(((IObjectProxy) toRemove).___getBaseObject().getClass(), field);
+                    f = ReflectionUtils.findField(toRemove.getClass(), field);
+                    boolean acc = f.isAccessible();
+                    f.setAccessible(true);
+
+                    if (f.isAnnotationPresent(CascadeDelete.class)) {
+                        // si se apunta a un objeto, removerlo
+                        // CascadeDelete fuerza el borrado y falla si no puede. 
+                        // Tiene precedencia sobre RemoveOrphan
+                        Object value = f.get(toRemove);
+                        if (value != null) {
+                            this.internalDelete(value);
+                        }
+                    } else if (f.isAnnotationPresent(RemoveOrphan.class)) {
+                        // si se apunta a un objeto, removerlo
+                        Object value = f.get(toRemove);
+                        if (value != null) {
+                            try {
+                                this.internalDelete(value);
+                            } catch (ReferentialIntegrityViolation riv) {
+                                LOGGER.log(Level.FINER, "RemoveOrphan: El objeto aún tiene vínculos.");
+                                throw new ReferentialIntegrityViolation("RemoveOrphan: El objeto aún tiene vínculos.");
+                            }
+                        }
+                    }
+                    f.setAccessible(acc);
+                } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
+                    Logger.getLogger(Transaction.class.getName()).log(Level.SEVERE, null, ex);
+                }
+
+            }
+
+            // procesar los linkslist
+            // la eliminación del Vertex actual elimina de la base los Edges correspondientes por lo que 
+            // solo es necesario verificar si es necesario realizar una cascada en el borrado 
+            // para eliminar vértices relacionads
+            for (Map.Entry<String, Class<?>> entry : classDef.linkLists.entrySet()) {
+                try {
+                    String field = entry.getKey();
+                    final String graphRelationName = toRemove.getClass().getSimpleName() + "_" + field;
+                    Class<? extends Object> fieldClass = entry.getValue();
+
+//                    f = ReflectionUtils.findField(((IObjectProxy) toRemove).___getBaseObject().getClass(), field);
+                    f = ReflectionUtils.findField(toRemove.getClass(), field);
+                    boolean acc = f.isAccessible();
+                    f.setAccessible(true);
+
+                    LOGGER.log(Level.FINER, "procesando campo: " + field);
+
+//                    Collection oCol = (Collection) f.get(((IObjectProxy) toRemove).___getBaseObject());
+                    Collection oCol = (Collection) f.get(toRemove);
+
+                    // si hay una colección y corresponde hacer la cascada.
+                    if ((oCol != null) && (f.isAnnotationPresent(CascadeDelete.class))) {
+                        if (oCol instanceof List) {
+                            for (Object object : oCol) {
+                                this.internalDelete(object);
+                            }
+
+                        } else if (oCol instanceof Map) {
+                            HashMap oMapCol = (HashMap) oCol;
+                            oMapCol.forEach((k, v) -> {
+                                this.internalDelete(v);
+                            });
+
+                        } else {
+                            LOGGER.log(Level.FINER, "********************************************");
+                            LOGGER.log(Level.FINER, "field: {0}", field);
+                            LOGGER.log(Level.FINER, "********************************************");
+                            throw new CollectionNotSupported(oCol.getClass().getSimpleName());
+                        }
+                        f.setAccessible(acc);
+                    } else if ((oCol != null) && (f.isAnnotationPresent(RemoveOrphan.class))) {
+
+                        if (oCol instanceof List) {
+                            for (Object object : oCol) {
+
+                                try {
+                                    this.internalDelete(object);
+                                } catch (ReferentialIntegrityViolation riv) {
+                                    LOGGER.log(Level.FINER, "RemoveOrphan: El objeto aún tiene vínculos.");
+                                    throw new ReferentialIntegrityViolation("RemoveOrphan: El objeto aún tiene vínculos.");
+                                }
+
+                            }
+
+                        } else if (oCol instanceof Map) {
+                            HashMap oMapCol = (HashMap) oCol;
+                            oMapCol.forEach((k, v) -> {
+                                try {
+                                    this.internalDelete(v);
+                                } catch (ReferentialIntegrityViolation riv) {
+                                    LOGGER.log(Level.FINER, "RemoveOrphan: El objeto aún tiene vínculos.");
+                                    throw new ReferentialIntegrityViolation("RemoveOrphan: El objeto aún tiene vínculos.");
+                                }
+                            });
+
+                        } else {
+                            LOGGER.log(Level.FINER, "********************************************");
+                            LOGGER.log(Level.FINER, "field: {0}", field);
+                            LOGGER.log(Level.FINER, "********************************************");
+                            throw new CollectionNotSupported(oCol.getClass().getSimpleName());
+                        }
+                        f.setAccessible(acc);
+                    }
+
+                } catch (NoSuchFieldException | IllegalArgumentException | IllegalAccessException ex) {
+                    Logger.getLogger(SessionManager.class.getName()).log(Level.SEVERE, null, ex);
+                    throw new ReferentialIntegrityViolation("RemoveOrphan: El objeto aún tiene vínculos.");
+                }
+
+            }
+
+            if (this.isAuditing()) {
+                this.auditLog((IObjectProxy) toRemove, Audit.AuditType.DELETE, "InternalDELETE", "");
+            }
+
+            //ovToRemove.remove(); movido arriba.
+            // si tengo un RID, proceder a removerlo de las colecciones.
+            String ridToRemove = ((IObjectProxy) toRemove).___getVertex().getId().toString();
+            this.dirty.remove(ridToRemove);
+            this.removeFromCache(ridToRemove);
+
+            // invalidar el objeto
+//            ((IObjectProxy) toRemove).___setDeletedMark();
+        } else {
+            throw new UnknownObject();
+        }
+        
+        closeInternalTx();
+    }
+    
+    
+    
+    
     /**
      * Transfiere todos los cambios de los objetos a las estructuras subyacentes.
      */
@@ -968,6 +1254,14 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     public int getDirtyCount() {
         return this.dirty.size();
+    }
+    /**
+     * Retorna la cantidad de objetos marcados para ser eliminados cuando se cierre la transacción. Utilizado para los test
+     *
+     * @return retorna la cantidad de objetos marcados para ser eliminados en el próximo commit
+     */
+    public int getDirtyDeletedCount() {
+        return this.dirtyDeleted.size();
     }
 
     /**

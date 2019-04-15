@@ -16,7 +16,6 @@ import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.LogginProperties;
-import net.odbogm.SessionManager;
 import net.odbogm.Transaction;
 import net.odbogm.annotations.Audit;
 import net.odbogm.proxy.IObjectProxy;
@@ -115,7 +114,7 @@ class LogData {
 
     public LogData(IObjectProxy o, int auditType, String label, Object data) {
         this.o = o;
-        this.rid = o.___getRid();
+        this.rid = o.___getVertex().getIdentity().toString();
         this.auditType = auditType;
         this.label = label;
         this.data = data!=null?data.toString():"";
