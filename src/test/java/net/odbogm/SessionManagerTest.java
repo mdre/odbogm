@@ -19,7 +19,6 @@ import net.odbogm.cache.SimpleCache;
 import net.odbogm.exceptions.ReferentialIntegrityViolation;
 import net.odbogm.exceptions.UnknownRID;
 import net.odbogm.proxy.IObjectProxy;
-import net.odbogm.proxy.ObjectProxy;
 import net.odbogm.security.*;
 import net.odbogm.utils.DateHelper;
 import org.junit.After;
@@ -69,8 +68,8 @@ public class SessionManagerTest {
         sm = new SessionManager("remote:localhost/Test", "root", "toor")
                 .setActivationStrategy(SessionManager.ActivationStrategy.CLASS_INSTRUMENTATION) //                .setClassLevelLog(ObjectProxy.class, Level.FINEST)
 //                                .setClassLevelLog(ClassCache.class, Level.FINER)
-                                .setClassLevelLog(Transaction.class, Level.FINER)
-                                .setClassLevelLog(ObjectProxy.class, Level.FINER)
+//                                .setClassLevelLog(Transaction.class, Level.FINER)
+//                                .setClassLevelLog(ObjectProxy.class, Level.FINER)
                 //                .setClassLevelLog(SimpleCache.class, Level.FINER)
                 //                .setClassLevelLog(ArrayListLazyProxy.class, Level.FINER)
                 //                .setClassLevelLog(ObjectMapper.class, Level.FINEST)

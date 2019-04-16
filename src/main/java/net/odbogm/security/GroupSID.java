@@ -12,6 +12,7 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import net.odbogm.LogginProperties;
 import net.odbogm.annotations.Entity;
+import net.odbogm.annotations.Indexed;
 import net.odbogm.annotations.Indirect;
 
 /**
@@ -19,14 +20,19 @@ import net.odbogm.annotations.Indirect;
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
 @Entity
-public final class GroupSID extends SID {
+public final class GroupSID implements ISID {
     private final static Logger LOGGER = Logger.getLogger(GroupSID.class .getName());
     static {
         if (LOGGER.getLevel() == null) {
             LOGGER.setLevel(LogginProperties.GroupSID);
         }
     }
-    private List<SID> participants = new ArrayList<>();;
+    @Indexed(type = Indexed.IndexType.UNIQUE)
+    private String name = "";
+    @Indexed(type = Indexed.IndexType.UNIQUE)
+    private String uuid = "";
+    
+    private List<ISID> participants = new ArrayList<>();;
     
     // lista de grupo a los que fue agregado el presente
     @Indirect(linkName = "GroupSID_participants")
@@ -37,7 +43,32 @@ public final class GroupSID extends SID {
     }
     
     public GroupSID(String name, String uuid) {
-        super(name, uuid);
+        this.name = name;
+        this.uuid = uuid;
+    }
+    
+    @Override
+    public final String getName() {
+        return name;
+    }
+    
+    @Override
+    public final void setName(String name) {
+        this.name = name;
+    }
+
+    public final String getUUID() {
+        return uuid;
+    }
+
+    @Override
+    public final void setUUID(String uuid) {
+        this.uuid = uuid;
+    }
+
+    @Override
+    public final String toString() {
+        return "GSID{" + "id=" + uuid + ", name="+this.name+"}";
     }
     
     /**
@@ -73,12 +104,12 @@ public final class GroupSID extends SID {
         return this.participants.remove(user);
     }
     
-    public final List<SID> getParticipants() {
+    public final List<ISID> getParticipants() {
         // FIXME: ojo que se está retornando la lista de participantes y esto permite que se acceda a los objetos
         // internos de la misma.
-        List<SID> p = new ArrayList<>();
+        List<ISID> p = new ArrayList<>();
         if (this.participants != null) {
-             p = this.participants.stream().map(sid -> sid).collect(Collectors.toList());
+             p = this.participants.stream().map(isid -> isid).collect(Collectors.toList());
         }
         return p;
     }

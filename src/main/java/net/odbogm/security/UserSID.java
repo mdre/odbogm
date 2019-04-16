@@ -12,16 +12,22 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import net.odbogm.LogginProperties;
 import net.odbogm.annotations.Entity;
+import net.odbogm.annotations.Indexed;
 import net.odbogm.annotations.Indirect;
 
 @Entity
-public final class UserSID extends SID implements ISecurityCredentials {
+public final class UserSID implements ISID, ISecurityCredentials {
     private final static Logger LOGGER = Logger.getLogger(UserSID.class .getName());
     static {
         if (LOGGER.getLevel() == null) {
             LOGGER.setLevel(LogginProperties.UserSID);
         }
     }
+    @Indexed(type = Indexed.IndexType.UNIQUE)
+    private String name = "";
+    @Indexed(type = Indexed.IndexType.UNIQUE)
+    private String uuid = "";
+    
     @Indirect(linkName = "GroupSID_participants")
     private List<GroupSID> groups = new ArrayList<>();;
             
@@ -30,8 +36,34 @@ public final class UserSID extends SID implements ISecurityCredentials {
     }
     
     public UserSID(String name, String uuid) {
-        super(name, uuid);
+        this.name = name;
+        this.uuid = uuid;
     }
+    
+    @Override
+    public final String getName() {
+        return name;
+    }
+    
+    @Override
+    public final void setName(String name) {
+        this.name = name;
+    }
+
+    public final String getUUID() {
+        return uuid;
+    }
+
+    @Override
+    public final void setUUID(String uuid) {
+        this.uuid = uuid;
+    }
+
+    @Override
+    public final String toString() {
+        return "GSID{" + "id=" + uuid + ", name="+this.name+"}";
+    }
+    
     
     public void addGroup(GroupSID gsid) {
         // ojo con las referencias cruzadas entre UserSID y GroupSID

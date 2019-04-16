@@ -24,7 +24,7 @@ public abstract class SObject {
     }
     
     
-    private SID __owner;
+    private ISID __owner;
     // Access Control List
     private Map<String, Integer> __acl = new HashMap<>();
     ;
@@ -94,7 +94,7 @@ public abstract class SObject {
         return this;
     }
 
-    public final SID getOwner() {
+    public final ISID getOwner() {
         return this.__owner;
     }
     
