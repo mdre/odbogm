@@ -32,55 +32,26 @@ import net.odbogm.security.UserSID;
 public class SessionManager implements IActions.IStore, IActions.IGet {
 
     private final static Logger LOGGER = Logger.getLogger(SessionManager.class.getName());
-
     static {
         if (LOGGER.getLevel() == null) {
             LOGGER.setLevel(LogginProperties.SessionManager);
         }
     }
 
-//    private OrientGraph graphdb;
     private OrientGraphFactory factory;
 
     // uso un solo objectMapper para ahorar memoria. Estas instancia se comparte entre las transacciones.
     private ObjectMapper objectMapper;
-//    private String url;
-//    private String user;
-//    private String passwd;
-//    
-
-//    // cache de los objetos recuperados de la base. Si se encuentra en el caché en un get, se recupera desde 
-//    // acá. En caso contrario se recupera desde la base.
-//    private ConcurrentHashMap<String, WeakReference<Object>> objectCache = new ConcurrentHashMap<>();
-//
-//    private ConcurrentHashMap<String, Object> dirty = new ConcurrentHashMap<>();
-
-//    // se utiliza para guardar los objetos recuperados durante un get a fin de evitar los loops
-//    private int getTransactionCount = 0;
-//    ConcurrentHashMap<String, Object> transactionCache = new ConcurrentHashMap<>();
-//
-//    // Los RIDs temporales deben ser convertidos a los permanentes en el proceso de commit
-//    List<String> newrids = new ArrayList<>();
-//
-//    // determina si se está en el proceso de commit.
-//    private boolean commiting = false;
-//    private ConcurrentHashMap<Object, Object> commitedObject = new ConcurrentHashMap<>();
-//
-//    int newObjectCount = 0;
-
+    
     public enum ActivationStrategy {
-        ONMETHODACCESS,             // cada vez que se invoca a un método se verifica si hay cambio.
         CLASS_INSTRUMENTATION        // modifica con un agente la clase para agregar la detección de escritura
     }
     
-    private ActivationStrategy activationStrategy = ActivationStrategy.ONMETHODACCESS;
+    private ActivationStrategy activationStrategy = ActivationStrategy.CLASS_INSTRUMENTATION;
     
     private List<WeakReference<Transaction>> openTransactionsList = new ArrayList<>();
     private Transaction publicTransaction; 
     
-    // usuario a registrar en la tabla de auditoría.
-//    private Auditor auditor;
-
     // usuario logueado sobre el que se ejecutan los controles de seguridad si corresponden
     private UserSID loggedInUser;
 
@@ -96,15 +67,8 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
     
     private void init(String url, String user, String passwd, int minPool, int maxPool) {
         LOGGER.log(Level.INFO, "ODBOGM Session Manager initialization...");
-//        this.url = url;
-//        this.user = user;
-//        this.passwd = passwd;
         this.factory = new OrientGraphFactory(url, user, passwd).setupPool(minPool, maxPool);
-//        vertexs = new ConcurrentHashMap<>();
-//        edges = new HashMap<>();
-//        this.factory.setThreadMode(OrientConfigurableGraph.THREAD_MODE.ALWAYS_AUTOSET);
         this.objectMapper = new ObjectMapper();
-        
     }
 
     /**
@@ -116,7 +80,6 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
      * @return this
      */
     public SessionManager setActivationStrategy(ActivationStrategy as) {
-        
         return this.setActivationStrategy(as, true);
     }
 
@@ -154,15 +117,10 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
      * Inicia una transacción contra el servidor.
      */
     public void begin() {
-        // si no hay una transacción creada, abrir una...
         if (this.publicTransaction == null) {
-            
+            // si no hay una transacción creada, abrir una...
             publicTransaction = getTransaction();
-    //        graphdb.getRawGraph().activateOnCurrentThread();
-    //        graphdb.setThreadMode(OrientConfigurableGraph.THREAD_MODE.ALWAYS_AUTOSET);
-    //        ODatabaseRecordThreadLocal.INSTANCE.set(graphdb.getRawGraph());
         } else {
-            // en caso contrario, iniciar una transacción anidada.
             this.publicTransaction.begin();
         }
     }
@@ -179,15 +137,6 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
         openTransactionsList.add(new WeakReference<>(t));
         return t;
     }
-    
-//    /**
-//     * Devuelve una transacción sobre una nueva conexión a la base
-//     * solicitada al pool de transacciones
-//     * @return Transaction
-//     */
-//    public Transaction getNewTxTransaction() {
-//        return new Transaction(this);
-//    }
     
     /**
      * Devuelve la transacción por defecto que está utilizando el SessionManager.
@@ -224,9 +173,7 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
      * @param o objeto de referencia.
      */
     public synchronized void setAsDirty(Object o) throws UnmanagedObject {
-//        graphdb.getRawGraph().activateOnCurrentThread();
         this.publicTransaction.setAsDirty(o);
-        
     }
 
     /**
@@ -310,13 +257,6 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
      * Todas las transacciones abiertas son ROLLBACK y finalizadas.
      */
     public void shutdown() {
-//        for (WeakReference<Transaction> weakReference : openTransactionList) {
-//            Transaction t = weakReference.get();
-//            if (t!=null) {
-//                t.();
-//                t.rollback();
-//            }
-//        }
         this.factory.close();
     }
 
@@ -372,22 +312,6 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
     public <T> T getEdgeAsObject(Class<T> type, OrientEdge e) {
         return this.publicTransaction.getEdgeAsObject(type, e);
     }
-
-    /**
-     * Detecta los objetos que hayan cambiado y prepara el Vertex correspondiente para que sea enviado en el commit.
-     */
-//    private void commitObjectChanges() {
-//        for (Map.Entry<String, Object> e : dirty.entrySet()) {
-//            String rid = e.getKey();
-//            IObjectProxy o = (IObjectProxy)e.getValue();
-//            
-//            // actualizar todos los objetos antes de bajarlos.
-//            o.___commit();
-//            
-//        }
-//    }
-    
-    
 
     /**
      * Realiza un query direto a la base de datos y devuelve el resultado directamente sin procesarlo.

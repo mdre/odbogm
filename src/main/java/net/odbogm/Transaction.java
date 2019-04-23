@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package net.odbogm;
 
 import com.orientechnologies.orient.core.exception.OConcurrentModificationException;
@@ -58,8 +53,6 @@ import net.odbogm.utils.ThreadHelper;
 public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQuery {
 
     private final static Logger LOGGER = Logger.getLogger(Transaction.class.getName());
-    private static final long serialVersionUID = 1L;
-
     static {
         if (LOGGER.getLevel() == null) {
             LOGGER.setLevel(LogginProperties.Transaction);
@@ -87,7 +80,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     ConcurrentHashMap<String, Object> transactionLoopCache = new ConcurrentHashMap<>();
     
     // Los RIDs temporales deben ser convertidos a los permanentes en el proceso de commit
-    List<String> newrids = new ArrayList<>();
+    private List<String> newrids = new ArrayList<>();
     
     // determina si se está en el proceso de commit.
     private boolean commiting = false;
@@ -98,8 +91,9 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     // Auditor asociado a la transacción
     private Auditor auditor;
     
-    SessionManager sm;
-    OrientGraph orientdbTransact;
+    private SessionManager sm;
+    private OrientGraph orientdbTransact;
+    
     // indica el nivel de anidamiento de la transacción. Cuando se llega a 0 se cierra.
     private int orientTransacLevel;
     
@@ -111,25 +105,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     Transaction(SessionManager sm) {
         this.sm = sm;
         LOGGER.log(Level.FINER, "current thread: " + Thread.currentThread().getName());
-        
         this.objectMapper = this.sm.getObjectMapper();
-//        orientdbTransact = this.sm.getFactory().getTx();
-//        orientdbTransact.setThreadMode(OrientConfigurableGraph.THREAD_MODE.ALWAYS_AUTOSET);
     }
-
-//    /**
-//     * Devuelve una transacción inicializada sobre una conexión existente.
-//     *
-//     * @param sm
-//     * @param db
-//     */
-//    Transaction(SessionManager sm, OrientGraph db) {
-//        LOGGER.log(Level.FINER, "current thread: " + Thread.currentThread().getName());
-//        this.sm = sm;
-//        orientdbTransact = db;
-//        orientdbTransact.setThreadMode(OrientConfigurableGraph.THREAD_MODE.ALWAYS_AUTOSET);
-//        this.objectMapper = this.sm.getObjectMapper();
-//    }
 
     public synchronized void initInternalTx() {
         if (this.orientdbTransact == null) {
@@ -279,39 +256,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         this.nestedTransactionLevel++;
     }
 
-    /**
-     * Finaliza la comunicación contra la base de datos.
-     *
-     * @param closeDb true si se debe cerrar la conexión a la base
-     */
-//    public synchronized void close(boolean closeDb) {
-//        activateOnCurrentThread();
-//        this.orientdbTransact.shutdown(closeDb);
-//    }
-//
-    /**
-     * Finaliza la comunicación contra la base de datos.
-     */
-//    public synchronized void close() {
-//        if (this.orientdbTransact!=null) {
-//            activateOnCurrentThread();
-//            closeInternalTx();
-//        }
-//    }
-
-    
-    /**
-     * Cierra la transacción con la base de datos actual y vuelve a obtener una nueva.
-     */
-//    public synchronized void reset() {
-//        activateOnCurrentThread();
-//        this.orientdbTransact.shutdown(true);
-//        orientdbTransact = this.sm.getFactory().getTx();
-//        orientdbTransact.setThreadMode(OrientConfigurableGraph.THREAD_MODE.ALWAYS_AUTOSET);
-//    }
-    
-    
-    
     /**
      * Persistir la información pendiente en la transacción
      *
@@ -1742,11 +1686,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     public void activateOnCurrentThread() {
         LOGGER.log(Level.FINEST, "Activando en el Thread actual...");
         LOGGER.log(Level.FINEST, "current thread: " + Thread.currentThread().getName());
-//        if (!this.orientdbTransact.getRawGraph().isActiveOnCurrentThread()) {
-//            LOGGER.log(Level.FINER, "No estaba activo. se invoca a activateOnCurrentThread()");
-//            orientdbTransact.getRawGraph().activateOnCurrentThread();
         orientdbTransact.makeActive();
-//        }
     }
 
     /**

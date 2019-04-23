@@ -1,11 +1,5 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package net.odbogm.proxy;
 
-//import net.odbogm.annotations.RemoveOrphan;
 import com.tinkerpop.blueprints.Direction;
 import com.tinkerpop.blueprints.Edge;
 import com.tinkerpop.blueprints.Vertex;
@@ -348,9 +342,6 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                     // verificar si hay diferencias entre los objetos dependiendo de la estrategia seleccionada.
                     if (this.___objectReady) {
                         switch (this.___transaction.getSessionManager().getActivationStrategy()) {
-                            case ONMETHODACCESS:
-                                this.commitObjectChange();
-                                break;
                             case CLASS_INSTRUMENTATION:
                                 // si se está usando la instrumentación de clase, directamente verificar en el objeto
                                 // cual es su estado.
@@ -681,173 +672,6 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             this.___dirty = preservDirtyState;
         }
 
-    }
-
-    private synchronized void commitObjectChange() {
-//        this.___transaction.getSessionManager().getGraphdb().getRawGraph().activateOnCurrentThread();
-        this.___transaction.activateOnCurrentThread();
-        LOGGER.log(Level.FINER, "iniciando commit interno " + this.___baseElement.getId() + ".... (dirty mark:" + ___dirty + ")");
-        // si ya estaba marcado como dirty no volver a procesarlo.
-        if (!___dirty) {
-            if (this.___baseElement.getGraph() == null) {
-                this.___transaction.getGraphdb().attach(this.___baseElement);
-            }
-            // FIXME: debería pasar este map como propiedad para optimizar la velocidad?
-            Map<String, Object> vmap = this.___baseElement.getProperties();
-
-//            HashMap<String, Object> vmap = new HashMap<>();
-//            this.___baseElement.getPropertyKeys().stream().forEach((prop) -> {
-//                // LOGGER.log(Level.FINER, "VERTEX PROP: {0} <-----------------------------------------------",new String[]{prop});
-//                Object vvalue = this.___baseElement.getProperty(prop);
-//                vmap.put(prop, vvalue);
-//            });
-            // obtener la definición de la clase
-            ClassDef cDef = this.___transaction.getObjectMapper().getClassDef(this.___proxyObject);
-
-            // obtener un mapa actualizado del objeto contenido
-            ObjectStruct oStruct = this.___transaction.getObjectMapper().objectStruct(this.___proxyObject);
-            Map<String, Object> omap = oStruct.fields;
-
-            // si los mapas no son iguales, entonces eso implica que el objeto cambió
-            boolean eqMaps = true;
-            for (Map.Entry<String, Object> entry : omap.entrySet()) {
-                String key = entry.getKey();
-                Object value = entry.getValue();
-
-                Object vval = vmap.get(key);
-                LOGGER.log(Level.FINER, "Object value: " + value + " =<>= vetex: " + vval);
-                if (!value.equals(vval)) {
-                    eqMaps = false;
-                    break;
-                }
-            }
-
-            if (!eqMaps) {
-                // transferir el bojeto al vértice en cuestión
-                LOGGER.log(Level.FINER, "cambio detectado: " + this.___baseElement.getId());
-                LOGGER.log(Level.FINER, "vmap:" + vmap);
-                LOGGER.log(Level.FINER, "-------------------------------------------");
-                LOGGER.log(Level.FINER, "omap:" + omap);
-
-                // this.baseVertex.setProperties(omap);
-                this.___setDirty();
-
-            } else // si no se trata de un Edge
-            {
-                if (this.___baseElement.getElementType().equals("Vertex")) {
-
-                    // si no hay diferencia a nivel de campo, puede existir diferencia 
-                    // en los links. Analizarlos para ver si corresponde marcar el objeto 
-                    // como dirty
-                    // Analizar si cambiaron los vértices
-                    /* 
-                       procesar los objetos internos. Primero se deber determinar
-                       si los objetos ya existían en el contexto actual. Si no existen
-                       deben ser creados.
-                     */
-                    OrientVertex ov = (OrientVertex) this.___baseElement;
-
-                    // si se han cargado los links, controlarlos. En caso contrario ignorar
-                    if (!this.___loadLazyLinks) {
-                        for (Map.Entry<String, Class<?>> link : cDef.links.entrySet()) {
-                            String field = link.getKey();
-                            String graphRelationName = this.___baseClass.getSimpleName() + "_" + field;
-                            Class<?> fclass = link.getValue();
-
-                            // determinar el estado del campo
-                            if (oStruct.links.get(field) == null) {
-                                // si está en null, es posible que se haya eliminado el objeto
-                                // por lo cual se debería eliminar el vértice correspondiente
-                                // si es que existe
-                                if (ov.countEdges(Direction.OUT, graphRelationName) > 0) {
-                                    // se ha eliminado el objeto y debe ser removido el Vértice o el Edge correspondiente
-                                    // marcar el objeto como dirty
-                                    this.___setDirty();
-                                    LOGGER.log(Level.FINER, "Dirty: se ha eliminado un link");
-                                }
-                            } else {
-                                Object innerO = oStruct.links.get(field);
-                                // verificar si ya está en el contexto. Si fue creado en forma 
-                                // separada y asociado con el objeto principal, se puede dar el caso
-                                // de que el objeto principal tiene RID y el agregado no.
-                                if (innerO instanceof IObjectProxy) {
-                                    // el objeto ya está en el contexto. 
-                                    // verificar que exista una realación establecida entre ambos. Si no es así, marcarlo
-                                    if (!VertexUtils.isConectedTo(ov, ((IObjectProxy) innerO).___getVertex(), graphRelationName)) {
-                                        this.___setDirty();
-                                        LOGGER.log(Level.FINER, "Dirty: modificó el link. Nueva relación a un vértice existente");
-                                    }
-                                } else {
-                                    // no existía el objeto
-                                    this.___setDirty();
-                                    LOGGER.log(Level.FINER, "Dirty: se agregó un link");
-                                }
-                            }
-                        }
-                    }
-
-                    // si no se han encontrado modificaciones aún, revisar los linklists
-                    if (!this.___isDirty()) {
-
-                        /**
-                         * Procesar los linklists.
-                         */
-                        Field f;
-                        for (Map.Entry<String, Class<?>> entry : cDef.linkLists.entrySet()) {
-                            try {
-                                String field = entry.getKey();
-                                final String graphRelationName = this.___baseClass.getSimpleName() + "_" + field;
-                                Class<? extends Object> fieldClass = entry.getValue();
-
-                                f = ReflectionUtils.findField(this.___proxyObject.getClass(), field);
-                                boolean acc = f.isAccessible();
-                                f.setAccessible(true);
-
-                                LOGGER.log(Level.FINER, "procesando campo: " + field);
-
-                                // determinar el estado del campo
-                                if (oStruct.linkLists.get(field) == null) {
-                                    LOGGER.log(Level.FINER, field + ": null");
-                                    // si está en null, es posible que se haya eliminado el objeto
-                                    // por lo cual se debería eliminar el vértice correspondiente
-                                    // si es que existe
-                                    if (ov.countEdges(Direction.OUT, graphRelationName) > 0) {
-                                        // se ha eliminado el objeto y debe ser removido el Vértice o el Edge correspondiente
-                                        // marcar el objeto como dirty
-                                        this.___setDirty();
-                                        LOGGER.log(Level.FINER, "Dirty: se ha eliminado un linklist");
-                                    }
-                                } else {
-                                    Object innerO = oStruct.linkLists.get(field);
-                                    LOGGER.log(Level.FINER, field + ": type: " + innerO.getClass() + " instanceof ILazyCalls: " + (innerO instanceof ILazyCalls));
-                                    // verificar si ya está en el contexto. Si fue creado en forma 
-                                    // separada y asociado con el objeto principal, se puede dar el caso
-                                    // de que el objeto principal tiene RID y el agregado no.
-                                    if ((innerO instanceof ILazyCalls) && ((ILazyCalls) innerO).isDirty()) {
-                                        // es un objeto administrado y está marcado como dirty
-                                        this.___setDirty();
-                                        LOGGER.log(Level.FINER, "Dirty: se ha agregado un elemento a la lista");
-                                    } else if (!(innerO instanceof ILazyCalls)) {
-                                        // es una colección nueva.
-                                        this.___setDirty();
-                                        LOGGER.log(Level.FINER, "Dirty (" + graphRelationName + "): se ha agregado una colección nueva.");
-                                    } else {
-                                        LOGGER.log(Level.FINER, "La colección está en NULL. Se deja sin modificar.");
-                                    }
-                                }
-
-                                f.setAccessible(acc);
-                            } catch (NoSuchFieldException | IllegalArgumentException ex) {
-                                Logger.getLogger(SessionManager.class.getName()).log(Level.SEVERE, null, ex);
-                            }
-
-                        }
-                    }
-                }
-            }
-
-        }
-        LOGGER.log(Level.FINER, "fin commitObjectChange. Dirty: " + this.___dirty + "\n\n");
     }
 
     @Override
