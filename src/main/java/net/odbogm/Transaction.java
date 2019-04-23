@@ -113,10 +113,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         LOGGER.log(Level.FINER, "current thread: " + Thread.currentThread().getName());
         
         this.objectMapper = this.sm.getObjectMapper();
-        
-        orientdbTransact = this.sm.getFactory().getTx();
-        orientdbTransact.setThreadMode(OrientConfigurableGraph.THREAD_MODE.ALWAYS_AUTOSET);
-
+//        orientdbTransact = this.sm.getFactory().getTx();
+//        orientdbTransact.setThreadMode(OrientConfigurableGraph.THREAD_MODE.ALWAYS_AUTOSET);
     }
 
 //    /**
@@ -1396,6 +1394,9 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             if (o == null) {
                 // recuperar el vértice solicitado
                 OrientVertex v = this.orientdbTransact.getVertex(rid);
+                if (v == null) {
+                    throw new UnknownRID(rid);
+                }
                 
                 // hidratar un objeto
                 try {

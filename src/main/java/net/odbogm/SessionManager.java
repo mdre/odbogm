@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package net.odbogm;
 
 import com.orientechnologies.orient.core.exception.OConcurrentModificationException;
@@ -80,7 +75,7 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
     
     private ActivationStrategy activationStrategy = ActivationStrategy.ONMETHODACCESS;
     
-    private List<WeakReference<Transaction>> openTransactionList = new ArrayList<>();
+    private List<WeakReference<Transaction>> openTransactionsList = new ArrayList<>();
     private Transaction publicTransaction; 
     
     // usuario a registrar en la tabla de auditoría.
@@ -181,7 +176,7 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
      */    
     public Transaction getTransaction() {
         Transaction t = new Transaction(this);
-        openTransactionList.add(new WeakReference<>(t));
+        openTransactionsList.add(new WeakReference<>(t));
         return t;
     }
     
@@ -308,7 +303,6 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
      */
     public synchronized void rollback() {
         this.publicTransaction.rollback();
-        
     }
 
     /**
@@ -571,4 +565,10 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
         L.setLevel(level);
         return this;
     }
+    
+    
+    public int openTransactionsCount() {
+        return (int)openTransactionsList.stream().filter(w -> w.get() != null).count();
+    }
+    
 }

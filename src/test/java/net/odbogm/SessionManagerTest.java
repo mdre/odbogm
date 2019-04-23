@@ -1,21 +1,17 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package net.odbogm;
 
+import com.orientechnologies.orient.core.exception.OConcurrentModificationException;
 import com.orientechnologies.orient.core.sql.OCommandSQL;
+import com.tinkerpop.blueprints.impls.orient.OrientGraph;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import net.odbogm.agent.ITransparentDirtyDetector;
 import net.odbogm.cache.SimpleCache;
+import net.odbogm.exceptions.InvalidObjectReference;
 import net.odbogm.exceptions.ReferentialIntegrityViolation;
 import net.odbogm.exceptions.UnknownRID;
 import net.odbogm.proxy.IObjectProxy;
@@ -58,14 +54,10 @@ public class SessionManagerTest {
 
     @Before
     public void setUp() {
-//        TransparentDirtyDetectorAgent.initialize("Test");
-//        
-//        System.out.println("1-----");
-//        GroupSID gs = new GroupSID("dd", "uu");
-//        System.out.println("2-----");
-
         System.out.println("Iniciando session manager...");
-        sm = new SessionManager("remote:localhost/Test", "root", "toor")
+        sm = new SessionManager("remote:localhost/Test", "admin", "admin"
+                , 1, 10
+                )
                 .setActivationStrategy(SessionManager.ActivationStrategy.CLASS_INSTRUMENTATION) //                .setClassLevelLog(ObjectProxy.class, Level.FINEST)
 //                                .setClassLevelLog(ClassCache.class, Level.FINER)
 //                                .setClassLevelLog(Transaction.class, Level.FINER)
@@ -90,28 +82,7 @@ public class SessionManagerTest {
         sm.shutdown();
     }
 
-    public void crearEstructura() {
-        System.out.println("Conectando con la base de datos...");
-        DbManager dbm = new DbManager("remote:localhost/test", "root", "toor", false);
-//        dbm.generateToConsole(new String[]{"com.quiencotiza.entities"});
-        System.out.println("generando la estructura...");
-        dbm.generateDBSQL("/tmp/1/DBScript.sql", new String[]{
-            "test"
-        });
-        System.out.println("finalizado!");
-    }
-
-//    /**
-//     * Test of begin method, of class SessionManager.
-//     */
-//    //@Test
-//    public void testBegin() {
-//        System.out.println("begin");  
-//        SessionManager instance = null;
-//        instance.begin();
-//        // TODO review the generated test code and remove the default call to fail.
-//        fail("The test case is a prototype.");
-//    }
+    
     /**
      * Test of store method, of class SessionManager.
      */
@@ -1167,13 +1138,17 @@ public class SessionManagerTest {
         System.out.println("***************************************************************");
 
         // elminar los grupos
-        this.sm.getGraphdb().command(new OCommandSQL("delete vertex GroupSID")).execute();
+        OrientGraph db = sm.getGraphdb();
+        
+        db.command(new OCommandSQL("delete vertex GroupSID")).execute();
 
         // eliminar los usuarios
-        this.sm.getGraphdb().command(new OCommandSQL("delete vertex UserSID")).execute();
+        db.command(new OCommandSQL("delete vertex UserSID")).execute();
 
         // eliminar los SSVertex
-        this.sm.getGraphdb().command(new OCommandSQL("delete vertex SSimpleVertex")).execute();
+        db.command(new OCommandSQL("delete vertex SSimpleVertex")).execute();
+        
+        db.shutdown();
 
         // crear los grupos y los usuarios.
         System.out.println("\n\n\n\n\n\n\n\n\n\n\n\n\n");
@@ -1230,6 +1205,8 @@ public class SessionManagerTest {
         urw.addGroup(sgr);
 
         this.sm.commit();
+        String sgnaRid = sm.getRID(sgna);
+        System.out.println("ID de sgna: " + sgnaRid);
 
         //--------------------------------------------------------
         SSimpleVertex ssv = new SSimpleVertex();
@@ -1277,6 +1254,7 @@ public class SessionManagerTest {
         una = null;
         sm.delete(sgna);
         sm.commit();
+        assertThrows(UnknownRID.class, () -> sm.get(GroupSID.class, sgnaRid));
 
         sm.getCurrentTransaction().removeFromCache(unaRID);
         una = sm.get(UserSID.class, unaRID);
@@ -1351,7 +1329,6 @@ public class SessionManagerTest {
         int se = rtt.getSecurityState();
         System.out.println("Security state: " + se);
         assertTrue(se > 0);
-
     }
 
     @Test
@@ -1446,10 +1423,12 @@ public class SessionManagerTest {
 
         expResultT2.setoI(2);
 
-        t2.commit();
+        Exception ex = assertThrows(
+                OConcurrentModificationException.class, () -> t2.commit());
+        
+        System.out.println(ex);
         System.out.println("Commit en T2");
         System.out.println("Desde T2: " + expResultT2.getS());
-
     }
 
     /**
@@ -2153,14 +2132,15 @@ public class SessionManagerTest {
         System.out.println("***************************************************************");
 
         long ldtInit = System.currentTimeMillis();
-        SimpleVertex lsvo = sm.get(SimpleVertex.class, "#33:1573");
-        long ldtEnd = System.currentTimeMillis();
-        System.out.println("enlapsed: " + (ldtEnd - ldtInit));
-
-        ldtInit = System.currentTimeMillis();
         List<SimpleVertex> lsv = sm.query(SimpleVertex.class);
-        ldtEnd = System.currentTimeMillis();
+        long ldtEnd = System.currentTimeMillis();
         System.out.println("enlapsed: " + (ldtEnd - ldtInit) + " Objects: " + lsv.size());
+
+        String rid = sm.getRID(lsv.get(0));
+        ldtInit = System.currentTimeMillis();
+        SimpleVertex lsvo = sm.get(SimpleVertex.class, rid);
+        ldtEnd = System.currentTimeMillis();
+        System.out.println("enlapsed: " + (ldtEnd - ldtInit));
 
         ldtInit = System.currentTimeMillis();
         List<SimpleVertexEx> lsve = sm.query(SimpleVertexEx.class);
@@ -2170,44 +2150,38 @@ public class SessionManagerTest {
     }
 
 //    @Test
-    public void testObjectCache() {
-        try {
-            System.out.println("\n\n\n");
-            System.out.println("***************************************************************");
-            System.out.println("Probar el cache de objetos SimpleCache");
-            System.out.println("***************************************************************");
-            SimpleCache sc = new SimpleCache();
-            sc.setTimeInterval(1);
-            SimpleVertex sv1 = new SimpleVertex();
-            SimpleVertex sv2 = new SimpleVertex();
-            SimpleVertex sv3 = new SimpleVertex();
-            sc.add("1", sv1);
-            sc.add("2", sv2);
-            sc.add("3", sv3);
-            assertEquals(3, sc.size());
-            System.out.println("1: " + sc.getCachedObjects());
+    public void testObjectCache() throws Exception {
+        System.out.println("\n\n\n");
+        System.out.println("***************************************************************");
+        System.out.println("Probar el cache de objetos SimpleCache");
+        System.out.println("***************************************************************");
+        SimpleCache sc = new SimpleCache();
+        sc.setTimeInterval(1);
+        SimpleVertex sv1 = new SimpleVertex();
+        SimpleVertex sv2 = new SimpleVertex();
+        SimpleVertex sv3 = new SimpleVertex();
+        sc.add("1", sv1);
+        sc.add("2", sv2);
+        sc.add("3", sv3);
+        assertEquals(3, sc.size());
+        System.out.println("1: " + sc.getCachedObjects());
 
-            Object o = sc.get("1");
-            System.out.println("class: " + o.getClass().getSimpleName());
+        Object o = sc.get("1");
+        System.out.println("class: " + o.getClass().getSimpleName());
 
-            System.out.println("Dereferenciar el objeto 2");
-            sv2 = null;
-            System.gc();
-            Thread.sleep(3000);
-            assertEquals(2, sc.size());
-            System.out.println(": " + sc.getCachedObjects());
+        System.out.println("Dereferenciar el objeto 2");
+        sv2 = null;
+        System.gc();
+        Thread.sleep(3000);
+        assertEquals(2, sc.size());
+        System.out.println(": " + sc.getCachedObjects());
 
-            System.out.println("Dereferenciar el objeto 3");
-            sv3 = null;
-            System.gc();
-            Thread.sleep(3000);
-            assertEquals(1, sc.size());
-            System.out.println(": " + sc.getCachedObjects());
-
-        } catch (InterruptedException ex) {
-            Logger.getLogger(SessionManagerTest.class.getName()).log(Level.SEVERE, null, ex);
-        }
-
+        System.out.println("Dereferenciar el objeto 3");
+        sv3 = null;
+        System.gc();
+        Thread.sleep(3000);
+        assertEquals(1, sc.size());
+        System.out.println(": " + sc.getCachedObjects());
     }
 
 //    @Test
@@ -2264,4 +2238,27 @@ public class SessionManagerTest {
             System.out.println("");
         }
     }
+    
+    
+//    @Test
+//    public void testStore() throws Exception {
+//        SimpleVertexEx s1 = new SimpleVertexEx();
+//        s1 = sm.store(s1);
+//        String rid = sm.getRID(s1);
+//        assertNotNull(rid);
+//        System.out.println("RID: " + rid);
+//        sm.rollback();
+//        
+//        final SimpleVertexEx s1f = s1;
+//        s1f.setS("modificado pero fue rollbacked antes");
+//        Exception ex = assertThrows(InvalidObjectReference.class,
+//                () -> s1f.setS("modificado pero fue rollbacked antes"));
+//    }
+    
+    
+    @Test
+    public void getInexistente() throws Exception {
+        assertThrows(UnknownRID.class, () -> sm.get("lalala"));
+    }
+    
 }
