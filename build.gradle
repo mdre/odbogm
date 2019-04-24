@@ -7,6 +7,9 @@ plugins {
     id 'io.codearte.nexus-staging' version '0.11.0'
 }
 
+//OrientDB version to use:
+ext.orientDbVersion = '3.0.18'
+
 println "***************************************************************"
 println "SISTEMA: " + name
 println "VERSION: " + version
@@ -75,10 +78,10 @@ if (! project.gradle.startParameter.taskNames.join(",").toLowerCase().contains("
     build.dependsOn autoBuildNumber
 }
 build.doLast {
-        println "***************************************************************"
-        println "SISTEMA: " + name
-        println "VERSION: " + version
-        println "***************************************************************"
+    println "***************************************************************"
+    println "SISTEMA: " + name
+    println "VERSION: " + version
+    println "***************************************************************"
 }
 
 // seteo carpeta de fuentes para sonar
@@ -106,31 +109,18 @@ repositories {
     
 
 dependencies {
-    //compile("net.bytebuddy:byte-buddy:1.3.18")
-    //compile("net.bytebuddy:byte-buddy-agent:1.3.18")
-    compile("cglib:cglib:3.2.6")
-    compile("com.github.mdre:odbogm-agent:1.0.5+")
-    //compile("com.esotericsoftware:kryo-shaded:4.0.1")
+    implementation "cglib:cglib:3.2.6"
+    implementation "com.github.mdre:odbogm-agent:1.0.5+"
     
-    compile("com.orientechnologies:orientdb-graphdb:3.0.9")
-    compile("com.orientechnologies:orientdb-graphdb:3.0.9:javadoc")
-//    compile("com.orientechnologies:orientdb-graphdb:3.0.9:sources")
+    implementation "com.orientechnologies:orientdb-graphdb:${orientDbVersion}"
+    implementation "com.orientechnologies:orientdb-graphdb:${orientDbVersion}:javadoc"
+    //implementation "com.orientechnologies:orientdb-graphdb:${orientDbVersion}:sources"
     
-    compile("com.orientechnologies:orientdb-core:3.0.9")
-    compile("com.orientechnologies:orientdb-core:3.0.9:javadoc")
-//    compile("com.orientechnologies:orientdb-core:3.0.9:sources")
+    implementation "com.orientechnologies:orientdb-core:${orientDbVersion}"
+    implementation "com.orientechnologies:orientdb-core:${orientDbVersion}:javadoc"
+    //implementation "com.orientechnologies:orientdb-core:${orientDbVersion}:sources"
     
-    // https://mvnrepository.com/artifact/org.objenesis/objenesis
-//    compile group: 'org.objenesis', name: 'objenesis', version: '2.6'
-    
-    //    compile "com.sun:tools:1.8.0"
-    
-    // https://mvnrepository.com/artifact/com.ea.agentloader/ea-agent-loader
-    //    compile group: 'com.ea.agentloader', name: 'ea-agent-loader', version: '1.0.3'
-    
-    //compile("com.arshadow:UtilityLib:1.0")
-    testCompile("junit:junit:[4,)")
-    
+    testCompile "junit:junit:[4,)"
 }
 
 test {
