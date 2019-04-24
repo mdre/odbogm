@@ -1,6 +1,7 @@
 .gradle/
 .nb-gradle/
 /build/
+nbproject/
 rebel.xml
 .~lock*
 *.zargo~

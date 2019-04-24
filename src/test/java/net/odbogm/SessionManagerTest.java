@@ -1,8 +1,10 @@
 package net.odbogm;
 
+import static org.junit.Assert.*;
 import com.orientechnologies.orient.core.exception.OConcurrentModificationException;
 import com.orientechnologies.orient.core.sql.OCommandSQL;
 import com.tinkerpop.blueprints.impls.orient.OrientGraph;
+import java.lang.reflect.Field;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
@@ -19,10 +21,10 @@ import net.odbogm.security.*;
 import net.odbogm.utils.DateHelper;
 import org.junit.After;
 import org.junit.AfterClass;
-import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.function.ThrowingRunnable;
 import test.EdgeAttrib;
 import test.EnumTest;
 import test.IndirectObject;
@@ -58,25 +60,23 @@ public class SessionManagerTest {
         sm = new SessionManager("remote:localhost/Test", "admin", "admin"
                 , 1, 10
                 )
-                .setActivationStrategy(SessionManager.ActivationStrategy.CLASS_INSTRUMENTATION) //                .setClassLevelLog(ObjectProxy.class, Level.FINEST)
-//                                .setClassLevelLog(ClassCache.class, Level.FINER)
-//                                .setClassLevelLog(Transaction.class, Level.FINER)
-//                                .setClassLevelLog(ObjectProxy.class, Level.FINER)
-                //                .setClassLevelLog(SimpleCache.class, Level.FINER)
-                //                .setClassLevelLog(ArrayListLazyProxy.class, Level.FINER)
-                //                .setClassLevelLog(ObjectMapper.class, Level.FINEST)
-                //                .setClassLevelLog(SObject.class, Level.FINER)
-                //                .setClassLevelLog(TransparentDirtyDetectorInstrumentator.class, Level.FINER)
+//                .setClassLevelLog(ObjectProxy.class, Level.FINEST)
+//                .setClassLevelLog(ClassCache.class, Level.FINER)
+//                .setClassLevelLog(Transaction.class, Level.FINER)
+//                .setClassLevelLog(ObjectProxy.class, Level.FINER)
+//                .setClassLevelLog(SimpleCache.class, Level.FINER)
+//                .setClassLevelLog(ArrayListLazyProxy.class, Level.FINER)
+//                .setClassLevelLog(ObjectMapper.class, Level.FINEST)
+//                .setClassLevelLog(SObject.class, Level.FINER)
+//                .setClassLevelLog(TransparentDirtyDetectorInstrumentator.class, Level.FINER)
                 ;
         System.out.println("Begin");
         this.sm.begin();
         sm.getCurrentTransaction().setCacheCleanInterval(1);
-
         System.out.println("fin setup.");
-//        this.sm.setAuditOnUser("userAuditado");
-//        crearEstructura();
     }
 
+    
     @After
     public void tearDown() {
         sm.shutdown();
@@ -2240,25 +2240,85 @@ public class SessionManagerTest {
     }
     
     
-//    @Test
-//    public void testStore() throws Exception {
-//        SimpleVertexEx s1 = new SimpleVertexEx();
-//        s1 = sm.store(s1);
-//        String rid = sm.getRID(s1);
-//        assertNotNull(rid);
-//        System.out.println("RID: " + rid);
-//        sm.rollback();
-//        
-//        final SimpleVertexEx s1f = s1;
-//        s1f.setS("modificado pero fue rollbacked antes");
-//        Exception ex = assertThrows(InvalidObjectReference.class,
-//                () -> s1f.setS("modificado pero fue rollbacked antes"));
-//    }
+    @Test
+    public void testStoreRollbacked() throws Exception {
+        SimpleVertexEx s1 = new SimpleVertexEx();
+        s1 = sm.store(s1);
+        String rid = sm.getRID(s1);
+        assertNotNull(rid);
+        System.out.println("RID: " + rid);
+        sm.rollback();
+        
+        final SimpleVertexEx s1f = s1;
+        Exception ex = assertThrows(InvalidObjectReference.class,
+                new ThrowingRunnable() {
+            @Override
+            public void run() throws Throwable {
+                s1f.setS("modificado pero fue rollbacked antes");
+            }
+        });
+    }
     
     
     @Test
     public void getInexistente() throws Exception {
         assertThrows(UnknownRID.class, () -> sm.get("lalala"));
+    }
+    
+    
+    @Test
+    public void closeWithoutOpen() throws Exception {
+        sm.getTransaction().closeInternalTx();
+    }
+    
+    
+    /*
+     * Testea que cierre correctamente la transacción a la base después de
+     * cada operación.
+     */
+    @Test
+    public void closeTransactions() throws Exception {
+        Field orientdbTransactField = Transaction.class.getDeclaredField(
+                "orientdbTransact");
+        orientdbTransactField.setAccessible(true);
+        
+        Transaction t = sm.getCurrentTransaction();
+        assertNull(orientdbTransactField.get(t));
+        
+        SimpleVertexEx s1 = new SimpleVertexEx();
+        s1 = t.store(s1);
+        //mientras no comitee, el store mantiene la transacción
+        assertNotNull(orientdbTransactField.get(t));
+        //luego sí debe cerrarla
+        t.commit();
+        assertNull(orientdbTransactField.get(t));
+        
+        s1.setS("modificado");
+        t.commit();
+        assertNull(orientdbTransactField.get(t));
+        
+        t.refreshObject(s1);
+        assertNull(orientdbTransactField.get(t));
+        
+        t.delete(s1);
+        assertNull(orientdbTransactField.get(t));
+        t.commit();
+        assertNull(orientdbTransactField.get(t));
+    }
+    
+    
+    @Test
+    public void finalizeTransactionsWithException() throws Exception {
+        Field orientdbTransactField = Transaction.class.getDeclaredField(
+                "orientdbTransact");
+        orientdbTransactField.setAccessible(true);
+        Transaction t = sm.getCurrentTransaction();
+        
+        try {
+            t.get("unknown");
+        } catch (UnknownRID ex) {
+        }
+        assertNull(orientdbTransactField.get(t));
     }
     
 }

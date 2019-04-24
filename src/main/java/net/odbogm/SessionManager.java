@@ -47,7 +47,7 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
         CLASS_INSTRUMENTATION        // modifica con un agente la clase para agregar la detección de escritura
     }
     
-    private ActivationStrategy activationStrategy = ActivationStrategy.CLASS_INSTRUMENTATION;
+    private ActivationStrategy activationStrategy;
     
     private List<WeakReference<Transaction>> openTransactionsList = new ArrayList<>();
     private Transaction publicTransaction; 
@@ -69,6 +69,7 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
         LOGGER.log(Level.INFO, "ODBOGM Session Manager initialization...");
         this.factory = new OrientGraphFactory(url, user, passwd).setupPool(minPool, maxPool);
         this.objectMapper = new ObjectMapper();
+        this.setActivationStrategy(ActivationStrategy.CLASS_INSTRUMENTATION, true);
     }
 
     /**
@@ -92,7 +93,7 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
      * @param loadAgent determina si se debe cargar el agente.
      * @return this
      */    
-    public SessionManager setActivationStrategy(ActivationStrategy as, boolean loadAgent) {
+    private SessionManager setActivationStrategy(ActivationStrategy as, boolean loadAgent) {
         this.activationStrategy = as;
         LOGGER.log(Level.INFO, "ActivationStrategy using "+as);
         if (this.activationStrategy == ActivationStrategy.CLASS_INSTRUMENTATION && loadAgent) {

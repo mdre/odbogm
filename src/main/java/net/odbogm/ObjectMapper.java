@@ -251,11 +251,8 @@ public class ObjectMapper {
     public <T> T hydrate(Class<T> c, OrientVertex v, Transaction t) throws DuplicateClassDefinition, InstantiationException, IllegalAccessException, NoSuchFieldException, CollectionNotSupported {
         t.initInternalTx();
         LOGGER.log(Level.FINER, "class: {0}  vertex: {1}", new Object[]{c, v});
-//        T o = c.newInstance();
         // activar la base de datos en el hilo actual.
-        
         t.activateOnCurrentThread();
-//        v.getGraph().getRawGraph().activateOnCurrentThread();
 
         Class<?> toHydrate = c;
         String vertexClass = (v.getType().getName() == "V" ? c.getSimpleName() : v.getType().getName());

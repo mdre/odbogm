@@ -125,9 +125,10 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * cierra la transacción sin realizar el commit
      */
     public synchronized void closeInternalTx() {
-        if (orientTransacLevel <= 0 && newrids.size()==0) {
+        if (orientdbTransact == null) return; //no se abrió todavía
+        if (orientTransacLevel <= 0 && newrids.size() == 0) {
             LOGGER.log(Level.FINEST, "termnando la transacción\n");
-            orientdbTransact.shutdown(true,false);
+            orientdbTransact.shutdown(true, false);
             orientdbTransact = null;
             orientTransacLevel = 0;
         } else {
@@ -240,7 +241,13 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     public OrientGraph getGraphdb() {
         return sm.getFactory().getTx();
     }
+    
+    
+    OrientGraph getCurrentGraphDb() {
+        return orientdbTransact;
+    }
 
+    
     /**
      * Inicia una transacción anidada
      */
@@ -387,11 +394,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     @Override
     public synchronized <T> T store(T o) throws IncorrectRIDField, NoOpenTx, ClassToVertexNotFound {
-        initInternalTx();
-        
-        activateOnCurrentThread();
         T proxied = null;
-
         // si el objeto ya fue guardado con anterioridad, devolver la instancia creada previamente.
         proxied = (T) this.commitedObject.get(o);
         if (proxied != null) {
@@ -406,7 +409,9 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
             return proxied;
         }
-
+        
+        initInternalTx();
+        activateOnCurrentThread();
         try {
             String classname;
             if (o instanceof IObjectProxy) {
@@ -630,14 +635,12 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * @param toRemove referencia al objeto a remover
      */
      public void delete(Object toRemove) throws ReferentialIntegrityViolation, UnknownObject {
-        initInternalTx();
-        
         LOGGER.log(Level.FINER, "Remove: " + toRemove.getClass().getName());
-//         LOGGER.log(Level.FINER, "from Line: "+ThreadHelper.getCurrentStackTrace());
-        activateOnCurrentThread();
-
         // si no hereda de IObjectProxy, el objeto no pertenece a la base y no se debe hacer nada.
         if (toRemove instanceof IObjectProxy) {
+            initInternalTx();
+            activateOnCurrentThread();
+            
             String ridToRemove = ((IObjectProxy) toRemove).___getVertex().getId().toString();
             
             this.deleteTree(toRemove);
@@ -645,8 +648,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             // agregarlo a la lista de vertices a remover.
             this.dirtyDeleted.put(ridToRemove, toRemove);
             
+            closeInternalTx();
         }
-        closeInternalTx();
     }
     
     /**
@@ -1200,13 +1203,13 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     @Override
     public Object get(String rid) throws UnknownRID, VertexJavaClassNotFound {
+        if (rid == null) {
+            throw new UnknownRID(this);
+        }
+        
         initInternalTx();
         Object ret = null;
-        
         try {
-            if (rid == null) {
-                throw new UnknownRID();
-            }
             activateOnCurrentThread();
 
             if (getFromCache(rid) != null) {
@@ -1228,7 +1231,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
                 OrientVertex v = this.orientdbTransact.getVertex(rid);
                 if (v == null) {
-                    throw new UnknownRID(rid);
+                    throw new UnknownRID(rid, this);
                 }
                 String javaClass = v.getType().getCustom("javaClass");
                 if (javaClass == null) {
@@ -1263,14 +1266,13 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     @Override
     public synchronized <T> T get(Class<T> type, String rid) throws UnknownRID {
-        initInternalTx();
-
         if (rid == null) {
-            throw new UnknownRID();
+            throw new UnknownRID(this);
         }
-        T o = null;
-
+        
+        initInternalTx();
         activateOnCurrentThread();
+        T o = null;
 
         // si está en el caché, devolver la referencia desde ahí.
         if (getFromCache(rid) != null) {
@@ -1304,13 +1306,12 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                 // recuperar el vértice solicitado
                 OrientVertex v = this.orientdbTransact.getVertex(rid);
                 if (v == null) {
-                    throw new UnknownRID(rid);
+                    throw new UnknownRID(rid, this);
                 }
                 
                 // hidratar un objeto
                 try {
                     o = objectMapper.hydrate(type, v, this);
-//                entities.put(rid, o);
 
                 } catch (InstantiationException | IllegalAccessException | NoSuchFieldException ex) {
                     Logger.getLogger(SessionManager.class.getName()).log(Level.SEVERE, null, ex);
