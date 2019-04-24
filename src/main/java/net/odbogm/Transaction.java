@@ -64,7 +64,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
     // cache de los objetos recuperados de la base. Si se encuentra en el caché en un get, se recupera desde 
     // acá. En caso contrario se recupera desde la base.
-//    private ConcurrentHashMap<String, WeakReference<Object>> objectCache = new ConcurrentHashMap<>();
     private SimpleCache objectCache = new SimpleCache();
 
     private ConcurrentHashMap<String, Object> dirty = new ConcurrentHashMap<>();
@@ -208,9 +207,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     public synchronized void refreshDirtyObjects() {
         initInternalTx();
         
-//        if (this.orientdbTransact == null) {
-//            throw new NoOpenTx();
-//        }
         for (Map.Entry<String, Object> e : dirty.entrySet()) {
             String rid = e.getKey();
             IObjectProxy o = (IObjectProxy) e.getValue();
@@ -232,11 +228,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     public synchronized void refreshObject(Object o) {
         initInternalTx();
-//        if (this.orientdbTransact == null) {
-//            throw new NoOpenTx();
-//        }
         ((IObjectProxy)o).___reload();
-        
         closeInternalTx();
     }
 
@@ -257,7 +249,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     }
 
     /**
-     * Persistir la información pendiente en la transacción
+     * Persistir la información pendiente en la transacción.
      *
      * @throws NoOpenTx si no hay una trnasacción abierta.
      */
@@ -266,13 +258,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         
         LOGGER.log(Level.FINER, "COMMIT");
         if (this.nestedTransactionLevel <= 0) {
-            if (this.orientdbTransact == null) {
-                throw new NoOpenTx();
-            }
             activateOnCurrentThread();
 
-            // bajar todos los objetos a los vértices
-            // this.commitObjectChanges();
             // cambiar el estado a comiteando
             this.commiting = true;
             LOGGER.log(Level.FINER, "Iniciando COMMIT ==================================");
@@ -356,9 +343,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         LOGGER.log(Level.FINER, "Rollback ------------------------");
         LOGGER.log(Level.FINER, "Dirty objects: " + dirty.size());
         LOGGER.log(Level.FINER, "Dirty deleted objects: " + dirtyDeleted.size());
-        if (this.orientdbTransact == null) {
-            throw new NoOpenTx();
-        }
+        
         activateOnCurrentThread();
         this.orientdbTransact.rollback();
 
@@ -423,11 +408,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         }
 
         try {
-            // si no hay una tx abierta, disparar una excepción
-            if (this.orientdbTransact == null) {
-                throw new NoOpenTx();
-            }
-
             String classname;
             if (o instanceof IObjectProxy) {
                 classname = o.getClass().getSuperclass().getSimpleName();
@@ -443,10 +423,9 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             Map<String, Object> omap = oStruct.fields;
 
             // verificar que la clase existe
-            if (this.sm.getDBClass(classname) == null) {
+            if (getDBClass(classname) == null) {
                 // arrojar una excepción en caso contrario.
                 throw new ClassToVertexNotFound("No se ha encontrado la definición de la clase " + classname + " en la base!");
-                //graphdb.createVertexType(classname);
             }
             LOGGER.log(Level.FINER, "object data: "+omap);
             OrientVertex v = this.orientdbTransact.addVertex("class:" + classname, omap);
@@ -581,9 +560,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                     }
                 } else if (value instanceof Map) {
                     HashMap innerMap = (HashMap) value;
-//                    final String ffield = field;
-//                    final String frid = rid;
-//                    final ConcurrentHashMap<String, OrientVertex> fVertexs = vertexs;
                     innerMap.forEach(new BiConsumer() {
                         @Override
                         public void accept(Object imk, Object imV) {
@@ -628,7 +604,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
             // guardar el objeto en el cache. Se usa el RID como clave
             addToCache(v.getId().toString(), proxied);
-//            objectCache.put(v.getId().toString(), proxied);
 
         } catch (IllegalArgumentException ex) {
             Logger.getLogger(SessionManager.class.getName()).log(Level.SEVERE, null, ex);
@@ -893,7 +868,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     }
 
     
-    
     /**
      * Este es el método que efectívamente realiza el borrado. Es llamdo desde commit.
      * el método {@code delete} registra los objetos que luego serán enviados a este proceso 
@@ -1122,11 +1096,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     public synchronized void flush() {
         initInternalTx();
-        
-        if (this.orientdbTransact == null) {
-            throw new NoOpenTx();
-        }
         activateOnCurrentThread();
+        
         for (Map.Entry<String, Object> e : dirty.entrySet()) {
             String rid = e.getKey();
             IObjectProxy o = (IObjectProxy) e.getValue();
@@ -1233,9 +1204,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         Object ret = null;
         
         try {
-            if (this.orientdbTransact == null) {
-                throw new NoOpenTx();
-            }
             if (rid == null) {
                 throw new UnknownRID();
             }
@@ -1296,10 +1264,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     @Override
     public synchronized <T> T get(Class<T> type, String rid) throws UnknownRID {
         initInternalTx();
-        
-        if (this.orientdbTransact == null) {
-            throw new NoOpenTx();
-        }
+
         if (rid == null) {
             throw new UnknownRID();
         }
@@ -1387,9 +1352,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     @Override
     public <T> T getEdgeAsObject(Class<T> type, OrientEdge e) {
         initInternalTx();
-        if (this.orientdbTransact == null) {
-            throw new NoOpenTx();
-        }
         activateOnCurrentThread();
         T o = null;
         try {
@@ -1423,10 +1385,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     @Override
     public <T> T query(String sql) {
         initInternalTx();
-        
-        if (this.orientdbTransact == null) {
-            throw new NoOpenTx();
-        }
         activateOnCurrentThread();
         flush();
 
@@ -1447,10 +1405,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     @Override
     public <T> T query(String sql, Object... param) {
         initInternalTx();
-        
-        if (this.orientdbTransact == null) {
-            throw new NoOpenTx();
-        }
         activateOnCurrentThread();
         flush();
 
@@ -1472,10 +1426,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     @Override
     public long query(String sql, String retVal) {
         initInternalTx();
-        
-        if (this.orientdbTransact == null) {
-            throw new NoOpenTx();
-        }
         activateOnCurrentThread();
         this.flush();
 
@@ -1500,10 +1450,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     @Override
     public <T> List<T> query(Class<T> clazz) {
         initInternalTx();
-        
-        if (this.orientdbTransact == null) {
-            throw new NoOpenTx();
-        }
         activateOnCurrentThread();
         this.flush();
 
@@ -1534,10 +1480,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     @Override
     public <T> List<T> query(Class<T> clase, String body) {
         initInternalTx();
-        
-        if (this.orientdbTransact == null) {
-            throw new NoOpenTx();
-        }
         activateOnCurrentThread();
         this.flush();
 

@@ -41,7 +41,6 @@ import net.sf.cglib.proxy.MethodProxy;
 public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
     private final static Logger LOGGER = Logger.getLogger(ObjectProxy.class.getName());
-
     static {
         if (LOGGER.getLevel() == null) {
             LOGGER.setLevel(LogginProperties.ObjectProxy);
@@ -49,8 +48,10 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     }
 
     // the real object      
-    private Object ___proxyObject;
+    private Object ___proxiedObject;
+
     private Class<?> ___baseClass;
+
     // Vértice desde el que se obtiene el objeto.
     // private OrientVertex baseVertex;
     private OrientElement ___baseElement;
@@ -60,9 +61,12 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     private boolean ___isValidObject = true;
 
     private Transaction ___transaction;
+
     private boolean ___dirty = false;
+
     // determina si ya se han cargado los links o no
     private boolean ___loadLazyLinks = true;
+
     // determina si el objeto ya ha sido completamente inicializado.
     // sirve para impedir que se invoquen a los métodos durante el setup inicial del construtor.
     private boolean ___objectReady = false;
@@ -70,6 +74,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     // si esta marca está activa indica que el objeto ha sido eliminado de la base de datos 
     // y toda comunicación con el mismo debe ser abortada
     private boolean ___deletedMark = false;
+
 
     // constructor - the supplied parameter is an
     // object whose proxy we would like to create     
@@ -79,103 +84,14 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         this.___transaction = t;
     }
 
+
     public ObjectProxy(Class c, OrientElement e, Transaction t) {
         this.___baseClass = c;
         this.___baseElement = e;
         this.___transaction = t;
     }
 
-//    
-    // ByteBuddy inteceptor
-    // this method will be called each time      
-    // when the object proxy calls any of its methods
-//    @RuntimeType
-//    public Object intercept(@SuperCall Callable<?> zuper, @Origin Method method) throws Exception {
-//
-//        // response object
-//        Object res = null;
-//
-//        // BEFORE
-//        // measure the current time         
-//        // long time1 = System.currentTimeMillis();
-//        // LOGGER.log(Level.FINER, "method intercepted: "+method.getName());
-//        // modificar el llamado
-//        if (!this.___deletedMark) {
-//            switch (method.getName()) {
-//                case "___getVertex":
-//                    if (this.___objectReady) {
-//                        res = this.___getVertex();
-//                    }
-//                    break;
-//                case "___getRid":
-//                    if (this.___objectReady) {
-//                        res = this.___getRid();
-//                    }
-//                    break;
-//                case "___getProxiObject":
-//                    if (this.___objectReady) {
-//                        res = this.___getProxiObject();
-//                    }
-//                    break;
-//                case "___getBaseClass":
-//                    if (this.___objectReady) {
-//                        res = this.___getBaseClass();
-//                    }
-//                    break;
-//                case "___isDirty":
-//                    if (this.___objectReady) {
-//                        res = this.___isDirty();
-//                    }
-//                    break;
-//                case "___setDirty":
-//                    if (this.___objectReady) {
-//                        this.___setDirty();
-//                    }
-//                    break;
-//                case "___removeDirtyMark":
-//                    if (this.___objectReady) {
-//                        this.___removeDirtyMark();
-//                    }
-//                    break;
-//                case "___commit":
-//                    if (this.___objectReady) {
-//                        this.___commit();
-//                    }
-//                    break;
-//                case "___rollback":
-//                    if (this.___objectReady) {
-//                        this.___rollback();
-//                    }
-//                    break;
-//                case "___setDeletedMark":
-//                    this.___setDeletedMark();
-//                    break;
-//                default:
-//                    // antes de invocar cualquier método, asegurarse de cargar los lazyLinks
-//                    if (this.___objectReady) {
-//                        if (this.___loadLazyLinks) {
-//                            LOGGER.log(Level.FINER, "\n\nCargar los lazyLinks!....\n\n");
-//                            this.___loadLazyLinks();
-//                        }
-//                    }
-//                    // invoke the method on the real object with the given params
-//                    res = zuper.call();
-//                    // verificar si hay diferencias entre los objetos.
-//                    if (this.___objectReady) {
-//                        this.commitObjectChange();
-//                    }
-//
-//                    break;
-//            }
-//        } else {
-//            throw new ObjectMarkedAsDeleted("The object " + this.___baseElement.getId().toString() + " was deleted from the database.");
-//        }
-//        // AFTER
-//        // print how long it took to execute the method on the proxified object
-//        // System.out.println("Took: " + (System.currentTimeMillis() - time1) + " ms");
-//        // return the result         
-//        return res;
-//    }
+
     // GCLib interceptor 
     @Override
     public Object intercept(Object o,
@@ -192,19 +108,19 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         if (method.getName().equals("___isDeleted")) {
             return this.___isDeleted();
         }
-        
+
         if (method.getName().equals("___getVertex")) {
             if (this.___objectReady) {
                 return this.___getVertex();
             }
         }
-        
+
         if (method.getName().equals("___getBaseClass")) {
             if (this.___objectReady) {
                 return this.___getBaseClass();
             }
         }
-        
+
         if (!this.___isValidObject) {
             LOGGER.log(Level.FINER, "El objeto está marcado como inválido!!!");
             throw new InvalidObjectReference();
@@ -216,8 +132,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                 return true;
             }
         }
-        
-        
+
         if (this.___baseElement.getIdentity().isNew()) {
             LOGGER.log(Level.FINER, "RID nuevo. No procesar porque el store preparó todo y no hay nada que recuperar de la base.");
             this.___loadLazyLinks = false;
@@ -239,9 +154,9 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                         res = this.___getRid();
                     }
                     break;
-                case "___getProxiObject":
+                case "___getProxiedObject":
                     if (this.___objectReady) {
-                        res = this.___getProxiObject();
+                        res = this.___getProxiedObject();
                     }
                     break;
 //                case "___getBaseClass":
@@ -282,7 +197,9 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                     break;
                 case "___commit":
                     /**
-                     * FIXME: se podría evitar si se controlara si los links se han cargado o no al momento de hacer el commit para evitar realizar el
+                     * FIXME: se podría evitar si se controlara si los links se
+                     * han cargado o no al momento de hacer el commit para
+                     * evitar realizar el
                      * load sin necesidad.
                      */
                     if (this.___objectReady) {
@@ -365,18 +282,21 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         return res;
     }
 
+
     /**
-     * Establece el objeto base sobre el que trabaja el proxy
+     * Establece el objeto base sobre el que trabaja el proxy.
      *
      * @param po objeto de referencia
      */
-    public void ___setProxyObject(Object po) {
-        this.___proxyObject = po;
+    public void ___setProxiedObject(Object po) {
+        this.___proxiedObject = po;
         this.___objectReady = true;
     }
 
+
     /**
-     * retorna el vértice asociado a este proxi o null en caso que no exista uno.
+     * retorna el vértice asociado a este proxi o null en caso que no exista
+     * uno.
      *
      * @return referencia al OrientVertex
      */
@@ -389,8 +309,10 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         }
     }
 
+
     /**
-     * retorna el vértice asociado a este proxi o null en caso que no exista uno.
+     * retorna el vértice asociado a este proxi o null en caso que no exista
+     * uno.
      *
      * @return el RID del object en la base
      */
@@ -403,6 +325,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         }
     }
 
+
     /**
      *
      * establece el elemento base como un vértice.
@@ -414,8 +337,10 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         this.___baseElement = v;
     }
 
+
     /**
-     * retorna el vértice asociado a este proxi o null en caso que no exista uno.
+     * retorna el vértice asociado a este proxi o null en caso que no exista
+     * uno.
      *
      * @return la referencia al OrientVertex
      */
@@ -428,6 +353,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         }
     }
 
+
     /**
      *
      * establece el elemento base como un vértice.
@@ -439,25 +365,30 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         this.___baseElement = e;
     }
 
+
     @Override
-    public Object ___getProxiObject() {
-        return this.___proxyObject;
+    public Object ___getProxiedObject() {
+        return this.___proxiedObject;
     }
+
 
     @Override
     public Class<?> ___getBaseClass() {
         return this.___baseClass;
     }
 
+
     @Override
     public void ___setDeletedMark() {
         this.___deletedMark = true;
     }
 
+
     @Override
     public boolean ___isDeleted() {
         return this.___deletedMark;
     }
+
 
     /**
      * Carga todos los links del objeto
@@ -476,7 +407,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
             if (this.___baseElement instanceof OrientVertex) {
                 OrientVertex ov = (OrientVertex) this.___baseElement;
-                ClassDef classdef = this.___transaction.getObjectMapper().getClassDef(this.___proxyObject);
+                ClassDef classdef = this.___transaction.getObjectMapper().getClassDef(this.___proxiedObject);
 
                 // hidratar los atributos @links
                 // procesar todos los links y los indirectLinks
@@ -512,11 +443,14 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
                             if (!duplicatedLinkGuard) {
 //                        Object innerO = this.hydrate(fc, vertice);
-                                /* FIXME: esto genera una dependencia cruzada. Habría que revisar
-                           como solucionarlo. Esta llamada se hace para que quede el objeto
-                           mapeado 
+                                /*
+                                 * FIXME: esto genera una dependencia cruzada.
+                                 * Habría que revisar
+                                 * como solucionarlo. Esta llamada se hace para
+                                 * que quede el objeto
+                                 * mapeado
                                  */
-                                this.___transaction.addToTransactionCache(this.___getRid(), ___proxyObject);
+                                this.___transaction.addToTransactionCache(this.___getRid(), ___proxiedObject);
 
                                 // si es una interface llamar a get solo con el RID.
                                 Object innerO = null;
@@ -528,7 +462,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                         + "  FC: " + fc.getSimpleName()
                                         + "   innerO.class: " + innerO.getClass().getSimpleName()
                                         + " hashCode: " + System.identityHashCode(innerO));
-                                fLink.set(this.___proxyObject, fc.cast(innerO));
+                                fLink.set(this.___proxiedObject, fc.cast(innerO));
                                 duplicatedLinkGuard = true;
 
                                 ___transaction.decreseTransactionCache();
@@ -555,13 +489,14 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
     }
 
+
     @Override
     public void ___updateIndirectLinks() {
         if (this.___baseElement instanceof OrientVertex) {
             boolean preservDirtyState = this.___dirty;
 
             OrientVertex ov = (OrientVertex) this.___baseElement;
-            ClassDef classdef = this.___transaction.getObjectMapper().getClassDef(this.___proxyObject);
+            ClassDef classdef = this.___transaction.getObjectMapper().getClassDef(this.___proxiedObject);
 
             // hidratar los atributos @indirectLinks
             Map<String, Class<?>> lnks = new HashMap<>();
@@ -596,11 +531,14 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
                         if (!duplicatedLinkGuard) {
 //                        Object innerO = this.hydrate(fc, vertice);
-                            /* FIXME: esto genera una dependencia cruzada. Habría que revisar
-                           como solucionarlo. Esta llamada se hace para que quede el objeto
-                           mapeado 
+                            /*
+                             * FIXME: esto genera una dependencia cruzada.
+                             * Habría que revisar
+                             * como solucionarlo. Esta llamada se hace para que
+                             * quede el objeto
+                             * mapeado
                              */
-                            this.___transaction.addToTransactionCache(this.___getRid(), ___proxyObject);
+                            this.___transaction.addToTransactionCache(this.___getRid(), ___proxiedObject);
 
                             // si es una interface llamar a get solo con el RID.
                             Object innerO = null;
@@ -612,7 +550,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                     + "  FC: " + fc.getSimpleName()
                                     + "   innerO.class: " + innerO.getClass().getSimpleName()
                                     + " hashCode: " + System.identityHashCode(innerO));
-                            fLink.set(this.___proxyObject, fc.cast(innerO));
+                            fLink.set(this.___proxiedObject, fc.cast(innerO));
                             duplicatedLinkGuard = true;
 
                             ___transaction.decreseTransactionCache();
@@ -647,13 +585,13 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
                     String graphRelationName = null;
                     Direction RelationDirection = Direction.IN;
-                    
+
                     Indirect in = fLink.getAnnotation(Indirect.class);
                     graphRelationName = in.linkName();
-                    
+
                     // si hay Vértices conectados o si el constructor del objeto ha inicializado los vectores, convertirlos
-                    if ((ov.countEdges(RelationDirection, graphRelationName) > 0) || (fLink.get(___proxyObject) != null)) {
-                        this.___transaction.getObjectMapper().colecctionToLazy(___proxyObject, field, fc, ov, ___transaction);
+                    if ((ov.countEdges(RelationDirection, graphRelationName) > 0) || (fLink.get(___proxiedObject) != null)) {
+                        this.___transaction.getObjectMapper().colecctionToLazy(___proxiedObject, field, fc, ov, ___transaction);
                     }
 
                     fLink.setAccessible(acc);
@@ -674,15 +612,18 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
     }
 
+
     @Override
     public boolean ___isValid() {
         return ___isValidObject;
     }
 
+
     @Override
     public boolean ___isDirty() {
         return ___dirty;
     }
+
 
     /**
      * Marca el objeto como dirty para que sea considerado en el próximo commit
@@ -693,12 +634,13 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         if (!this.___dirty) {
             this.___dirty = true;
             // agregarlo a la lista de dirty para procesarlo luego
-            LOGGER.log(Level.FINER, "Dirty: " + this.___proxyObject);
-            this.___transaction.setAsDirty(this.___proxyObject);
+            LOGGER.log(Level.FINER, "Dirty: " + this.___proxiedObject);
+            this.___transaction.setAsDirty(this.___proxiedObject);
             LOGGER.log(Level.FINER, "Objeto marcado como dirty! <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
             LOGGER.log(Level.FINEST, ThreadHelper.getCurrentStackTrace());
         }
     }
+
 
     @Override
     public void ___removeDirtyMark() {
@@ -708,9 +650,10 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         // antes de proceder.
         if (this.___transaction.getSessionManager().getActivationStrategy() == SessionManager.ActivationStrategy.CLASS_INSTRUMENTATION) {
             LOGGER.log(Level.FINER, "CLASS_INSTRUMENTATION Strategy.");
-            ((ITransparentDirtyDetector) this.___proxyObject).___ogm___setDirty(false);
+            ((ITransparentDirtyDetector) this.___proxiedObject).___ogm___setDirty(false);
         }
     }
+
 
     @Override
     public synchronized void ___commit() {
@@ -733,10 +676,10 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             }
 
             // obtener la definición de la clase
-            ClassDef cDef = this.___transaction.getObjectMapper().getClassDef(this.___proxyObject);
+            ClassDef cDef = this.___transaction.getObjectMapper().getClassDef(this.___proxiedObject);
 
             // obtener un mapa actualizado del objeto contenido
-            ObjectStruct oStruct = this.___transaction.getObjectMapper().objectStruct(this.___proxyObject);
+            ObjectStruct oStruct = this.___transaction.getObjectMapper().objectStruct(this.___proxiedObject);
             Map<String, Object> omap = oStruct.fields;
 
             // bajar todo al vértice
@@ -751,10 +694,11 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             if (this.___baseElement.getElementType().equals("Vertex")) {
                 OrientVertex ov = (OrientVertex) this.___baseElement;
                 // Analizar si cambiaron los vértices
-                /* 
-                   procesar los objetos internos. Primero se deber determinar
-                   si los objetos ya existían en el contexto actual. Si no existen
-                   deben ser creados.
+                /*
+                 * procesar los objetos internos. Primero se deber determinar
+                 * si los objetos ya existían en el contexto actual. Si no
+                 * existen
+                 * deben ser creados.
                  */
                 for (Map.Entry<String, Class<?>> link : cDef.links.entrySet()) {
                     String field = link.getKey();
@@ -837,7 +781,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                             LOGGER.log(Level.FINER, "innerO nuevo. Crear un vértice y un link");
                             innerO = this.___transaction.store(innerO);
 //                            this.sm.getObjectMapper().setFieldValue(realObj, field, innerO);
-                            this.___transaction.getObjectMapper().setFieldValue(this.___proxyObject, field, innerO);
+                            this.___transaction.getObjectMapper().setFieldValue(this.___proxiedObject, field, innerO);
 
                             // si está activa la instrumentación de clases, desmarcar el objeto como dirty
                             if (innerO instanceof ITransparentDirtyDetector) {
@@ -862,9 +806,9 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                         Class<? extends Object> fieldClass = entry.getValue();
 
                         // f = ReflectionUtils.findField(this.realObj.getClass(), field);
-                        LOGGER.log(Level.FINER, "procesando campo: " + field + " clase: " + this.___proxyObject.getClass());
+                        LOGGER.log(Level.FINER, "procesando campo: " + field + " clase: " + this.___proxiedObject.getClass());
 
-                        f = ReflectionUtils.findField(this.___proxyObject.getClass(), field);
+                        f = ReflectionUtils.findField(this.___proxiedObject.getClass(), field);
                         boolean acc = f.isAccessible();
                         f.setAccessible(true);
                         final String graphRelationName;
@@ -873,7 +817,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                         graphRelationName = this.___baseClass.getSimpleName() + "_" + field;
 
                         // Object oCol = f.get(this.realObj);
-                        Object oCol = f.get(this.___proxyObject);
+                        Object oCol = f.get(this.___proxiedObject);
 
                         // verificar si existe algún cambio en la colecciones
                         // ingresa si la colección es distinta de null y
@@ -897,18 +841,18 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                 } else {
                                     // se ha asignado una colección original y se debe exportar todo
                                     // this.sm.getObjectMapper().colecctionToLazy(this.realObj, field, ov);
-                                    this.___transaction.getObjectMapper().colecctionToLazy(this.___proxyObject, field, ov, this.___transaction);
+                                    this.___transaction.getObjectMapper().colecctionToLazy(this.___proxiedObject, field, ov, this.___transaction);
 
                                     //recuperar la nueva colección
                                     // Collection inter = (Collection) f.get(this.realObj);
-                                    Collection inter = (Collection) f.get(this.___proxyObject);
+                                    Collection inter = (Collection) f.get(this.___proxiedObject);
 
                                     //agregar todos los valores que existían
                                     inter.addAll((Collection) oCol);
                                     //preparar la interface para que se continúe con el acceso.
                                     col = (ILazyCollectionCalls) inter;
                                     // reasignar el objeto oCol
-                                    oCol = f.get(this.___proxyObject);
+                                    oCol = f.get(this.___proxiedObject);
                                 }
 
                                 List lCol = (List) oCol;
@@ -982,10 +926,10 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                 } else {
                                     // se ha asignado una colección original y se debe exportar todo
                                     // this.sm.getObjectMapper().colecctionToLazy(this.realObj, field, ov);
-                                    this.___transaction.getObjectMapper().colecctionToLazy(this.___proxyObject, field, ov, this.___transaction);
+                                    this.___transaction.getObjectMapper().colecctionToLazy(this.___proxiedObject, field, ov, this.___transaction);
                                     //recuperar la nueva colección
                                     // Collection inter = (Collection) f.get(this.realObj);
-                                    Map inter = (Map) f.get(this.___proxyObject);
+                                    Map inter = (Map) f.get(this.___proxiedObject);
                                     //agregar todos los valores que existían
                                     inter.putAll((Map) oCol);
                                     //preparar la interface para que se continúe con el acceso.
@@ -1082,6 +1026,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         LOGGER.log(Level.FINER, "fin commit ----");
     }
 
+
     /**
      * Refresca el objeto base recuperándolo nuevamente desde la base de datos.
      */
@@ -1094,6 +1039,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
         this.___transaction.closeInternalTx();
     }
+
 
     /**
      * Función de uso interno para remover un eje
@@ -1122,13 +1068,13 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                 LOGGER.log(Level.FINER, "Remove orphan presente");
                 //auditar
                 if (this.___transaction.getSessionManager().isAuditing()) {
-                    this.___transaction.getSessionManager().auditLog(this, AuditType.DELETE, "LINKLIST DELETE: ", edgeToRemove + " : " + field + " : " + f.get(this.___proxyObject));
+                    this.___transaction.getSessionManager().auditLog(this, AuditType.DELETE, "LINKLIST DELETE: ", edgeToRemove + " : " + field + " : " + f.get(this.___proxiedObject));
                 }
                 // eliminar el objecto
                 // this.sm.delete(f.get(realObj));
-                if (f.get(this.___proxyObject) != null) {
+                if (f.get(this.___proxiedObject) != null) {
                     LOGGER.log(Level.FINER, "La referencia aún existe. Eliminar el objeto directamente");
-                    this.___transaction.delete(f.get(this.___proxyObject));
+                    this.___transaction.delete(f.get(this.___proxiedObject));
                 } else {
                     LOGGER.log(Level.FINER, "la referencia estaba en null, recupear y eliminar el objeto.");
                     this.___transaction.delete(this.___transaction.get(outRid));
@@ -1146,6 +1092,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                     .getName()).log(Level.SEVERE, null, ex);
         }
     }
+
 
     /**
      * Revierte el objeto al estado que tiene el Vertex original.
@@ -1168,13 +1115,13 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         }
         // asegurarse que la marca de borrado sea eliminada.
         this.___deletedMark = false;
-        
+
         // recargar todo.
         this.___baseElement.reload();
 
         LOGGER.log(Level.FINER, "vmap: " + this.___baseElement.getProperties());
         // restaurar los atributos al estado original.
-        ClassDef classdef = this.___transaction.getObjectMapper().getClassDef(___proxyObject);
+        ClassDef classdef = this.___transaction.getObjectMapper().getClassDef(___proxiedObject);
         Map<String, Class<?>> fieldmap = classdef.fields;
 
         Field f;
@@ -1203,15 +1150,15 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                     // se debe hacer una copia del la lista para no quede referenciando al objeto original
                     // dado que en la asignación solo se pasa la referencia del objeto.
                     LOGGER.log(Level.FINER, "Lista detectada: realizando una copia del contenido...");
-                    f.set(___proxyObject, new ArrayListEmbeddedProxy((IObjectProxy) ___proxyObject, (List) value));
+                    f.set(___proxiedObject, new ArrayListEmbeddedProxy((IObjectProxy) ___proxiedObject, (List) value));
                 } else if (f.getType().isAssignableFrom(Map.class)) {
                     // se debe hacer una copia del la lista para no quede referenciando al objeto original
                     // dado que en la asignación solo se pasa la referencia del objeto.
                     LOGGER.log(Level.FINER, "Map detectado: realizando una copia del contenido...");
                     // FIXME: Ojo que se hace solo un shalow copy!! no se está conando la clave y el value
-                    f.set(___proxyObject, new HashMapEmbeddedProxy((IObjectProxy) ___proxyObject, (Map) value));
+                    f.set(___proxiedObject, new HashMapEmbeddedProxy((IObjectProxy) ___proxiedObject, (Map) value));
                 } else {
-                    f.set(___proxyObject, value);
+                    f.set(___proxiedObject, value);
                 }
                 LOGGER.log(Level.FINER, "hidratado campo: " + prop + "=" + value);
                 f.setAccessible(acc);
@@ -1242,9 +1189,9 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                 f.setAccessible(true);
 
                 if (value != null) {
-                    f.set(this.___proxyObject, Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString()));
+                    f.set(this.___proxiedObject, Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString()));
                 } else {
-                    f.set(this.___proxyObject, null);
+                    f.set(this.___proxiedObject, null);
                 }
 
                 LOGGER.log(Level.FINER, "hidratado campo: " + prop + "=" + value);
@@ -1271,7 +1218,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                 boolean acc = fLink.isAccessible();
                 fLink.setAccessible(true);
 
-                fLink.set(this.___proxyObject, null);
+                fLink.set(this.___proxiedObject, null);
                 fLink.setAccessible(acc);
 
             } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
@@ -1295,7 +1242,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                 boolean acc = fLink.isAccessible();
                 fLink.setAccessible(true);
 
-                ILazyCalls lc = (ILazyCalls) fLink.get(___proxyObject);
+                ILazyCalls lc = (ILazyCalls) fLink.get(___proxiedObject);
                 if (lc != null) {
                     lc.rollback();
                 }

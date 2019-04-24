@@ -205,12 +205,6 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
      * @throws NoOpenTx si no hay una trnasacción abierta.
      */
     public synchronized void commit() throws NoOpenTx, OConcurrentModificationException {
-        
-//        this.graphdb.getRawGraph().activateOnCurrentThread();
-
-        // bajar todos los objetos a los vértices
-        // this.commitObjectChanges();
-        // cambiar el estado a comiteando
         this.publicTransaction.commit();
     }
 
@@ -239,10 +233,8 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
      * @param o objeto recuperado de la base a ser actualizado.
      */
     public synchronized void refreshObject(IObjectProxy o) {
-            
         this.publicTransaction.refreshObject(o);
     }
-    
     
     
     /**

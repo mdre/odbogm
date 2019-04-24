@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package net.odbogm.proxy;
 
 import com.tinkerpop.blueprints.impls.orient.OrientEdge;
@@ -13,6 +8,7 @@ import com.tinkerpop.blueprints.impls.orient.OrientVertex;
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
 public interface IObjectProxy {
+    
     public void ___setDeletedMark();
     public boolean ___isDeleted();
     
@@ -24,7 +20,7 @@ public interface IObjectProxy {
     public void ___setEdge(OrientEdge v);
     
     public Class<?> ___getBaseClass();
-    public Object ___getProxiObject();
+    public Object ___getProxiedObject();
     
     public boolean ___isValid();
     
