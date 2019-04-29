@@ -672,7 +672,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             // asegurarse que está atachado
             if (this.___baseElement.getGraph() == null) {
                 LOGGER.log(Level.FINER, "El objeto no está atachado!");
-                this.___transaction.getGraphdb().attach(this.___baseElement);
+                this.___transaction.getCurrentGraphDb().attach(this.___baseElement);
             }
 
             // obtener la definición de la clase
@@ -780,7 +780,6 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                             // crear la nueva relación
                             LOGGER.log(Level.FINER, "innerO nuevo. Crear un vértice y un link");
                             innerO = this.___transaction.store(innerO);
-//                            this.sm.getObjectMapper().setFieldValue(realObj, field, innerO);
                             this.___transaction.getObjectMapper().setFieldValue(this.___proxiedObject, field, innerO);
 
                             // si está activa la instrumentación de clases, desmarcar el objeto como dirty
@@ -788,7 +787,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                 ((ITransparentDirtyDetector) innerO).___ogm___setDirty(false);
                             }
 
-                            OrientEdge oe = this.___transaction.getGraphdb().addEdge("class:" + graphRelationName, ov, ((IObjectProxy) innerO).___getVertex(), graphRelationName);
+                            OrientEdge oe = this.___transaction.getCurrentGraphDb().addEdge("class:" + graphRelationName, ov, ((IObjectProxy) innerO).___getVertex(), graphRelationName);
                             if (this.___transaction.getSessionManager().isAuditing()) {
                                 this.___transaction.getSessionManager().auditLog(this, AuditType.WRITE, "ADD LINK: " + graphRelationName, oe);
                             }
@@ -879,7 +878,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                         }
 
                                         // vincular el nodo
-                                        OrientEdge oe = this.___transaction.getGraphdb().addEdge("class:" + graphRelationName, this.___getVertex(), ((IObjectProxy) colObject).___getVertex(), graphRelationName);
+                                        OrientEdge oe = this.___transaction.getCurrentGraphDb().addEdge("class:" + graphRelationName, this.___getVertex(), ((IObjectProxy) colObject).___getVertex(), graphRelationName);
 
                                         if (this.___transaction.getSessionManager().isAuditing()) {
                                             this.___transaction.getSessionManager().auditLog(this, AuditType.WRITE, "LINKLIST ADD: " + graphRelationName, oe);
@@ -969,7 +968,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                             // crear un link entre los dos objetos.
                                             LOGGER.log(Level.FINER, "-----> agregando un LinkList al Map!");
                                             //                                        oe = SessionManager.this.graphdb.addEdge("", fVertexs.get(frid), fVertexs.get(llRID), ffield);
-                                            oe = this.___transaction.getGraphdb().addEdge("class:" + graphRelationName, (OrientVertex) this.___baseElement, ((IObjectProxy) linkedO).___getVertex(), graphRelationName);
+                                            oe = this.___transaction.getCurrentGraphDb().addEdge("class:" + graphRelationName, (OrientVertex) this.___baseElement, ((IObjectProxy) linkedO).___getVertex(), graphRelationName);
                                             // actualizar el edge con los datos de la key.
                                             oe.setProperties(this.___transaction.getObjectMapper().simpleMap(imk));
 

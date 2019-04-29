@@ -31,6 +31,7 @@ import net.odbogm.cache.ClassDef;
 import net.odbogm.cache.SimpleCache;
 import net.odbogm.exceptions.ClassToVertexNotFound;
 import net.odbogm.exceptions.CollectionNotSupported;
+import net.odbogm.exceptions.ConcurrentModification;
 import net.odbogm.exceptions.IncorrectRIDField;
 import net.odbogm.exceptions.NoOpenTx;
 import net.odbogm.exceptions.NoUserLoggedIn;
@@ -159,7 +160,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * @param o objeto de referencia.
      */
     public synchronized void setAsDirty(Object o) throws UnmanagedObject {
-//        activateOnCurrentThread();
         if (o instanceof IObjectProxy) {
             String rid = ((IObjectProxy) o).___getVertex().getId().toString();
             LOGGER.log(Level.FINER, "Marcando como dirty: " + o.getClass().getSimpleName() + " - " + o.toString());
@@ -243,7 +243,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     }
     
     
-    OrientGraph getCurrentGraphDb() {
+    public OrientGraph getCurrentGraphDb() {
         return orientdbTransact;
     }
 
@@ -258,9 +258,10 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     /**
      * Persistir la información pendiente en la transacción.
      *
-     * @throws NoOpenTx si no hay una trnasacción abierta.
+     * @throws NoOpenTx si no hay una transacción abierta.
+     * @throws ConcurrentModification Si un elemento fue modificado por una transacción anterior.
      */
-    public synchronized void commit() throws NoOpenTx, OConcurrentModificationException {
+    public synchronized void commit() throws NoOpenTx, ConcurrentModification {
         initInternalTx();
         
         LOGGER.log(Level.FINER, "COMMIT");
@@ -301,7 +302,11 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             LOGGER.log(Level.FINER, "Fin persistencia. <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n");
             // comitear los vértices
             LOGGER.log(Level.FINER, "llamando al commit de la base");
-            this.orientdbTransact.commit();
+            try {
+                this.orientdbTransact.commit();
+            } catch (OConcurrentModificationException ex) {
+                throw new ConcurrentModification(ex, this);
+            }
             LOGGER.log(Level.FINER, "finalizado.");
 
             // si se está en modalidad audit, grabar los logs
@@ -864,7 +869,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             // invalidar el objeto
             ((IObjectProxy) toRemove).___setDeletedMark();
         } else {
-            throw new UnknownObject();
+            throw new UnknownObject(this);
         }
         
         closeInternalTx();
@@ -1085,7 +1090,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             // invalidar el objeto
 //            ((IObjectProxy) toRemove).___setDeletedMark();
         } else {
-            throw new UnknownObject();
+            throw new UnknownObject(this);
         }
         
         closeInternalTx();
@@ -1567,7 +1572,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     public OClass getDBClass(String clase) {
         initInternalTx();
         activateOnCurrentThread();
-        OClass ret = this.getGraphdb().getRawGraph().getMetadata().getSchema().getClass(clase);
+        OClass ret = orientdbTransact.getRawGraph().getMetadata().getSchema().getClass(clase);
         closeInternalTx();
         return ret;
     }

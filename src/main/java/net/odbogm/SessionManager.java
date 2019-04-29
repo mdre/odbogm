@@ -253,10 +253,6 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
         this.factory.close();
     }
 
-    public void getTxConflics() {
-//        this.graphdb.getRawGraph().getTransaction().getCurrentRecordEntries()
-    }
-
     /**
      * Devuelve el objeto de comunicación con la base.
      *

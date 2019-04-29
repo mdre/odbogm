@@ -16,5 +16,10 @@ public class OdbogmException extends RuntimeException {
         super(message);
         transaction.closeInternalTx();
     }
+
+    public OdbogmException(Throwable cause, Transaction transaction) {
+        super(cause.getMessage(), cause);
+        transaction.closeInternalTx();
+    }
     
 }

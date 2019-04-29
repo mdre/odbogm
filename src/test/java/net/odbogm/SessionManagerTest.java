@@ -1,7 +1,6 @@
 package net.odbogm;
 
 import static org.junit.Assert.*;
-import com.orientechnologies.orient.core.exception.OConcurrentModificationException;
 import com.orientechnologies.orient.core.sql.OCommandSQL;
 import com.tinkerpop.blueprints.impls.orient.OrientGraph;
 import java.lang.reflect.Field;
@@ -13,6 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import net.odbogm.agent.ITransparentDirtyDetector;
 import net.odbogm.cache.SimpleCache;
+import net.odbogm.exceptions.ConcurrentModification;
 import net.odbogm.exceptions.InvalidObjectReference;
 import net.odbogm.exceptions.ReferentialIntegrityViolation;
 import net.odbogm.exceptions.UnknownRID;
@@ -20,9 +20,7 @@ import net.odbogm.proxy.IObjectProxy;
 import net.odbogm.security.*;
 import net.odbogm.utils.DateHelper;
 import org.junit.After;
-import org.junit.AfterClass;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.function.ThrowingRunnable;
 import test.EdgeAttrib;
@@ -41,19 +39,17 @@ import test.SimpleVertexWithImplement;
  */
 public class SessionManagerTest {
 
-    SessionManager sm;
+    private SessionManager sm;
 
-    public SessionManagerTest() {
+    private Field orientdbTransactField;
+
+
+    public SessionManagerTest() throws Exception {
+        orientdbTransactField = Transaction.class.getDeclaredField(
+                "orientdbTransact");
+        orientdbTransactField.setAccessible(true);
     }
-
-    @BeforeClass
-    public static void setUpClass() {
-    }
-
-    @AfterClass
-    public static void tearDownClass() {
-    }
-
+    
     @Before
     public void setUp() {
         System.out.println("Iniciando session manager...");
@@ -1362,7 +1358,7 @@ public class SessionManagerTest {
      * Test de Transacciones privadas múltiples
      */
     @Test
-    public void testTransaction() {
+    public void testTransaction() throws Exception {
         System.out.println("\n\n\n");
         System.out.println("***************************************************************");
         System.out.println("Transacción múltiples privadas");
@@ -1424,11 +1420,14 @@ public class SessionManagerTest {
         expResultT2.setoI(2);
 
         Exception ex = assertThrows(
-                OConcurrentModificationException.class, () -> t2.commit());
+                ConcurrentModification.class, () -> t2.commit());
         
         System.out.println(ex);
         System.out.println("Commit en T2");
         System.out.println("Desde T2: " + expResultT2.getS());
+        
+        //verificar que no quedó transacción abierta
+        assertNull(orientdbTransactField.get(t2));
     }
 
     /**
@@ -2278,10 +2277,6 @@ public class SessionManagerTest {
      */
     @Test
     public void closeTransactions() throws Exception {
-        Field orientdbTransactField = Transaction.class.getDeclaredField(
-                "orientdbTransact");
-        orientdbTransactField.setAccessible(true);
-        
         Transaction t = sm.getCurrentTransaction();
         assertNull(orientdbTransactField.get(t));
         
@@ -2309,11 +2304,7 @@ public class SessionManagerTest {
     
     @Test
     public void finalizeTransactionsWithException() throws Exception {
-        Field orientdbTransactField = Transaction.class.getDeclaredField(
-                "orientdbTransact");
-        orientdbTransactField.setAccessible(true);
         Transaction t = sm.getCurrentTransaction();
-        
         try {
             t.get("unknown");
         } catch (UnknownRID ex) {
