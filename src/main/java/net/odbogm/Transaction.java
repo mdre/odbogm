@@ -28,7 +28,7 @@ import java.util.logging.Logger;
 import net.odbogm.annotations.Audit;
 import net.odbogm.annotations.CascadeDelete;
 import net.odbogm.annotations.RemoveOrphan;
-import net.odbogm.auditory.Auditor;
+import net.odbogm.audit.Auditor;
 import net.odbogm.cache.ClassDef;
 import net.odbogm.cache.SimpleCache;
 import net.odbogm.exceptions.ClassToVertexNotFound;
@@ -1544,35 +1544,34 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
     // Procesos de auditoría
     /**
-     * Comienza a auditar los objetos y los persiste con el nombre de usuario.
+     * Comienza a auditar los objetos y los persiste con el nombre de usuario dado.
      *
      * @param user UserSID String only.
      */
     public void setAuditOnUser(String user) {
-
         this.auditor = new Auditor(this, user);
-
     }
 
     /**
-     * Comienza a auditar los objetos y los persiste con el nombre de usuario actualmente logueado.
-     *
+     * Comienza a auditar los objetos y los persiste con el nombre del usuario 
+     * actualmente logueado.
+     
+     * @throws NoUserLoggedIn Si no hay ningún usuario logueado.
      */
     public void setAuditOnUser() throws NoUserLoggedIn {
         if (this.sm.getLoggedInUser() == null) {
             throw new NoUserLoggedIn();
         }
-
         this.auditor = new Auditor(this, this.sm.getLoggedInUser().getUUID());
     }
 
     /**
-     * realiza una auditoría a partir del objeto indicado.
+     * Realiza una auditoría a partir del objeto indicado.
      *
      * @param o IOBjectProxy a auditar
      * @param at AuditType
-     * @param label etiqueta de referencia
-     * @param data objeto a loguear con un toString
+     * @param label Etiqueta de referencia
+     * @param data Objeto a loguear con un toString
      */
     public synchronized void auditLog(IObjectProxy o, int at, String label, Object data) {
         if (this.isAuditing()) {
@@ -1581,9 +1580,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     }
 
     /**
-     * determina si se está guardando un log de auditoría
-     *
-     * @return true si la auditoría está activa
+     * Determina si se está guardando un log de auditoría.
+     * @return true Si la auditoría está activa.
      */
     public boolean isAuditing() {
         return this.auditor != null;

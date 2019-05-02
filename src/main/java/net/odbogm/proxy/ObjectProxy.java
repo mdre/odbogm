@@ -697,8 +697,8 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             this.___baseElement.setProperties(omap);
 
             // guardar log de auditoría si corresponde.
-            if (this.___transaction.getSessionManager().isAuditing()) {
-                this.___transaction.getSessionManager().auditLog(this, AuditType.WRITE, "UPDATE", omap);
+            if (this.___transaction.isAuditing()) {
+                this.___transaction.auditLog(this, AuditType.WRITE, "UPDATE", omap);
             }
 
             // si se trata de un Vértice
@@ -727,12 +727,11 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                             for (Edge edge : ov.getEdges(Direction.OUT, graphRelationName)) {
                                 removeEdge = (OrientEdge) edge;
 
-                                if (this.___transaction.getSessionManager().isAuditing()) {
-                                    this.___transaction.getSessionManager().auditLog(this, AuditType.WRITE, "REMOVE LINK: " + graphRelationName, removeEdge);
+                                if (this.___transaction.isAuditing()) {
+                                    this.___transaction.auditLog(this, AuditType.WRITE, "REMOVE LINK: " + graphRelationName, removeEdge);
                                 }
                                 this.removeEdge(removeEdge, field);
                             }
-
                         }
                     } else {
                         Object innerO = oStruct.links.get(field);
@@ -755,19 +754,17 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                         removeEdge = (OrientEdge) edge;
                                         LOGGER.log(Level.FINER, "Eliminar relación previa a " + removeEdge.getInVertex());
 
-                                        if (this.___transaction.getSessionManager().isAuditing()) {
-                                            this.___transaction.getSessionManager().auditLog(this, AuditType.WRITE, "REMOVE LINK: " + graphRelationName, removeEdge);
+                                        if (this.___transaction.isAuditing()) {
+                                            this.___transaction.auditLog(this, AuditType.WRITE, "REMOVE LINK: " + graphRelationName, removeEdge);
                                         }
 
                                         this.removeEdge(removeEdge, field);
-
                                     }
-
                                 }
                                 LOGGER.log(Level.FINER, "Agregar un link entre dos objetos existentes.");
                                 OrientEdge oe = this.___transaction.getSessionManager().getGraphdb().addEdge("class:" + graphRelationName, ov, ((IObjectProxy) innerO).___getVertex(), graphRelationName);
-                                if (this.___transaction.getSessionManager().isAuditing()) {
-                                    this.___transaction.getSessionManager().auditLog(this, AuditType.WRITE, "ADD LINK: " + graphRelationName, oe);
+                                if (this.___transaction.isAuditing()) {
+                                    this.___transaction.auditLog(this, AuditType.WRITE, "ADD LINK: " + graphRelationName, oe);
                                 }
                             }
                         } else {
@@ -780,12 +777,11 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                 for (Edge edge : ov.getEdges(Direction.OUT, graphRelationName)) {
                                     removeEdge = (OrientEdge) edge;
                                     LOGGER.log(Level.FINER, "Eliminar relación previa a " + removeEdge.getOutVertex());
-                                    if (this.___transaction.getSessionManager().isAuditing()) {
-                                        this.___transaction.getSessionManager().auditLog(this, AuditType.WRITE, "REMOVE LINK: " + graphRelationName, removeEdge);
+                                    if (this.___transaction.isAuditing()) {
+                                        this.___transaction.auditLog(this, AuditType.WRITE, "REMOVE LINK: " + graphRelationName, removeEdge);
                                     }
                                     this.removeEdge(removeEdge, field);
                                 }
-
                             }
 
                             // crear la nueva relación
@@ -799,8 +795,8 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                             }
 
                             OrientEdge oe = this.___transaction.getCurrentGraphDb().addEdge("class:" + graphRelationName, ov, ((IObjectProxy) innerO).___getVertex(), graphRelationName);
-                            if (this.___transaction.getSessionManager().isAuditing()) {
-                                this.___transaction.getSessionManager().auditLog(this, AuditType.WRITE, "ADD LINK: " + graphRelationName, oe);
+                            if (this.___transaction.isAuditing()) {
+                                this.___transaction.auditLog(this, AuditType.WRITE, "ADD LINK: " + graphRelationName, oe);
                             }
                         }
                     }
@@ -891,8 +887,8 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                         // vincular el nodo
                                         OrientEdge oe = this.___transaction.getCurrentGraphDb().addEdge("class:" + graphRelationName, this.___getVertex(), ((IObjectProxy) colObject).___getVertex(), graphRelationName);
 
-                                        if (this.___transaction.getSessionManager().isAuditing()) {
-                                            this.___transaction.getSessionManager().auditLog(this, AuditType.WRITE, "LINKLIST ADD: " + graphRelationName, oe);
+                                        if (this.___transaction.isAuditing()) {
+                                            this.___transaction.auditLog(this, AuditType.WRITE, "LINKLIST ADD: " + graphRelationName, oe);
                                         }
                                     }
                                 }
@@ -908,15 +904,15 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                                 .getEdges(((IObjectProxy) colObject).___getVertex(),
                                                         Direction.OUT,
                                                         graphRelationName)) {
-                                            if (this.___transaction.getSessionManager().isAuditing()) {
-                                                this.___transaction.getSessionManager().auditLog(this, AuditType.WRITE, "LINKLIST REMOVE: " + graphRelationName, edge);
+                                            if (this.___transaction.isAuditing()) {
+                                                this.___transaction.auditLog(this, AuditType.WRITE, "LINKLIST REMOVE: " + graphRelationName, edge);
                                             }
                                             edge.remove();
                                         }
                                         // si existe la anotación, remover tambien el vertex
                                         if (f.isAnnotationPresent(RemoveOrphan.class)) {
-                                            if (this.___transaction.getSessionManager().isAuditing()) {
-                                                this.___transaction.getSessionManager().auditLog(this, AuditType.DELETE, "LINKLIST DELETE: " + graphRelationName, colObject);
+                                            if (this.___transaction.isAuditing()) {
+                                                this.___transaction.auditLog(this, AuditType.DELETE, "LINKLIST DELETE: " + graphRelationName, colObject);
                                             }
                                             this.___transaction.delete(colObject);
                                         }
@@ -983,8 +979,8 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                             // actualizar el edge con los datos de la key.
                                             oe.setProperties(this.___transaction.getObjectMapper().simpleMap(imk));
 
-                                            if (this.___transaction.getSessionManager().isAuditing()) {
-                                                this.___transaction.getSessionManager().auditLog(this, AuditType.WRITE, "LINKLIST ADD: " + graphRelationName, oe);
+                                            if (this.___transaction.isAuditing()) {
+                                                this.___transaction.auditLog(this, AuditType.WRITE, "LINKLIST ADD: " + graphRelationName, oe);
                                             }
                                             break;
 
@@ -995,8 +991,8 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                         case REMOVED:
                                             // quitar el Edge
                                             OrientEdge oeRemove = keyToEdge.get(imk);
-                                            if (this.___transaction.getSessionManager().isAuditing()) {
-                                                this.___transaction.getSessionManager().auditLog(this, AuditType.WRITE, "LINKLIST REMOVE: " + graphRelationName, oeRemove);
+                                            if (this.___transaction.isAuditing()) {
+                                                this.___transaction.auditLog(this, AuditType.WRITE, "LINKLIST REMOVE: " + graphRelationName, oeRemove);
                                             }
                                             oeRemove.remove();
                                             // el link se ha removido. Se debe eliminar y verificar si corresponde borrar 
@@ -1004,8 +1000,8 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                             if (f.isAnnotationPresent(RemoveOrphan.class)) {
                                                 if (entitiesState.get(imk) == ObjectCollectionState.REMOVED) {
                                                     this.___transaction.delete(entitiesState.get(imk));
-                                                    if (this.___transaction.getSessionManager().isAuditing()) {
-                                                        this.___transaction.getSessionManager().auditLog(this, AuditType.DELETE, "LINKLIST REMOVE: " + graphRelationName, imk);
+                                                    if (this.___transaction.isAuditing()) {
+                                                        this.___transaction.auditLog(this, AuditType.DELETE, "LINKLIST REMOVE: " + graphRelationName, imk);
                                                     }
                                                 }
                                             }
@@ -1074,8 +1070,8 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             if (f.isAnnotationPresent(RemoveOrphan.class)) {
                 LOGGER.log(Level.FINER, "Remove orphan presente");
                 //auditar
-                if (this.___transaction.getSessionManager().isAuditing()) {
-                    this.___transaction.getSessionManager().auditLog(this, AuditType.DELETE, "LINKLIST DELETE: ", edgeToRemove + " : " + field + " : " + f.get(this.___proxiedObject));
+                if (this.___transaction.isAuditing()) {
+                    this.___transaction.auditLog(this, AuditType.DELETE, "LINKLIST DELETE: ", edgeToRemove + " : " + field + " : " + f.get(this.___proxiedObject));
                 }
                 // eliminar el objecto
                 // this.sm.delete(f.get(realObj));

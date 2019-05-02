@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.agent.TransparentDirtyDetectorAgent;
-import net.odbogm.auditory.Auditor;
+import net.odbogm.audit.Auditor;
 import net.odbogm.exceptions.ClassToVertexNotFound;
 import net.odbogm.exceptions.ConcurrentModification;
 import net.odbogm.exceptions.IncorrectRIDField;
@@ -430,7 +430,6 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
      *
      */
     public void setAuditOnUser() throws NoUserLoggedIn {
-
         this.publicTransaction.setAuditOnUser();
     }
 
@@ -444,7 +443,7 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
     }
 
     /**
-     * realiza una auditoría a partir del objeto indicado.
+     * Realiza una auditoría a partir del objeto indicado.
      *
      * @param o IOBjectProxy a auditar
      * @param at AuditType
@@ -458,8 +457,8 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
     }
 
     /**
-     * determina si se está guardando un log de auditoría
-     * @return true si la auditoría está activa
+     * Determina si se está guardando un log de auditoría.
+     * @return true Si la auditoría está activa.
      */
     public boolean isAuditing() {
         return this.publicTransaction.isAuditing();

@@ -1,13 +1,7 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
-package net.odbogm.auditory;
+package net.odbogm.audit;
 
 import com.orientechnologies.orient.core.metadata.schema.OType;
-import com.tinkerpop.blueprints.impls.orient.OrientVertex;
+import com.tinkerpop.blueprints.impls.orient.OrientGraph;
 import com.tinkerpop.blueprints.impls.orient.OrientVertexType;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -26,6 +20,7 @@ import net.odbogm.utils.DateHelper;
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
 public class Auditor implements IAuditor {
+    
     private final static Logger LOGGER = Logger.getLogger(Auditor.class .getName());
     static {
         if (LOGGER.getLevel() == null) {
@@ -36,32 +31,35 @@ public class Auditor implements IAuditor {
     private Transaction transaction;
     private String auditUser;
     private ArrayList<LogData> logdata = new ArrayList<>();
-    private final String ODBAUDITLOGVERTEXCLASS = "ODBAuditLog";
+    private final static String ODBAUDITLOGVERTEXCLASS = "ODBAuditLog";
+    
     
     public Auditor(Transaction t, String user) {
         this.transaction = t;
         this.auditUser = user;
         
         // verificar que la clase de auditorías exista
-        if (this.transaction.getDBClass(this.ODBAUDITLOGVERTEXCLASS) == null) {
-            OrientVertexType olog = this.transaction.getGraphdb().createVertexType(this.ODBAUDITLOGVERTEXCLASS);
+        if (this.transaction.getDBClass(ODBAUDITLOGVERTEXCLASS) == null) {
+            OrientGraph odb = this.transaction.getGraphdb();
+            OrientVertexType olog = odb.createVertexType(ODBAUDITLOGVERTEXCLASS);
             olog.createProperty("rid", OType.STRING);
             olog.createProperty("timestamp", OType.DATETIME);
             olog.createProperty("user", OType.STRING);
             olog.createProperty("action", OType.STRING);
             olog.createProperty("label", OType.STRING);
             olog.createProperty("log", OType.STRING);
-            this.transaction.commit();
+            odb.commit();
+            odb.shutdown();
         }
-        
     }
     
 
     /**
-     * realiza una auditoría a partir del objeto indicado.
+     * Realiza una auditoría a partir del objeto indicado.
      *
      * @param o IOBjectProxy a auditar
      * @param at AuditType
+     * @param label Etiqueta de referencia
      * @param data objeto a loguear con un toString
      */
     @Override
@@ -80,15 +78,18 @@ public class Auditor implements IAuditor {
         }
     }
     
+    
     @Override
     public void commit() {
         // crear un UUDI para todo el log a comitear.
         String ovLogID = UUID.randomUUID().toString();
         
+        OrientGraph odb = this.transaction.getGraphdb();
+        
         for (LogData logData : logdata) {
             LOGGER.log(Level.FINER, "valid: "+logData.o.___isValid() +" : "+logData.rid);
             Map<String, Object> ologData = new HashMap<>();
-            ologData.put("transactionID",ovLogID);
+            ologData.put("transactionID", ovLogID);
             ologData.put("rid", (logData.o.___isValid()&!logData.o.___isDeleted()?logData.o.___getRid():logData.rid));
             ologData.put("timestamp", DateHelper.getCurrentDateTime());
             ologData.put("user", this.auditUser);
@@ -96,12 +97,13 @@ public class Auditor implements IAuditor {
             ologData.put("label", logData.label);
             ologData.put("log", logData.data);
             
-            OrientVertex ovlog = this.transaction.getGraphdb().addVertex("class:" + this.ODBAUDITLOGVERTEXCLASS, ologData);
+            odb.addVertex("class:" + ODBAUDITLOGVERTEXCLASS, ologData);
         }
         
+        odb.commit();
+        odb.shutdown();
         this.logdata.clear();
     }
-    
     
 }
 
