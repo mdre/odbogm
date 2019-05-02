@@ -120,7 +120,8 @@ dependencies {
     implementation "com.orientechnologies:orientdb-core:${orientDbVersion}:javadoc"
     //implementation "com.orientechnologies:orientdb-core:${orientDbVersion}:sources"
     
-    testCompile "junit:junit:[4,)"
+    testImplementation "junit:junit:[4,)"
+    testImplementation "org.easymock:easymock:4.0.2"
 }
 
 test {

@@ -14,13 +14,17 @@ import net.odbogm.agent.ITransparentDirtyDetector;
 import net.odbogm.cache.SimpleCache;
 import net.odbogm.exceptions.ConcurrentModification;
 import net.odbogm.exceptions.InvalidObjectReference;
+import net.odbogm.exceptions.OdbogmException;
 import net.odbogm.exceptions.ReferentialIntegrityViolation;
 import net.odbogm.exceptions.UnknownRID;
 import net.odbogm.proxy.IObjectProxy;
 import net.odbogm.security.*;
 import net.odbogm.utils.DateHelper;
+import org.apache.commons.lang.NotImplementedException;
+import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.function.ThrowingRunnable;
 import test.EdgeAttrib;
@@ -39,9 +43,9 @@ import test.SimpleVertexWithImplement;
  */
 public class SessionManagerTest {
 
-    private SessionManager sm;
+    private final Field orientdbTransactField;
 
-    private Field orientdbTransactField;
+    private SessionManager sm;
 
 
     public SessionManagerTest() throws Exception {
@@ -1419,9 +1423,9 @@ public class SessionManagerTest {
 
         expResultT2.setoI(2);
 
-        Exception ex = assertThrows(
+        ConcurrentModification ex = assertThrows(
                 ConcurrentModification.class, () -> t2.commit());
-        
+        assertTrue(ex.canRetry());
         System.out.println(ex);
         System.out.println("Commit en T2");
         System.out.println("Desde T2: " + expResultT2.getS());
@@ -2310,6 +2314,136 @@ public class SessionManagerTest {
         } catch (UnknownRID ex) {
         }
         assertNull(orientdbTransactField.get(t));
+    }
+    
+    
+    /*
+     * Testea que ante cualquier falla en el commit con objetos nuevos, se pueda
+     * reintentar luego exitosamente.
+     */
+    @Test
+    public void retryCommitNewObjects() throws Exception {
+        Transaction t = sm.getCurrentTransaction();
+        SimpleVertexEx s1 = new SimpleVertexEx();
+        s1 = t.store(s1);
+        assertTrue(((IObjectProxy)s1).___getVertex().getIdentity().isNew());
+        
+        //para simular una falla uso un mock:
+        OrientGraph db = EasyMock.createNiceMock(OrientGraph.class);
+        db.commit();
+        EasyMock.expectLastCall().andThrow(new NotImplementedException());
+        EasyMock.replay(db);
+        
+        orientdbTransactField.set(t, db);
+        
+        try { t.commit(); } catch (Exception ex) { /*falló, reintentar*/ }
+        
+        assertTrue(((IObjectProxy)s1).___getVertex().getIdentity().isNew());
+        orientdbTransactField.set(t, null);
+        t.commit();
+        assertFalse(((IObjectProxy)s1).___getVertex().getIdentity().isNew());
+    }
+    
+    
+    /*
+     * Testea que se pueda reintentar un commit con objetos modificados.
+     */
+    @Test
+    public void retryCommit() throws Exception {
+        SimpleVertexEx sv = new SimpleVertexEx();
+        sv = sm.store(sv);
+        sm.commit();
+        String rid = sm.getRID(sv);
+        
+        Transaction t1 = sm.getTransaction();
+        SimpleVertexEx s1 = t1.get(SimpleVertexEx.class, rid);
+        
+        Transaction t2 = sm.getTransaction();
+        SimpleVertexEx s2 = t2.get(SimpleVertexEx.class, rid);
+
+        s1.setS("en tran 1");
+        t1.commit();
+        
+        s2.setS("en tran 2");
+        assertThrows(ConcurrentModification.class, () -> t2.commit());
+        
+        //reintento
+        t2.commit();
+        
+        //ver si se guardó correctamente el cambio de t2
+        t2.clearCache();
+        s2 = t2.get(SimpleVertexEx.class, rid);
+        assertEquals("en tran 2", s2.getS());
+        t1.clearCache();
+        s1 = t1.get(SimpleVertexEx.class, rid);
+        assertEquals("en tran 2", s1.getS());
+    }
+    
+    
+    /*
+     * * Testea que se pueda reintentar un commit con eliminados.
+     */
+    @Test
+    public void retryCommitDeleted() throws Exception {
+        Transaction t = sm.getCurrentTransaction();
+        SimpleVertexEx sv = new SimpleVertexEx();
+        sv = t.store(sv);
+        t.commit();
+        String rid = sm.getRID(sv);
+        
+        //para simular una falla uso un mock:
+        OrientGraph db = EasyMock.createNiceMock(OrientGraph.class);
+        db.commit();
+        EasyMock.expectLastCall().andThrow(new NotImplementedException());
+        EasyMock.replay(db);
+        orientdbTransactField.set(t, db);
+        
+        t.delete(sv);
+        try { t.commit(); } catch (Exception ex) { /*falló, reintentar*/ }
+        
+        //comprobar que no se borró todavía de la base
+        assertNotNull(sm.getTransaction().get(rid));
+        
+        //reintentar
+        orientdbTransactField.set(t, null);
+        t.commit();
+        
+        assertThrows(UnknownRID.class, () -> sm.getTransaction().get(rid));
+        assertEquals(0, t.getDirtyCount());
+        assertEquals(0, t.getDirtyDeletedCount());
+    }
+    
+    
+    @Test
+    public void retryCommitNotRetryable() throws Exception {
+        SimpleVertexEx sv = new SimpleVertexEx();
+        sv = sm.store(sv);
+        sm.commit();
+        String rid = sm.getRID(sv);
+        
+        Transaction t1 = sm.getTransaction();
+        SimpleVertexEx s1 = t1.get(SimpleVertexEx.class, rid);
+        
+        Transaction t2 = sm.getTransaction();
+        SimpleVertexEx s2 = t2.get(SimpleVertexEx.class, rid);
+
+        t1.delete(s1);
+        t1.commit();
+        
+        s2.setS("en tran 2");
+        OdbogmException ex = assertThrows(OdbogmException.class, () -> t2.commit());
+        assertFalse(ex.canRetry());
+        
+        //reintento
+        ex = assertThrows(OdbogmException.class, () -> t2.commit());
+        assertFalse(ex.canRetry());
+    }
+    
+    
+    @Test
+    @Ignore
+    public void refresh() throws Exception {
+        //ver bien
     }
     
 }

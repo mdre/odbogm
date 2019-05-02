@@ -1,5 +1,6 @@
 package net.odbogm.proxy;
 
+import com.orientechnologies.common.exception.OException;
 import com.tinkerpop.blueprints.Direction;
 import com.tinkerpop.blueprints.Edge;
 import com.tinkerpop.blueprints.Vertex;
@@ -28,6 +29,7 @@ import net.odbogm.exceptions.CollectionNotSupported;
 import net.odbogm.exceptions.DuplicateLink;
 import net.odbogm.exceptions.InvalidObjectReference;
 import net.odbogm.exceptions.ObjectMarkedAsDeleted;
+import net.odbogm.exceptions.OdbogmException;
 import net.odbogm.utils.ReflectionUtils;
 import net.odbogm.utils.ThreadHelper;
 import net.odbogm.utils.VertexUtils;
@@ -657,8 +659,17 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
     @Override
     public synchronized void ___commit() {
-
-//        ODatabaseRecordThreadLocal.INSTANCE.set(this.___sm.getGraphdb().getRawGraph());
+        //ante ciertas condiciones los métodos de Orient pueden lanzar una excepción
+        //que hay que atraparlas en algún momento
+        try {
+            doCommit();
+        } catch (OException ex) {
+            throw new OdbogmException(ex, ___transaction);
+        }
+    }
+    
+    
+    private void doCommit() {
         LOGGER.log(Level.FINER, "Iniciando ___commit() ....");
         LOGGER.log(Level.FINER, "valid: " + this.___isValidObject);
         LOGGER.log(Level.FINER, "dirty: " + this.___dirty);
@@ -672,7 +683,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             // asegurarse que está atachado
             if (this.___baseElement.getGraph() == null) {
                 LOGGER.log(Level.FINER, "El objeto no está atachado!");
-                this.___transaction.getCurrentGraphDb().attach(this.___baseElement);
+                this.___transaction.attach(this.___baseElement);
             }
 
             // obtener la definición de la clase
@@ -1017,14 +1028,11 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                     }
                 }
             }
-            // quitar la marca de dirty
-            this.___removeDirtyMark();
-//            this.___dirty = false;
             this.___transaction.closeInternalTx();
         }
         LOGGER.log(Level.FINER, "fin commit ----");
     }
-
+    
 
     /**
      * Refresca el objeto base recuperándolo nuevamente desde la base de datos.

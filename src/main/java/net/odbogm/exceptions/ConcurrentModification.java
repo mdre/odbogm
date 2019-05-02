@@ -1,5 +1,6 @@
 package net.odbogm.exceptions;
 
+import com.orientechnologies.orient.core.exception.OConcurrentModificationException;
 import net.odbogm.Transaction;
 
 /**
@@ -10,7 +11,8 @@ import net.odbogm.Transaction;
  */
 public class ConcurrentModification extends OdbogmException {
     
-    public ConcurrentModification(Throwable cause, Transaction transaction) {
+    public ConcurrentModification(OConcurrentModificationException cause,
+            Transaction transaction) {
         super(cause, transaction);
     }
     

@@ -1,6 +1,5 @@
 package net.odbogm;
 
-import com.orientechnologies.orient.core.exception.OConcurrentModificationException;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
 import com.tinkerpop.blueprints.impls.orient.OrientEdge;
 import com.tinkerpop.blueprints.impls.orient.OrientGraph;
@@ -14,9 +13,11 @@ import java.util.logging.Logger;
 import net.odbogm.agent.TransparentDirtyDetectorAgent;
 import net.odbogm.auditory.Auditor;
 import net.odbogm.exceptions.ClassToVertexNotFound;
+import net.odbogm.exceptions.ConcurrentModification;
 import net.odbogm.exceptions.IncorrectRIDField;
 import net.odbogm.exceptions.NoOpenTx;
 import net.odbogm.exceptions.NoUserLoggedIn;
+import net.odbogm.exceptions.OdbogmException;
 import net.odbogm.exceptions.ReferentialIntegrityViolation;
 import net.odbogm.exceptions.UnknownObject;
 import net.odbogm.exceptions.UnknownRID;
@@ -201,11 +202,12 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
     }
 
     /**
-     * Persistir la información pendiente en la transacción
+     * Persistir la información pendiente en la transacción.
      *
-     * @throws NoOpenTx si no hay una trnasacción abierta.
+     * @throws ConcurrentModification Si un elemento fue modificado por una transacción anterior.
+     * @throws OdbogmException Si ocurre alguna otra excepción de la base de datos.
      */
-    public synchronized void commit() throws NoOpenTx, OConcurrentModificationException {
+    public synchronized void commit() throws ConcurrentModification, OdbogmException {
         this.publicTransaction.commit();
     }
 
@@ -222,7 +224,6 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
      * Los objetos marcados como Dirty forman parte del siguiente commit
      */
     public synchronized void refreshDirtyObjects() {
-        
         this.publicTransaction.refreshDirtyObjects();
     }
 

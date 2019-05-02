@@ -1,5 +1,6 @@
 package net.odbogm;
 
+import com.orientechnologies.common.exception.OException;
 import com.orientechnologies.orient.core.exception.OConcurrentModificationException;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
 import com.orientechnologies.orient.core.record.impl.ODocument;
@@ -10,6 +11,7 @@ import com.tinkerpop.blueprints.Vertex;
 import com.tinkerpop.blueprints.impls.orient.OrientConfigurableGraph;
 import com.tinkerpop.blueprints.impls.orient.OrientDynaElementIterable;
 import com.tinkerpop.blueprints.impls.orient.OrientEdge;
+import com.tinkerpop.blueprints.impls.orient.OrientElement;
 import com.tinkerpop.blueprints.impls.orient.OrientGraph;
 import com.tinkerpop.blueprints.impls.orient.OrientVertex;
 import java.lang.reflect.Field;
@@ -35,6 +37,7 @@ import net.odbogm.exceptions.ConcurrentModification;
 import net.odbogm.exceptions.IncorrectRIDField;
 import net.odbogm.exceptions.NoOpenTx;
 import net.odbogm.exceptions.NoUserLoggedIn;
+import net.odbogm.exceptions.OdbogmException;
 import net.odbogm.exceptions.ReferentialIntegrityViolation;
 import net.odbogm.exceptions.UnknownObject;
 import net.odbogm.exceptions.UnknownRID;
@@ -82,9 +85,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     // Los RIDs temporales deben ser convertidos a los permanentes en el proceso de commit
     private List<String> newrids = new ArrayList<>();
     
-    // determina si se está en el proceso de commit.
-    private boolean commiting = false;
-    private ConcurrentHashMap<Object, Object> commitedObject = new ConcurrentHashMap<>();
+    // mapa objeto -> proxy
+    private ConcurrentHashMap<Object, Object> commitedObjects = new ConcurrentHashMap<>();
     
     int newObjectCount = 0;
     
@@ -95,7 +97,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     private OrientGraph orientdbTransact;
     
     // indica el nivel de anidamiento de la transacción. Cuando se llega a 0 se cierra.
-    private int orientTransacLevel;
+    private int orientTransacLevel = 0;
     
     /**
      * Devuelve una transacción con su propio espacio de caché.
@@ -197,8 +199,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * @return el objeto si se encotró o null.
      */
     public Object getFromCache(String rid) {
-        Object r = this.objectCache.get(rid);
-        return r;
+        return this.objectCache.get(rid);
     }
 
     /**
@@ -258,18 +259,25 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     /**
      * Persistir la información pendiente en la transacción.
      *
-     * @throws NoOpenTx si no hay una transacción abierta.
      * @throws ConcurrentModification Si un elemento fue modificado por una transacción anterior.
+     * @throws OdbogmException Si ocurre alguna otra excepción de la base de datos.
      */
-    public synchronized void commit() throws NoOpenTx, ConcurrentModification {
+    public synchronized void commit() throws ConcurrentModification, OdbogmException {
+        try {
+            doCommit();
+        } catch (OException ex) {
+            throw new OdbogmException(ex, this);
+        }
+    }
+    
+    
+    private void doCommit() throws ConcurrentModification, OdbogmException {
         initInternalTx();
         
         LOGGER.log(Level.FINER, "COMMIT");
         if (this.nestedTransactionLevel <= 0) {
             activateOnCurrentThread();
 
-            // cambiar el estado a comiteando
-            this.commiting = true;
             LOGGER.log(Level.FINER, "Iniciando COMMIT ==================================");
             LOGGER.log(Level.FINER, "Objetos marcados como Dirty: " + dirty.size());
             LOGGER.log(Level.FINER, "Objetos marcados como DirtyDeleted: " + dirtyDeleted.size());
@@ -286,18 +294,16 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                 }
             }
             
-            // procesar todos los objetos a ser eliminados.
+            // procesar todos los objetos a ser eliminados
             for (Map.Entry<String, Object> e : dirtyDeleted.entrySet()) {
                 String rid = e.getKey();
                 IObjectProxy o = (IObjectProxy) e.getValue();
                 if (o.___isDeleted() && o.___isValid()) {
                     LOGGER.log(Level.FINER, "Commiting delete: " + rid);
-
                     this.internalDelete(e.getValue());
                 }
             }
-            // vaciar la lista de elementos a eliminar
-            this.dirtyDeleted.clear();
+            
             
             LOGGER.log(Level.FINER, "Fin persistencia. <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n");
             // comitear los vértices
@@ -316,10 +322,18 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                 this.orientdbTransact.commit();
                 LOGGER.log(Level.FINER, "finalizado.");
             }
-            // vaciar el caché de elementos modificados.
+            
+            //limpieza:
+            
+            //quito dirty de elementos commiteados
+            this.dirty.entrySet().stream().
+                    map(e -> (IObjectProxy)e.getValue()).
+                    filter(o -> !o.___isDeleted() && o.___isValid()).
+                    forEach(o -> o.___removeDirtyMark());
+            
+            this.dirtyDeleted.clear();
             this.dirty.clear();
-            this.commiting = false;
-            this.commitedObject.clear();
+            this.commitedObjects.clear();
 
             // refrescar las referencias del caché
             String newRid;
@@ -401,7 +415,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     public synchronized <T> T store(T o) throws IncorrectRIDField, NoOpenTx, ClassToVertexNotFound {
         T proxied = null;
         // si el objeto ya fue guardado con anterioridad, devolver la instancia creada previamente.
-        proxied = (T) this.commitedObject.get(o);
+        proxied = (T) this.commitedObjects.get(o);
         if (proxied != null) {
             // devolver la instancia recuperada
             LOGGER.log(Level.FINER, "El objeto original ya había sido persistido. Se devuelve la instancia creada inicialmente.");
@@ -478,7 +492,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
             // si se está en proceso de commit, registrar el objeto junto con el proxy para 
             // que no se genere un loop con objetos internos que lo referencien.
-            this.commitedObject.put(o, proxied);
+            this.commitedObjects.put(o, proxied);
 
             // utlizado para analizar las anotations de campo.
             Field f;
@@ -494,7 +508,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                 LOGGER.log(Level.FINER, "Link: " + field);
 
                 // verificar si no formaba parte de los objetos que se están comiteando
-                Object innerO = this.commitedObject.get(link.getValue());
+                Object innerO = this.commitedObjects.get(link.getValue());
                 // si no es así, recuperar el valor del campo
                 if (innerO == null) {
                     LOGGER.log(Level.FINER, field + ": No existe el objeto en el cache de objetos creados.");
@@ -548,7 +562,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                         IObjectProxy ioproxied;
                         // verificar si ya está en el contexto
                         // verificar si no formaba parte de los objetos que se están comiteando
-                        Object llO = this.commitedObject.get(llObject);
+                        Object llO = this.commitedObjects.get(llObject);
                         // si no es así, recuperar el valor del campo
                         if (llO == null) {
                             llO = llObject;
@@ -577,7 +591,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                             IObjectProxy ioproxied;
 
                             // verificar si ya no se había guardardo
-                            Object imO = commitedObject.get(imV);
+                            Object imO = commitedObjects.get(imV);
                             // si no es así, recuperar el valor del campo
                             if (imO == null) {
                                 imO = imV;
@@ -640,7 +654,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * @param toRemove referencia al objeto a remover
      */
      public void delete(Object toRemove) throws ReferentialIntegrityViolation, UnknownObject {
-        LOGGER.log(Level.FINER, "Remove: " + toRemove.getClass().getName());
+        LOGGER.log(Level.FINER, "Remove: {0}", toRemove.getClass().getName());
         // si no hereda de IObjectProxy, el objeto no pertenece a la base y no se debe hacer nada.
         if (toRemove instanceof IObjectProxy) {
             initInternalTx();
@@ -908,51 +922,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             // analizar el objeto
             Field f;
             
-//            for (Map.Entry<String, Class<?>> entry : classDef.links.entrySet()) {
-//                try {
-//                    String field = entry.getKey();
-////                    f = ReflectionUtils.findField(((IObjectProxy) toRemove).___getBaseObject().getClass(), field);
-//                    f = ReflectionUtils.findField(toRemove.getClass(), field);
-//
-//                    if (f.isAnnotationPresent(CascadeDelete.class) || f.isAnnotationPresent(RemoveOrphan.class)) {
-//                        LOGGER.log(Level.FINER, "CascadeDelete|RemoveOrphan presente. Activando el objeto...");
-//                        ((IObjectProxy) toRemove).___loadLazyLinks();
-//                    }
-//                } catch (NoSuchFieldException ex) {
-//                    Logger.getLogger(Transaction.class.getName()).log(Level.SEVERE, null, ex);
-//                }
-//            }
-//
-//            // procesar los linkslist
-//            for (Map.Entry<String, Class<?>> entry : classDef.linkLists.entrySet()) {
-//                try {
-//                    String field = entry.getKey();
-//                    final String graphRelationName = toRemove.getClass().getSimpleName() + "_" + field;
-//                    Class<? extends Object> fieldClass = entry.getValue();
-//
-////                    f = ReflectionUtils.findField(((IObjectProxy) toRemove).___getBaseObject().getClass(), field);
-//                    f = ReflectionUtils.findField(toRemove.getClass(), field);
-//                    boolean acc = f.isAccessible();
-//                    f.setAccessible(true);
-//
-//                    LOGGER.log(Level.FINER, "procesando campo: " + field);
-//
-//                    // si hay una colección y corresponde hacer la cascada.
-//                    if (f.isAnnotationPresent(CascadeDelete.class) || f.isAnnotationPresent(RemoveOrphan.class)) {
-//                        LOGGER.log(Level.FINER, "CascadeDelete|RemoveOrphan presente. Activando el objeto...");
-//                        // activar el campo.
-//                        Collection oCol = (Collection) f.get(toRemove);
-//                        if (oCol != null) {
-//                            String garbage = oCol.toString();
-//                        }
-//                    }
-//                    f.setAccessible(acc);
-//                } catch (NoSuchFieldException | IllegalArgumentException | IllegalAccessException ex) {
-//                    Logger.getLogger(Transaction.class.getName()).log(Level.SEVERE, null, ex);
-//                }
-//            }
-            // fin de la activación.
-            
             // elimino el nodo de la base para que se actualicen los vértices a los que apuntaba.
             // de esta forma, los inner quedan libres y pueden ser borrados por un delete simple
             ovToRemove.remove();
@@ -1082,13 +1051,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             }
 
             //ovToRemove.remove(); movido arriba.
-            // si tengo un RID, proceder a removerlo de las colecciones.
-            String ridToRemove = ((IObjectProxy) toRemove).___getVertex().getId().toString();
-            this.dirty.remove(ridToRemove);
-            this.removeFromCache(ridToRemove);
 
-            // invalidar el objeto
-//            ((IObjectProxy) toRemove).___setDeletedMark();
         } else {
             throw new UnknownObject(this);
         }
@@ -1205,6 +1168,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      *
      * @param rid: ID del vértice a recupear
      * @return Retorna un objeto de la clase javaClass del vértice.
+     * @throws UnknownRID Si se pasa un RID nulo, o si no se encuentra ningún vértice
+     * con ese RID.
      */
     @Override
     public Object get(String rid) throws UnknownRID, VertexJavaClassNotFound {
@@ -1650,4 +1615,10 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         this.objectCache.setTimeInterval(seconds);
         return this;
     }
+    
+    
+    public void attach(final OrientElement element) {
+        orientdbTransact.attach(element);
+    }
+    
 }
