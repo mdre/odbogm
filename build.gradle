@@ -1,5 +1,5 @@
 plugins {
-    id 'java'
+    id 'java-library'
     id 'maven'
     id 'signing'
     id 'net.researchgate.release' version '2.6.0'
@@ -77,6 +77,7 @@ task autoBuildNumber {
 if (! project.gradle.startParameter.taskNames.join(",").toLowerCase().contains("release") ) {
     build.dependsOn autoBuildNumber
 }
+
 build.doLast {
     println "***************************************************************"
     println "SISTEMA: " + name
@@ -112,12 +113,12 @@ dependencies {
     implementation "cglib:cglib:3.2.6"
     implementation "com.github.mdre:odbogm-agent:1.0.5+"
     
-    implementation "com.orientechnologies:orientdb-graphdb:${orientDbVersion}"
-    implementation "com.orientechnologies:orientdb-graphdb:${orientDbVersion}:javadoc"
+    api "com.orientechnologies:orientdb-graphdb:${orientDbVersion}"
+    api "com.orientechnologies:orientdb-graphdb:${orientDbVersion}:javadoc"
     //implementation "com.orientechnologies:orientdb-graphdb:${orientDbVersion}:sources"
     
-    implementation "com.orientechnologies:orientdb-core:${orientDbVersion}"
-    implementation "com.orientechnologies:orientdb-core:${orientDbVersion}:javadoc"
+    api "com.orientechnologies:orientdb-core:${orientDbVersion}"
+    api "com.orientechnologies:orientdb-core:${orientDbVersion}:javadoc"
     //implementation "com.orientechnologies:orientdb-core:${orientDbVersion}:sources"
     
     testImplementation "junit:junit:[4,)"
@@ -190,17 +191,19 @@ artifacts {
     archives javadocJar, sourcesJar
 }
 
-//signing {
-    //required { gradle.taskGraph.hasTask("uploadArchives")}
-    
-    //    ext."signing.keyId"= credentials.gpgKeyId
-    //    ext."signing.password"= credentials.gpgKeyPassword
-    //    ext."signing.secretKeyRingFile" = credentials.gpgKeyRingFile                
+signing {
+    if (project.gradle.startParameter.taskNames.join(",").toLowerCase().contains("release")) {
+        //required { gradle.taskGraph.hasTask("uploadArchives")}
 
-    //    println ext."signing.keyId"
-    
-//    sign(configurations.archives)
-//}
+        //    ext."signing.keyId"= credentials.gpgKeyId
+        //    ext."signing.password"= credentials.gpgKeyPassword
+        //    ext."signing.secretKeyRingFile" = credentials.gpgKeyRingFile                
+
+        //    println ext."signing.keyId"
+
+        sign(configurations.archives)
+    }
+}
 
 
 
