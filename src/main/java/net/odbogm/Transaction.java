@@ -1355,15 +1355,14 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     @Override
     public ODBOrientDynaElementIterable query(String sql) {
-        
-        //initInternalTx();
+        // usar una transacción interna para que el iterable pueda seguir funcionando
+        // por fuera del OGM
         OrientGraph localtx = this.sm.getFactory().getTx();
-        activateOnCurrentThread();
         flush();
 
         OCommandSQL osql = new OCommandSQL(sql);
         ODBOrientDynaElementIterable ret = new ODBOrientDynaElementIterable(localtx,localtx.command(osql).execute());
-        //closeInternalTx();
+
         return ret;
     }
 
@@ -1376,14 +1375,15 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     @Override
     public ODBOrientDynaElementIterable query(String sql, Object... param) {
-        //initInternalTx();
+        // usar una transacción interna para que el iterable pueda seguir funcionando
+        // por fuera del OGM
         OrientGraph localtx = this.sm.getFactory().getTx();
         activateOnCurrentThread();
         flush();
 
         OCommandSQL osql = new OCommandSQL(sql);
         ODBOrientDynaElementIterable ret = new ODBOrientDynaElementIterable(localtx,localtx.command(osql).execute(param));
-        //closeInternalTx();
+
         return ret; 
     }
 
