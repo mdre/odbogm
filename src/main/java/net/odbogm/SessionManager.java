@@ -25,6 +25,7 @@ import net.odbogm.exceptions.UnmanagedObject;
 import net.odbogm.exceptions.VertexJavaClassNotFound;
 import net.odbogm.proxy.IObjectProxy;
 import net.odbogm.security.UserSID;
+import net.odbogm.utils.ODBOrientDynaElementIterable;
 
 /**
  *
@@ -306,11 +307,10 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
     /**
      * Realiza un query direto a la base de datos y devuelve el resultado directamente sin procesarlo.
      *
-     * @param <T> clase a devolver
      * @param sql sentencia a ejecutar 
      * @return resutado de la ejecución de la sentencia SQL
      */
-    public <T> T query(String sql) {
+    public ODBOrientDynaElementIterable query(String sql) {
         
         return this.publicTransaction.query(sql);
     }
@@ -332,12 +332,11 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
     /**
      * Realiza un query direto a la base de datos y devuelve el resultado directamente sin procesarlo.
      *
-     * @param <T> clase a devolver
      * @param sql sentencia a ejecutar
      * @param param parámetros a utilizar en el query
      * @return resutado de la ejecución de la sentencia SQL
      */
-    public <T> T query(String sql, Object... param) {
+    public ODBOrientDynaElementIterable query(String sql, Object... param) {
         return this.publicTransaction.query(sql, param);
     }
     

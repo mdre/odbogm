@@ -46,6 +46,7 @@ import net.odbogm.exceptions.VertexJavaClassNotFound;
 import net.odbogm.proxy.IObjectProxy;
 import net.odbogm.proxy.ObjectProxyFactory;
 import net.odbogm.security.SObject;
+import net.odbogm.utils.ODBOrientDynaElementIterable;
 import net.odbogm.utils.ReflectionUtils;
 import net.odbogm.utils.ThreadHelper;
 
@@ -1349,39 +1350,40 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     /**
      * Realiza un query direto a la base de datos y devuelve el resultado directamente sin procesarlo.
      *
-     * @param <T> clase a devolver
      * @param sql sentencia a ejecutar
      * @return resutado de la ejecución de la sentencia SQL
      */
     @Override
-    public <T> T query(String sql) {
-        initInternalTx();
+    public ODBOrientDynaElementIterable query(String sql) {
+        
+        //initInternalTx();
+        OrientGraph localtx = this.sm.getFactory().getTx();
         activateOnCurrentThread();
         flush();
 
         OCommandSQL osql = new OCommandSQL(sql);
-        T ret = this.orientdbTransact.command(osql).execute();
-        closeInternalTx();
+        ODBOrientDynaElementIterable ret = new ODBOrientDynaElementIterable(localtx,localtx.command(osql).execute());
+        //closeInternalTx();
         return ret;
     }
 
     /**
      * Realiza un query direto a la base de datos y devuelve el resultado directamente sin procesarlo.
      *
-     * @param <T> clase a devolver
      * @param sql sentencia a ejecutar
      * @param param parámetros a utilizar en el query
      * @return resutado de la ejecución de la sentencia SQL
      */
     @Override
-    public <T> T query(String sql, Object... param) {
-        initInternalTx();
+    public ODBOrientDynaElementIterable query(String sql, Object... param) {
+        //initInternalTx();
+        OrientGraph localtx = this.sm.getFactory().getTx();
         activateOnCurrentThread();
         flush();
 
         OCommandSQL osql = new OCommandSQL(sql);
-        T ret = this.orientdbTransact.command(osql).execute(param);
-        closeInternalTx();
+        ODBOrientDynaElementIterable ret = new ODBOrientDynaElementIterable(localtx,localtx.command(osql).execute(param));
+        //closeInternalTx();
         return ret; 
     }
 

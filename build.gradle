@@ -15,6 +15,7 @@ println "SISTEMA: " + name
 println "VERSION: " + version
 println "***************************************************************"
 
+
 compileJava {
 //    options.compilerArgs << '-Xlint:deprecation'
 //    options.compilerArgs << '-Xlint:unchecked'
@@ -115,11 +116,11 @@ dependencies {
     
     api "com.orientechnologies:orientdb-graphdb:${orientDbVersion}"
     api "com.orientechnologies:orientdb-graphdb:${orientDbVersion}:javadoc"
-    //implementation "com.orientechnologies:orientdb-graphdb:${orientDbVersion}:sources"
+    //api "com.orientechnologies:orientdb-graphdb:${orientDbVersion}:sources"
     
     api "com.orientechnologies:orientdb-core:${orientDbVersion}"
     api "com.orientechnologies:orientdb-core:${orientDbVersion}:javadoc"
-    //implementation "com.orientechnologies:orientdb-core:${orientDbVersion}:sources"
+    //api "com.orientechnologies:orientdb-core:${orientDbVersion}:sources"
     
     testImplementation "junit:junit:[4,)"
     testImplementation "org.easymock:easymock:4.0.2"
