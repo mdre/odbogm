@@ -786,49 +786,6 @@ public class SessionManagerTest {
     }
 
     /**
-     * Verificar que un query simple basado en una clase devueve el listado correcto de objetos.
-     */
-    @Test
-    public void testSimpleQuery() {
-        System.out.println("\n\n\n");
-        System.out.println("***************************************************************");
-        System.out.println("Query basado en la clase: verificar que devuelve la clase y los");
-        System.out.println("subtipos de la misma");
-        System.out.println("***************************************************************");
-        SimpleVertexEx sve = new SimpleVertexEx();
-        sve.initEnum();
-        sve.initInner();
-        sve.initArrayList();
-        sve.initHashMap();
-
-        System.out.println("guardado del objeto limpio.");
-        SimpleVertexEx stored = sm.store(sve);
-        sm.commit();
-
-        System.out.println("consultando por SimpleVertex....");
-        List list = sm.query(SimpleVertex.class);
-        int isv = 0;
-        int isve = 0;
-        for (Object object : list) {
-            if (object instanceof SimpleVertexEx) {
-                isve++;
-            } else if (object instanceof SimpleVertex) {
-                isv++;
-            } else {
-                System.out.println("ERROR:  " + object.getClass() + " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-            }
-
-            //System.out.println("Query: "+object.getClass()+" - toString: "+object.getClass().getSimpleName());
-        }
-        assertTrue(isv > 0);
-        assertTrue(isve > 0);
-
-        System.out.println("***************************************************************");
-        System.out.println("Fin SimpleQuery");
-        System.out.println("***************************************************************");
-    }
-
-    /**
      * Rollback simple de los atributos
      */
     @Test
@@ -2149,7 +2106,6 @@ public class SessionManagerTest {
         List<SimpleVertexEx> lsve = sm.query(SimpleVertexEx.class);
         ldtEnd = System.currentTimeMillis();
         System.out.println("enlapsed: " + (ldtEnd - ldtInit) + " Objects: " + lsve.size());
-
     }
 
 //    @Test

@@ -20,9 +20,9 @@ import test.SimpleVertexEx;
  */
 public class ConcurrenciaTest {
 
-    private SessionManager sm;
+    private final int poolSize = 5;
 
-    private int poolSize = 5;
+    private SessionManager sm;
 
 
     @Before
@@ -81,6 +81,7 @@ public class ConcurrenciaTest {
             try {
                 return f.get();
             } catch (InterruptedException | ExecutionException ex) {
+                System.out.println(ex);
                 return "error";
             }
         }).forEach(s -> assertEquals("modificado", s));
