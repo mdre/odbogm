@@ -46,7 +46,7 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
     private ObjectMapper objectMapper;
     
     public enum ActivationStrategy {
-        CLASS_INSTRUMENTATION        // modifica con un agente la clase para agregar la detección de escritura
+        CLASS_INSTRUMENTATION // modifica con un agente la clase para agregar la detección de escritura
     }
     
     private ActivationStrategy activationStrategy;
@@ -59,27 +59,32 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
 
     
     public SessionManager(String url, String user, String passwd) {
-        this.init(url, user, passwd, 1, 10);
+        this.init(url, user, passwd, 1, 10, true);
     }
 
     public SessionManager(String url, String user, String passwd, int minPool, int maxPool) {
-        this.init(url, user, passwd, minPool, maxPool);
+        this.init(url, user, passwd, minPool, maxPool, true);
     }
     
+    public SessionManager(String url, String user, String passwd, boolean loadAgent) {
+        this.init(url, user, passwd, 1, 10, loadAgent);
+    }
+
+    public SessionManager(String url, String user, String passwd, int minPool, int maxPool, boolean loadAgent) {
+        this.init(url, user, passwd, minPool, maxPool, loadAgent);
+    }
     
-    private void init(String url, String user, String passwd, int minPool, int maxPool) {
+    private void init(String url, String user, String passwd, int minPool, int maxPool, boolean loadAgent) {
         LOGGER.log(Level.INFO, "ODBOGM Session Manager initialization...");
         this.factory = new OrientGraphFactory(url, user, passwd).setupPool(minPool, maxPool);
         this.objectMapper = new ObjectMapper();
-        this.setActivationStrategy(ActivationStrategy.CLASS_INSTRUMENTATION, true);
+        this.setActivationStrategy(ActivationStrategy.CLASS_INSTRUMENTATION, loadAgent);
     }
 
     /**
      * Establece la estrategia a utilizar para detectar los cambios en los objetos.
-     * ONMETHODACCESS: cada vez que se invoca a un método se verifica si hay cambio.
-     * ONCOMMIT:       cuando se invoca a un método se marca el objeto para ser verificado en el commit
      * 
-     * @param as Estrategia de detección de dirty
+     * @param as Estrategia de detección de dirty.
      * @return this
      */
     public SessionManager setActivationStrategy(ActivationStrategy as) {
@@ -88,16 +93,14 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
 
     /**
      * Establece la estrategia a utilizar para detectar los cambios en los objetos.
-     * ONMETHODACCESS: cada vez que se invoca a un método se verifica si hay cambio.
- ONCOMMIT:       cuando se invoca a un método se marca el objeto para ser verificado en el commit
      * 
-     * @param as Estrategia de detección de dirty
-     * @param loadAgent determina si se debe cargar el agente.
+     * @param as Estrategia de detección de dirty.
+     * @param loadAgent Determina si se debe cargar el agente.
      * @return this
      */    
     private SessionManager setActivationStrategy(ActivationStrategy as, boolean loadAgent) {
         this.activationStrategy = as;
-        LOGGER.log(Level.INFO, "ActivationStrategy using "+as);
+        LOGGER.log(Level.INFO, "ActivationStrategy using {0}", as);
         if (this.activationStrategy == ActivationStrategy.CLASS_INSTRUMENTATION && loadAgent) {
             TransparentDirtyDetectorAgent.initialize();
         }
@@ -379,29 +382,29 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
     }
 
     /**
-         * Ejecuta un prepared query y devuelve una lista de la clase indicada.
-         * Esta consulta acepta parámetros por nombre. 
-         * Ej:
-         * <pre> {@code 
-         *  Map<String, Object> params = new HashMap<String, Object>();
-         *  params.put("theName", "John");
-         *  params.put("theSurname", "Smith");
-         *
-         *  graph.command(
-         *       new OCommandSQL("UPDATE Customer SET local = true WHERE name = :theName and surname = :theSurname")
-         *      ).execute(params)
-         *  );
-         *  }
-         * </pre>
-         * @param <T> clase de referencia para crear la lista de resultados
-         * @param clase clase de referencia
-         * @param sql comando a ejecutar
-         * @param param parámetros extras para el query parametrizado.
-         * @return una lista de la clase solicitada con los objetos lazy inicializados.
-         */
-        public <T> List<T> query(Class<T> clase, String sql, HashMap<String,Object> param) {
-            return this.publicTransaction.query(clase, sql, param);
-        }
+     * Ejecuta un prepared query y devuelve una lista de la clase indicada.
+     * Esta consulta acepta parámetros por nombre. 
+     * Ej:
+     * <pre> {@code 
+     *  Map<String, Object> params = new HashMap<String, Object>();
+     *  params.put("theName", "John");
+     *  params.put("theSurname", "Smith");
+     *
+     *  graph.command(
+     *       new OCommandSQL("UPDATE Customer SET local = true WHERE name = :theName and surname = :theSurname")
+     *      ).execute(params)
+     *  );
+     *  }
+     * </pre>
+     * @param <T> clase de referencia para crear la lista de resultados
+     * @param clase clase de referencia
+     * @param sql comando a ejecutar
+     * @param param parámetros extras para el query parametrizado.
+     * @return una lista de la clase solicitada con los objetos lazy inicializados.
+     */
+    public <T> List<T> query(Class<T> clase, String sql, HashMap<String,Object> param) {
+        return this.publicTransaction.query(clase, sql, param);
+    }
     
     
     
@@ -473,7 +476,7 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
     
     
     public SessionManager setClassLevelLog(Class<?> clazz, Level level) {
-        Logger L = LOGGER.getLogger( clazz.getName() );
+        Logger L = Logger.getLogger(clazz.getName());
         L.setLevel(level);
         return this;
     }

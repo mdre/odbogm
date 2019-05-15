@@ -1,9 +1,10 @@
 # odbogm
-# OrientDB Object to Graph Mapper 
+# OrientDB Object to Graph Mapper
 
-ODBOGM is a clear Java Object to Graph Vertex to the ***OrientDB*** database. I really miss the DB4O database. I have not see nothing similar to that, but DB4O is dead so I want to have the same functionality over another database. I have choose OrientDB as a target so I want to make a mapper it be as noninvasive as possible to the developer.
+ODBOGM is a clear Java Object to Graph Vertex and vice versa mapper for the [OrientDB](https://orientdb.org/) database. I really miss the DB4O database. I have not seen nothing similar to that, but DB4O is dead so I wanted to have the same functionality over another database. I have chosen OrientDB as a target so I wanted to make a mapper it be as noninvasive as possible to the developer.
 
-This is my first approach and is in ***experimental version***. Use it as your own risk.
+This is my first approach and is in ***experimental version***. ***Use it as your own risk***.
+
 The ODBOGM work against the Graph DB API of the OrientDB. It let you to access the underlying DB if you want but it's implement the basic function to work with the database in an absolutely clear way like DB4O.
 
 To start using it you must initialize a ***SessionManager*** and set the URL to connect to the DB:
@@ -189,7 +190,6 @@ sm.rollback();
 ```
 
 ## Querying
-Al query 
 To query the database there are some custom implementations.
 A direct query:
 ```Java
@@ -215,7 +215,7 @@ When an object is retrieved from de DB, if it extends SObject, the security vali
 After that, you could test the object security state calling the *getSecutityState()* method to get mask and choose what to do.
   
 
-## Auditory
+## Audit
 The SessionManager implement a way to audit the dialog with the database. Since we need a more complex system of security I decided to implement a diferent way of manage users. We need to control the user right at application level and we want to not restrict the communication with the DB, so the SM let you to stablish a connection with one user (we are using the ***writer*** profile) and after that set an audit user name that you get from your app or, if you implement the Security model based on te ACL, it audit against the logged in user. 
 For example:
 
