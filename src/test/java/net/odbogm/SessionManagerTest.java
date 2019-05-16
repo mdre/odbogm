@@ -2402,4 +2402,21 @@ public class SessionManagerTest {
         //ver bien
     }
     
+    
+    @Test
+    @Ignore
+    public void commitNotStored() throws Exception {
+        fail();
+        //testear que tengo un objeto existente, lo modifico, le agrego objetos
+        //nuevos a las colecciones y commiteo sin hacer store de esos objetos nuevos
+    }
+    
+    
+    @Test
+    @Ignore
+    public void initializeInDeclaration() throws Exception {
+        fail();
+        //testear los atributos inicializados en las declaraciones en entidades
+        //sin constructores vacíos
+    }
 }

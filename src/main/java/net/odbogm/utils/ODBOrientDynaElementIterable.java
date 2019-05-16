@@ -1,9 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
 package net.odbogm.utils;
 
 import com.tinkerpop.blueprints.impls.orient.OrientDynaElementIterable;
@@ -16,8 +10,9 @@ import java.util.logging.Logger;
 /**
  *
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
+ * @param <Object>
  */
-public class ODBOrientDynaElementIterable<Object>  implements Iterable<Object> {
+public class ODBOrientDynaElementIterable<Object> implements Iterable<Object>, AutoCloseable {
     private final static Logger LOGGER = Logger.getLogger(ODBOrientDynaElementIterable.class .getName());
     static {
         if (LOGGER.getLevel() == null) {
@@ -25,16 +20,18 @@ public class ODBOrientDynaElementIterable<Object>  implements Iterable<Object> {
         }
     }
 
-    OrientDynaElementIterable iterable;
-    OrientGraph localtx;
+    private final OrientDynaElementIterable iterable;
+    private final OrientGraph localtx;
     
     public ODBOrientDynaElementIterable(OrientGraph graph, OrientDynaElementIterable it) {
+        this.localtx = graph;
         this.iterable = it;
     }
-    
 
+    @Override
     public void close() {
         iterable.close();
+        this.localtx.shutdown(true, false);
     }
 
     @Override
@@ -44,13 +41,7 @@ public class ODBOrientDynaElementIterable<Object>  implements Iterable<Object> {
 
     @Override
     public Spliterator<Object> spliterator() {
-        return Iterable.super.spliterator(); //To change body of generated methods, choose Tools | Templates.
-    }
-    
-    @Override
-    protected void finalize() throws Throwable {
-        super.finalize(); //To change body of generated methods, choose Tools | Templates.
-        this.localtx.shutdown(true, false);
+        return Iterable.super.spliterator();
     }
     
 }

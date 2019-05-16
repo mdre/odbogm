@@ -82,6 +82,10 @@ public class QueryTest {
     }
 
     
+    /*
+     * Testea que el iterable de vértices crudos devuelto por una query pueda
+     * ser usado correctamente.
+     */
     @Test
     public void directIterable() throws Exception {
         //creo un vértice asociado a otros 2
@@ -94,23 +98,29 @@ public class QueryTest {
         sm.commit();
         String rid = sm.getRID(foo);
         
-        ODBOrientDynaElementIterable<Vertex> list = sm.query(
-                "select expand(out('Foo_lsve')) from (select from " + rid + ")");
-        if (!list.iterator().hasNext()) {
-            fail("Empty list!");
-        } else {
-            Vertex v = list.iterator().next();
-            SimpleVertex sv = sm.get(SimpleVertex.class, v.getId().toString());
-            assertNotNull(sv);
+        try (ODBOrientDynaElementIterable<Vertex> list = sm.query(
+                "select expand(out('Foo_lsve')) from (select from " + rid + ")")) {
+            
+            if (!list.iterator().hasNext()) {
+                fail("Empty list!");
+            } else {
+                Vertex v = list.iterator().next();
+                SimpleVertex sv = sm.get(SimpleVertex.class, v.getId().toString());
+                assertNotNull(sv);
+            }
         }
     }
     
     
+    /*
+     * Testea la consulta que devuelve una lista de objetos específicos.
+     */
     @Test
     public void listQuery() throws Exception {
         Foo foo = new Foo("test query");
         foo.add(new SimpleVertex("related vertex"));
-        sm.store(foo);
+        sm.store(foo); //debe ir en los resultados
+        sm.store(new Foo("excluded")); //no debe ir en los resultados
         sm.commit();
         sm.getTransaction().clearCache();
         
@@ -121,6 +131,22 @@ public class QueryTest {
             SimpleVertex sv = f.getLsve().iterator().next();
             assertEquals("related vertex", sv.getS());
         }
+    }
+    
+    
+    @Test
+    public void testQueryUncommitted() throws Exception {
+        Foo foo = new Foo();
+        foo = sm.store(foo);
+        sm.commit();
+        String rid = sm.getRID(foo);
+        sm.getTransaction().clearCache();
+        
+        //tener en cuenta que un query tipado devuelve objetos que están en el 
+        //caché del ogm, por lo que lo siguiente se cumple:
+        foo.setText("modified");
+        List<Foo> res = sm.query(Foo.class, "where @rid = " + rid);
+        assertEquals("modified", res.iterator().next().getText());
     }
     
 }
