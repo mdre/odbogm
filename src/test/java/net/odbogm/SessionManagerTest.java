@@ -21,6 +21,7 @@ import net.odbogm.proxy.IObjectProxy;
 import net.odbogm.security.*;
 import net.odbogm.utils.DateHelper;
 import org.apache.commons.lang.NotImplementedException;
+import org.apache.commons.lang.RandomStringUtils;
 import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
@@ -29,6 +30,7 @@ import org.junit.Test;
 import org.junit.function.ThrowingRunnable;
 import test.EdgeAttrib;
 import test.EnumTest;
+import test.Foo;
 import test.IndirectObject;
 import test.SSimpleVertex;
 import test.SimpleVertex;
@@ -845,6 +847,21 @@ public class SessionManagerTest {
         assertEquals(0, this.sm.getDirtyCount());
     }
 
+    
+    @Test
+    public void persistEnum() throws Exception {
+        SimpleVertexEx sve = new SimpleVertexEx();
+        sve.enumTest = EnumTest.OTRO_MAS;
+        sve = sm.store(sve);
+        sm.commit();
+        String rid = sm.getRID(sve);
+        
+        sm.getCurrentTransaction().clearCache();
+        sve = sm.get(SimpleVertexEx.class, rid);
+        assertEquals(EnumTest.OTRO_MAS, sve.getEnumTest());
+    }
+    
+    
     @Test
     public void testRollbackEnum() {
         System.out.println("\n\n\n");
@@ -2403,20 +2420,33 @@ public class SessionManagerTest {
     }
     
     
+    /*
+     * Testea que tengo un objeto existente, lo modifico, le agrego objetos
+     * nuevos a las colecciones y commiteo sin hacer store de esos objetos nuevos.
+     */
     @Test
-    @Ignore
     public void commitNotStored() throws Exception {
-        fail();
-        //testear que tengo un objeto existente, lo modifico, le agrego objetos
-        //nuevos a las colecciones y commiteo sin hacer store de esos objetos nuevos
+        String random = RandomStringUtils.randomAlphanumeric(30);
+        
+        Foo foo = new Foo();
+        foo = sm.store(foo);
+        sm.commit();
+        
+        foo.add(new SimpleVertex(random));
+        sm.commit(); //nunca hice store del SV random
+        sm.getTransaction().clearCache();
+        
+        assertFalse(sm.query(SimpleVertex.class,
+                String.format("where s = '%s'", random)).isEmpty());
     }
     
     
     @Test
-    @Ignore
+    @Ignore //@TODO: ver bien
     public void initializeInDeclaration() throws Exception {
         fail();
         //testear los atributos inicializados en las declaraciones en entidades
         //sin constructores vacíos
     }
+    
 }

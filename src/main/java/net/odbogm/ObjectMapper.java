@@ -1,11 +1,5 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package net.odbogm;
 
-//import com.esotericsoftware.kryo.Kryo;
 import com.tinkerpop.blueprints.Direction;
 import com.tinkerpop.blueprints.impls.orient.OrientEdge;
 import com.tinkerpop.blueprints.impls.orient.OrientVertex;
@@ -136,8 +130,6 @@ public class ObjectMapper {
             LOGGER.log(Level.FINEST, "Searching the class... ("+o.getClass().getSimpleName()+")");
             classmap = classCache.get(o.getClass());
         }
-
-//        this.map(o, o.getDBClass(),mappedObject);      
         this.fastmap(o, classmap, oStruct);
         return oStruct;
     }
@@ -154,14 +146,14 @@ public class ObjectMapper {
             try {
                 String field = entry.getKey();
                 Class<?> c = entry.getValue();
-                //Field f = ReflectionUtils.findField(o.getClass(), field);
                 Field f = classmap.fieldsObject.get(field);
                 boolean acc = f.isAccessible();
                 f.setAccessible(true);
 
                 // determinar si no es nulo
                 if (f.get(o) != null) {
-                    LOGGER.log(Level.FINER, "Field: " + field + " Class: " + c.getSimpleName() + ": " + f.get(o));
+                    LOGGER.log(Level.FINER, "Field: {0} Class: {1}: {2}",
+                            new Object[]{field, c.getSimpleName(), f.get(o)});
                     oStruct.fields.put(f.getName(), f.get(o));
                 }
                 f.setAccessible(acc);
@@ -177,13 +169,12 @@ public class ObjectMapper {
                 String field = entry.getKey();
                 Class<?> c = entry.getValue();
 
-//                Field f = ReflectionUtils.findField(o.getClass(), field);
                 Field f = classmap.fieldsObject.get(field);
                 boolean acc = f.isAccessible();
                 f.setAccessible(true);
                 // determinar si no es nulo
                 if (f.get(o) != null) {
-                    oStruct.fields.put(f.getName(), "" + f.get(o));
+                    oStruct.fields.put(f.getName(), ((Enum)f.get(o)).name());
                 }
                 f.setAccessible(acc);
 
@@ -198,7 +189,6 @@ public class ObjectMapper {
                 String field = entry.getKey();
                 Class<?> c = entry.getValue();
 
-//                Field f = ReflectionUtils.findField(o.getClass(), field);
                 Field f = classmap.fieldsObject.get(field);
                 boolean acc = f.isAccessible();
                 f.setAccessible(true);
@@ -219,7 +209,6 @@ public class ObjectMapper {
                 String field = entry.getKey();
                 Class<?> c = entry.getValue();
 
-//                Field f = ReflectionUtils.findField(o.getClass(), field);
                 Field f = classmap.fieldsObject.get(field);
                 boolean acc = f.isAccessible();
                 f.setAccessible(true);
@@ -233,7 +222,6 @@ public class ObjectMapper {
                 Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
             }
         });
-
     }
 
     /**
