@@ -27,6 +27,7 @@ import net.odbogm.annotations.FieldAttributes.Bool;
 import net.odbogm.annotations.Ignore;
 import net.odbogm.annotations.IgnoreClass;
 import net.odbogm.annotations.Indexed;
+import net.odbogm.annotations.RID;
 
 /**
  * DbManager se encarga de analizar todas las clases que se encuentren en los
@@ -76,8 +77,8 @@ public class DbManager {
     
     /**
      * 
-     * @param withDrops
-     * @param incremental 
+     * @param withDrops Dejar drops.
+     * @param incremental Verificar existencia previa.
      */
     public DbManager(boolean withDrops, boolean incremental) {
         this.withDrops = withDrops;
@@ -86,9 +87,9 @@ public class DbManager {
     
     /**
      * 
-     * @param url
-     * @param user
-     * @param passwd
+     * @param url URL.
+     * @param user Usuario.
+     * @param passwd Contraseña.
      * @deprecated No se usa para nada la conexión a la base.
      */
     @Deprecated
@@ -98,10 +99,10 @@ public class DbManager {
 
     /**
      * 
-     * @param url
-     * @param user
-     * @param passwd
-     * @param withDrops 
+     * @param url URL.
+     * @param user Usuario.
+     * @param passwd Contraseña.
+     * @param withDrops Dejar drops.
      * @deprecated No se usa para nada la conexión a la base.
      */
     @Deprecated
@@ -125,7 +126,7 @@ public class DbManager {
         return this;
     }
     
-    public void generateToConsole(String[] analize){
+    public void generateToConsole(String... analize) {
         this.process(analize);
         for (ClassStruct orderedRegisteredClas : orderedRegisteredClass) {
             System.out.println(orderedRegisteredClas.drop);
@@ -145,9 +146,9 @@ public class DbManager {
     /**
      * Devuelve un arraylist con todas las instrucciones necesarias para la creación de la base de datos.
      * @param analize lista de clases a analizar
-     * @return  arraylist con las instrucciones.
+     * @return arraylist con las instrucciones.
      */
-    public ArrayList<String> generateDBSQL(String[] analize){
+    public ArrayList<String> generateDBSQL(String... analize){
         ArrayList<String> statements = new ArrayList<>();
         this.process(analize);
         for (ClassStruct orderedRegisteredClas : orderedRegisteredClass) {
@@ -268,7 +269,7 @@ public class DbManager {
         // se utilizará para registrar todas las clases de atributos que no sean primitivos
         ArrayList<Class<?>> postProcess = new ArrayList<>();
 
-        // procesar todos los campos del la clase.
+        // procesar todos los campos de la clase.
         Field[] fields = clazz.getDeclaredFields();
         for (Field field : fields) {
             field.setAccessible(true);
@@ -276,7 +277,8 @@ public class DbManager {
             if (!(field.isAnnotationPresent(Ignore.class)
                             || Modifier.isTransient(field.getModifiers())
                             || (Modifier.isStatic(field.getModifiers()) && Modifier.isFinal(field.getModifiers())
-                            || field.getName().startsWith("___ogm___")) //                            || f.getName().startsWith("GCLIB")
+                            || field.getName().startsWith("___ogm___"))
+                            || field.isAnnotationPresent(RID.class)
                             )) {
                 FieldAttributes fa = field.getAnnotation(FieldAttributes.class);
                 
@@ -428,12 +430,8 @@ public class DbManager {
         for (String clazz : analize) {
             classes.addAll(find(clazz));
         }
-        // levantar cada clase y verificar su existencia en la base.
-        for (Class<?> clazz : classes) {
-            // verificar que la clase exista en la base.
-            if (clazz.isAnnotationPresent(Entity.class))
-                buildDBScript(clazz);
-        }
+        classes.stream().filter(clazz -> clazz.isAnnotationPresent(Entity.class)).
+                forEach(clazz -> buildDBScript(clazz));
     }
     
     private List<Class<?>> find(String scannedPackage) {
@@ -478,19 +476,15 @@ public class DbManager {
 
     /**
      * Clase de ayuda para crear los comandos que generan la base de datos.
-     * Genera los delete vertex y drops como comentarios para que sean
-     * desmarcados si se desea.
      */
     class ClassStruct {
 
         public int order;
         public String className;
-//        public String deleteVertex;
         public String drop;
         public String create;
         public ArrayList<String> properties = new ArrayList<>();
         public ArrayList<String> classIndexes = new ArrayList<>();
-//        public ArrayList<String> propertiesModifiers = new ArrayList<>();
 
         public ClassStruct(String className) {
             this.className = className;
@@ -516,6 +510,6 @@ public class DbManager {
             final ClassStruct other = (ClassStruct) obj;
             return Objects.equals(this.className, other.className);
         }
-
     }
+    
 }

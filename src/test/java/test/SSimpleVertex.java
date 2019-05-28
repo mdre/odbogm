@@ -1,9 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
 package test;
 
 import net.odbogm.annotations.Entity;
@@ -15,10 +9,7 @@ import net.odbogm.security.SObject;
  */
 @Entity
 public class SSimpleVertex extends SObject {
-//    @Ignore
-//    private final static Logger LOGGER = Logger.getLogger(SSimpleVertex.class .getName());
 
-    private String rid;
     private String s;
     
     

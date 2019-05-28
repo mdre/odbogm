@@ -29,7 +29,6 @@ import org.apache.commons.lang.RandomStringUtils;
 import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.function.ThrowingRunnable;
 import test.EdgeAttrib;
@@ -2492,53 +2491,14 @@ public class SessionManagerTest {
         assertThrows(IncorrectRIDField.class, () -> sm.store(br));
     }
     
-
+    /*
+     * Testea que el DBManager ignore el campo anotado con @RID.
+     */
     @Test
-    @Ignore
-    public void refresh() throws Exception {
-        //ver bien
-    }
-    
-    @Test
-    @Ignore //@TODO: ver bien
-    public void initializeInDeclaration() throws Exception {
-        fail();
-        //testear los atributos inicializados en las declaraciones en entidades
-        //sin constructores vacíos
-    }
-    
-    
-    
-    
-    
-    @Test
-    public void method() throws Exception {
-        HashMap<SimpleVertex, String> m = new HashMap<>();
-        
-        SimpleVertex k1 = new SimpleVertex("k1");
-        SimpleVertex k2 = new SimpleVertex("k2");
-        
-        m.put(k1, "valor1");
-        m.put(k2, "valor2");
-        
-        assertEquals(2, m.size());
-        assertEquals("valor1", m.get(k1));
-        assertEquals("valor2", m.get(k2));
-        
-        //toco clave
-        k1.setS("lala1");
-        k2.setS("lala2");
-        
-        //se sigue cumpliendo? no
-        assertEquals("valor1", m.get(k1));
-        assertEquals("valor2", m.get(k2));
-        
-        m.put(k1, "otro valor1");
-        m.put(k2, "otro valor2");
-        
-        assertEquals(2, m.size());
-        assertEquals("otro valor1", m.get(k1));
-        assertEquals("otro valor2", m.get(k2));
+    public void dbManagerIgnoreRid() throws Exception {
+        DbManager dbm = new DbManager();
+        List<String> l = dbm.generateDBSQL("test");
+        l.forEach(s -> assertFalse(s.contains("rid STRING")));
     }
     
 }
