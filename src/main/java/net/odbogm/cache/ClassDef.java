@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package net.odbogm.cache;
 
 import java.lang.reflect.Field;
@@ -23,8 +18,10 @@ public class ClassDef {
         }
     }
     
-    
-    
+    /**
+     * Campo que será usado para inyectar el RID si existe la anotación.
+     */
+    public Field ridField;
     
     /**
      * Mapa de todos los objetos Field

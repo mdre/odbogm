@@ -347,6 +347,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                     removeFromCache(tempRid);
                     newRid = sm.getRID(o);
                     addToCache(newRid, o);
+                    //actualizar rid inyectado si corresponde
+                    ((IObjectProxy)o).___injectRid();
                 }
             }
             // se opta por eliminar el caché de objetos recuperados de la base en un commit o rollback
@@ -423,7 +425,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
             // Aplicar los controles de seguridad.
             if ((this.sm.getLoggedInUser() != null) && (proxied instanceof SObject)) {
-                LOGGER.log(Level.FINER, "SObject detectado. Aplicando seguridad de acuerdo al usuario logueado: " + this.sm.getLoggedInUser().getName());
+                LOGGER.log(Level.FINER, "SObject detectado. Aplicando seguridad de acuerdo al usuario logueado: {0}",
+                        this.sm.getLoggedInUser().getName());
                 ((SObject) proxied).validate(this.sm.getLoggedInUser());
             }
 
@@ -439,7 +442,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             } else {
                 classname = o.getClass().getSimpleName();
             }
-            LOGGER.log(Level.FINER, "STORE: guardando objeto de la clase " + classname);
+            LOGGER.log(Level.FINER, "STORE: guardando objeto de la clase {0}", classname);
 
             // Recuperar la definición de clase del objeto.
             ClassDef oClassDef = this.sm.getObjectMapper().getClassDef(o);
@@ -452,7 +455,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                 // arrojar una excepción en caso contrario.
                 throw new ClassToVertexNotFound("No se ha encontrado la definición de la clase " + classname + " en la base!");
             }
-            LOGGER.log(Level.FINER, "object data: "+omap);
+            LOGGER.log(Level.FINER, "object data: {0}", omap);
             OrientVertex v = this.orientdbTransact.addVertex("class:" + classname, omap);
 
             proxied = ObjectProxyFactory.create(o, v, this);

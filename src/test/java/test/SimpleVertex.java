@@ -1,9 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
 package test;
 
 import java.util.Date;
@@ -13,6 +7,7 @@ import net.odbogm.annotations.Ignore;
 import java.util.logging.Logger;
 import net.odbogm.annotations.Audit;
 import net.odbogm.annotations.Entity;
+import net.odbogm.annotations.RID;
 
 /**
  *
@@ -24,8 +19,8 @@ public class SimpleVertex {
     @Ignore
     private final static Logger LOGGER = Logger.getLogger(SimpleVertex.class .getName());
 
+    @RID private String rid;
     private String uuid;
-    private String rid;
     private String s;
     public int i;
     private float f;
@@ -83,9 +78,9 @@ public class SimpleVertex {
         this.i = 1;
         this.f = 0.1f;
         this.b = true;
-        this.oI = new Integer(100);
-        this.oF = new Float(1.1);
-        this.oB = new Boolean(true);
+        this.oI = 100;
+        this.oF = 1.1f;
+        this.oB = true;
         this.uuid = UUID.randomUUID().toString();
     }
     
@@ -94,7 +89,7 @@ public class SimpleVertex {
         this.s = s;
     }
     
-    public Object getRid() {
+    public String getRid() {
         return rid;
     }
     
@@ -161,11 +156,7 @@ public class SimpleVertex {
             return false;
         }
         final SimpleVertex other = (SimpleVertex) obj;
-        if (!Objects.equals(this.uuid, other.uuid)) {
-            return false;
-        }
-        return true;
+        return Objects.equals(this.uuid, other.uuid);
     }
-    
     
 }

@@ -78,22 +78,13 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     private boolean ___deletedMark = false;
 
 
-    // constructor - the supplied parameter is an
-    // object whose proxy we would like to create     
-    public ObjectProxy(Object obj, OrientElement e, Transaction t) {
-        this.___baseClass = obj.getClass();
-        this.___baseElement = e;
-        this.___transaction = t;
-    }
-
-
     public ObjectProxy(Class c, OrientElement e, Transaction t) {
         this.___baseClass = c;
         this.___baseElement = e;
         this.___transaction = t;
     }
-
-
+    
+    
     // GCLib interceptor 
     @Override
     public Object intercept(Object o,
@@ -104,9 +95,11 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         Object res = null;
 
         // el estado del objeto se debe poder consultar siempre
+        
         if (method.getName().equals("___isValid")) {
             return this.___isValid();
         }
+        
         if (method.getName().equals("___isDeleted")) {
             return this.___isDeleted();
         }
@@ -146,14 +139,14 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         // modificar el llamado
         if (!this.___deletedMark) {
             switch (method.getName()) {
-//                case "___getVertex":
-//                    if (this.___objectReady) {
-//                        res = this.___getVertex();
-//                    }
-//                    break;
                 case "___getRid":
                     if (this.___objectReady) {
                         res = this.___getRid();
+                    }
+                    break;
+                case "___injectRid":
+                    if (this.___objectReady) {
+                        this.___injectRid();
                     }
                     break;
                 case "___getProxiedObject":
@@ -161,17 +154,6 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                         res = this.___getProxiedObject();
                     }
                     break;
-//                case "___getBaseClass":
-//                    if (this.___objectReady) {
-//                        res = this.___getBaseClass();
-//                    }
-//                    break;
-//                case "___isValid":
-//                        se resuelve arriba.
-//                    if (this.___isValidObject) {
-//                        res = this.___isValid();
-//                    }
-//                    break;
                 case "___loadLazyLinks":
                     if (this.___objectReady) {
                         this.___loadLazyLinks();
@@ -216,11 +198,6 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                         this.___reload();
                     }
                     break;
-//                case "___rollback":
-//                    if (this.___objectReady) {
-//                        this.___rollback();
-//                    }
-//                    break;
                 case "___setDeletedMark":
                     this.___setDeletedMark();
                     break;
@@ -234,12 +211,9 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 //                                                       " - sup idx: "+methodProxy.getSuperIndex()
 //                            );
                     res = methodProxy.invokeSuper(o, args);
-
                     break;
                 default:
-
                     // invoke the method on the real object with the given params
-//                res = methodProxy.invoke(realObj, args);
                     if (this.___objectReady) {
                         if (this.___loadLazyLinks) {
                             this.___loadLazyLinks();
@@ -292,7 +266,22 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
      */
     public void ___setProxiedObject(Object po) {
         this.___proxiedObject = po;
+        this.___injectRid();
         this.___objectReady = true;
+    }
+    
+    
+    @Override
+    public void ___injectRid() {
+        //inyectar RID si está definido el campo
+        ClassDef classdef = ___transaction.getObjectMapper().getClassDef(___baseClass);
+        if (classdef.ridField != null) {
+            try {
+                classdef.ridField.set(___proxiedObject, ___baseElement.getId().toString());
+            } catch (IllegalArgumentException | IllegalAccessException ex) {
+                LOGGER.log(Level.WARNING, "Couldn't inject RID in proxy.", ex);
+            }
+        }
     }
 
 

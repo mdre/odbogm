@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package net.odbogm.cache;
 
 import java.lang.reflect.Field;
@@ -20,9 +15,12 @@ import static net.odbogm.Primitives.PRIMITIVE_MAP;
 import net.odbogm.annotations.Embedded;
 import net.odbogm.annotations.Ignore;
 import net.odbogm.annotations.Indirect;
+import net.odbogm.annotations.RID;
+import net.odbogm.exceptions.IncorrectRIDField;
 
 /**
- *
+ * Caché con la definición de clases (ClassDef's).
+ * 
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
 public class ClassCache {
@@ -80,7 +78,6 @@ public class ClassCache {
      * @param c reference class.
      */
     private ClassDef cacheClass(Class<?> c) {
-
         ClassDef classdef = new ClassDef();
         this.cacheClass(c, classdef);
         return classdef;
@@ -99,12 +96,22 @@ public class ClassCache {
             Field[] fields = c.getDeclaredFields();
             for (Field f : fields) {
                 try {
-                    // determinar si se debe o no procesar el campo. No se aceptan los trascient y static final
+                    //determinar si se debe o no procesar el campo.
+                    //No se aceptan los transient y static final.
                     if (!(f.isAnnotationPresent(Ignore.class)
                             || Modifier.isTransient(f.getModifiers())
                             || (Modifier.isStatic(f.getModifiers()) && Modifier.isFinal(f.getModifiers())
-                            || f.getName().startsWith("___ogm___")) //                            || f.getName().startsWith("GCLIB")
+                            || f.getName().startsWith("___ogm___"))
                             )) {
+                        
+                        if (f.isAnnotationPresent(RID.class)) {
+                            if (!f.getType().equals(String.class)) {
+                                throw new IncorrectRIDField();
+                            }
+                            f.setAccessible(true);
+                            cached.ridField = f;
+                            continue;
+                        }
                         boolean acc = f.isAccessible();
                         //preservar el field.
                         cached.fieldsObject.put(f.getName(), f);

@@ -35,25 +35,15 @@ public class ObjectMapper {
             LOGGER.setLevel(LogginProperties.ObjectMapper);
         }
     }
-//    private static int newObjectCounter = 0;
-//    private Kryo kryo = new Kryo();
-
-//    private SessionManager sessionManager;
     private ClassCache classCache;
 
     // usado para no llamar a Class.forName para clases ya cargadas.
     private HashMap<String, Class> classLoaded = new HashMap<>();
 
-    // Clase encargada de la instanciación de los objetos.
-    // http://objenesis.org/
-//    private ObjenesisStd objenesis = new ObjenesisStd();
-
+    
     public ObjectMapper() {
-//        LOGGER.setLevel(Level.INFO);
-
         // inicializar le caché de clases
         classCache = new ClassCache();
-//        this.sessionManager = sm;
     }
 
     /**
@@ -69,7 +59,17 @@ public class ObjectMapper {
             return classCache.get(o.getClass());
         }
     }
-
+    
+    /**
+     * Devuelve la definición de la clase dada.
+     * 
+     * @param cls Clase dada.
+     * @return La definición de la clase, si todavía no existe la crea.
+     */
+    public ClassDef getClassDef(Class cls) {
+        return classCache.get(cls);
+    }
+    
     /**
      * Devuelve un mapeo rápido del Objeto. No procesa los link o linklist. Simplemente devuelve todos los atributos del objeto en un map
      *
@@ -243,7 +243,7 @@ public class ObjectMapper {
         t.activateOnCurrentThread();
 
         Class<?> toHydrate = c;
-        String vertexClass = (v.getType().getName() == "V" ? c.getSimpleName() : v.getType().getName());
+        String vertexClass = (v.getType().getName().equals("V") ? c.getSimpleName() : v.getType().getName());
 
         // validar que el Vertex sea instancia de la clase solicitada
         // o que la clase solicitada sea su superclass
@@ -275,7 +275,7 @@ public class ObjectMapper {
         // recuperar la definición de la clase desde el caché
         ClassDef classdef = classCache.get(toHydrate);
         Map<String, Class<?>> fieldmap = classdef.fields;
-
+        
         Field f;
         for (Map.Entry<String, Class<?>> entry : fieldmap.entrySet()) {
             String prop = entry.getKey();
@@ -330,16 +330,15 @@ public class ObjectMapper {
             } else {
                 // si el valor es null verificar que no se trate de una Lista embebida 
                 // que pueda haber sido inicializada en el constructor.
-                //f = ReflectionUtils.findField(toHydrate, prop);
                 f = classdef.fieldsObject.get(prop);
-                
                 boolean acc = f.isAccessible();
                 f.setAccessible(true);
-                if ((f.get(oproxied) != null) && (f.getType().isAssignableFrom(List.class))) {
+                Object fv = f.get(oproxied);
+                if ((fv != null) && (f.getType().isAssignableFrom(List.class))) {
                     // se trata de una lista embebida. Proceder a reemplazarlar con una que esté preparada.
                     LOGGER.log(Level.FINER, "Se ha detectado una lista embebida que no tiene valores. Se la reemplaza por una Embedded.");
                     this.setFieldValue(oproxied, prop, new ArrayListEmbeddedProxy((IObjectProxy) oproxied, (List) f.get(oproxied)));
-                } else if ((f.get(oproxied) != null) && (f.getType().isAssignableFrom(Map.class))) {
+                } else if ((fv != null) && (f.getType().isAssignableFrom(Map.class))) {
                     // se trata de un Map embebido. Proceder a reemplazarlo con uno que esté preparado.
                     LOGGER.log(Level.FINER, "Se ha detectado un Map embebido que no tiene valores. Se lo reemplaza por uno Embedded.");
                     this.setFieldValue(oproxied, prop, new HashMapEmbeddedProxy((IObjectProxy) oproxied, (Map) f.get(oproxied)));

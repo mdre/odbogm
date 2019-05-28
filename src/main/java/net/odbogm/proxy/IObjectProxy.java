@@ -15,6 +15,7 @@ public interface IObjectProxy {
     public OrientVertex ___getVertex();
     public String ___getRid();
     public void ___setVertex(OrientVertex v);
+    public void ___injectRid();
     
     public OrientVertex ___getEdge();
     public void ___setEdge(OrientEdge v);

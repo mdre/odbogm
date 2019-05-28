@@ -10,9 +10,13 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.function.BiConsumer;
 import net.odbogm.agent.ITransparentDirtyDetector;
+import net.odbogm.annotations.Entity;
+import net.odbogm.annotations.RID;
 import net.odbogm.cache.SimpleCache;
 import net.odbogm.exceptions.ConcurrentModification;
+import net.odbogm.exceptions.IncorrectRIDField;
 import net.odbogm.exceptions.InvalidObjectReference;
 import net.odbogm.exceptions.OdbogmException;
 import net.odbogm.exceptions.ReferentialIntegrityViolation;
@@ -2412,14 +2416,6 @@ public class SessionManagerTest {
         assertFalse(ex.canRetry());
     }
     
-    
-    @Test
-    @Ignore
-    public void refresh() throws Exception {
-        //ver bien
-    }
-    
-    
     /*
      * Testea que tengo un objeto existente, lo modifico, le agrego objetos
      * nuevos a las colecciones y commiteo sin hacer store de esos objetos nuevos.
@@ -2440,6 +2436,68 @@ public class SessionManagerTest {
                 String.format("where s = '%s'", random)).isEmpty());
     }
     
+    /*
+     * Testea que inyecte bien el RID si un campo es anotado para eso.
+     */
+    @Test
+    public void ridInjection() throws Exception {
+        SimpleVertex v = new SimpleVertex();
+        assertNull(v.getRid());
+        
+        v = sm.store(v);
+        assertNotNull(v.getRid());
+        assertTrue(v.getRid().startsWith("#-"));
+        
+        sm.commit();
+        assertFalse(v.getRid().startsWith("#-"));
+        
+        //cargo de nuevo el vértice desde la base
+        sm.getCurrentTransaction().clearCache();
+        String rid = v.getRid();
+        v = sm.get(SimpleVertex.class, rid);
+        assertEquals(rid, v.getRid());
+    }
+
+    /*
+     * Testea que inyecte bien el RID en un objeto mapeado a una arista.
+     */
+    @Test
+    public void injectRidInEdge() throws Exception {
+        SimpleVertexEx value = new SimpleVertexEx();
+        value.setS("value");
+        
+        SimpleVertexEx v = new SimpleVertexEx();
+        v.setOhmSVE(new HashMap<>());
+        v.getOhmSVE().put(new EdgeAttrib("edge1", new Date()), value);
+        v = sm.store(v);
+        sm.commit();
+        
+        v.getOhmSVE().forEach(new BiConsumer<EdgeAttrib, SimpleVertexEx>() {
+            @Override
+            public void accept(EdgeAttrib key, SimpleVertexEx val) {
+                assertNotNull(key.getRid());
+            }
+        });
+    }
+    
+    /*
+     * Testea que falle si se anota como RID un campo que no es String.
+     */
+    @Test
+    public void badRidField() throws Exception {
+        @Entity class BadRid {
+            @RID Integer rid;
+        }
+        BadRid br = new BadRid();
+        assertThrows(IncorrectRIDField.class, () -> sm.store(br));
+    }
+    
+
+    @Test
+    @Ignore
+    public void refresh() throws Exception {
+        //ver bien
+    }
     
     @Test
     @Ignore //@TODO: ver bien
@@ -2447,6 +2505,40 @@ public class SessionManagerTest {
         fail();
         //testear los atributos inicializados en las declaraciones en entidades
         //sin constructores vacíos
+    }
+    
+    
+    
+    
+    
+    @Test
+    public void method() throws Exception {
+        HashMap<SimpleVertex, String> m = new HashMap<>();
+        
+        SimpleVertex k1 = new SimpleVertex("k1");
+        SimpleVertex k2 = new SimpleVertex("k2");
+        
+        m.put(k1, "valor1");
+        m.put(k2, "valor2");
+        
+        assertEquals(2, m.size());
+        assertEquals("valor1", m.get(k1));
+        assertEquals("valor2", m.get(k2));
+        
+        //toco clave
+        k1.setS("lala1");
+        k2.setS("lala2");
+        
+        //se sigue cumpliendo? no
+        assertEquals("valor1", m.get(k1));
+        assertEquals("valor2", m.get(k2));
+        
+        m.put(k1, "otro valor1");
+        m.put(k2, "otro valor2");
+        
+        assertEquals(2, m.size());
+        assertEquals("otro valor1", m.get(k1));
+        assertEquals("otro valor2", m.get(k2));
     }
     
 }

@@ -10,7 +10,7 @@ import java.util.logging.Logger;
 /**
  *
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
- * @param <Object>
+ * @param <Object> Se puede tipar el iterador con cualquier clase.
  */
 public class ODBOrientDynaElementIterable<Object> implements Iterable<Object>, AutoCloseable {
     private final static Logger LOGGER = Logger.getLogger(ODBOrientDynaElementIterable.class .getName());

@@ -1,15 +1,10 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
 package test;
 
 import java.util.Date;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.annotations.Entity;
+import net.odbogm.annotations.RID;
 
 /**
  *
@@ -22,6 +17,7 @@ public class EdgeAttrib {
         LOGGER.setLevel(Level.INFO);
     }
     
+    @RID String rid;
     String nota;
     Date fecha;
 
@@ -54,7 +50,9 @@ public class EdgeAttrib {
     public String toString() {
         return "EdgeAttrib{" + "nota=" + nota + ", fecha=" + fecha + "}";
     }
-    
-    
+
+    public String getRid() {
+        return rid;
+    }
     
 }
