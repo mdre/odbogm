@@ -1,26 +1,22 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
 package net.odbogm.exceptions;
 
-import java.util.logging.Logger;
+import com.tinkerpop.blueprints.impls.orient.OrientVertex;
+import net.odbogm.Transaction;
 
 /**
  *
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
-public class ReferentialIntegrityViolation extends RuntimeException{
-    private final static Logger LOGGER = Logger.getLogger(ReferentialIntegrityViolation.class .getName());
-    private static final long serialVersionUID = 4808259721082709371L;
-
-    public ReferentialIntegrityViolation() {
+public class ReferentialIntegrityViolation extends OdbogmException {
+    
+    public ReferentialIntegrityViolation(OrientVertex referencedVertex, Transaction transaction) {
+        super(String.format("El vértice %s aún tiene referencias entrantes.",
+                referencedVertex.getId()), transaction);
     }
 
-    public ReferentialIntegrityViolation(String message) {
-        super(message);
+
+    public ReferentialIntegrityViolation(String message, Transaction transaction) {
+        super(message, transaction);
     }
     
 }

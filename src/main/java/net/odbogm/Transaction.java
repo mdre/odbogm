@@ -685,7 +685,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     private void deleteTree(Object toRemove) throws UnknownObject {
         initInternalTx();
         
-        LOGGER.log(Level.FINER, "Remove: " + toRemove.getClass().getName());
+        LOGGER.log(Level.FINER, "Remove: {0}", toRemove.getClass().getName());
         activateOnCurrentThread();
 
         // si no hereda de IObjectProxy, el objeto no pertenece a la base y no se debe hacer nada.
@@ -711,7 +711,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             for (Map.Entry<String, Class<?>> entry : classDef.links.entrySet()) {
                 try {
                     String field = entry.getKey();
-//                    f = ReflectionUtils.findField(((IObjectProxy) toRemove).___getBaseObject().getClass(), field);
                     f = ReflectionUtils.findField(toRemove.getClass(), field);
 
                     if (f.isAnnotationPresent(CascadeDelete.class) || f.isAnnotationPresent(RemoveOrphan.class)) {
@@ -730,12 +729,11 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                     final String graphRelationName = toRemove.getClass().getSimpleName() + "_" + field;
                     Class<? extends Object> fieldClass = entry.getValue();
 
-//                    f = ReflectionUtils.findField(((IObjectProxy) toRemove).___getBaseObject().getClass(), field);
                     f = ReflectionUtils.findField(toRemove.getClass(), field);
                     boolean acc = f.isAccessible();
                     f.setAccessible(true);
 
-                    LOGGER.log(Level.FINER, "procesando campo: " + field);
+                    LOGGER.log(Level.FINER, "procesando campo: {0}", field);
 
                     // si hay una colección y corresponde hacer la cascada.
                     if (f.isAnnotationPresent(CascadeDelete.class) || f.isAnnotationPresent(RemoveOrphan.class)) {
@@ -762,7 +760,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             for (Map.Entry<String, Class<?>> entry : classDef.links.entrySet()) {
                 try {
                     String field = entry.getKey();
-//                    f = ReflectionUtils.findField(((IObjectProxy) toRemove).___getBaseObject().getClass(), field);
                     f = ReflectionUtils.findField(toRemove.getClass(), field);
                     boolean acc = f.isAccessible();
                     f.setAccessible(true);
@@ -783,7 +780,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                                 this.deleteTree(value);
                             } catch (ReferentialIntegrityViolation riv) {
                                 LOGGER.log(Level.FINER, "RemoveOrphan: El objeto aún tiene vínculos.");
-                                throw new ReferentialIntegrityViolation("RemoveOrphan: El objeto aún tiene vínculos.");
+                                throw new ReferentialIntegrityViolation(
+                                        "RemoveOrphan: " + riv.getMessage(), this);
                             }
                         }
                     }
@@ -843,7 +841,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                                     this.deleteTree(object);
                                 } catch (ReferentialIntegrityViolation riv) {
                                     LOGGER.log(Level.FINER, "RemoveOrphan: El objeto aún tiene vínculos.");
-                                    throw new ReferentialIntegrityViolation("RemoveOrphan: El objeto aún tiene vínculos.");
+                                    throw new ReferentialIntegrityViolation(
+                                            "RemoveOrphan: " + riv.getMessage(), this);
                                 }
 
                             }
@@ -855,7 +854,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                                     this.deleteTree(v);
                                 } catch (ReferentialIntegrityViolation riv) {
                                     LOGGER.log(Level.FINER, "RemoveOrphan: El objeto aún tiene vínculos.");
-                                    throw new ReferentialIntegrityViolation("RemoveOrphan: El objeto aún tiene vínculos.");
+                                    throw new ReferentialIntegrityViolation(
+                                            "RemoveOrphan: " + riv.getMessage(), this);
                                 }
                             });
 
@@ -906,7 +906,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     private void internalDelete(Object toRemove) throws ReferentialIntegrityViolation, UnknownObject {
         initInternalTx();
         
-        LOGGER.log(Level.FINER, "Remove: " + toRemove.getClass().getName());
+        LOGGER.log(Level.FINER, "Remove: {0}", toRemove.getClass().getName());
         activateOnCurrentThread();
 
         // si no hereda de IObjectProxy, el objeto no pertenece a la base y no se debe hacer nada.
@@ -915,9 +915,9 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             OrientVertex ovToRemove = ((IObjectProxy) toRemove).___getVertex();
             // reacargar preventivamente el objeto.
             ovToRemove.reload();
-            LOGGER.log(Level.FINER, "Referencias IN: " + ovToRemove.countEdges(Direction.IN));
+            LOGGER.log(Level.FINER, "Referencias IN: {0}", ovToRemove.countEdges(Direction.IN));
             if (ovToRemove.countEdges(Direction.IN) > 0) {
-                throw new ReferentialIntegrityViolation();
+                throw new ReferentialIntegrityViolation(ovToRemove, this);
             }
             // Activar todos los campos que estén marcados con CascadeDelete o RemoveOrphan para poder procesarlos.
             // obtener el classDef del objeto
@@ -958,7 +958,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                                 this.internalDelete(value);
                             } catch (ReferentialIntegrityViolation riv) {
                                 LOGGER.log(Level.FINER, "RemoveOrphan: El objeto aún tiene vínculos.");
-                                throw new ReferentialIntegrityViolation("RemoveOrphan: El objeto aún tiene vínculos.");
+                                throw new ReferentialIntegrityViolation(
+                                        "RemoveOrphan: " + riv.getMessage(), this);
                             }
                         }
                     }
@@ -1018,7 +1019,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                                     this.internalDelete(object);
                                 } catch (ReferentialIntegrityViolation riv) {
                                     LOGGER.log(Level.FINER, "RemoveOrphan: El objeto aún tiene vínculos.");
-                                    throw new ReferentialIntegrityViolation("RemoveOrphan: El objeto aún tiene vínculos.");
+                                    throw new ReferentialIntegrityViolation(
+                                            "RemoveOrphan: " + riv.getMessage(), this);
                                 }
 
                             }
@@ -1030,7 +1032,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                                     this.internalDelete(v);
                                 } catch (ReferentialIntegrityViolation riv) {
                                     LOGGER.log(Level.FINER, "RemoveOrphan: El objeto aún tiene vínculos.");
-                                    throw new ReferentialIntegrityViolation("RemoveOrphan: El objeto aún tiene vínculos.");
+                                    throw new ReferentialIntegrityViolation(
+                                            "RemoveOrphan: " + riv.getMessage(), this);
                                 }
                             });
 
@@ -1045,9 +1048,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
                 } catch (NoSuchFieldException | IllegalArgumentException | IllegalAccessException ex) {
                     Logger.getLogger(SessionManager.class.getName()).log(Level.SEVERE, null, ex);
-                    throw new ReferentialIntegrityViolation("RemoveOrphan: El objeto aún tiene vínculos.");
+                    throw new OdbogmException("Error eliminando vértice.", this);
                 }
-
             }
 
             if (this.isAuditing()) {
