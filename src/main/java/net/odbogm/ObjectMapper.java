@@ -5,11 +5,14 @@ import com.tinkerpop.blueprints.impls.orient.OrientEdge;
 import com.tinkerpop.blueprints.impls.orient.OrientVertex;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 import net.odbogm.annotations.Indirect;
 import net.odbogm.cache.ClassCache;
 import net.odbogm.cache.ClassDef;
@@ -35,14 +38,14 @@ public class ObjectMapper {
             LOGGER.setLevel(LogginProperties.ObjectMapper);
         }
     }
-    private ClassCache classCache;
+    private final ClassCache classCache;
 
     // usado para no llamar a Class.forName para clases ya cargadas.
     private HashMap<String, Class> classLoaded = new HashMap<>();
 
     
     public ObjectMapper() {
-        // inicializar le caché de clases
+        // inicializar el caché de clases
         classCache = new ClassCache();
     }
 
@@ -119,113 +122,84 @@ public class ObjectMapper {
      * @return un objeto con la estructura del objeto analizado.
      */
     public ObjectStruct objectStruct(Object o) {
-        ObjectStruct oStruct = new ObjectStruct();
-
         // buscar la definición de la clase en el caché
         ClassDef classmap;
         if (o instanceof IObjectProxy) {
-            LOGGER.log(Level.FINEST, "Proxy instance. Seaching the orignal class... ("+o.getClass().getSuperclass().getSimpleName()+")");
+            LOGGER.log(Level.FINEST, "Proxy instance. Seaching the orignal class... ({0})",
+                    o.getClass().getSuperclass().getSimpleName());
             classmap = classCache.get(o.getClass().getSuperclass());
         } else {
-            LOGGER.log(Level.FINEST, "Searching the class... ("+o.getClass().getSimpleName()+")");
+            LOGGER.log(Level.FINEST, "Searching the class... ({0})",
+                    o.getClass().getSimpleName());
             classmap = classCache.get(o.getClass());
         }
+        
+        ObjectStruct oStruct = new ObjectStruct();
         this.fastmap(o, classmap, oStruct);
         return oStruct;
     }
 
     /**
-     * Realiza un mapeo a partir de las definiciones existentes en el caché
+     * Realiza un mapeo a partir de las definiciones existentes en el caché.
      *
      * @param o objeto a analizar
      * @param oStruct objeto de referencia a completar
      */
     private void fastmap(Object o, ClassDef classmap, ObjectStruct oStruct) {
         // procesar todos los campos
-        classmap.fields.entrySet().stream().forEach((entry) -> {
-            try {
-                String field = entry.getKey();
-                Class<?> c = entry.getValue();
-                Field f = classmap.fieldsObject.get(field);
-                boolean acc = f.isAccessible();
-                f.setAccessible(true);
-
-                // determinar si no es nulo
-                if (f.get(o) != null) {
-                    LOGGER.log(Level.FINER, "Field: {0} Class: {1}: {2}",
-                            new Object[]{field, c.getSimpleName(), f.get(o)});
-                    oStruct.fields.put(f.getName(), f.get(o));
-                }
-                f.setAccessible(acc);
-
-            } catch (SecurityException | IllegalArgumentException | IllegalAccessException ex) {
-                Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
-            } 
+        classmap.fields.entrySet().stream().forEach(entry -> {
+            Field f = classmap.fieldsObject.get(entry.getKey());
+            putValue(oStruct.fields, f, o, null);
         });
 
         // procesar todos los Enums
-        classmap.enumFields.entrySet().stream().forEach((entry) -> {
-            try {
-                String field = entry.getKey();
-                Class<?> c = entry.getValue();
-
-                Field f = classmap.fieldsObject.get(field);
-                boolean acc = f.isAccessible();
-                f.setAccessible(true);
-                // determinar si no es nulo
-                if (f.get(o) != null) {
-                    oStruct.fields.put(f.getName(), ((Enum)f.get(o)).name());
-                }
-                f.setAccessible(acc);
-
-            } catch (SecurityException | IllegalArgumentException | IllegalAccessException ex) {
-                Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
-            }
+        classmap.enumFields.entrySet().stream().forEach(entry -> {
+            Field f = classmap.fieldsObject.get(entry.getKey());
+            putValue(oStruct.fields, f, o, v -> ((Enum)v).name());
         });
-
+        
+        // procesar todas las colecciones de Enums
+        classmap.enumCollectionFields.entrySet().stream().forEach(entry -> {
+            Field f = classmap.fieldsObject.get(entry.getKey());
+            //se convierte la colección de enums a colección de strings con el name
+            putValue(oStruct.fields, f, o, v -> ((Collection)v).stream().
+                    map(e -> ((Enum)e).name()).collect(Collectors.toList()));
+        });
+        
         // procesar todos los links
-        classmap.links.entrySet().stream().forEach((entry) -> {
-            try {
-                String field = entry.getKey();
-                Class<?> c = entry.getValue();
-
-                Field f = classmap.fieldsObject.get(field);
-                boolean acc = f.isAccessible();
-                f.setAccessible(true);
-                // determinar si no es nulo
-                if (f.get(o) != null) {
-                    oStruct.links.put(f.getName(), f.get(o));
-                }
-                f.setAccessible(acc);
-
-            } catch (SecurityException | IllegalArgumentException | IllegalAccessException ex) {
-                Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
-            }
+        classmap.links.entrySet().stream().forEach(entry -> {
+            Field f = classmap.fieldsObject.get(entry.getKey());
+            putValue(oStruct.links, f, o, null);
         });
-
+        
         // procesar todos los linksList
-        classmap.linkLists.entrySet().stream().forEach((entry) -> {
-            try {
-                String field = entry.getKey();
-                Class<?> c = entry.getValue();
-
-                Field f = classmap.fieldsObject.get(field);
-                boolean acc = f.isAccessible();
-                f.setAccessible(true);
-                // determinar si no es nulo
-                if (f.get(o) != null) {
-                    oStruct.linkLists.put(f.getName(), f.get(o));
-                }
-                f.setAccessible(acc);
-
-            } catch (SecurityException | IllegalArgumentException | IllegalAccessException ex) {
-                Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
-            }
+        classmap.linkLists.entrySet().stream().forEach(entry -> {
+            Field f = classmap.fieldsObject.get(entry.getKey());
+            putValue(oStruct.linkLists, f, o, null);
         });
     }
-
+    
     /**
-     * Crea y llena un objeto con los valores correspondintes obtenidos del Vertice asignado.
+     * Guarda en el mapa de atributos 'valuesMap' el valor que tiene el objeto 'o'
+     * en su atributo dado por el campo 'f', aplicando la transformación dada.
+     */
+    private void putValue(Map valuesMap, Field f, Object o, Function transform) {
+        try {
+            f.setAccessible(true);
+            Object value = f.get(o);
+            //guardar sólo si no es nulo
+            if (value != null) {
+                LOGGER.log(Level.FINER, "Field: {0}. Class: {1}. Value: {2}",
+                        new Object[]{f.getName(), f.getType().getSimpleName(), value});
+                valuesMap.put(f.getName(), transform != null ? transform.apply(value) : value);
+            }
+        } catch (SecurityException | IllegalArgumentException | IllegalAccessException ex) {
+            Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
+    
+    /**
+     * Crea y llena un objeto con los valores correspondintes obtenidos del Vértice asignado.
      *
      * @param <T> clase a devolver
      * @param c clase de referencia
@@ -250,7 +224,6 @@ public class ObjectMapper {
         if (!c.getSimpleName().equals(vertexClass)) {
             LOGGER.log(Level.FINER, "Tipos distintos. {0} <> {1}", new Object[]{c.getSimpleName(), vertexClass});
             String javaClass = v.getType().getCustom("javaClass");
-
             if (javaClass != null) {
                 try {
                     // validar que sea un super de la clase del vértice
@@ -272,12 +245,15 @@ public class ObjectMapper {
         LOGGER.log(Level.FINER, "**************************************************");
         LOGGER.log(Level.FINER, "Hydratando: {0} - Class: {1}", new Object[]{c.getName(), toHydrate});
         LOGGER.log(Level.FINER, "**************************************************");
+        
         // recuperar la definición de la clase desde el caché
         ClassDef classdef = classCache.get(toHydrate);
-        Map<String, Class<?>> fieldmap = classdef.fields;
         
+        // ********************************************************************************************
+        // procesar los atributos básicos
+        // ********************************************************************************************
         Field f;
-        for (Map.Entry<String, Class<?>> entry : fieldmap.entrySet()) {
+        for (Map.Entry<String, Class<?>> entry : classdef.fields.entrySet()) {
             String prop = entry.getKey();
             Class<? extends Object> fieldClazz = entry.getValue();
 
@@ -286,35 +262,14 @@ public class ObjectMapper {
 
             if (value != null) {
                 // obtener la clase a la que pertenece el campo
-                Class<?> fc = fieldmap.get(prop);
-
-                //f = ReflectionUtils.findField(toHydrate, prop);
+                Class<?> fc = classdef.fields.get(prop);
                 f = classdef.fieldsObject.get(prop);
-                
-                boolean acc = f.isAccessible();
                 f.setAccessible(true);
-                if (f.getType().isEnum()) {
-                    LOGGER.log(Level.FINER, "Enum field: " + f.getName() + " type: " + f.getType() + "  value: " + value + "   Enum val: " + Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString()));
-//                    f.set(oproxied, Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString()));
-                    this.setFieldValue(oproxied, prop, Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString()));
-                } else if (f.getType().isAssignableFrom(List.class)) {
-                    // si la lista fuera de Enum, es necesario realizar la conversión antes dado que se guarda como string.
-                    ParameterizedType listType = (ParameterizedType) f.getGenericType();
-                    Class<?> listClass = (Class<?>) listType.getActualTypeArguments()[0];
-                    if (listClass.isEnum()) {
-                        // reemplazar todos los valores por el emum correspondiente
-                        for (int i = 0; i < ((List) value).size(); i++) {
-                            if (((List) value).get(i) instanceof String) {
-                                // solo si el objeto contenido en la lista es un String.
-                                String sVal = (String) ((List) value).get(i);
-                                ((List) value).set(i, Enum.valueOf(listClass.asSubclass(Enum.class), sVal));
-                            }
-                        }
-                    }
+                if (f.getType().isAssignableFrom(List.class)) {
                     // se debe hacer una copia del la lista para no quede referenciando al objeto original
                     // dado que en la asignación solo se pasa la referencia del objeto.
                     LOGGER.log(Level.FINER, "EmbeddedList detectada: realizando una copia del contenido...");
-                    LOGGER.log(Level.FINER, "value: " + value.getClass());
+                    LOGGER.log(Level.FINER, "value: {0}", value.getClass());
                     this.setFieldValue(oproxied, prop, new ArrayListEmbeddedProxy((IObjectProxy) oproxied, (List) value));
                 } else if (f.getType().isAssignableFrom(Map.class)) {
                     // se debe hacer una copia del la lista para no quede referenciando al objeto original
@@ -323,15 +278,13 @@ public class ObjectMapper {
                     // FIXME: Ojo que se hace solo un shalow copy!! no se está conando la clave y el value
                     this.setFieldValue(oproxied, prop, new HashMapEmbeddedProxy((IObjectProxy) oproxied, (Map) value));
                 } else {
-                    LOGGER.log(Level.FINER, "hidratado campo: " + prop + "=" + value);
+                    LOGGER.log(Level.FINER, "hidratado campo: {0}={1}", new Object[]{prop, value});
                     this.setFieldValue(oproxied, prop, value);
                 }
-                f.setAccessible(acc);
             } else {
                 // si el valor es null verificar que no se trate de una Lista embebida 
                 // que pueda haber sido inicializada en el constructor.
                 f = classdef.fieldsObject.get(prop);
-                boolean acc = f.isAccessible();
                 f.setAccessible(true);
                 Object fv = f.get(oproxied);
                 if ((fv != null) && (f.getType().isAssignableFrom(List.class))) {
@@ -343,7 +296,6 @@ public class ObjectMapper {
                     LOGGER.log(Level.FINER, "Se ha detectado un Map embebido que no tiene valores. Se lo reemplaza por uno Embedded.");
                     this.setFieldValue(oproxied, prop, new HashMapEmbeddedProxy((IObjectProxy) oproxied, (Map) f.get(oproxied)));
                 }
-                f.setAccessible(acc);
             }
         }
         // insertar el objeto en el transactionLoopCache
@@ -354,24 +306,37 @@ public class ObjectMapper {
         // ********************************************************************************************
         for (Map.Entry<String, Class<?>> entry : classdef.enumFields.entrySet()) {
             String prop = entry.getKey();
-            Class<? extends Object> fieldClazz = entry.getValue();
-
             LOGGER.log(Level.FINER, "Buscando campo {0} ....", new String[]{prop});
             Object value = v.getProperty(prop);
             if (value != null) {
-                // obtener la clase a la que pertenece el campo
-                Class<?> fc = fieldmap.get(prop);
                 // FIXME: este código se puede mejorar. Tratar de usar solo setFieldValue()
-                //f = ReflectionUtils.findField(toHydrate, prop);
                 f = classdef.fieldsObject.get(prop);
-//                boolean acc = f.isAccessible();
-//                f.setAccessible(true);
-                LOGGER.log(Level.FINER, "Enum field: " + f.getName() + " type: " + f.getType() + "  value: " + value + "   Enum val: " + Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString()));
-//                f.set(oproxied, Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString()));
-                this.setFieldValue(oproxied, prop, Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString()));
+                Object enumValue = Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString());
+                LOGGER.log(Level.FINER, "Enum field: {0} type: {1} value: {2} Enum val: {3}",
+                        new Object[]{f.getName(), f.getType(), value, enumValue});
+                this.setFieldValue(oproxied, prop, enumValue);
+                LOGGER.log(Level.FINER, "hidratado campo: {0}={1}", new Object[]{prop, value});
+            }
+        }
 
-                LOGGER.log(Level.FINER, "hidratado campo: " + prop + "=" + value);
-//                f.setAccessible(acc);
+        // ********************************************************************************************
+        // procesar colecciones de enums
+        // ********************************************************************************************
+        for (Map.Entry<String, Class<?>> entry : classdef.enumCollectionFields.entrySet()) {
+            String prop = entry.getKey();
+            Object value = v.getProperty(prop);
+            if (value != null) {
+                // reemplazar todos los valores por el emum correspondiente
+                f = classdef.fieldsObject.get(prop);
+                Class<?> listClass = getListType(f);
+                for (int i = 0; i < ((List) value).size(); ++i) {
+                    if (((List) value).get(i) instanceof String) {
+                        // solo si el objeto contenido en la lista es un String.
+                        String sVal = (String) ((List) value).get(i);
+                        ((List) value).set(i, Enum.valueOf(listClass.asSubclass(Enum.class), sVal));
+                    }
+                }
+                setFieldValue(oproxied, prop, value);
             }
         }
 
@@ -453,7 +418,6 @@ public class ObjectMapper {
 
         }
         
-//        LOGGER.log(Level.FINER, "Objeto hydratado: " + oproxied.toString());
         LOGGER.log(Level.FINER, "******************* FIN HYDRATE *******************");
         t.closeInternalTx();
         return (T) oproxied;
@@ -471,7 +435,17 @@ public class ObjectMapper {
         Class<?> fc = classdef.linkLists.get(field);
         colecctionToLazy(o, field, fc, v, t);
     }
-
+    
+    
+    /**
+     * Dado un Field correspondiente a una lista, devuelve la clase de los
+     * elementos que contiene la lista.
+     */
+    private Class<?> getListType(Field listField) {
+        ParameterizedType listType = (ParameterizedType) listField.getGenericType();
+        return (Class<?>) listType.getActualTypeArguments()[0];
+    }
+    
     /**
      * Convierte una colección común en una Lazy para futuras operaciones.
      *
@@ -633,7 +607,6 @@ public class ObjectMapper {
 
     public void setFieldValue(Object o, String field, Object value) {
         try {
-            //Field f = ReflectionUtils.findField(o.getClass(), field);
             Field f = this.classCache.get(o.getClass()).fieldsObject.get(field);
             boolean acc = f.isAccessible();
             f.setAccessible(true);

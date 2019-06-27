@@ -120,7 +120,9 @@ public class ClassCache {
                                                 
                         // determinar si es un campo permitido
                         // FIXME: falta considerar la posibilidad de los Embedded Object
-                        LOGGER.log(Level.FINER, "Field: " + f.getName() + "  Type: " + f.getType() + (f.getType().isEnum() ? "<<<<<<<<<<< ENUM" : ""));
+                        LOGGER.log(Level.FINER, "Field: {0}  Type: {1}{2}",
+                                new Object[]{f.getName(), f.getType(), f.getType().isEnum() ? "<<<<<<<<<<< ENUM" : ""});
+                        
                         if (PRIMITIVE_MAP.get(f.getType()) != null) {
                             cached.fields.put(f.getName(), f.getType());
                         } else if (f.getType().isEnum()) {
@@ -133,24 +135,25 @@ public class ClassCache {
                             // ej: ArrayList<String> ... 
                             // En este caso, no correspondería crear Edges. La colección completa
                             // se va a guardar embebida en el Vertex.
-                            LOGGER.log(Level.FINER, "Colección detectada: " + f.getName());
+                            LOGGER.log(Level.FINER, "Colección detectada: {0}", f.getName());
                             boolean setAsEmbedded = false;
+                            boolean isEnumCollection = false;
                             if (List.class.isAssignableFrom(f.getType())) {
-                                LOGGER.log(Level.FINER, "se trata de una Lista...");
+                                LOGGER.log(Level.FINER, "Se trata de una Lista...");
                                 // se trata de una lista. Verificar el subtipo o el @Embedded
                                 ParameterizedType listType = (ParameterizedType) f.getGenericType();
                                 Class<?> listClass = (Class<?>) listType.getActualTypeArguments()[0];
-                                if ((Primitives.PRIMITIVE_MAP.get(listClass) != null)
-                                        || (listClass.isEnum())
+                                String typeName = listClass.getSimpleName();
+                                if (listClass.isEnum()) {
+                                    LOGGER.log(Level.FINER, "Es una colección de enums: {0}", typeName);
+                                    isEnumCollection = true;
+                                } else if ((Primitives.PRIMITIVE_MAP.get(listClass) != null)
                                         || (f.isAnnotationPresent(Embedded.class))) {
                                     LOGGER.log(Level.FINER, "\n**********************************************************");
                                     if (f.isAnnotationPresent(Embedded.class)) {
-                                        LOGGER.log(Level.FINER, "Clase anotada como Embedded: " + listClass.getSimpleName());
+                                        LOGGER.log(Level.FINER, "Clase anotada como Embedded: {0}", typeName);
                                     } else {
-                                        LOGGER.log(Level.FINER, "Es una colección de primitivas: "
-                                                + listClass.getSimpleName()
-                                                + (listClass.isEnum() ? " de tipo ENUM" : "")
-                                        );
+                                        LOGGER.log(Level.FINER, "Es una colección de primitivas: {0}", typeName);
                                         LOGGER.log(Level.FINER, "Se procede a embeberla.");
                                     }
                                     LOGGER.log(Level.FINER, "\n**********************************************************");
@@ -170,15 +173,18 @@ public class ClassCache {
                                 if ((keyClass == String.class)
                                         && ((Primitives.PRIMITIVE_MAP.get(valClass) != null)
                                         || (f.isAnnotationPresent(Embedded.class)))) {
-                                    LOGGER.log(Level.FINER, "Es una colección de embebida: " + valClass.getSimpleName());
+                                    LOGGER.log(Level.FINER, "Es una colección de embebida: {0}", valClass.getSimpleName());
                                     setAsEmbedded = true;
                                 }
                             }
+                            
                             if (setAsEmbedded) {
                                 // es una colección de primitivas. Tratarla como un field común
                                 cached.fields.put(f.getName(), f.getType());
                                 // FIXME: verificar si se puede unificar y no registrar en dos lados.
                                 cached.embeddedFields.put(f.getName(), f.getType());
+                            } else if (isEnumCollection) {
+                                cached.enumCollectionFields.put(f.getName(), f.getType());
                             } else if (f.isAnnotationPresent(Indirect.class)) {
                                 // es una colección de objetos indirectos.
                                 LOGGER.log(Level.FINER, "Es una colección de objetos indirectos.");
@@ -219,7 +225,7 @@ public class ClassCache {
                 }
             }
             
-            LOGGER.log(Level.FINER, "Fin clase "+c.getName()+" <<<<<<<<<<<<<<<<<");
+            LOGGER.log(Level.FINER, "Fin clase {0} <<<<<<<<<<<<<<<<<", c.getName());
         }
     }
 

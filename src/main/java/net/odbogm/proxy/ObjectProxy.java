@@ -697,8 +697,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                 /*
                  * procesar los objetos internos. Primero se deber determinar
                  * si los objetos ya existían en el contexto actual. Si no
-                 * existen
-                 * deben ser creados.
+                 * existen deben ser creados.
                  */
                 for (Map.Entry<String, Class<?>> link : cDef.links.entrySet()) {
                     String field = link.getKey();

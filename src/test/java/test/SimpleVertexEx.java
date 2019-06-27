@@ -1,9 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
 package test;
 
 import java.util.ArrayList;
@@ -66,15 +60,12 @@ public class SimpleVertexEx extends SimpleVertex {
         this.svex = svex;
         this.enumTest = EnumTest.UNO;
         this.uuid = UUID.randomUUID().toString();
-//        System.out.println("this uuid: "+this.uuid);
     }
 
     public SimpleVertexEx() {
         super();
         this.svex = "default";
-        String uid = UUID.randomUUID().toString();
-        this.setUuid(uid);
-//        System.out.println("default: "+this.uuid);
+        this.uuid = UUID.randomUUID().toString();
     }
         
     public void initEnum() {

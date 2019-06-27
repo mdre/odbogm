@@ -7,6 +7,7 @@ import java.lang.reflect.Field;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -33,6 +34,7 @@ import org.junit.Test;
 import org.junit.function.ThrowingRunnable;
 import test.EdgeAttrib;
 import test.EnumTest;
+import test.Enums;
 import test.Foo;
 import test.IndirectObject;
 import test.SSimpleVertex;
@@ -853,15 +855,15 @@ public class SessionManagerTest {
     
     @Test
     public void persistEnum() throws Exception {
-        SimpleVertexEx sve = new SimpleVertexEx();
-        sve.enumTest = EnumTest.OTRO_MAS;
-        sve = sm.store(sve);
+        Enums e = new Enums();
+        e.setTheEnum(EnumTest.OTRO_MAS);
+        e = sm.store(e);
         sm.commit();
-        String rid = sm.getRID(sve);
+        String rid = sm.getRID(e);
         
         sm.getCurrentTransaction().clearCache();
-        sve = sm.get(SimpleVertexEx.class, rid);
-        assertEquals(EnumTest.OTRO_MAS, sve.getEnumTest());
+        e = sm.get(Enums.class, rid);
+        assertEquals(EnumTest.OTRO_MAS, e.getTheEnum());
     }
     
     
@@ -2429,7 +2431,7 @@ public class SessionManagerTest {
         
         foo.add(new SimpleVertex(random));
         sm.commit(); //nunca hice store del SV random
-        sm.getTransaction().clearCache();
+        sm.getCurrentTransaction().clearCache();
         
         assertFalse(sm.query(SimpleVertex.class,
                 String.format("where s = '%s'", random)).isEmpty());
@@ -2499,6 +2501,32 @@ public class SessionManagerTest {
         DbManager dbm = new DbManager();
         List<String> l = dbm.generateDBSQL("test");
         l.forEach(s -> assertFalse(s.contains("rid STRING")));
+    }
+    
+    /*
+     * Testea que persista y cargue correctamente una colección de enums.
+     */
+    @Test
+    public void persistEnumCollection() throws Exception {
+        Enums v = new Enums();
+        v.enums = Arrays.asList(EnumTest.UNO, EnumTest.DOS, EnumTest.OTRO_MAS);
+        v = sm.store(v);
+        sm.commit();
+        String rid = sm.getRID(v);
+        System.out.println("RID: " + rid);
+        
+        sm.getCurrentTransaction().clearCache();
+        v = sm.get(Enums.class, rid);
+        assertEquals(3, v.enums.size());
+        assertTrue(v.enums.contains(EnumTest.UNO));
+        assertTrue(v.enums.contains(EnumTest.DOS));
+        assertTrue(v.enums.contains(EnumTest.OTRO_MAS));
+    }
+    
+    
+    @Test
+    public void persistEnumMap() throws Exception {
+        
     }
     
 }

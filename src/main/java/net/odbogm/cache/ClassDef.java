@@ -24,32 +24,37 @@ public class ClassDef {
     public Field ridField;
     
     /**
-     * Mapa de todos los objetos Field
+     * Mapa de todos los objetos Field.
      */
     public HashMap<String, Field> fieldsObject = new HashMap<>();
     
     /**
-     * Mapa de atributos básicos
+     * Mapa de atributos básicos.
      */
     public HashMap<String, Class<?>> fields = new HashMap<>();
     
     /**
-     * Mapa de atributos básicos
+     * Mapa de atributos de tipo enum.
      */
     public HashMap<String, Class<?>> enumFields = new HashMap<>();
     
     /**
-     * Mapa de los embedded List y HashMap del objeto
+     * Mapa de atributos que son colecciones de enums.
+     */
+    public HashMap<String, Class<?>> enumCollectionFields = new HashMap<>();
+    
+    /**
+     * Mapa de los embedded List y HashMap del objeto.
      */
     public HashMap<String, Class<?>> embeddedFields = new HashMap<>();
     
     /**
-     * Mapa de links a otros objetos
+     * Mapa de links a otros objetos.
      */
     public HashMap<String, Class<?>> links = new HashMap<>();
     
     /**
-     * Mapa de lista de links a otros objetos
+     * Mapa de lista de links a otros objetos.
      */
     public HashMap<String, Class<?>> linkLists = new HashMap<>();
     
