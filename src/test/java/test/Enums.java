@@ -1,6 +1,8 @@
 package test;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import net.odbogm.annotations.Entity;
 
 /**
@@ -15,6 +17,10 @@ public class Enums {
     private EnumTest theEnum;
     
     public List<EnumTest> enums;
+    
+    public Map<EnumTest, String> enumToString = new HashMap<>();
+    
+    public Map<String, EnumTest> stringToEnum = new HashMap<>();
 
 
     public Enums() {

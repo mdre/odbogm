@@ -85,7 +85,7 @@ public class ClassCache {
 
     private void cacheClass(Class<?> c, ClassDef cached) {
         if (c != Object.class) {
-            LOGGER.log(Level.FINER, "Clase: "+c.getName());
+            LOGGER.log(Level.FINER, "Clase: {0}", c.getName());
             
             // iniciamos analizando la superclass y luego seguimos con los campos de la clase 
             // actual. Esto es así para que los shallow fields se agreguen correctamente 
@@ -112,7 +112,6 @@ public class ClassCache {
                             cached.ridField = f;
                             continue;
                         }
-                        boolean acc = f.isAccessible();
                         //preservar el field.
                         cached.fieldsObject.put(f.getName(), f);
                         
@@ -206,9 +205,6 @@ public class ClassCache {
                                 cached.links.put(f.getName(), f.getType());
                             }
                         }
-
-                        // resstablecer el campo
-                        f.setAccessible(acc);
 
                     } else {
                         if (!(f.isAnnotationPresent(Ignore.class))) {

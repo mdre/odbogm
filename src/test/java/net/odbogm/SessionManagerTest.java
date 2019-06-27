@@ -30,6 +30,7 @@ import org.apache.commons.lang.RandomStringUtils;
 import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.function.ThrowingRunnable;
 import test.EdgeAttrib;
@@ -2513,7 +2514,6 @@ public class SessionManagerTest {
         v = sm.store(v);
         sm.commit();
         String rid = sm.getRID(v);
-        System.out.println("RID: " + rid);
         
         sm.getCurrentTransaction().clearCache();
         v = sm.get(Enums.class, rid);
@@ -2525,8 +2525,28 @@ public class SessionManagerTest {
     
     
     @Test
+    @Ignore //@TODO: corregir los mapas embebidos con enums
     public void persistEnumMap() throws Exception {
+        Enums v = new Enums();
+        v.enumToString.put(EnumTest.UNO, "el primero");
+        v.enumToString.put(EnumTest.DOS, "el segundo");
         
+        v.stringToEnum.put("primer valor", EnumTest.UNO);
+        v.stringToEnum.put("segundo valor", EnumTest.DOS);
+        
+        v = sm.store(v);
+        sm.commit();
+        String rid = sm.getRID(v);
+        System.out.println("RID: " + rid);
+        sm.getCurrentTransaction().clearCache();
+        v = sm.get(Enums.class, rid);
+        
+        assertEquals(2, v.enumToString.size());
+        assertEquals("el primero", v.enumToString.get(EnumTest.UNO));
+        assertEquals("el segundo", v.enumToString.get(EnumTest.DOS));
+        assertEquals(2, v.stringToEnum.size());
+        assertEquals(EnumTest.UNO, v.stringToEnum.get("primer valor"));
+        assertEquals(EnumTest.DOS, v.stringToEnum.get("segundo valor"));
     }
     
 }
