@@ -2165,6 +2165,32 @@ public class SessionManagerTest {
         assertEquals(1, sc.size());
         System.out.println(": " + sc.getCachedObjects());
     }
+    
+    /*
+     * Sólo prueba que se pueda ir commiteando de a cada tanto.
+     */
+    @Test
+    public void multipleCommits() throws Exception {
+        SimpleVertexEx sv = new SimpleVertexEx();
+        sv.lSV = new ArrayList<>();
+        sv = sm.store(sv);
+        sm.commit();
+        String rid = sm.getRID(sv);
+        System.out.println("RID: " + rid);
+        
+        sv.lSV.add(new SimpleVertex());
+        sm.commit();
+        
+        sv.lSV.add(new SimpleVertex());
+        sm.commit();
+        
+        sv.lSV.add(new SimpleVertex());
+        sm.commit();
+        
+        sm.getCurrentTransaction().clearCache();
+        sv = sm.get(SimpleVertexEx.class, rid);
+        assertEquals(3, sv.lSV.size());
+    }
 
 //    @Test
 //    public void testTransactions() {
@@ -2523,7 +2549,6 @@ public class SessionManagerTest {
         assertTrue(v.enums.contains(EnumTest.OTRO_MAS));
     }
     
-    
     @Test
     @Ignore //@TODO: corregir los mapas embebidos con enums
     public void persistEnumMap() throws Exception {
@@ -2547,6 +2572,44 @@ public class SessionManagerTest {
         assertEquals(2, v.stringToEnum.size());
         assertEquals(EnumTest.UNO, v.stringToEnum.get("primer valor"));
         assertEquals(EnumTest.DOS, v.stringToEnum.get("segundo valor"));
+    }
+    
+    /*
+     * Testea los mapas que son persistidos como relaciones a nodos.
+     */
+    @Test
+    public void edgeAttributes() throws Exception {
+        SimpleVertexEx to = new SimpleVertexEx();
+        SimpleVertexEx v = new SimpleVertexEx();
+        v.setOhmSVE(new HashMap<>());
+        
+        EdgeAttrib e1 = new EdgeAttrib("relación 1", new Date());
+        EdgeAttrib e2 = new EdgeAttrib("relación 2", new Date());
+        v.ohmSVE.put(e1, to);
+        v.ohmSVE.put(e2, to);
+        
+        v = sm.store(v);
+        sm.commit();
+        String rid = sm.getRID(v);
+        sm.getCurrentTransaction().clearCache();
+        
+        v = sm.get(SimpleVertexEx.class, rid);
+        assertEquals(2, v.ohmSVE.size());
+        
+        //elimino una relación
+        v.ohmSVE.remove(e1);
+        sm.commit();
+        sm.getCurrentTransaction().clearCache();
+        
+        v = sm.get(SimpleVertexEx.class, rid);
+        assertEquals(1, v.ohmSVE.size());
+        assertNotNull(v.ohmSVE.get(e2));
+        assertNull(v.ohmSVE.get(e1));
+        
+        v.ohmSVE.remove(e2);
+        assertTrue(v.ohmSVE.isEmpty());
+        sm.rollback();
+        assertFalse(v.ohmSVE.isEmpty());
     }
     
 }

@@ -702,8 +702,6 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                 for (Map.Entry<String, Class<?>> link : cDef.links.entrySet()) {
                     String field = link.getKey();
                     String graphRelationName = this.___baseClass.getSimpleName() + "_" + field;
-                    Class<?> fclass = link.getValue();
-                    Field f;
                     // determinar el estado del campo
                     if (oStruct.links.get(field) == null) {
                         // si está en null, es posible que se haya eliminado el objeto
@@ -731,7 +729,8 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                             // se debe verificar si el eje entre los dos objetos ya existía.
                             if (!VertexUtils.isConectedTo(ov, ((IObjectProxy) innerO).___getVertex(), graphRelationName)) {
                                 // No existe un eje. Se debe crear
-                                LOGGER.log(Level.FINER, "Los objetos no están conectados. (" + ov.getId() + " |--|" + ((IObjectProxy) innerO).___getVertex().getId());
+                                LOGGER.log(Level.FINER, "Los objetos no están conectados. ({0} |--|{1}",
+                                        new Object[]{ov.getId(), ((IObjectProxy) innerO).___getVertex().getId()});
 
                                 // primero verificar si no existía una relación previa con otro objeto para removerla.
                                 if (ov.countEdges(Direction.OUT, graphRelationName) > 0) {
@@ -797,64 +796,58 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                 for (Map.Entry<String, Class<?>> entry : cDef.linkLists.entrySet()) {
                     try {
                         String field = entry.getKey();
-                        Class<? extends Object> fieldClass = entry.getValue();
+                        LOGGER.log(Level.FINER, "procesando campo: {0} clase: {1}",
+                                new Object[]{field, this.___proxiedObject.getClass()});
 
-                        // f = ReflectionUtils.findField(this.realObj.getClass(), field);
-                        LOGGER.log(Level.FINER, "procesando campo: " + field + " clase: " + this.___proxiedObject.getClass());
-
-                        f = ReflectionUtils.findField(this.___proxiedObject.getClass(), field);
-                        boolean acc = f.isAccessible();
+                        f = cDef.fieldsObject.get(field);
                         f.setAccessible(true);
-                        final String graphRelationName;
 
                         // preprarar el nombre de la relación
-                        graphRelationName = this.___baseClass.getSimpleName() + "_" + field;
+                        final String graphRelationName = this.___baseClass.getSimpleName() + "_" + field;
 
-                        // Object oCol = f.get(this.realObj);
-                        Object oCol = f.get(this.___proxiedObject);
+                        Object collectionFieldValue = f.get(this.___proxiedObject);
 
                         // verificar si existe algún cambio en la colecciones
                         // ingresa si la colección es distinta de null y
-                        // oCol es instancia de ILazyCalls y está marcado como dirty
-                        // o oCol no es instancia de ILazyCalls, lo que significa que es una colección nueva
-                        // y debe ser procesada completamente.
-                        if ((oCol != null)
-                                && ((ILazyCalls.class.isAssignableFrom(oCol.getClass()) && ((ILazyCalls) oCol).isDirty())
-                                || (!ILazyCalls.class.isAssignableFrom(oCol.getClass())))) {
-                            LOGGER.log(Level.FINER, (!ILazyCalls.class.isAssignableFrom(oCol.getClass()))
+                        // collectionFieldValue es instancia de ILazyCalls y está marcado como dirty
+                        // o collectionFieldValue no es instancia de ILazyCalls, lo que 
+                        // significa que es una colección nueva y debe ser procesada completamente.
+                        if ((collectionFieldValue != null)
+                                && ((ILazyCalls.class.isAssignableFrom(collectionFieldValue.getClass()) && ((ILazyCalls) collectionFieldValue).isDirty())
+                                || (!ILazyCalls.class.isAssignableFrom(collectionFieldValue.getClass())))) {
+                            LOGGER.log(Level.FINER, (!ILazyCalls.class.isAssignableFrom(collectionFieldValue.getClass()))
                                     ? "No es instancia de ILazyCalls"
                                     : "Es instancia de Lazy y está marcado como DIRTY");
 
-                            if (oCol instanceof List) {
-                                ILazyCollectionCalls col;
+                            if (collectionFieldValue instanceof List) {
+                                ILazyCollectionCalls lazyCollectionCalls;
                                 // procesar la colección
 
                                 if (ILazyCollectionCalls.class
-                                        .isAssignableFrom(oCol.getClass())) {
-                                    col = (ILazyCollectionCalls) oCol;
+                                        .isAssignableFrom(collectionFieldValue.getClass())) {
+                                    lazyCollectionCalls = (ILazyCollectionCalls) collectionFieldValue;
                                 } else {
                                     // se ha asignado una colección original y se debe exportar todo
-                                    // this.sm.getObjectMapper().colecctionToLazy(this.realObj, field, ov);
-                                    this.___transaction.getObjectMapper().colecctionToLazy(this.___proxiedObject, field, ov, this.___transaction);
+                                    this.___transaction.getObjectMapper().colecctionToLazy(
+                                            this.___proxiedObject, field, ov, this.___transaction);
 
                                     //recuperar la nueva colección
-                                    // Collection inter = (Collection) f.get(this.realObj);
                                     Collection inter = (Collection) f.get(this.___proxiedObject);
 
                                     //agregar todos los valores que existían
-                                    inter.addAll((Collection) oCol);
+                                    inter.addAll((Collection) collectionFieldValue);
                                     //preparar la interface para que se continúe con el acceso.
-                                    col = (ILazyCollectionCalls) inter;
+                                    lazyCollectionCalls = (ILazyCollectionCalls) inter;
                                     // reasignar el objeto oCol
-                                    oCol = f.get(this.___proxiedObject);
+                                    collectionFieldValue = f.get(this.___proxiedObject);
                                 }
 
-                                List lCol = (List) oCol;
-                                Map<Object, ObjectCollectionState> colState = col.collectionState();
+                                List listFieldValue = (List) collectionFieldValue;
+                                Map<Object, ObjectCollectionState> colState = lazyCollectionCalls.collectionState();
 
                                 // procesar los elementos presentes en la colección
-                                for (int i = 0; i < lCol.size(); i++) {
-                                    Object colObject = lCol.get(i);
+                                for (int i = 0; i < listFieldValue.size(); i++) {
+                                    Object colObject = listFieldValue.get(i);
                                     // verificar el estado del objeto en la colección
                                     if (colState.get(colObject) == ObjectCollectionState.ADDED) {
                                         // si se agregó uno, determinar si era o no manejado por el SM
@@ -863,7 +856,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                             // no es un objeto que se haya almacenado.
                                             colObject = this.___transaction.store(colObject);
                                             // reemplazar en la colección el objeto por uno administrado
-                                            lCol.set(i, colObject);
+                                            listFieldValue.set(i, colObject);
 
                                             // si está activa la instrumentación de clases, desmarcar el objeto como dirty
                                             if (colObject instanceof ITransparentDirtyDetector) {
@@ -880,8 +873,8 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                         }
                                     }
                                 }
-                                // procesar los removidos solo si está el anotation en el campo
 
+                                // procesar los removidos solo si está el anotation en el campo
                                 for (Map.Entry<Object, ObjectCollectionState> entry1 : colState.entrySet()) {
                                     Object colObject = entry1.getKey();
                                     ObjectCollectionState colObjState = entry1.getValue();
@@ -908,15 +901,15 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                 }
 
                                 // resetear el estado
-                                col.clearState();
+                                lazyCollectionCalls.clearState();
 
-                            } else if (oCol instanceof Map) {
+                            } else if (collectionFieldValue instanceof Map) {
 
-                                Map innerMap;
+                                Map mapFieldValue;
                                 // procesar la colección
 
-                                if (ILazyMapCalls.class.isAssignableFrom(oCol.getClass())) {
-                                    innerMap = (Map) oCol;
+                                if (ILazyMapCalls.class.isAssignableFrom(collectionFieldValue.getClass())) {
+                                    mapFieldValue = (Map) collectionFieldValue;
                                 } else {
                                     // se ha asignado una colección original y se debe exportar todo
                                     // this.sm.getObjectMapper().colecctionToLazy(this.realObj, field, ov);
@@ -925,47 +918,46 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                     // Collection inter = (Collection) f.get(this.realObj);
                                     Map inter = (Map) f.get(this.___proxiedObject);
                                     //agregar todos los valores que existían
-                                    inter.putAll((Map) oCol);
+                                    inter.putAll((Map) collectionFieldValue);
                                     //preparar la interface para que se continúe con el acceso.
-                                    innerMap = (Map) inter;
+                                    mapFieldValue = (Map) inter;
                                 }
 
-                                // final String ffield = field;
                                 // refrescar los estados
-                                final Map<Object, ObjectCollectionState> keyState = ((ILazyMapCalls) innerMap).collectionState();
-                                final Map<Object, OrientEdge> keyToEdge = ((ILazyMapCalls) innerMap).getKeyToEdge();
-                                final Map<Object, ObjectCollectionState> entitiesState = ((ILazyMapCalls) innerMap).getEntitiesState();
+                                final Map<Object, ObjectCollectionState> keysState = ((ILazyMapCalls) mapFieldValue).collectionState();
+                                final Map<Object, OrientEdge> keysToEdges = ((ILazyMapCalls) mapFieldValue).getKeyToEdge();
+                                final Map<Object, ObjectCollectionState> entitiesState = ((ILazyMapCalls) mapFieldValue).getEntitiesState();
 
                                 // recorrer todas las claves del mapa
-                                for (Map.Entry<Object, ObjectCollectionState> entry1 : keyState.entrySet()) {
-                                    Object imk = entry1.getKey();
-                                    ObjectCollectionState imV = entry1.getValue();
+                                for (Map.Entry<Object, ObjectCollectionState> entry1 : keysState.entrySet()) {
+                                    Object key = entry1.getKey();
+                                    ObjectCollectionState keyState = entry1.getValue();
 
-                                    LOGGER.log(Level.FINER, "imk: " + imk + " state: " + imV);
+                                    LOGGER.log(Level.FINER, "imk: {0} state: {1}", new Object[]{key, keyState});
                                     // para cada entrada, verificar la existencia del objeto y crear un Edge.
-                                    OrientEdge oe = null;
-                                    Object linkedO = innerMap.get(imk);
+                                    Object linkedO = mapFieldValue.get(key);
 
-                                    if (!(linkedO instanceof IObjectProxy)) {
+                                    if (keyState != ObjectCollectionState.REMOVED &&
+                                            !(linkedO instanceof IObjectProxy)) {
                                         LOGGER.log(Level.FINER, "Link Map Object nuevo. Crear un vértice y un link");
                                         linkedO = this.___transaction.store(linkedO);
-                                        innerMap.replace(imk, linkedO);
-
-                                        // si está activa la instrumentación de clases, desmarcar el objeto como dirty
+                                        mapFieldValue.replace(key, linkedO);
                                         if (linkedO instanceof ITransparentDirtyDetector) {
                                             ((ITransparentDirtyDetector) linkedO).___ogm___setDirty(false);
                                         }
                                     }
 
+                                    OrientEdge oe;
                                     // verificar el estado del objeto en la colección.
-                                    switch (imV) {
+                                    switch (keyState) {
                                         case ADDED:
                                             // crear un link entre los dos objetos.
                                             LOGGER.log(Level.FINER, "-----> agregando un LinkList al Map!");
-                                            //                                        oe = SessionManager.this.graphdb.addEdge("", fVertexs.get(frid), fVertexs.get(llRID), ffield);
-                                            oe = this.___transaction.getCurrentGraphDb().addEdge("class:" + graphRelationName, (OrientVertex) this.___baseElement, ((IObjectProxy) linkedO).___getVertex(), graphRelationName);
+                                            oe = this.___transaction.getCurrentGraphDb().addEdge("class:" + graphRelationName,
+                                                    (OrientVertex) this.___baseElement, ((IObjectProxy) linkedO).___getVertex(),
+                                                    graphRelationName);
                                             // actualizar el edge con los datos de la key.
-                                            oe.setProperties(this.___transaction.getObjectMapper().simpleMap(imk));
+                                            oe.setProperties(this.___transaction.getObjectMapper().simpleMap(key));
 
                                             if (this.___transaction.isAuditing()) {
                                                 this.___transaction.auditLog(this, AuditType.WRITE, "LINKLIST ADD: " + graphRelationName, oe);
@@ -978,7 +970,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
                                         case REMOVED:
                                             // quitar el Edge
-                                            OrientEdge oeRemove = keyToEdge.get(imk);
+                                            OrientEdge oeRemove = keysToEdges.get(key);
                                             if (this.___transaction.isAuditing()) {
                                                 this.___transaction.auditLog(this, AuditType.WRITE, "LINKLIST REMOVE: " + graphRelationName, oeRemove);
                                             }
@@ -986,27 +978,25 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                             // el link se ha removido. Se debe eliminar y verificar si corresponde borrar 
                                             // el vértice en caso de estar marcado con @RemoveOrphan.
                                             if (f.isAnnotationPresent(RemoveOrphan.class)) {
-                                                if (entitiesState.get(imk) == ObjectCollectionState.REMOVED) {
-                                                    this.___transaction.delete(entitiesState.get(imk));
+                                                if (entitiesState.get(key) == ObjectCollectionState.REMOVED) {
+                                                    this.___transaction.delete(entitiesState.get(key));
                                                     if (this.___transaction.isAuditing()) {
-                                                        this.___transaction.auditLog(this, AuditType.DELETE, "LINKLIST REMOVE: " + graphRelationName, imk);
+                                                        this.___transaction.auditLog(this, AuditType.DELETE, "LINKLIST REMOVE: " + graphRelationName, key);
                                                     }
                                                 }
                                             }
                                             break;
                                     }
                                 }
-                                ((ILazyMapCalls) innerMap).clearState();
+                                ((ILazyMapCalls) mapFieldValue).clearState();
                             } else {
                                 LOGGER.log(Level.FINER, "********************************************");
                                 LOGGER.log(Level.FINER, "field: {0}", field);
                                 LOGGER.log(Level.FINER, "********************************************");
-                                throw new CollectionNotSupported(oCol.getClass().getSimpleName());
+                                throw new CollectionNotSupported(collectionFieldValue.getClass().getSimpleName());
                             }
-                            f.setAccessible(acc);
-
                         }
-                    } catch (NoSuchFieldException | IllegalArgumentException | IllegalAccessException ex) {
+                    } catch (IllegalArgumentException | IllegalAccessException ex) {
                         Logger.getLogger(SessionManager.class
                                 .getName()).log(Level.SEVERE, null, ex);
                     }

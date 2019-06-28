@@ -74,7 +74,9 @@ public class ObjectMapper {
     }
     
     /**
-     * Devuelve un mapeo rápido del Objeto. No procesa los link o linklist. Simplemente devuelve todos los atributos del objeto en un map
+     * Devuelve un mapeo rápido del Objeto. No procesa los link o linklist.
+     * Simplemente devuelve todos los atributos del objeto en un map (para
+     * mapear propiedades de una arista).
      *
      * @param o objeto a analizar.
      * @return un mapa con los campos y las clases que representa.

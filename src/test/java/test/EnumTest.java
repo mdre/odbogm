@@ -13,7 +13,7 @@ public enum EnumTest {
 
     @Override
     public String toString() {
-        return "EnumTest: " + name();
+        return "Nombre del EnumTest: " + name();
     }
     
 }

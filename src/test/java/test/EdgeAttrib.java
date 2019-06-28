@@ -1,6 +1,7 @@
 package test;
 
 import java.util.Date;
+import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.annotations.Entity;
@@ -53,6 +54,28 @@ public class EdgeAttrib {
 
     public String getRid() {
         return rid;
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 7;
+        hash = 97 * hash + Objects.hashCode(this.nota);
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (!(obj instanceof EdgeAttrib)) {
+            return false;
+        }
+        final EdgeAttrib other = (EdgeAttrib) obj;
+        return Objects.equals(this.nota, other.nota);
     }
     
 }
