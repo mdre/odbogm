@@ -92,29 +92,18 @@ public class ObjectMapper {
         return data;
     }
 
-    public void simpleFastMap(Object o, ClassDef classmap, HashMap<String, Object> data) {
-        // procesar todos los campos
-        classmap.fields.entrySet().stream().forEach((entry) -> {
-            try {
-                String field = entry.getKey();
-                Class<?> c = entry.getValue();
-
-//                Field f = ReflectionUtils.findField(o.getClass(), field);
-                Field f = classmap.fieldsObject.get(field);
-                boolean acc = f.isAccessible();
-                f.setAccessible(true);
-
-                // determinar si no es nulo
-                if (f.get(o) != null) {
-                    data.put(f.getName(), f.get(o));
-                }
-                f.setAccessible(acc);
-
-            } catch (SecurityException | IllegalArgumentException | IllegalAccessException ex) {
-                Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
-            }
+    private void simpleFastMap(Object o, ClassDef classmap, HashMap<String, Object> data) {
+        //campos básicos y enums
+        classmap.fields.entrySet().stream().forEach(entry -> {
+            Field f = classmap.fieldsObject.get(entry.getKey());
+            putValue(data, f, o, null);
+        });
+        classmap.enumFields.entrySet().stream().forEach(entry -> {
+            Field f = classmap.fieldsObject.get(entry.getKey());
+            putValue(data, f, o, v -> ((Enum)v).name());
         });
     }
+    
     //============================================================================================
 
     /**
@@ -425,8 +414,9 @@ public class ObjectMapper {
         return (T) oproxied;
     }
 
+    
     public void colecctionToLazy(Object o, String field, OrientVertex v, Transaction t) {
-        LOGGER.log(Level.FINER, "convertir colection a Lazy: " + field);
+        LOGGER.log(Level.FINER, "convertir colection a Lazy: {0}", field);
         ClassDef classdef;
         if (o instanceof IObjectProxy) {
             classdef = classCache.get(o.getClass().getSuperclass());
@@ -580,43 +570,34 @@ public class ObjectMapper {
      */
     public <T> T hydrate(Class<T> c, OrientEdge e, Transaction t) throws InstantiationException, IllegalAccessException, NoSuchFieldException {
         T oproxied = ObjectProxyFactory.create(c, e, t);
-        // recuperar la definición de la clase desde el caché
         ClassDef classdef = classCache.get(c);
-        Map<String, Class<?>> fieldmap = classdef.fields;
-
         Field f;
         for (String prop : e.getPropertyKeys()) {
             Object value = e.getProperty(prop);
 
             // obtener la clase a la que pertenece el campo
-            Class<?> fc = fieldmap.get(prop);
-//            LOGGER.log(Level.FINER, "hidratando campo: "+prop);
+            // (puede ser un enum en lugar de un atributo básico)
             // puede darse el caso que la base cree un atributo sobre los registros (ej: @rid) 
             // y la clave podría no corresponderse con un campo.
+            Class<?> fc = classdef.fields.get(prop);
+            fc = fc == null ? classdef.enumFields.get(prop) : fc;
+            
             if (fc != null) {
-//                f = ReflectionUtils.findField(c, prop);
                 f = classdef.fieldsObject.get(prop);
-                
-                boolean acc = f.isAccessible();
                 f.setAccessible(true);
-                f.set(oproxied, value);
-                f.setAccessible(acc);
+                f.set(oproxied, fc.isEnum() ? Enum.valueOf(
+                        f.getType().asSubclass(Enum.class), value.toString()) : value);
             }
         }
-
         return oproxied;
     }
 
+    
     public void setFieldValue(Object o, String field, Object value) {
         try {
             Field f = this.classCache.get(o.getClass()).fieldsObject.get(field);
-            boolean acc = f.isAccessible();
             f.setAccessible(true);
-
-            // determinar si no es nulo
             f.set(o, value);
-
-            f.setAccessible(acc);
         } catch (IllegalArgumentException | IllegalAccessException ex) {
             Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
         }

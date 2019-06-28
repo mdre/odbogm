@@ -2610,6 +2610,41 @@ public class SessionManagerTest {
         assertTrue(v.ohmSVE.isEmpty());
         sm.rollback();
         assertFalse(v.ohmSVE.isEmpty());
+        
+        //agregar más elementos al mapa
+        //@TODO: ver bien, esto no anda como debiera
+//        v.ohmSVE.clear();
+//        EdgeAttrib e3 = new EdgeAttrib("nueva relación", new Date());
+//        v.ohmSVE.put(e3, to);
+//        sm.commit();
+//        sm.getCurrentTransaction().clearCache();
+//        
+//        v = sm.get(SimpleVertexEx.class, rid);
+//        assertEquals(1, v.ohmSVE.size());
+//        assertEquals("nueva relación", v.ohmSVE.keySet().iterator().next().getNota());
+    }
+    
+    /*
+     * Testea que persista y cargue bien atributos de tipo enum en aristas.
+     */
+    @Test
+    public void enumEdgeAttribute() throws Exception {
+        SimpleVertexEx to = new SimpleVertexEx();
+        SimpleVertexEx v = new SimpleVertexEx();
+        v.setOhmSVE(new HashMap<>());
+        
+        EdgeAttrib e1 = new EdgeAttrib("relación 1", new Date());
+        e1.setEnumValue(EnumTest.TRES);
+        v.ohmSVE.put(e1, to);
+        
+        v = sm.store(v);
+        sm.commit();
+        String rid = sm.getRID(v);
+        sm.getCurrentTransaction().clearCache();
+        
+        v = sm.get(SimpleVertexEx.class, rid);
+        assertEquals(1, v.ohmSVE.size());
+        assertEquals(EnumTest.TRES, v.ohmSVE.keySet().iterator().next().getEnumValue());
     }
     
 }

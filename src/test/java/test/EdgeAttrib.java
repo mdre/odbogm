@@ -21,6 +21,7 @@ public class EdgeAttrib {
     @RID String rid;
     String nota;
     Date fecha;
+    EnumTest enumValue;
 
     public EdgeAttrib() {
     }
@@ -45,6 +46,14 @@ public class EdgeAttrib {
 
     public void setFecha(Date fecha) {
         this.fecha = fecha;
+    }
+
+    public EnumTest getEnumValue() {
+        return enumValue;
+    }
+
+    public void setEnumValue(EnumTest enumValue) {
+        this.enumValue = enumValue;
     }
 
     @Override
