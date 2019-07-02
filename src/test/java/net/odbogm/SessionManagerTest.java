@@ -2521,16 +2521,6 @@ public class SessionManagerTest {
     }
     
     /*
-     * Testea que el DBManager ignore el campo anotado con @RID.
-     */
-    @Test
-    public void dbManagerIgnoreRid() throws Exception {
-        DbManager dbm = new DbManager();
-        List<String> l = dbm.generateDBSQL("test");
-        l.forEach(s -> assertFalse(s.contains("rid STRING")));
-    }
-    
-    /*
      * Testea que persista y cargue correctamente una colección de enums.
      */
     @Test

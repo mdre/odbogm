@@ -31,7 +31,7 @@ public class SimpleVertexEx extends SimpleVertex {
     public EnumTest enumTest;
 
     @Indexed(type = Indexed.IndexType.UNIQUE)
-    private String uuid;
+    private String svuuid;
 
     @RemoveOrphan
     public SimpleVertex svinner; 
@@ -59,13 +59,13 @@ public class SimpleVertexEx extends SimpleVertex {
         super(s, i, f, b, oI, oF, oB);
         this.svex = svex;
         this.enumTest = EnumTest.UNO;
-        this.uuid = UUID.randomUUID().toString();
+        this.svuuid = UUID.randomUUID().toString();
     }
 
     public SimpleVertexEx() {
         super();
         this.svex = "default";
-        this.uuid = UUID.randomUUID().toString();
+        this.svuuid = UUID.randomUUID().toString();
     }
         
     public void initEnum() {
@@ -177,11 +177,11 @@ public class SimpleVertexEx extends SimpleVertex {
     }
 
     public String getUuid() {
-        return this.uuid;
+        return this.svuuid;
     }
 
     public void setUuid(String uuid) {
-        this.uuid = uuid;
+        this.svuuid = uuid;
     }
         
 }

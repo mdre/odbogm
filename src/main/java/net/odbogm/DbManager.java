@@ -207,7 +207,8 @@ public class DbManager {
     }
     
     /**
-     * Verifica que el árbol de herencias de la clase esté registrado. Si no es así, lo registra desde la clase superior hacia abajo.
+     * Verifica que el árbol de herencias de la clase esté registrado.
+     * Si no es así, lo registra desde la clase superior hacia abajo.
      *
      * @param clazz clase a analizar
      */
@@ -220,12 +221,12 @@ public class DbManager {
                 )
             return;
         
-        LOGGER.log(Level.FINER, "procesando: "+clazz.getSimpleName()+"...");
+        LOGGER.log(Level.FINER, "procesando: {0}...", clazz.getSimpleName());
         String superName = "";
         // primero procesar la superclass
         if (clazz.getSuperclass() != Object.class) {
             buildDBScript(clazz.getSuperclass());
-            superName = (clazz.getSuperclass()==null?"":clazz.getSuperclass().getSimpleName());
+            superName = clazz.getSuperclass().getSimpleName();
         }
         
         
@@ -241,6 +242,9 @@ public class DbManager {
         this.registeredClasses.put(className, clazzStruct);
         this.orderedRegisteredClass.add(clazzStruct);
         
+        // es vértice o arista
+        boolean esArista = isEdgeClass(clazz);
+        
         String exist = "let exist = select from (select expand(classes) from "
                 + "metadata:schema) where name = '"+className+"';\n"
                 + "if ($exist.size() %s 0) {\n"
@@ -248,23 +252,19 @@ public class DbManager {
                 + "}\n";
         
         // orden de drop
-        
-        String drop = "delete vertex " + className + ";\n"
-                + "    drop class " + className + ";\n";
+        String drop = String.format("delete %s %s;\n    drop class %s;\n",
+                esArista ? "edge" : "vertex", className, className);
         
         clazzStruct.drop = (!this.withDrops?"/*\n":"")
                 + String.format(exist, ">", drop) + (!this.withDrops?"*/":"");
         
         // orden de create
-        
-        String create = "create class " + className + (superName.isEmpty() ?
-                " extends V" : " extends " + superName) + ";\n";
+        String extendsFrom = superName.isEmpty() ? (esArista ? "E" : "V") : superName;
+        String create = String.format("create class %s extends %s;\n", className, extendsFrom);
         
         clazzStruct.create = (this.incremental ? String.format(exist, "=", create) : create)
                 + "alter class " + className + " custom javaClass='" 
-                + clazz.getCanonicalName() + "';\n"
-                + (superName.isEmpty() ? "" : "alter class " + className 
-                + " superclass " + superName + ";\n");
+                + clazz.getCanonicalName() + "';\n";
 
         // se utilizará para registrar todas las clases de atributos que no sean primitivos
         ArrayList<Class<?>> postProcess = new ArrayList<>();
@@ -374,11 +374,24 @@ public class DbManager {
                     }
                 } else {
                     // si no es un tipo básico, se debe conectar con un Edge.
-//                    if (Primitives.LAZY_COLLECTION.get(field.getType())!=null) {
-                    // FIXME: ojo que si se tratara de una extensión de AL o HM no lo vería como tal y lo vincularía con un link
-                    String createLink = "create class "+className+"_"+field.getName()+" extends E;";
+                    extendsFrom = "E";
+                    
+                    //si se usan atributos de aristas (con un Map), mantener la herencia
+                    //con la clase anotada como EdgeClass
+                    if (Map.class.isAssignableFrom(field.getType())) {
+                        ParameterizedType paratype = (ParameterizedType)field.getGenericType();
+                        Class keyClass = (Class)paratype.getActualTypeArguments()[0];
+                        if (isEdgeClass(keyClass)) {
+                            extendsFrom = keyClass.getSimpleName();
+                        }
+                    }
+                    
+                    String linkName = className + "_" + field.getName();
+                    String createLink = String.format("create class %s extends %s;",
+                            linkName, extendsFrom);
+                            
                     String statement = this.incremental ? String.format("\n"
-                        +"let exist = select from (select expand(classes) from metadata:schema) where name = '"+className+"_"+field.getName()+"';\n"
+                        +"let exist = select from (select expand(classes) from metadata:schema) where name = '"+linkName+"';\n"
                         + "if ($exist.size()=0) {\n"
                         + "    %s"
                         + "\n}\n ", createLink) : createLink;
@@ -386,7 +399,7 @@ public class DbManager {
                     // y se debe analizar si no se trata de una clase marcada como Entidad
                     // que no se encuentra entre los paquetes indicados como parámetros
                     // Ej. UserSID / GroupSID
-                    LOGGER.log(Level.FINER, "field type: "+field.getType());
+                    LOGGER.log(Level.FINER, "field type: {0}", field.getType());
                     if (field.getType().isAnnotationPresent(Entity.class) 
                             && registeredClasses.get(field.getType().getSimpleName())==null) {
                         postProcess.add(field.getType());
@@ -416,11 +429,14 @@ public class DbManager {
         }
         
         // procesar los tipos decubiertos durante la exploración de los campos.
-        for (Class<?> discoveredType : postProcess) {
-            buildDBScript(discoveredType);
-        }
+        postProcess.forEach(discoveredType -> buildDBScript(discoveredType));
     }
 
+    private boolean isEdgeClass(Class<?> c) {
+        Entity anno = c.getAnnotation(Entity.class);
+        return (anno != null && anno.isEdgeClass());
+    }
+    
     /**
      * recorrer el vector analizando todas las clases que se encuentran referenciadas y crea
      * las sentencias correspondientes para su creación            

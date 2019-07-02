@@ -11,7 +11,7 @@ import net.odbogm.annotations.RID;
  *
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
-@Entity
+@Entity(isEdgeClass = true)
 public class EdgeAttrib {
     private final static Logger LOGGER = Logger.getLogger(EdgeAttrib.class .getName());
     static {
