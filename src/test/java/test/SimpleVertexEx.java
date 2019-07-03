@@ -183,6 +183,13 @@ public class SimpleVertexEx extends SimpleVertex {
     public void setUuid(String uuid) {
         this.svuuid = uuid;
     }
-        
+    
+//@TODO: corregir build script de clases internas
+//    @Entity
+//    public static class SVExChild extends SimpleVertexEx {
+//        public SVExChild() {
+//            ohmSVE = new HashMap<>();
+//        }
+//    }
 }
 

@@ -28,6 +28,9 @@ import net.odbogm.annotations.Ignore;
 import net.odbogm.annotations.IgnoreClass;
 import net.odbogm.annotations.Indexed;
 import net.odbogm.annotations.RID;
+import net.odbogm.security.GroupSID;
+import net.odbogm.security.SObject;
+import net.odbogm.security.UserSID;
 
 /**
  * DbManager se encarga de analizar todas las clases que se encuentren en los
@@ -222,6 +225,14 @@ public class DbManager {
             return;
         
         LOGGER.log(Level.FINER, "procesando: {0}...", clazz.getSimpleName());
+        
+        //si se está usando SObject se debe forzar a definir las implementaciones,
+        //puede ser que nunca haya una referencia directa y nunca serían detectadas
+        if (clazz.equals(SObject.class)) {
+            buildDBScript(UserSID.class);
+            buildDBScript(GroupSID.class);
+        }
+        
         String superName = "";
         // primero procesar la superclass
         if (clazz.getSuperclass() != Object.class) {
@@ -266,10 +277,10 @@ public class DbManager {
                 + "alter class " + className + " custom javaClass='" 
                 + clazz.getCanonicalName() + "';\n";
 
-        // se utilizará para registrar todas las clases de atributos que no sean primitivos
+        // se utilizará para registrar todas las clases de atributos que no sean primitivos:
         ArrayList<Class<?>> postProcess = new ArrayList<>();
-
-        // procesar todos los campos de la clase.
+        
+        // procesar todos los campos de la clase:
         Field[] fields = clazz.getDeclaredFields();
         for (Field field : fields) {
             field.setAccessible(true);

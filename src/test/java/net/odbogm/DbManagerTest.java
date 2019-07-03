@@ -43,6 +43,9 @@ public class DbManagerTest {
                 s -> s.contains("create class EdgeAttrib extends E")));
         assertTrue(l.stream().anyMatch(s -> s.contains(
                 "create class SimpleVertexEx_ohmSVE extends EdgeAttrib")));
+        //las demás deben seguir como antes
+        assertTrue(l.stream().anyMatch(s -> s.contains(
+                "create class SimpleVertex extends V")));
     }
     
     /*
@@ -50,6 +53,13 @@ public class DbManagerTest {
      */
     @Test
     public void sids() throws Exception {
-        
+        List<String> l = dbm.generateDBSQL("test");
+        assertTrue(l.stream().anyMatch(
+                s -> s.contains("create class UserSID extends V")));
+        assertTrue(l.stream().anyMatch(
+                s -> s.contains("create class GroupSID extends V")));
+        assertTrue(l.stream().anyMatch(
+                s -> s.contains("create class SObject extends V")));
     }
+    
 }

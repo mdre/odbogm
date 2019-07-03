@@ -1338,8 +1338,8 @@ public class SessionManagerTest {
         System.out.println("===========================================================");
     }
 
-    /**
-     * Test de Transacciones privadas múltiples
+    /*
+     * Test de Transacciones privadas múltiples.
      */
     @Test
     public void testTransaction() throws Exception {
@@ -2637,4 +2637,17 @@ public class SessionManagerTest {
         assertEquals(EnumTest.TRES, v.ohmSVE.keySet().iterator().next().getEnumValue());
     }
     
+//@TODO: corregir que mantenga la herencia en aristas heredadas
+//    @Test
+//    public void childEdge() throws Exception {
+//        long edges = sm.query("select count(*) from EdgeAttrib", "");
+//        
+//        SimpleVertexEx.SVExChild v = new SimpleVertexEx.SVExChild();
+//        v.ohmSVE.put(new EdgeAttrib(), new SimpleVertexEx());
+//        sm.store(v);
+//        sm.commit();
+//        
+//        long newEdges = sm.query("select count(*) from EdgeAttrib", "");
+//        assertEquals(edges + 1, newEdges);
+//    }
 }
