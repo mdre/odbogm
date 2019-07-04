@@ -253,7 +253,6 @@ public class DbManager {
         // la clase no existe aún. Registrarla
         ClassStruct clazzStruct = new ClassStruct(className);
         this.registeredClasses.put(clazz.getSimpleName(), clazzStruct);
-        this.orderedRegisteredClass.add(clazzStruct);
         
         // es vértice o arista
         boolean esArista = isEdgeClass(clazz);
@@ -395,6 +394,7 @@ public class DbManager {
                         ParameterizedType paratype = (ParameterizedType)field.getGenericType();
                         Class keyClass = (Class)paratype.getActualTypeArguments()[0];
                         if (isEdgeClass(keyClass)) {
+                            buildDBScript(keyClass);
                             extendsFrom = ClassCache.getEntityName(keyClass);
                         }
                     }
@@ -440,6 +440,8 @@ public class DbManager {
         for (Annotation annotation : clazz.getAnnotationsByType(ClassIndex.class)) {
             clazzStruct.classIndexes.add(((ClassIndex)annotation).indexExpr());
         }
+        
+        this.orderedRegisteredClass.add(clazzStruct);
         
         // procesar los tipos decubiertos durante la exploración de los campos.
         postProcess.forEach(discoveredType -> buildDBScript(discoveredType));
