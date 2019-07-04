@@ -208,12 +208,13 @@ public class ObjectMapper {
         t.activateOnCurrentThread();
 
         Class<?> toHydrate = c;
-        String vertexClass = (v.getType().getName().equals("V") ? c.getSimpleName() : v.getType().getName());
+        String entityClass = ClassCache.getEntityName(toHydrate);
+        String vertexClass = (v.getType().getName().equals("V") ? entityClass : v.getType().getName());
 
         // validar que el Vertex sea instancia de la clase solicitada
         // o que la clase solicitada sea su superclass
-        if (!c.getSimpleName().equals(vertexClass)) {
-            LOGGER.log(Level.FINER, "Tipos distintos. {0} <> {1}", new Object[]{c.getSimpleName(), vertexClass});
+        if (!entityClass.equals(vertexClass)) {
+            LOGGER.log(Level.FINER, "Tipos distintos. {0} <> {1}", new Object[]{entityClass, vertexClass});
             String javaClass = v.getType().getCustom("javaClass");
             if (javaClass != null) {
                 try {
@@ -239,6 +240,7 @@ public class ObjectMapper {
         
         // recuperar la definición de la clase desde el caché
         ClassDef classdef = classCache.get(toHydrate);
+        entityClass = classdef.entityName;
         
         // ********************************************************************************************
         // procesar los atributos básicos
@@ -252,8 +254,6 @@ public class ObjectMapper {
             Object value = v.getProperty(prop);
 
             if (value != null) {
-                // obtener la clase a la que pertenece el campo
-                Class<?> fc = classdef.fields.get(prop);
                 f = classdef.fieldsObject.get(prop);
                 f.setAccessible(true);
                 if (f.getType().isAssignableFrom(List.class)) {
@@ -336,41 +336,25 @@ public class ObjectMapper {
         // procesar todos los linkslist
         // ********************************************************************************************
         LOGGER.log(Level.FINER, "preparando las colecciones...");
-//        Map<String, Class<?>> lnklst = new HashMap<>();
-//
-//        lnklst.putAll(classdef.linkLists);
-//        lnklst.putAll(classdef.indirectLinkLists);
-
         for (Map.Entry<String, Class<?>> entry : classdef.linkLists.entrySet()) {
-
             try {
                 // FIXME: se debería considerar agregar una annotation EAGER!
                 String field = entry.getKey();
                 Class<?> fc = entry.getValue();
                 LOGGER.log(Level.FINER, "Field: {0}   Class: {1}", new String[]{field, fc.getName()});
-                //Field fLink = ReflectionUtils.findField(toHydrate, field);
                 Field fLink = classdef.fieldsObject.get(field);
-                
-                boolean acc = fLink.isAccessible();
                 fLink.setAccessible(true);
-
-                String graphRelationName = null;
+                
+                String graphRelationName = entityClass + "_" + field;
                 Direction RelationDirection = Direction.OUT;
-
-                graphRelationName = toHydrate.getSimpleName() + "_" + field;
 
                 // si hay Vértices conectados o si el constructor del objeto ha inicializado los vectores, convertirlos
                 if ((v.countEdges(RelationDirection, graphRelationName) > 0) || (fLink.get(oproxied) != null)) {
                     this.colecctionToLazy(oproxied, field, fc, v, t);
                 }
-
-                fLink.setAccessible(acc);
-
-            
             } catch (IllegalArgumentException ex) {
                 Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
             }
-
         }
         
         // ********************************************************************************************
@@ -379,34 +363,24 @@ public class ObjectMapper {
         // ********************************************************************************************
         LOGGER.log(Level.FINER, "hidratar las colecciones indirectas...");
         for (Map.Entry<String, Class<?>> entry : classdef.indirectLinkLists.entrySet()) {
-
             try {
                 // FIXME: se debería considerar agregar una annotation EAGER!
                 String field = entry.getKey();
                 Class<?> fc = entry.getValue();
                 LOGGER.log(Level.FINER, "Field: {0}   Class: {1}", new String[]{field, fc.getName()});
-                //Field fLink = ReflectionUtils.findField(toHydrate, field);
                 Field fLink = classdef.fieldsObject.get(field);
-                
-                boolean acc = fLink.isAccessible();
                 fLink.setAccessible(true);
 
-                String graphRelationName = null;
                 Direction RelationDirection = Direction.IN;
-                
                 Indirect in = fLink.getAnnotation(Indirect.class);
-                graphRelationName = in.linkName();
+                String graphRelationName = in.linkName();
                 // si hay Vértices conectados o si el constructor del objeto ha inicializado los vectores, convertirlos
                 if ((v.countEdges(RelationDirection, graphRelationName) > 0) || (fLink.get(oproxied) != null)) {
                     this.colecctionToLazy(oproxied, field, fc, v, t);
                 }
-
-                fLink.setAccessible(acc);
-                
             } catch (IllegalArgumentException ex) {
                 Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
             }
-
         }
         
         LOGGER.log(Level.FINER, "******************* FIN HYDRATE *******************");
@@ -461,15 +435,11 @@ public class ObjectMapper {
                 c = o.getClass();
             }
             
-            //Field fLink = ReflectionUtils.findField(c, field);
-            Field fLink = classCache.get(c).fieldsObject.get(field);
-            
-            boolean acc = fLink.isAccessible();
+            ClassDef classdef = classCache.get(c);
+            Field fLink = classdef.fieldsObject.get(field);
             fLink.setAccessible(true);
 
-            String graphRelationName = null;
-
-            graphRelationName = c.getSimpleName() + "_" + field;
+            String graphRelationName = classdef.entityName + "_" + field;
             // Determinar la dirección
             Direction direction = Direction.OUT;
 
@@ -482,28 +452,27 @@ public class ObjectMapper {
             }
 
             Class<?> lazyClass = Primitives.LAZY_COLLECTION.get(fc);
-            LOGGER.log(Level.FINER, "lazyClass: " + lazyClass.getName());
+            LOGGER.log(Level.FINER, "lazyClass: {0}", lazyClass.getName());
             Object col = lazyClass.newInstance();
             // dependiendo de si la clase hereda de Map o List, inicalizar
             if (col instanceof List) {
-                ParameterizedType listType = (ParameterizedType) fLink.getGenericType();
-                Class<?> listClass = (Class<?>) listType.getActualTypeArguments()[0];
+                Class<?> listClass = getListType(fLink);
                 // inicializar la colección
-                ((ILazyCollectionCalls) col).init(t, v, (IObjectProxy) o, graphRelationName, listClass, direction);
+                ((ILazyCollectionCalls) col).init(t, v, (IObjectProxy) o,
+                        graphRelationName, listClass, direction);
 
-//                LOGGER.log(Level.FINER, "col: "+col.getDBClass());
             } else if (col instanceof Map) {
                 ParameterizedType listType = (ParameterizedType) fLink.getGenericType();
                 Class<?> keyClass = (Class<?>) listType.getActualTypeArguments()[0];
                 Class<?> valClass = (Class<?>) listType.getActualTypeArguments()[1];
                 // inicializar la colección
-                ((ILazyMapCalls) col).init(t, v, (IObjectProxy) o, graphRelationName, keyClass, valClass, direction);
+                ((ILazyMapCalls) col).init(t, v, (IObjectProxy) o,
+                        graphRelationName, keyClass, valClass, direction);
             } else {
                 throw new CollectionNotSupported();
             }
 
             fLink.set(o, col);
-            fLink.setAccessible(acc);
 
         } catch (SecurityException | IllegalArgumentException | IllegalAccessException | InstantiationException ex) {
             Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);

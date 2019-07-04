@@ -29,6 +29,7 @@ import net.odbogm.annotations.Audit;
 import net.odbogm.annotations.CascadeDelete;
 import net.odbogm.annotations.RemoveOrphan;
 import net.odbogm.audit.Auditor;
+import net.odbogm.cache.ClassCache;
 import net.odbogm.cache.ClassDef;
 import net.odbogm.cache.SimpleCache;
 import net.odbogm.exceptions.ClassToVertexNotFound;
@@ -409,14 +410,15 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     }
 
     /**
-     * Crea a un *NUEVO* vértice en la base de datos a partir del objeto. Retorna el RID del objeto que se agregó a la base.
+     * Crea a un *NUEVO* vértice en la base de datos a partir del objeto.
+     * Retorna el objeto que se agregó a la base administrado por el OGM.
      *
      * @param <T> clase base del objeto.
      * @param o objeto de referencia a almacenar.
      */
     @Override
     public synchronized <T> T store(T o) throws IncorrectRIDField, NoOpenTx, ClassToVertexNotFound {
-        T proxied = null;
+        T proxied;
         // si el objeto ya fue guardado con anterioridad, devolver la instancia creada previamente.
         proxied = (T) this.commitedObjects.get(o);
         if (proxied != null) {
@@ -436,16 +438,11 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         initInternalTx();
         activateOnCurrentThread();
         try {
-            String classname;
-            if (o instanceof IObjectProxy) {
-                classname = o.getClass().getSuperclass().getSimpleName();
-            } else {
-                classname = o.getClass().getSimpleName();
-            }
-            LOGGER.log(Level.FINER, "STORE: guardando objeto de la clase {0}", classname);
-
             // Recuperar la definición de clase del objeto.
             ClassDef oClassDef = this.sm.getObjectMapper().getClassDef(o);
+            String classname = oClassDef.entityName;
+            LOGGER.log(Level.FINER, "STORE: guardando objeto de la clase {0}", classname);
+
             // Obtener un map del objeto.
             ObjectStruct oStruct = objectMapper.objectStruct(o);
             Map<String, Object> omap = oStruct.fields;
@@ -465,21 +462,13 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
             //=====================================================
             // transferir todos los valores al proxy
-            // reemplazo la llapada por reflexión y utilizo el caché de fields.
-            // ReflectionUtils.copyObject(o, proxied);
-            
             for (Map.Entry<String, Field> entry : oClassDef.fieldsObject.entrySet()) {
-                String key = entry.getKey();
                 Field f = entry.getValue();
-                boolean acc = f.isAccessible();
                 f.setAccessible(true);
                 try {
-                    
                     f.set(proxied, f.get(o));
-
                 } catch (IllegalArgumentException | IllegalAccessException e) {
                 }
-                f.setAccessible(acc);
             }
             //=====================================================
             
@@ -509,7 +498,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             for (Map.Entry<String, Object> link : oStruct.links.entrySet()) {
                 String field = link.getKey();
                 String graphRelationName = classname + "_" + field;
-                LOGGER.log(Level.FINER, "Link: " + field);
+                LOGGER.log(Level.FINER, "Link: {0}", field);
 
                 // verificar si no formaba parte de los objetos que se están comiteando
                 Object innerO = this.commitedObjects.get(link.getValue());
@@ -525,14 +514,13 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                     innerO = this.store(innerO);
                     // actualizar la referencia del objeto.
                     this.objectMapper.setFieldValue(proxied, field, innerO);
-
-//                    innerRID = ((IObjectProxy)innerO).___getVertex().getId().toString();
                 } else {
                     this.objectMapper.setFieldValue(proxied, field, innerO);
                 }
 
                 // crear un link entre los dos objetos.
-                OrientEdge oe = this.orientdbTransact.addEdge("class:" + graphRelationName, v, ((IObjectProxy) innerO).___getVertex(), graphRelationName);
+                OrientEdge oe = this.orientdbTransact.addEdge("class:" + graphRelationName,
+                        v, ((IObjectProxy) innerO).___getVertex(), graphRelationName);
                 if (this.isAuditing()) {
                     this.auditLog((IObjectProxy) proxied, Audit.AuditType.WRITE, "STORE: " + graphRelationName, oe);
                 }
@@ -726,11 +714,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             for (Map.Entry<String, Class<?>> entry : classDef.linkLists.entrySet()) {
                 try {
                     String field = entry.getKey();
-                    final String graphRelationName = toRemove.getClass().getSimpleName() + "_" + field;
-                    Class<? extends Object> fieldClass = entry.getValue();
 
-                    f = ReflectionUtils.findField(toRemove.getClass(), field);
-                    boolean acc = f.isAccessible();
+                    f = classDef.fieldsObject.get(field);
                     f.setAccessible(true);
 
                     LOGGER.log(Level.FINER, "procesando campo: {0}", field);
@@ -744,8 +729,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                             String garbage = oCol.toString();
                         }
                     }
-                    f.setAccessible(acc);
-                } catch (NoSuchFieldException | IllegalArgumentException | IllegalAccessException ex) {
+                } catch (IllegalArgumentException | IllegalAccessException ex) {
                     Logger.getLogger(Transaction.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
@@ -799,7 +783,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             for (Map.Entry<String, Class<?>> entry : classDef.linkLists.entrySet()) {
                 try {
                     String field = entry.getKey();
-                    final String graphRelationName = toRemove.getClass().getSimpleName() + "_" + field;
                     Class<? extends Object> fieldClass = entry.getValue();
 
 //                    f = ReflectionUtils.findField(((IObjectProxy) toRemove).___getBaseObject().getClass(), field);
@@ -977,7 +960,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             for (Map.Entry<String, Class<?>> entry : classDef.linkLists.entrySet()) {
                 try {
                     String field = entry.getKey();
-                    final String graphRelationName = toRemove.getClass().getSimpleName() + "_" + field;
                     Class<? extends Object> fieldClass = entry.getValue();
 
 //                    f = ReflectionUtils.findField(((IObjectProxy) toRemove).___getBaseObject().getClass(), field);
@@ -1233,12 +1215,14 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     }
 
     /**
-     * Recupera un objeto a partir de la clase y el RID correspondiente. El objeto se recupera a partir del cache de objetos de la transacción.
+     * Recupera un objeto a partir de la clase y el RID correspondiente.
+     * El objeto se recupera a partir del cache de objetos de la transacción.
      *
      * @param <T> clase a devolver
      * @param type clase a devolver
      * @param rid RID del vértice de la base
      * @return objeto de la clase T
+     * @throws UnknownRID si no se encuentra un vértice con ese rid
      */
     @Override
     public synchronized <T> T get(Class<T> type, String rid) throws UnknownRID {
@@ -1252,7 +1236,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
         // si está en el caché, devolver la referencia desde ahí.
         if (getFromCache(rid) != null) {
-            LOGGER.log(Level.FINER, "Objeto Recupeardo del caché: " + rid + " " + type.getSimpleName());
+            LOGGER.log(Level.FINER, "Objeto Recupeardo del caché: {0} {1}",
+                    new Object[]{rid, type.getSimpleName()});
             o = (T) getFromCache(rid);
 
             // actualizar los indirects
@@ -1264,7 +1249,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             if (!((IObjectProxy) o).___isDirty()) {
                 ((IObjectProxy) o).___reload();
             }
-
         }
 
         if (o == null) {
@@ -1273,7 +1257,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             // tiene referencias a su padre.
             getTransactionCount++;
 
-            LOGGER.log(Level.FINER, "Obteniendo objeto type: " + type.getSimpleName() + " en RID: " + rid);
+            LOGGER.log(Level.FINER, "Obteniendo objeto type: {0} en RID: {1}",
+                    new Object[]{type.getSimpleName(), rid});
 
             // verificar si ya no se ha cargado
             o = (T) this.transactionLoopCache.get(rid);
@@ -1293,7 +1278,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                     Logger.getLogger(SessionManager.class.getName()).log(Level.SEVERE, null, ex);
                 }
             } else {
-                LOGGER.log(Level.FINER, "Objeto recuperado del loop cache! : " + o.getClass().getSimpleName());
+                LOGGER.log(Level.FINER, "Objeto recuperado del loop cache! : {0}",
+                        o.getClass().getSimpleName());
             }
             getTransactionCount--;
             if (getTransactionCount == 0) {
@@ -1302,14 +1288,17 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             }
 
             // cuardar el objeto en el caché
-            LOGGER.log(Level.FINER, "Agregando el objeto al cache de objetos de la transacción: " + rid + ": ihc: " + System.identityHashCode(o));
+            LOGGER.log(Level.FINER, "Agregando el objeto al cache de objetos de la transacción: {0}: ihc: {1}",
+                    new Object[]{rid, System.identityHashCode(o)});
             addToCache(rid, o);
         }
 
         // Aplicar los controles de seguridad.
-        LOGGER.log(Level.FINER, "Verificar la seguridad: LoggedIn: " + (this.sm.getLoggedInUser() != null) + " SObject: " + (o instanceof SObject));
+        LOGGER.log(Level.FINER, "Verificar la seguridad: LoggedIn: {0} SObject: {1}",
+                new Object[]{this.sm.getLoggedInUser() != null, o instanceof SObject});
         if ((this.sm.getLoggedInUser() != null) && (o instanceof SObject)) {
-            LOGGER.log(Level.FINER, "SObject detectado. Aplicando seguridad de acuerdo al usuario logueado: " + this.sm.getLoggedInUser().getName());
+            LOGGER.log(Level.FINER, "SObject detectado. Aplicando seguridad de acuerdo al usuario logueado: {0}",
+                    this.sm.getLoggedInUser().getName());
             ((SObject) o).validate(this.sm.getLoggedInUser());
         }
 
@@ -1319,9 +1308,9 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             this.auditLog((IObjectProxy) o, Audit.AuditType.READ, "READ", "");
         }
         LOGGER.log(Level.FINER, "fin auditoría.");
-
-        LOGGER.log(Level.FINER, "Fin get: " + rid + " : " + type.getSimpleName() + " ihc: " + System.identityHashCode(o) + "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n");
         
+        LOGGER.log(Level.FINER, "Fin get: {0} : {1} ihc: {2}^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n",
+                new Object[]{rid, type.getSimpleName(), System.identityHashCode(o)});
         closeInternalTx();
         return o;
     }
@@ -1435,7 +1424,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
         ArrayList<T> ret = new ArrayList<>();
 
-        Iterable<Vertex> vertices = this.orientdbTransact.getVerticesOfClass(clazz.getSimpleName());
+        Iterable<Vertex> vertices = this.orientdbTransact.getVerticesOfClass(
+                ClassCache.getEntityName(clazz));
         LOGGER.log(Level.FINER, "Enlapsed ODB response: " + (System.currentTimeMillis() - init));
         for (Vertex verticesOfClas : vertices) {
             ret.add(this.get(clazz, verticesOfClas.getId().toString()));
@@ -1463,7 +1453,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
         ArrayList<T> ret = new ArrayList<>();
 
-        String cSQL = "SELECT FROM " + clase.getSimpleName() + " " + body;
+        String cSQL = "SELECT FROM " + ClassCache.getEntityName(clase) + " " + body;
         LOGGER.log(Level.FINER, cSQL);
         for (Vertex v : (Iterable<Vertex>) this.orientdbTransact.command(
                 new OCommandSQL(cSQL)).execute()) {

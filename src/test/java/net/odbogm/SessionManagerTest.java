@@ -38,6 +38,7 @@ import test.EnumTest;
 import test.Enums;
 import test.Foo;
 import test.IndirectObject;
+import test.InterfaceTest;
 import test.SSimpleVertex;
 import test.SimpleVertex;
 import test.SimpleVertexEx;
@@ -2636,6 +2637,30 @@ public class SessionManagerTest {
         assertEquals(1, v.ohmSVE.size());
         assertEquals(EnumTest.TRES, v.ohmSVE.keySet().iterator().next().getEnumValue());
     }
+    
+    /*
+     * Testea que persista y cargue bien nodos con otro nombre distinto a la clase Java.
+     */
+    @Test
+    public void differentEntityName() throws Exception {
+        //los objetos Foo se guardan en la base con la clase FooNode
+        Foo foo = sm.store(new Foo("It's a FooNode"));
+        foo.add(new SimpleVertex());
+        sm.commit();
+        String rid = sm.getRID(foo);
+        sm.getCurrentTransaction().clearCache();
+        foo = sm.get(Foo.class, rid);
+        assertEquals("It's a FooNode", foo.getText());
+        assertEquals(1, foo.getLsve().size());
+        
+        //usando interfaz
+        sm.getCurrentTransaction().clearCache();
+        InterfaceTest it = sm.get(InterfaceTest.class, rid);
+        foo = (Foo)it;
+        assertEquals("It's a FooNode", foo.getText());
+        assertEquals(1, foo.getLsve().size());
+    }
+    
     
 //@TODO: corregir que mantenga la herencia en aristas heredadas
 //    @Test

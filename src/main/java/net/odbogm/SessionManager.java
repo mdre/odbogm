@@ -295,6 +295,7 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
      * @param type clase a devolver
      * @param rid RID del vértice de la base
      * @return objeto de la clase T
+     * @throws UnknownRID si no se encuentra ningún vértice con ese RID
      */
     @Override
     public <T> T get(Class<T> type, String rid) throws UnknownRID {

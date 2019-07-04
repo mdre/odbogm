@@ -13,6 +13,7 @@ import net.odbogm.ObjectMapper;
 import net.odbogm.Primitives;
 import static net.odbogm.Primitives.PRIMITIVE_MAP;
 import net.odbogm.annotations.Embedded;
+import net.odbogm.annotations.Entity;
 import net.odbogm.annotations.Ignore;
 import net.odbogm.annotations.Indirect;
 import net.odbogm.annotations.RID;
@@ -73,7 +74,8 @@ public class ClassCache {
     }
 
     /**
-     * Analiza la clase y devuelve un mapa con las definiciones de campo. Además agrega la clase al cache
+     * Analiza la clase y devuelve un mapa con las definiciones de campo.
+     * Además agrega la clase al caché.
      *
      * @param c reference class.
      */
@@ -90,8 +92,10 @@ public class ClassCache {
             // iniciamos analizando la superclass y luego seguimos con los campos de la clase 
             // actual. Esto es así para que los shallow fields se agreguen correctamente 
             // en los HM del caché de clases.
-            LOGGER.log(Level.FINER, "Analizandos superclass...");
+            LOGGER.log(Level.FINER, "Analizando superclass...");
             this.cacheClass(c.getSuperclass(), cached);
+            
+            cached.entityName = getEntityName(c);
             
             Field[] fields = c.getDeclaredFields();
             for (Field f : fields) {
@@ -225,4 +229,10 @@ public class ClassCache {
         }
     }
 
+        
+    public static String getEntityName(Class<?> cls) {
+        Entity entity = cls.getAnnotation(Entity.class);
+        return (entity == null || entity.name().isEmpty()) ? cls.getSimpleName() : entity.name();
+    }
+    
 }

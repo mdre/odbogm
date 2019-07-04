@@ -19,6 +19,11 @@ public class ClassDef {
     }
     
     /**
+     * Nombre de la entidad (clase de los vértices asociados).
+     */
+    public String entityName;
+    
+    /**
      * Campo que será usado para inyectar el RID si existe la anotación.
      */
     public Field ridField;
@@ -78,14 +83,4 @@ public class ClassDef {
      */
     public HashMap<String, Class<?>> indirectOnQueryLinkLists = new HashMap<>();
     
-    @Override
-    public ClassDef clone() {
-        ClassDef cd = new ClassDef();
-        cd.fields = new HashMap<>(fields);
-        cd.enumFields = new HashMap<>(enumFields);
-        cd.links = new HashMap<>(links);
-        cd.linkLists = new HashMap<>(linkLists);
-        return cd;
-    }
-   
 }

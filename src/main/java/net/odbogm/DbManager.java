@@ -28,6 +28,7 @@ import net.odbogm.annotations.Ignore;
 import net.odbogm.annotations.IgnoreClass;
 import net.odbogm.annotations.Indexed;
 import net.odbogm.annotations.RID;
+import net.odbogm.cache.ClassCache;
 import net.odbogm.security.GroupSID;
 import net.odbogm.security.SObject;
 import net.odbogm.security.UserSID;
@@ -65,8 +66,9 @@ public class DbManager {
     private static final char DIR_SEPARATOR = '/';
     private static final String CLASS_FILE_SUFFIX = ".class";
 
-    private final ArrayList<ClassStruct> orderedRegisteredClass = new ArrayList<>();
+    /** clases ya registradas, la clave es el nombre de la clase Java, no de la entidad */
     private final ConcurrentHashMap<String, ClassStruct> registeredClasses = new ConcurrentHashMap<>();
+    private final ArrayList<ClassStruct> orderedRegisteredClass = new ArrayList<>();
 
     /** determina si se genera la cadena de drops como comentarios o no */
     private boolean withDrops = false;
@@ -226,6 +228,11 @@ public class DbManager {
         
         LOGGER.log(Level.FINER, "procesando: {0}...", clazz.getSimpleName());
         
+        // verificar si ya se ha agregado
+        if (this.registeredClasses.get(clazz.getSimpleName()) != null) {
+            return;
+        }
+        
         //si se está usando SObject se debe forzar a definir las implementaciones,
         //puede ser que nunca haya una referencia directa y nunca serían detectadas
         if (clazz.equals(SObject.class)) {
@@ -237,20 +244,15 @@ public class DbManager {
         // primero procesar la superclass
         if (clazz.getSuperclass() != Object.class) {
             buildDBScript(clazz.getSuperclass());
-            superName = clazz.getSuperclass().getSimpleName();
+            superName = ClassCache.getEntityName(clazz.getSuperclass());
         }
-        
         
         // procesar todos los campos de la clase actual.
-        String className = clazz.getSimpleName();
+        String className = ClassCache.getEntityName(clazz);
 
-        // verificar si ya se ha agregado
-        if (this.registeredClasses.get(className) != null) {
-            return;
-        }
         // la clase no existe aún. Registrarla
         ClassStruct clazzStruct = new ClassStruct(className);
-        this.registeredClasses.put(className, clazzStruct);
+        this.registeredClasses.put(clazz.getSimpleName(), clazzStruct);
         this.orderedRegisteredClass.add(clazzStruct);
         
         // es vértice o arista
@@ -393,7 +395,7 @@ public class DbManager {
                         ParameterizedType paratype = (ParameterizedType)field.getGenericType();
                         Class keyClass = (Class)paratype.getActualTypeArguments()[0];
                         if (isEdgeClass(keyClass)) {
-                            extendsFrom = keyClass.getSimpleName();
+                            extendsFrom = ClassCache.getEntityName(keyClass);
                         }
                     }
                     

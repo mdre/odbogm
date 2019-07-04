@@ -11,8 +11,8 @@ import net.odbogm.annotations.Ignore;
  *
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
-@Entity
-public class Foo {
+@Entity(name = "FooNode")
+public class Foo implements InterfaceTest {
     @Ignore
     private final static Logger LOGGER = Logger.getLogger(Foo.class .getName());
     static {
@@ -43,5 +43,9 @@ public class Foo {
     public void add(SimpleVertex sv) {
         lsve.add(sv);
     }
-    
+
+    @Override
+    public void foo() {
+    }
+
 }

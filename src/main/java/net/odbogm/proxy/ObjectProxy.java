@@ -411,11 +411,11 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                         String field = entry.getKey();
                         Class<?> fc = entry.getValue();
 
-                        Field fLink = ReflectionUtils.findField(___baseClass, field);
+                        Field fLink = classdef.fieldsObject.get(field);
                         boolean acc = fLink.isAccessible();
                         fLink.setAccessible(true);
 
-                        String graphRelationName = ___baseClass.getSimpleName() + "_" + field;
+                        String graphRelationName = classdef.entityName + "_" + field;
                         Direction direction = Direction.OUT;
 //                        if (fLink.isAnnotationPresent(Indirect.class)) {
 //                            // si es un indirect se debe reemplazar el nombre de la relación por 
@@ -425,12 +425,14 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 //                            direction = Direction.IN;
 //                            LOGGER.log(Level.FINER, "Se ha detectado un indirect. Linkname = {0}", new Object[]{in.linkName()});
 //                        }
-                        LOGGER.log(Level.FINER, "Field: {0}.{1}   Class: {2}  RelationName: {3}", new String[]{this.___baseClass.getSimpleName(), field, fc.getSimpleName(), graphRelationName});
+                        LOGGER.log(Level.FINER, "Field: {0}.{1}   Class: {2}  RelationName: {3}",
+                                new String[]{this.___baseClass.getSimpleName(), field,
+                                    fc.getSimpleName(), graphRelationName});
 
                         // recuperar de la base el vértice correspondiente
                         boolean duplicatedLinkGuard = false;
                         for (Vertex vertice : ov.getVertices(direction, graphRelationName)) {
-                            LOGGER.log(Level.FINER, "hydrate innerO: " + vertice.getId());
+                            LOGGER.log(Level.FINER, "hydrate innerO: {0}", vertice.getId());
 
                             if (!duplicatedLinkGuard) {
 //                        Object innerO = this.hydrate(fc, vertice);
@@ -463,7 +465,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                             LOGGER.log(Level.FINER, "FIN hydrate innerO: " + vertice.getId() + "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
                         }
                         fLink.setAccessible(acc);
-                    } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
+                    } catch (SecurityException | IllegalArgumentException | IllegalAccessException ex) {
                         Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
                     }
                 }
@@ -503,7 +505,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                     boolean acc = fLink.isAccessible();
                     fLink.setAccessible(true);
 
-                    String graphRelationName = ___baseClass.getSimpleName() + "_" + field;
+                    String graphRelationName = classdef.entityName + "_" + field;
                     Direction direction = Direction.OUT;
                     if (fLink.isAnnotationPresent(Indirect.class)) {
                         // si es un indirect se debe reemplazar el nombre de la relación por 
@@ -701,7 +703,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                  */
                 for (Map.Entry<String, Class<?>> link : cDef.links.entrySet()) {
                     String field = link.getKey();
-                    String graphRelationName = this.___baseClass.getSimpleName() + "_" + field;
+                    String graphRelationName = cDef.entityName + "_" + field;
                     // determinar el estado del campo
                     if (oStruct.links.get(field) == null) {
                         // si está en null, es posible que se haya eliminado el objeto
@@ -803,7 +805,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                         f.setAccessible(true);
 
                         // preprarar el nombre de la relación
-                        final String graphRelationName = this.___baseClass.getSimpleName() + "_" + field;
+                        final String graphRelationName = cDef.entityName + "_" + field;
 
                         Object collectionFieldValue = f.get(this.___proxiedObject);
 

@@ -99,7 +99,7 @@ public class QueryTest {
         String rid = sm.getRID(foo);
         
         try (ODBOrientDynaElementIterable<Vertex> list = sm.query(
-                "select expand(out('Foo_lsve')) from (select from " + rid + ")")) {
+                "select expand(out('FooNode_lsve')) from (select from " + rid + ")")) {
             
             if (!list.iterator().hasNext()) {
                 fail("Empty list!");
@@ -147,6 +147,19 @@ public class QueryTest {
         foo.setText("modified");
         List<Foo> res = sm.query(Foo.class, "where @rid = " + rid);
         assertEquals("modified", res.iterator().next().getText());
+    }
+    
+    
+    /*
+     * Testea la consulta de nodos con clase distinta a la clase Java.
+     */
+    @Test
+    public void queryCustomEntityName() throws Exception {
+        sm.store(new Foo());
+        sm.commit();
+        List<Foo> lFoo = sm.query(Foo.class);
+        long cantFoo = sm.query("select count(*) from FooNode", "");
+        assertEquals(cantFoo, lFoo.size());
     }
     
 }

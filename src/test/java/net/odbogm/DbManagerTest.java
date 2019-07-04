@@ -62,4 +62,16 @@ public class DbManagerTest {
                 s -> s.contains("create class SObject extends V")));
     }
     
+    
+    @Test
+    public void entityName() throws Exception {
+        List<String> l = dbm.generateDBSQL("test");
+        assertTrue(l.stream().anyMatch(
+                s -> s.contains("create class FooNode extends V")));
+        assertTrue(l.stream().anyMatch(
+                s -> s.contains("create class FooNode_lsve extends E")));
+        assertTrue(l.stream().noneMatch(
+                s -> s.contains("create class Foo extends V")));
+    }
+    
 }
