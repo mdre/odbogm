@@ -8,19 +8,20 @@ plugins {
 }
 
 //OrientDB version to use:
-ext.orientDbVersion = '3.0.18'
+ext.orientDbVersion = '3.0.22'
 
 println "***************************************************************"
 println "SISTEMA: " + name
 println "VERSION: " + version
+println "JAVA   : " + System.getProperty('java.home')
 println "***************************************************************"
 
 
 compileJava {
 //    options.compilerArgs << '-Xlint:deprecation'
 //    options.compilerArgs << '-Xlint:unchecked'
-    sourceCompatibility = 1.8
-    targetCompatibility = 1.8
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
 }
 
 // Para hace el deploy en Sonatype
@@ -112,7 +113,7 @@ repositories {
 
 dependencies {
     implementation "cglib:cglib:3.2.6"
-    implementation "com.github.mdre:odbogm-agent:1.0.5+"
+    implementation "com.github.mdre:odbogm-agent:1.1.1+"
     
     api "com.orientechnologies:orientdb-graphdb:${orientDbVersion}"
     api "com.orientechnologies:orientdb-graphdb:${orientDbVersion}:javadoc"
@@ -127,6 +128,7 @@ dependencies {
 }
 
 test {
+    jvmArgs '-Djdk.attach.allowAttachSelf=true'
     testLogging {
         // Make sure output from
         // standard out or error is shown
