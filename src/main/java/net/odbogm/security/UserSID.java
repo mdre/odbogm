@@ -1,12 +1,8 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
 package net.odbogm.security;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -29,7 +25,7 @@ public final class UserSID implements ISID, ISecurityCredentials {
     private String uuid = "";
     
     @Indirect(linkName = "GroupSID_participants")
-    private List<GroupSID> groups = new ArrayList<>();;
+    private List<GroupSID> groups = new ArrayList<>();
             
     public UserSID() {
         super();
@@ -61,9 +57,8 @@ public final class UserSID implements ISID, ISecurityCredentials {
 
     @Override
     public final String toString() {
-        return "GSID{" + "id=" + uuid + ", name="+this.name+"}";
+        return "USID{" + "id=" + uuid + ", name="+this.name+"}";
     }
-    
     
     public void addGroup(GroupSID gsid) {
         // ojo con las referencias cruzadas entre UserSID y GroupSID
@@ -87,15 +82,14 @@ public final class UserSID implements ISID, ISecurityCredentials {
     @Override
     public List<String> showSecurityCredentials() {
         // recuperar todos los grupos a los que pertenece el UserSID actual.
-        // FIXME: la lista retornada debería ser inmutable.
-        List<String> sc = new ArrayList<>();
+        List<String> sc = Arrays.asList(uuid);
         if (this.groups != null) {
             sc = this.groups.stream().map(gid -> gid.getUUID()).collect(Collectors.toList());
         }
         for (GroupSID group : this.groups) {
             sc.addAll(group.getIndirectCredentialsGroups());
         }
-        return sc;
+        return Collections.unmodifiableList(sc);
     }
     
     /**

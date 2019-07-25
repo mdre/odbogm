@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package net.odbogm.security;
 
 import java.util.HashMap;
@@ -23,11 +18,10 @@ public abstract class SObject {
         }
     }
     
-    
     private ISID __owner;
-    // Access Control List
+    
+    /** Access Control List */
     private Map<String, Integer> __acl = new HashMap<>();
-    ;
     
     /**
      * Estados internos del objeto:
@@ -39,8 +33,11 @@ public abstract class SObject {
      */ 
     @Ignore
     private int __state = 0;
+    
+    /** Para que herede los ACL de este otro objeto */
     private SObject __inherit = null;
 
+    
     public SObject() {
     }
 
@@ -61,7 +58,7 @@ public abstract class SObject {
     }
 
     /**
-     * Add or update de AccessRight for the specified SID.
+     * Add or update the AccessRight for the specified SID.
      *
      * @param sid the Security ID
      * @param ar the AccessRight to set
@@ -99,7 +96,7 @@ public abstract class SObject {
     }
     
     /**
-     * Validate all groups aganis the acls and return the final state of the object
+     * Validate all groups against the acls and return the final state of the object.
      *
      * @param sc SecurityCredential
      * @return the security state computed.
@@ -141,7 +138,7 @@ public abstract class SObject {
     }
 
     /**
-     * Retorna una copia de los ACLs establecidos para el objecto
+     * Retorna una copia de los ACLs establecidos para el objeto.
      *
      * @return {@literal Map<String,Integer>} de los acls
      */
