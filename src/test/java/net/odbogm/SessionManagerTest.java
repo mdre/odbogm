@@ -1311,6 +1311,32 @@ public class SessionManagerTest {
         System.out.println("Security state: " + se);
         assertTrue(se > 0);
     }
+    
+    @Test
+    public void securityOnUser() throws Exception {
+        String uuid = RandomStringUtils.randomAlphanumeric(10);
+        UserSID user = new UserSID(uuid, uuid);
+        user = sm.store(user);
+        sm.commit();
+        
+        SSimpleVertex ssv = new SSimpleVertex("access");
+        ssv.setAcl(user, new AccessRight(AccessRight.ACCESSCONTROL));
+        sm.store(ssv);
+        ssv = new SSimpleVertex("no access");
+        ssv.setAcl(user, new AccessRight(AccessRight.NOACCESS));
+        sm.store(ssv);
+        sm.commit();
+        
+        String rid = sm.getRID(user);
+        user = sm.get(UserSID.class, rid);
+        sm.setLoggedInUser(user);
+        
+        int res = 0;
+        for (var v : sm.query(SSimpleVertex.class)) {
+            if (v.getSecurityState() != 0) res++;
+        }
+        assertEquals(1, res);
+    }
 
     @Test
     public void testEmbeddedRollback() {
@@ -2662,7 +2688,7 @@ public class SessionManagerTest {
     }
     
     
-//@TODO: corregir que mantenga la herencia en aristas heredadas
+    //@TODO: corregir que mantenga la herencia en aristas heredadas
 //    @Test
 //    public void childEdge() throws Exception {
 //        long edges = sm.query("select count(*) from EdgeAttrib", "");

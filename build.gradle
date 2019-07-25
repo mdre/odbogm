@@ -112,7 +112,7 @@ repositories {
     
 
 dependencies {
-    implementation "cglib:cglib:3.2.6"
+    implementation "cglib:cglib:3.2.12"
     implementation "com.github.mdre:odbogm-agent:1.1.1+"
     
     api "com.orientechnologies:orientdb-graphdb:${orientDbVersion}"
