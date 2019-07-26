@@ -49,11 +49,11 @@ public class SimpleVertexEx extends SimpleVertex {
     public ArrayList<SimpleVertexEx> alSVE;
     
     @CascadeDelete
-    public HashMap<String,SimpleVertex> hmSV;
+    public HashMap<String, SimpleVertex> hmSV;
     
-    public HashMap<String ,SimpleVertexEx> hmSVE;
+    public HashMap<String, SimpleVertexEx> hmSVE;
     
-    public HashMap<EdgeAttrib,SimpleVertexEx> ohmSVE;
+    public HashMap<EdgeAttrib, SimpleVertexEx> ohmSVE;
     
     public SimpleVertexEx(String svex, String s, int i, float f, boolean b, Integer oI, Float oF, Boolean oB) {
         super(s, i, f, b, oI, oF, oB);
@@ -184,12 +184,4 @@ public class SimpleVertexEx extends SimpleVertex {
         this.svuuid = uuid;
     }
     
-//@TODO: corregir build script de clases internas
-//    @Entity
-//    public static class SVExChild extends SimpleVertexEx {
-//        public SVExChild() {
-//            ohmSVE = new HashMap<>();
-//        }
-//    }
 }
-

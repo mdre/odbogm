@@ -217,21 +217,20 @@ public class DbManager {
      *
      * @param clazz clase a analizar
      */
-    private void buildDBScript(Class clazz) {
+    private ClassStruct buildDBScript(Class clazz) {
         if ((clazz == null)
                 ||(clazz.isAnonymousClass())
                 ||(clazz.isEnum())
                 ||(clazz.isAnnotationPresent(IgnoreClass.class))
                 ||(clazz.isInterface())
                 )
-            return;
+            return null;
         
         LOGGER.log(Level.FINER, "procesando: {0}...", clazz.getSimpleName());
         
         // verificar si ya se ha agregado
-        if (this.registeredClasses.get(clazz.getSimpleName()) != null) {
-            return;
-        }
+        ClassStruct pre = this.registeredClasses.get(clazz.getSimpleName());
+        if (pre != null) return pre;
         
         //si se está usando SObject se debe forzar a definir las implementaciones,
         //puede ser que nunca haya una referencia directa y nunca serían detectadas
@@ -241,10 +240,11 @@ public class DbManager {
         }
         
         String superName = "";
+        ClassStruct superStruct;
         // primero procesar la superclass
         if (clazz.getSuperclass() != Object.class) {
-            buildDBScript(clazz.getSuperclass());
-            superName = ClassCache.getEntityName(clazz.getSuperclass());
+            superStruct = buildDBScript(clazz.getSuperclass());
+            superName = superStruct.className;
         }
         
         // procesar todos los campos de la clase actual.
@@ -399,6 +399,12 @@ public class DbManager {
                         }
                     }
                     
+                    ////////////////////////////////////////////////////////////
+                    //VERIFICAR QUE HEREDE UNA COLECCIÓN DEL PADRE
+                    ////////////////////////////////////////////////////////////
+                    ////////////////////////////////////////////////////////////
+                    
+                    
                     String linkName = className + "_" + field.getName();
                     String createLink = String.format("create class %s extends %s;",
                             linkName, extendsFrom);
@@ -445,6 +451,8 @@ public class DbManager {
         
         // procesar los tipos decubiertos durante la exploración de los campos.
         postProcess.forEach(discoveredType -> buildDBScript(discoveredType));
+        
+        return clazzStruct;
     }
 
     private boolean isEdgeClass(Class<?> c) {
