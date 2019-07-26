@@ -91,6 +91,13 @@ if ($exist.size() > 0) {
     drop class SimpleVertexEx;
 }
 */
+/*
+let exist = select from (select expand(classes) from metadata:schema) where name = 'SVExChild';
+if ($exist.size() > 0) {
+    delete vertex SVExChild;
+    drop class SVExChild;
+}
+*/
 let exist = select from (select expand(classes) from metadata:schema) where name = 'EdgeAttrib';
 if ($exist.size() = 0) {
     create class EdgeAttrib extends E;
@@ -540,6 +547,19 @@ if ($exist.size()=0) {
 let exist = select from (select expand(classes) from metadata:schema) where name = 'SimpleVertexEx_ohmSVE';
 if ($exist.size()=0) {
     create class SimpleVertexEx_ohmSVE extends EdgeAttrib;
+}
+ 
+
+let exist = select from (select expand(classes) from metadata:schema) where name = 'SVExChild';
+if ($exist.size() = 0) {
+    create class SVExChild extends SimpleVertexEx;
+}
+alter class SVExChild custom javaClass='test.SVExChild';
+
+
+let exist = select from (select expand(classes) from metadata:schema) where name = 'SVExChild_ohmSVE';
+if ($exist.size()=0) {
+    create class SVExChild_ohmSVE extends EdgeAttrib;
 }
 
 end

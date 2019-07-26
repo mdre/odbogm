@@ -12,6 +12,7 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -212,6 +213,19 @@ public class DbManager {
     }
     
     /**
+     * recorrer el vector analizando todas las clases que se encuentran referenciadas y crea
+     * las sentencias correspondientes para su creación            
+     */
+    private void process(String[] analize) {
+        List<Class<?>> classes = new ArrayList<>();
+        for (String clazz : analize) {
+            classes.addAll(find(clazz));
+        }
+        classes.stream().filter(clazz -> clazz.isAnnotationPresent(Entity.class)).
+                forEach(clazz -> buildDBScript(clazz));
+    }
+    
+    /**
      * Verifica que el árbol de herencias de la clase esté registrado.
      * Si no es así, lo registra desde la clase superior hacia abajo.
      *
@@ -240,7 +254,7 @@ public class DbManager {
         }
         
         String superName = "";
-        ClassStruct superStruct;
+        ClassStruct superStruct = null;
         // primero procesar la superclass
         if (clazz.getSuperclass() != Object.class) {
             superStruct = buildDBScript(clazz.getSuperclass());
@@ -396,25 +410,12 @@ public class DbManager {
                         if (isEdgeClass(keyClass)) {
                             buildDBScript(keyClass);
                             extendsFrom = ClassCache.getEntityName(keyClass);
+                            clazzStruct.edgeCollections.put(field, extendsFrom);
                         }
                     }
                     
-                    ////////////////////////////////////////////////////////////
-                    //VERIFICAR QUE HEREDE UNA COLECCIÓN DEL PADRE
-                    ////////////////////////////////////////////////////////////
-                    ////////////////////////////////////////////////////////////
+                    processEdge(field, extendsFrom, clazzStruct);
                     
-                    
-                    String linkName = className + "_" + field.getName();
-                    String createLink = String.format("create class %s extends %s;",
-                            linkName, extendsFrom);
-                            
-                    String statement = this.incremental ? String.format("\n"
-                        +"let exist = select from (select expand(classes) from metadata:schema) where name = '"+linkName+"';\n"
-                        + "if ($exist.size()=0) {\n"
-                        + "    %s"
-                        + "\n}\n ", createLink) : createLink;
-                    clazzStruct.properties.add(statement);
                     // y se debe analizar si no se trata de una clase marcada como Entidad
                     // que no se encuentra entre los paquetes indicados como parámetros
                     // Ej. UserSID / GroupSID
@@ -424,6 +425,7 @@ public class DbManager {
                         postProcess.add(field.getType());
                     }
                 }
+                //indexed?
                 if (field.isAnnotationPresent(Indexed.class)) {
                     Indexed idx = field.getAnnotation(Indexed.class);
                     
@@ -441,6 +443,13 @@ public class DbManager {
             }
         }
         
+        //procesar las colecciones heredadas (mapas con atributos en aristas):
+        if (superStruct != null) {
+            superStruct.edgeCollections.forEach((field, edgeClass) -> {
+                processEdge(field, edgeClass, clazzStruct);
+                clazzStruct.edgeCollections.put(field, edgeClass);
+            });
+        }
         
         // procesar las anotaciones de clase buscando índices compuestos.
         for (Annotation annotation : clazz.getAnnotationsByType(ClassIndex.class)) {
@@ -460,17 +469,17 @@ public class DbManager {
         return (anno != null && anno.isEdgeClass());
     }
     
-    /**
-     * recorrer el vector analizando todas las clases que se encuentran referenciadas y crea
-     * las sentencias correspondientes para su creación            
-     */
-    private void process(String[] analize) {
-        List<Class<?>> classes = new ArrayList<>();
-        for (String clazz : analize) {
-            classes.addAll(find(clazz));
-        }
-        classes.stream().filter(clazz -> clazz.isAnnotationPresent(Entity.class)).
-                forEach(clazz -> buildDBScript(clazz));
+    private void processEdge(Field field, String edgeClass, ClassStruct classStruct) {
+        String linkName = classStruct.className + "_" + field.getName();
+        String createLink = String.format("create class %s extends %s;",
+                linkName, edgeClass);
+        String statement = this.incremental ? String.format("\n"
+            + "let exist = select from (select expand(classes) from metadata:schema) "
+            + "where name = '" + linkName + "';\n"
+            + "if ($exist.size()=0) {\n"
+            + "    %s"
+            + "\n}\n ", createLink) : createLink;
+        classStruct.properties.add(statement);
     }
     
     private List<Class<?>> find(String scannedPackage) {
@@ -518,12 +527,12 @@ public class DbManager {
      */
     class ClassStruct {
 
-        public int order;
         public String className;
         public String drop;
         public String create;
         public ArrayList<String> properties = new ArrayList<>();
         public ArrayList<String> classIndexes = new ArrayList<>();
+        public Map<Field, String> edgeCollections = new HashMap<>();
 
         public ClassStruct(String className) {
             this.className = className;

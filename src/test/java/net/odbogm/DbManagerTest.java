@@ -1,11 +1,9 @@
 package net.odbogm;
 
-import java.util.HashMap;
 import java.util.List;
 import org.junit.Test;
 import static org.junit.Assert.*;
 import org.junit.Ignore;
-import test.EdgeAttrib;
 
 /**
  *
@@ -14,8 +12,6 @@ import test.EdgeAttrib;
 public class DbManagerTest {
     
     private final DbManager dbm = new DbManager();
-    
-    private HashMap<EdgeAttrib, String> lala;
     
     
     @Test
@@ -72,6 +68,14 @@ public class DbManagerTest {
                 s -> s.contains("create class FooNode_lsve extends E")));
         assertTrue(l.stream().noneMatch(
                 s -> s.contains("create class Foo extends V")));
+    }
+    
+    
+    @Test
+    public void inheritedMapEdge() throws Exception {
+        List<String> l = dbm.generateDBSQL("test");
+        assertTrue(l.stream().anyMatch(
+                s -> s.contains("create class SVExChild_ohmSVE extends EdgeAttrib")));
     }
     
 }

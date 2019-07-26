@@ -40,6 +40,7 @@ import test.Foo;
 import test.IndirectObject;
 import test.InterfaceTest;
 import test.SSimpleVertex;
+import test.SVExChild;
 import test.SimpleVertex;
 import test.SimpleVertexEx;
 import test.SimpleVertexInterfaceAttr;
@@ -2687,18 +2688,21 @@ public class SessionManagerTest {
         assertEquals(1, foo.getLsve().size());
     }
     
+    /*
+     * Testea que los mapas con clases de aristas heredados mantengan la clase
+     * de la arista.
+     */
+    @Test
+    public void inheritedMapEdge() throws Exception {
+        long edges = sm.query("select count(*) from EdgeAttrib", "");
+        
+        SVExChild v = new SVExChild();
+        v.ohmSVE.put(new EdgeAttrib("nota", new Date()), new SimpleVertexEx());
+        sm.store(v);
+        sm.commit();
+        
+        long newEdges = sm.query("select count(*) from EdgeAttrib", "");
+        assertEquals(edges + 1, newEdges);
+    }
     
-    //@TODO: corregir que mantenga la herencia en aristas heredadas
-//    @Test
-//    public void childEdge() throws Exception {
-//        long edges = sm.query("select count(*) from EdgeAttrib", "");
-//        
-//        SimpleVertexEx.SVExChild v = new SimpleVertexEx.SVExChild();
-//        v.ohmSVE.put(new EdgeAttrib(), new SimpleVertexEx());
-//        sm.store(v);
-//        sm.commit();
-//        
-//        long newEdges = sm.query("select count(*) from EdgeAttrib", "");
-//        assertEquals(edges + 1, newEdges);
-//    }
 }
