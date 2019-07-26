@@ -296,6 +296,24 @@ if ($exist.size()=0) {
 }
  
 
+let exist = select from (select expand(classes) from metadata:schema) where name = 'SSimpleVertex___owner';
+if ($exist.size()=0) {
+    create class SSimpleVertex___owner extends SObject___owner;
+}
+ 
+
+let exist = select from (select expand(classes) from metadata:schema) where name = 'SSimpleVertex___acl';
+if ($exist.size()=0) {
+    create class SSimpleVertex___acl extends SObject___acl;
+}
+ 
+
+let exist = select from (select expand(classes) from metadata:schema) where name = 'SSimpleVertex___inherit';
+if ($exist.size()=0) {
+    create class SSimpleVertex___inherit extends SObject___inherit;
+}
+ 
+
 let exist = select from (select expand(classes) from metadata:schema) where name = 'SimpleVertex';
 if ($exist.size() = 0) {
     create class SimpleVertex extends V;
@@ -556,6 +574,60 @@ if ($exist.size() = 0) {
 }
 alter class SVExChild custom javaClass='test.SVExChild';
 
+
+let exist = select from (select expand(classes) from metadata:schema) where name = 'SVExChild_looptest';
+if ($exist.size()=0) {
+    create class SVExChild_looptest extends SimpleVertexEx_looptest;
+}
+ 
+
+let exist = select from (select expand(classes) from metadata:schema) where name = 'SVExChild_svinner';
+if ($exist.size()=0) {
+    create class SVExChild_svinner extends SimpleVertexEx_svinner;
+}
+ 
+
+let exist = select from (select expand(classes) from metadata:schema) where name = 'SVExChild_alString';
+if ($exist.size()=0) {
+    create class SVExChild_alString extends SimpleVertexEx_alString;
+}
+ 
+
+let exist = select from (select expand(classes) from metadata:schema) where name = 'SVExChild_hmString';
+if ($exist.size()=0) {
+    create class SVExChild_hmString extends SimpleVertexEx_hmString;
+}
+ 
+
+let exist = select from (select expand(classes) from metadata:schema) where name = 'SVExChild_alSV';
+if ($exist.size()=0) {
+    create class SVExChild_alSV extends SimpleVertexEx_alSV;
+}
+ 
+
+let exist = select from (select expand(classes) from metadata:schema) where name = 'SVExChild_lSV';
+if ($exist.size()=0) {
+    create class SVExChild_lSV extends SimpleVertexEx_lSV;
+}
+ 
+
+let exist = select from (select expand(classes) from metadata:schema) where name = 'SVExChild_alSVE';
+if ($exist.size()=0) {
+    create class SVExChild_alSVE extends SimpleVertexEx_alSVE;
+}
+ 
+
+let exist = select from (select expand(classes) from metadata:schema) where name = 'SVExChild_hmSV';
+if ($exist.size()=0) {
+    create class SVExChild_hmSV extends SimpleVertexEx_hmSV;
+}
+ 
+
+let exist = select from (select expand(classes) from metadata:schema) where name = 'SVExChild_hmSVE';
+if ($exist.size()=0) {
+    create class SVExChild_hmSVE extends SimpleVertexEx_hmSVE;
+}
+ 
 
 let exist = select from (select expand(classes) from metadata:schema) where name = 'SVExChild_ohmSVE';
 if ($exist.size()=0) {

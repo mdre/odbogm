@@ -297,18 +297,20 @@ public class DbManager {
         
         // procesar todos los campos de la clase:
         Field[] fields = clazz.getDeclaredFields();
+        String fieldName;
         for (Field field : fields) {
+            fieldName = field.getName();
             field.setAccessible(true);
             
             if (!(field.isAnnotationPresent(Ignore.class)
                             || Modifier.isTransient(field.getModifiers())
                             || (Modifier.isStatic(field.getModifiers()) && Modifier.isFinal(field.getModifiers())
-                            || field.getName().startsWith("___ogm___"))
+                            || fieldName.startsWith("___ogm___"))
                             || field.isAnnotationPresent(RID.class)
                             )) {
                 FieldAttributes fa = field.getAnnotation(FieldAttributes.class);
                 
-                String currentProp = className + "." + field.getName();
+                String currentProp = className + "." + fieldName;
                 
                 boolean embeddedList = false;
                 if (List.class.isAssignableFrom(field.getType())) {
@@ -340,7 +342,7 @@ public class DbManager {
                                                         + "(select expand(properties) "
                                                         + " from (select expand(classes) "
                                                         + " from metadata:schema) "
-                                                        + " where name = '"+className+"') where name = '"+field.getName()+"';\n"
+                                                        + " where name = '"+className+"') where name = '"+fieldName+"';\n"
                                     + "if ($exist.size()=0) {\n"
                                     + "    %s"
                                     + "\n}\n ";
@@ -410,11 +412,13 @@ public class DbManager {
                         if (isEdgeClass(keyClass)) {
                             buildDBScript(keyClass);
                             extendsFrom = ClassCache.getEntityName(keyClass);
-                            clazzStruct.edgeCollections.put(field, extendsFrom);
+                            clazzStruct.edgeCollections.put(fieldName, extendsFrom);
                         }
                     }
                     
-                    processEdge(field, extendsFrom, clazzStruct);
+                    if (extendsFrom.equals("E")) clazzStruct.relations.add(fieldName);
+                    
+                    processEdge(fieldName, extendsFrom, clazzStruct);
                     
                     // y se debe analizar si no se trata de una clase marcada como Entidad
                     // que no se encuentra entre los paquetes indicados como parámetros
@@ -432,7 +436,7 @@ public class DbManager {
                     String engine = idx.type()==Indexed.IndexType.LUCENE?" FULLTEXT ENGINE LUCENE ":""+idx.type();
                     engine += (!idx.metadata().isEmpty()?"METADATA "+idx.metadata():"");
                     
-                    String createLink = "create index "+currentProp+" on "+className+"("+field.getName()+") "+engine+";";
+                    String createLink = "create index "+currentProp+" on "+className+"("+fieldName+") "+engine+";";
                     String statement = this.incremental ? String.format("\n"
                         +"let exist = select from(select expand(indexes) from metadata:indexmanager) where name = '"+currentProp+"';\n"
                         + "if ($exist.size()=0) {\n"
@@ -443,8 +447,13 @@ public class DbManager {
             }
         }
         
-        //procesar las colecciones heredadas (mapas con atributos en aristas):
+        //procesar las relaciones heredadas:
+        final String finalSuperName = superName;
         if (superStruct != null) {
+            superStruct.relations.forEach(field -> {
+                processEdge(field, finalSuperName + "_" + field, clazzStruct);
+                clazzStruct.relations.add(field);
+            });
             superStruct.edgeCollections.forEach((field, edgeClass) -> {
                 processEdge(field, edgeClass, clazzStruct);
                 clazzStruct.edgeCollections.put(field, edgeClass);
@@ -469,8 +478,8 @@ public class DbManager {
         return (anno != null && anno.isEdgeClass());
     }
     
-    private void processEdge(Field field, String edgeClass, ClassStruct classStruct) {
-        String linkName = classStruct.className + "_" + field.getName();
+    private void processEdge(String field, String edgeClass, ClassStruct classStruct) {
+        String linkName = classStruct.className + "_" + field;
         String createLink = String.format("create class %s extends %s;",
                 linkName, edgeClass);
         String statement = this.incremental ? String.format("\n"
@@ -532,7 +541,8 @@ public class DbManager {
         public String create;
         public ArrayList<String> properties = new ArrayList<>();
         public ArrayList<String> classIndexes = new ArrayList<>();
-        public Map<Field, String> edgeCollections = new HashMap<>();
+        public Map<String, String> edgeCollections = new HashMap<>();
+        public ArrayList<String> relations = new ArrayList<>();
 
         public ClassStruct(String className) {
             this.className = className;

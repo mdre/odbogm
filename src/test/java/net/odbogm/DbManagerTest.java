@@ -58,7 +58,9 @@ public class DbManagerTest {
                 s -> s.contains("create class SObject extends V")));
     }
     
-    
+    /*
+     * Testea que tenga en cuenta los nombres personalizados de las entidades.
+     */
     @Test
     public void entityName() throws Exception {
         List<String> l = dbm.generateDBSQL("test");
@@ -70,7 +72,25 @@ public class DbManagerTest {
                 s -> s.contains("create class Foo extends V")));
     }
     
+    /*
+     * Testea que tenga en cuenta las relaciones heredadas.
+     */
+    @Test
+    public void inheritedRelations() throws Exception {
+        List<String> l = dbm.generateDBSQL("test");
+        assertTrue(l.stream().anyMatch(
+                s -> s.contains("create class SSimpleVertex___owner extends SObject___owner")));
+        assertTrue(l.stream().anyMatch(
+                s -> s.contains("create class SVExChild_looptest extends SimpleVertexEx_looptest")));
+        assertTrue(l.stream().anyMatch(
+                s -> s.contains("create class SVExChild_lSV extends SimpleVertexEx_lSV")));
+        assertTrue(l.stream().anyMatch(
+                s -> s.contains("create class SVExChild_hmSV extends SimpleVertexEx_hmSV")));
+    }
     
+    /*
+     * Testea que tenga en cuenta los mapas con clases de aristas heredados.
+     */
     @Test
     public void inheritedMapEdge() throws Exception {
         List<String> l = dbm.generateDBSQL("test");
