@@ -113,7 +113,7 @@ repositories {
 
 dependencies {
     implementation "cglib:cglib:3.2.12"
-    implementation "com.github.mdre:odbogm-agent:1.1.1+"
+    implementation "com.github.mdre:odbogm-agent:1.1.1"
     
     api "com.orientechnologies:orientdb-graphdb:${orientDbVersion}"
     api "com.orientechnologies:orientdb-graphdb:${orientDbVersion}:javadoc"
@@ -238,10 +238,10 @@ uploadArchives {
             
             
             pom.project {
-                name 'Object to OrientDB Graph mapper'
+                name 'Object to OrientDB Graph Mapper'
                 packaging 'jar'
                 // optionally artifactId can be defined here 
-                description 'ODBOGM let you store/retrieve object in a OrientDB graph structure in a clear and simple way.'
+                description 'ODBOGM let you store/retrieve objects in a OrientDB graph structure in a clear and simple way.'
                 url 'https://github.com/mdre/odbogm'
 
                 scm {
