@@ -21,7 +21,7 @@ public abstract class SObject {
     private ISID __owner;
     
     /** Access Control List */
-    private Map<String, Integer> __acl = new HashMap<>();
+    private final Map<String, Integer> __acl = new HashMap<>();
     
     /**
      * Estados internos del objeto:
@@ -41,6 +41,10 @@ public abstract class SObject {
     public SObject() {
     }
 
+    public SObject(ISID owner) {
+        this.__owner = owner;
+    }
+    
     public SObject(UserSID owner) {
         this.__owner = owner;
     }
@@ -64,6 +68,11 @@ public abstract class SObject {
      * @param ar the AccessRight to set
      * @return this SObject reference
      */
+    public final SObject setAcl(ISID sid, AccessRight ar) {
+        __acl.put(sid.getUUID(), ar.getRights());
+        return this;
+    }
+    
     public final SObject setAcl(GroupSID sid, AccessRight ar) {
         __acl.put(sid.getUUID(), ar.getRights());
         return this;
@@ -74,16 +83,16 @@ public abstract class SObject {
         return this;
     }
 
+    public final void removeAcl(ISID sid) {
+        __acl.remove(sid.getUUID());
+    }
+    
     public final void removeAcl(GroupSID sid) {
-        if (__acl != null) {
-            __acl.remove(sid.getUUID());
-        }
+        __acl.remove(sid.getUUID());
     }
     
     public final void removeAcl(UserSID sid) {
-        if (__acl != null) {
-            __acl.remove(sid.getUUID());
-        }
+        __acl.remove(sid.getUUID());
     }
 
     public final SObject setOwner(UserSID o) {
@@ -106,11 +115,11 @@ public abstract class SObject {
         int partialState = 0;
         Integer gal = 0;
         HashMap<String, Integer> acls = this.getAcls();
-        LOGGER.log(Level.FINER, "Lista de acls: "+acls.size()+" : "+acls);
-        if (acls.size() != 0) {
+        LOGGER.log(Level.FINER, "Lista de acls: {0} : {1}", new Object[]{acls.size(), acls});
+        if (!acls.isEmpty()) {
             for (String securityCredential : sc.showSecurityCredentials()) {
                 gal = acls.get(securityCredential);
-                LOGGER.log(Level.FINER, "SecurityCredential access: "+securityCredential+" "+gal);
+                LOGGER.log(Level.FINER, "SecurityCredential access: {0} {1}", new Object[]{securityCredential, gal});
                 if (gal != null) {
                     if (gal == AccessRight.NOACCESS) {
                         partialState = 0;

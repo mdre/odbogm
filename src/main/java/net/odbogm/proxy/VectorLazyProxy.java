@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package net.odbogm.proxy;
 
 import com.tinkerpop.blueprints.Direction;
@@ -84,7 +79,6 @@ public class VectorLazyProxy extends Vector implements ILazyCollectionCalls {
     private void lazyLoad() {
         this.transaction.initInternalTx();
         
-        this.transaction.activateOnCurrentThread();
 //        LOGGER.log(Level.FINER, "getGraph: "+relatedTo.getGraph());
 //        if (relatedTo.getGraph()==null)
 //            this.transaction.getSessionManager().getGraphdb().attach(relatedTo);

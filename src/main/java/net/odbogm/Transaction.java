@@ -87,10 +87,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     // Los RIDs temporales deben ser convertidos a los permanentes en el proceso de commit
     private List<String> newrids = new ArrayList<>();
     
-    // mapa objeto -> proxy
-    private ConcurrentHashMap<Object, Object> commitedObjects = new ConcurrentHashMap<>();
-    
-    int newObjectCount = 0;
+    // mapa objeto -> proxy: contiene los objetos que se van almacenando mientras no se haga commit
+    private ConcurrentHashMap<Object, Object> storedObjects = new ConcurrentHashMap<>();
     
     // Auditor asociado a la transacción
     private Auditor auditor;
@@ -108,10 +106,13 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     Transaction(SessionManager sm) {
         this.sm = sm;
-        LOGGER.log(Level.FINER, "current thread: " + Thread.currentThread().getName());
+        LOGGER.log(Level.FINER, "current thread: {0}", Thread.currentThread().getName());
         this.objectMapper = this.sm.getObjectMapper();
     }
 
+    /**
+     * Inicia una transacción interna activándola en el hilo actual.
+     */
     public synchronized void initInternalTx() {
         if (this.orientdbTransact == null) {
             LOGGER.log(Level.FINEST, "\nAbriendo una transacción...");
@@ -121,9 +122,11 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             orientTransacLevel = 0;
         } else {
             //aumentar el anidamiento de transacciones
-            LOGGER.log(Level.FINEST, "Anidando transacción: "+orientTransacLevel+" --> "+(orientTransacLevel+1));
+            LOGGER.log(Level.FINEST, "Anidando transacción: {0} --> {1}{2}",
+                    new Object[]{orientTransacLevel, orientTransacLevel, 1});
             orientTransacLevel++;
         }
+        activateOnCurrentThread();
     }
     
     /**
@@ -131,13 +134,14 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     public synchronized void closeInternalTx() {
         if (orientdbTransact == null) return; //no se abrió todavía
-        if (orientTransacLevel <= 0 && newrids.size() == 0) {
+        if (orientTransacLevel <= 0 && newrids.isEmpty()) {
             LOGGER.log(Level.FINEST, "termnando la transacción\n");
             orientdbTransact.shutdown(true, false);
             orientdbTransact = null;
             orientTransacLevel = 0;
         } else {
-            LOGGER.log(Level.FINEST, "decrementando la transacción: "+orientTransacLevel+ " --> "+(orientTransacLevel-1));
+            LOGGER.log(Level.FINEST, "decrementando la transacción: {0} --> {1}",
+                    new Object[]{orientTransacLevel, orientTransacLevel-1});
             orientTransacLevel--;
         }
     }
@@ -278,8 +282,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         
         LOGGER.log(Level.FINER, "COMMIT");
         if (this.nestedTransactionLevel <= 0) {
-            activateOnCurrentThread();
-
             LOGGER.log(Level.FINER, "Iniciando COMMIT ==================================");
             LOGGER.log(Level.FINER, "Objetos marcados como Dirty: " + dirty.size());
             LOGGER.log(Level.FINER, "Objetos marcados como DirtyDeleted: " + dirtyDeleted.size());
@@ -335,11 +337,11 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             
             this.dirtyDeleted.clear();
             this.dirty.clear();
-            this.commitedObjects.clear();
+            this.storedObjects.clear();
 
             // refrescar las referencias del caché
             String newRid;
-            LOGGER.log(Level.FINER, "NewRIDs: " + newrids.size());
+            LOGGER.log(Level.FINER, "NewRIDs: {0}", newrids.size());
             for (Iterator<String> iterator = newrids.iterator(); iterator.hasNext();) {
                 String tempRid = iterator.next();
                 if (getFromCache(tempRid) != null) {
@@ -374,9 +376,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         LOGGER.log(Level.FINER, "Dirty objects: " + dirty.size());
         LOGGER.log(Level.FINER, "Dirty deleted objects: " + dirtyDeleted.size());
         
-        activateOnCurrentThread();
         this.orientdbTransact.rollback();
-
         
         // refrescar todos los objetos
         for (Map.Entry<String, Object> entry : dirty.entrySet()) {
@@ -420,7 +420,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     public synchronized <T> T store(T o) throws IncorrectRIDField, NoOpenTx, ClassToVertexNotFound {
         T proxied;
         // si el objeto ya fue guardado con anterioridad, devolver la instancia creada previamente.
-        proxied = (T) this.commitedObjects.get(o);
+        proxied = (T) this.storedObjects.get(o);
         if (proxied != null) {
             // devolver la instancia recuperada
             LOGGER.log(Level.FINER, "El objeto original ya había sido persistido. Se devuelve la instancia creada inicialmente.");
@@ -436,7 +436,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         }
         
         initInternalTx();
-        activateOnCurrentThread();
         try {
             // Recuperar la definición de clase del objeto.
             ClassDef oClassDef = this.sm.getObjectMapper().getClassDef(o);
@@ -452,9 +451,9 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                 // arrojar una excepción en caso contrario.
                 throw new ClassToVertexNotFound("No se ha encontrado la definición de la clase " + classname + " en la base!");
             }
+
             LOGGER.log(Level.FINER, "object data: {0}", omap);
             OrientVertex v = this.orientdbTransact.addVertex("class:" + classname, omap);
-
             proxied = ObjectProxyFactory.create(o, v, this);
 
             // registrar el rid temporal para futuras referencias.
@@ -485,7 +484,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
             // si se está en proceso de commit, registrar el objeto junto con el proxy para 
             // que no se genere un loop con objetos internos que lo referencien.
-            this.commitedObjects.put(o, proxied);
+            this.storedObjects.put(o, proxied);
 
             // utlizado para analizar las anotations de campo.
             Field f;
@@ -501,7 +500,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                 LOGGER.log(Level.FINER, "Link: {0}", field);
 
                 // verificar si no formaba parte de los objetos que se están comiteando
-                Object innerO = this.commitedObjects.get(link.getValue());
+                Object innerO = this.storedObjects.get(link.getValue());
                 // si no es así, recuperar el valor del campo
                 if (innerO == null) {
                     LOGGER.log(Level.FINER, field + ": No existe el objeto en el cache de objetos creados.");
@@ -554,7 +553,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                         IObjectProxy ioproxied;
                         // verificar si ya está en el contexto
                         // verificar si no formaba parte de los objetos que se están comiteando
-                        Object llO = this.commitedObjects.get(llObject);
+                        Object llO = this.storedObjects.get(llObject);
                         // si no es así, recuperar el valor del campo
                         if (llO == null) {
                             llO = llObject;
@@ -583,7 +582,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                             IObjectProxy ioproxied;
 
                             // verificar si ya no se había guardardo
-                            Object imO = commitedObjects.get(imV);
+                            Object imO = storedObjects.get(imV);
                             // si no es así, recuperar el valor del campo
                             if (imO == null) {
                                 imO = imV;
@@ -636,7 +635,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         closeInternalTx();
         return proxied;
     }
-
+    
     /**
      * Remueve un vértice y todos los vértices apuntados por él y marcados con @RemoveOrphan
      * o @CascadeDelete.
@@ -650,7 +649,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         // si no hereda de IObjectProxy, el objeto no pertenece a la base y no se debe hacer nada.
         if (toRemove instanceof IObjectProxy) {
             initInternalTx();
-            activateOnCurrentThread();
             
             String ridToRemove = ((IObjectProxy) toRemove).___getVertex().getId().toString();
             
@@ -674,7 +672,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         initInternalTx();
         
         LOGGER.log(Level.FINER, "Remove: {0}", toRemove.getClass().getName());
-        activateOnCurrentThread();
 
         // si no hereda de IObjectProxy, el objeto no pertenece a la base y no se debe hacer nada.
         if (toRemove instanceof IObjectProxy) {
@@ -890,7 +887,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         initInternalTx();
         
         LOGGER.log(Level.FINER, "Remove: {0}", toRemove.getClass().getName());
-        activateOnCurrentThread();
 
         // si no hereda de IObjectProxy, el objeto no pertenece a la base y no se debe hacer nada.
         if (toRemove instanceof IObjectProxy) {
@@ -1055,7 +1051,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     public synchronized void flush() {
         initInternalTx();
-        activateOnCurrentThread();
         
         for (Map.Entry<String, Object> e : dirty.entrySet()) {
             String rid = e.getKey();
@@ -1168,8 +1163,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         initInternalTx();
         Object ret = null;
         try {
-            activateOnCurrentThread();
-
             if (getFromCache(rid) != null) {
                 ret = getFromCache(rid);
                 
@@ -1231,7 +1224,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         }
         
         initInternalTx();
-        activateOnCurrentThread();
         T o = null;
 
         // si está en el caché, devolver la referencia desde ahí.
@@ -1318,7 +1310,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     @Override
     public <T> T getEdgeAsObject(Class<T> type, OrientEdge e) {
         initInternalTx();
-        activateOnCurrentThread();
         T o = null;
         try {
             // verificar si ya no se ha cargado
@@ -1372,7 +1363,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         // usar una transacción interna para que el iterable pueda seguir funcionando
         // por fuera del OGM
         OrientGraph localtx = this.sm.getFactory().getTx();
-        activateOnCurrentThread();
+        localtx.makeActive();
         flush();
 
         OCommandSQL osql = new OCommandSQL(sql);
@@ -1393,7 +1384,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     @Override
     public long query(String sql, String retVal) {
         initInternalTx();
-        activateOnCurrentThread();
         this.flush();
 
         OCommandSQL osql = new OCommandSQL(sql);
@@ -1417,7 +1407,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     @Override
     public <T> List<T> query(Class<T> clazz) {
         initInternalTx();
-        activateOnCurrentThread();
         this.flush();
 
         long init = System.currentTimeMillis();
@@ -1448,7 +1437,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     @Override
     public <T> List<T> query(Class<T> clase, String body) {
         initInternalTx();
-        activateOnCurrentThread();
         this.flush();
 
         ArrayList<T> ret = new ArrayList<>();
@@ -1475,7 +1463,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     @Override
     public <T> List<T> query(Class<T> clase, String sql, Object... param) {
         initInternalTx();
-        activateOnCurrentThread();
 
         OSQLSynchQuery<ODocument> query = new OSQLSynchQuery<>(sql);
         ArrayList<T> ret = new ArrayList<>();
@@ -1512,7 +1499,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     @Override
     public <T> List<T> query(Class<T> clase, String sql, HashMap<String, Object> param) {
         initInternalTx();
-        activateOnCurrentThread();
 
         OSQLSynchQuery<ODocument> query = new OSQLSynchQuery<>(sql);
         ArrayList<T> ret = new ArrayList<>();
@@ -1533,7 +1519,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     public OClass getDBClass(String clase) {
         initInternalTx();
-        activateOnCurrentThread();
         OClass ret = orientdbTransact.getRawGraph().getMetadata().getSchema().getClass(clase);
         closeInternalTx();
         return ret;
@@ -1591,7 +1576,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     /**
      * Asegurarse que la base esté activa en el thread en el que se encuentra la transacción
      */
-    public void activateOnCurrentThread() {
+    private void activateOnCurrentThread() {
         LOGGER.log(Level.FINEST, "Activando en el Thread actual...");
         LOGGER.log(Level.FINEST, "current thread: " + Thread.currentThread().getName());
         orientdbTransact.makeActive();

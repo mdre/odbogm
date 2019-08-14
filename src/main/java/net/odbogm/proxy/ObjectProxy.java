@@ -577,13 +577,13 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                     fLink.setAccessible(true);
 
                     String graphRelationName = null;
-                    Direction RelationDirection = Direction.IN;
+                    Direction relationDirection = Direction.IN;
 
                     Indirect in = fLink.getAnnotation(Indirect.class);
                     graphRelationName = in.linkName();
 
                     // si hay Vértices conectados o si el constructor del objeto ha inicializado los vectores, convertirlos
-                    if ((ov.countEdges(RelationDirection, graphRelationName) > 0) || (fLink.get(___proxiedObject) != null)) {
+                    if ((ov.countEdges(relationDirection, graphRelationName) > 0) || (fLink.get(___proxiedObject) != null)) {
                         this.___transaction.getObjectMapper().colecctionToLazy(___proxiedObject, field, fc, ov, ___transaction);
                     }
 
@@ -667,9 +667,6 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
         if (this.___dirty || this.___baseElement.getIdentity().isNew()) {
             this.___transaction.initInternalTx();
-
-            // asegurarse que está activa la base.
-            this.___transaction.activateOnCurrentThread();
 
             // asegurarse que está atachado
             if (this.___baseElement.getGraph() == null) {
@@ -1017,7 +1014,6 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     public void ___reload() {
         this.___transaction.initInternalTx();
 
-        this.___transaction.activateOnCurrentThread();
         this.___baseElement.reload();
 
         this.___transaction.closeInternalTx();
@@ -1087,7 +1083,6 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
         this.___transaction.initInternalTx();
 
-        this.___transaction.activateOnCurrentThread();
         // si es un objeto nuevo
         LOGGER.log(Level.FINER, "RID: " + this.___baseElement.getIdentity().toString() + " Nueva?: " + this.___baseElement.getIdentity().isNew());
         if (this.___baseElement.getIdentity().isNew()) {

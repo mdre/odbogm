@@ -204,8 +204,6 @@ public class ObjectMapper {
     public <T> T hydrate(Class<T> c, OrientVertex v, Transaction t) throws DuplicateClassDefinition, InstantiationException, IllegalAccessException, NoSuchFieldException, CollectionNotSupported {
         t.initInternalTx();
         LOGGER.log(Level.FINER, "class: {0}  vertex: {1}", new Object[]{c, v});
-        // activar la base de datos en el hilo actual.
-        t.activateOnCurrentThread();
 
         Class<?> toHydrate = c;
         String entityClass = ClassCache.getEntityName(toHydrate);
