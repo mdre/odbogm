@@ -485,7 +485,6 @@ public class ObjectMapper {
      * @param t the current transaction
      */
     public void collectionsToEmbedded(Object o, ClassDef classDef, Transaction t) {
-        boolean acc;
         Field f;
         for (Map.Entry<String, Class<?>> entry : classDef.embeddedFields.entrySet()) {
             try {
@@ -499,10 +498,7 @@ public class ObjectMapper {
                     c = o.getClass();
                 }
                 LOGGER.log(Level.FINER, "Procesando campo: {0} type: {1}", new String[]{field, value.getName()});
-                //f = ReflectionUtils.findField(c, field);
                 f = classDef.fieldsObject.get(field);
-                acc = f.isAccessible();
-                f.setAccessible(true);
                 // realizar la conversión solo si el campo tiene un valor.
                 if (f.get(o) != null) {
                     if (value.isAssignableFrom(List.class)) {
@@ -513,7 +509,6 @@ public class ObjectMapper {
                         f.set(o, new HashMapEmbeddedProxy((IObjectProxy) o, (Map) f.get(o)));
                     }
                 }
-                f.setAccessible(acc);
             
             } catch (IllegalArgumentException ex) {
                 Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
@@ -551,7 +546,6 @@ public class ObjectMapper {
             
             if (fc != null) {
                 f = classdef.fieldsObject.get(prop);
-                f.setAccessible(true);
                 f.set(oproxied, fc.isEnum() ? Enum.valueOf(
                         f.getType().asSubclass(Enum.class), value.toString()) : value);
             }
@@ -563,7 +557,6 @@ public class ObjectMapper {
     public void setFieldValue(Object o, String field, Object value) {
         try {
             Field f = this.classCache.get(o.getClass()).fieldsObject.get(field);
-            f.setAccessible(true);
             f.set(o, value);
         } catch (IllegalArgumentException | IllegalAccessException ex) {
             Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);

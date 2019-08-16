@@ -117,10 +117,9 @@ public class ClassCache {
                             continue;
                         }
                         //preservar el field.
-                        cached.fieldsObject.put(f.getName(), f);
-                        
                         f.setAccessible(true);
-                                                
+                        cached.fieldsObject.put(f.getName(), f);
+
                         // determinar si es un campo permitido
                         // FIXME: falta considerar la posibilidad de los Embedded Object
                         LOGGER.log(Level.FINER, "Field: {0}  Type: {1}{2}",
@@ -144,6 +143,7 @@ public class ClassCache {
                             if (List.class.isAssignableFrom(f.getType())) {
                                 LOGGER.log(Level.FINER, "Se trata de una Lista...");
                                 // se trata de una lista. Verificar el subtipo o el @Embedded
+                                
                                 ParameterizedType listType = (ParameterizedType) f.getGenericType();
                                 Class<?> listClass = (Class<?>) listType.getActualTypeArguments()[0];
                                 String typeName = listClass.getSimpleName();

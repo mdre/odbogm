@@ -52,7 +52,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     // the real object      
     private Object ___proxiedObject;
 
-    private Class<?> ___baseClass;
+    private final Class<?> ___baseClass;
 
     // Vértice desde el que se obtiene el objeto.
     // private OrientVertex baseVertex;
@@ -62,7 +62,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     // sobre un objeto que nunca se persistió.
     private boolean ___isValidObject = true;
 
-    private Transaction ___transaction;
+    private final Transaction ___transaction;
 
     private boolean ___dirty = false;
 
@@ -386,7 +386,6 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
      */
     @Override
     public synchronized void ___loadLazyLinks() {
-
         if (this.___loadLazyLinks) {
             this.___transaction.initInternalTx();
 
@@ -402,29 +401,15 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
                 // hidratar los atributos @links
                 // procesar todos los links y los indirectLinks
-//                Map<String, Class<?>> lnks = new HashMap<>();
-//                lnks.putAll(classdef.links);
                 LOGGER.log(Level.FINER, "procesando {0} links ", new Object[]{classdef.links.size()});
                 for (Map.Entry<String, Class<?>> entry : classdef.links.entrySet()) {
-                    //  classdef.links.entrySet().stream().forEach((entry) -> {
                     try {
                         String field = entry.getKey();
                         Class<?> fc = entry.getValue();
-
                         Field fLink = classdef.fieldsObject.get(field);
-                        boolean acc = fLink.isAccessible();
-                        fLink.setAccessible(true);
 
                         String graphRelationName = classdef.entityName + "_" + field;
                         Direction direction = Direction.OUT;
-//                        if (fLink.isAnnotationPresent(Indirect.class)) {
-//                            // si es un indirect se debe reemplazar el nombre de la relación por 
-//                            // el propuesto por la anotation
-//                            Indirect in = fLink.getAnnotation(Indirect.class);
-//                            graphRelationName = in.linkName();
-//                            direction = Direction.IN;
-//                            LOGGER.log(Level.FINER, "Se ha detectado un indirect. Linkname = {0}", new Object[]{in.linkName()});
-//                        }
                         LOGGER.log(Level.FINER, "Field: {0}.{1}   Class: {2}  RelationName: {3}",
                                 new String[]{this.___baseClass.getSimpleName(), field,
                                     fc.getSimpleName(), graphRelationName});
@@ -435,7 +420,6 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                             LOGGER.log(Level.FINER, "hydrate innerO: {0}", vertice.getId());
 
                             if (!duplicatedLinkGuard) {
-//                        Object innerO = this.hydrate(fc, vertice);
                                 /*
                                  * FIXME: esto genera una dependencia cruzada.
                                  * Habría que revisar
@@ -464,7 +448,6 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                             }
                             LOGGER.log(Level.FINER, "FIN hydrate innerO: " + vertice.getId() + "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
                         }
-                        fLink.setAccessible(acc);
                     } catch (SecurityException | IllegalArgumentException | IllegalAccessException ex) {
                         Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
                     }
@@ -479,7 +462,6 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
             this.___transaction.closeInternalTx();
         }
-
     }
 
 
@@ -496,14 +478,10 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             lnks.putAll(classdef.indirectLinks);
             LOGGER.log(Level.FINER, "procesando {0} indirected links", new Object[]{classdef.indirectLinks.size()});
             for (Map.Entry<String, Class<?>> entry : lnks.entrySet()) {
-                //  classdef.links.entrySet().stream().forEach((entry) -> {
                 try {
                     String field = entry.getKey();
                     Class<?> fc = entry.getValue();
-
-                    Field fLink = ReflectionUtils.findField(___baseClass, field);
-                    boolean acc = fLink.isAccessible();
-                    fLink.setAccessible(true);
+                    Field fLink = classdef.fieldsObject.get(field);
 
                     String graphRelationName = classdef.entityName + "_" + field;
                     Direction direction = Direction.OUT;
@@ -552,8 +530,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                         }
                         LOGGER.log(Level.FINER, "FIN hydrate innerO: " + vertice.getId() + "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
                     }
-                    fLink.setAccessible(acc);
-                } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
+                } catch (SecurityException | IllegalArgumentException | IllegalAccessException ex) {
                     Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
@@ -565,17 +542,13 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             // procesar todos los indirectLinkslist
             // ********************************************************************************************
             for (Map.Entry<String, Class<?>> entry : classdef.indirectLinkLists.entrySet()) {
-
                 try {
                     // FIXME: se debería considerar agregar una annotation EAGER!
                     String field = entry.getKey();
                     Class<?> fc = entry.getValue();
                     LOGGER.log(Level.FINER, "Field: {0}   Class: {1}", new String[]{field, fc.getName()});
-                    Field fLink = ReflectionUtils.findField(this.___baseClass, field);
 
-                    boolean acc = fLink.isAccessible();
-                    fLink.setAccessible(true);
-
+                    Field fLink = classdef.fieldsObject.get(field);
                     String graphRelationName = null;
                     Direction relationDirection = Direction.IN;
 
@@ -587,22 +560,14 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                         this.___transaction.getObjectMapper().colecctionToLazy(___proxiedObject, field, fc, ov, ___transaction);
                     }
 
-                    fLink.setAccessible(acc);
-
-                } catch (NoSuchFieldException ex) {
-                    Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
-                } catch (IllegalArgumentException ex) {
-                    Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
-                } catch (IllegalAccessException ex) {
+                } catch (IllegalAccessException | IllegalArgumentException ex) {
                     Logger.getLogger(ObjectProxy.class.getName()).log(Level.SEVERE, null, ex);
                 }
-
             }
 
             // volver a establecer el estado de Dirty.
             this.___dirty = preservDirtyState;
         }
-
     }
 
 
@@ -1078,7 +1043,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
      */
     @Override
     public synchronized void ___rollback() {
-        LOGGER.log(Level.FINER, "\n\n******************* ROLLBACK *******************\n\n");
+    LOGGER.log(Level.FINER, "\n\n******************* ROLLBACK *******************\n\n");
         LOGGER.log(Level.FINER, ThreadHelper.getCurrentStackTrace());
 
         this.___transaction.initInternalTx();
@@ -1105,25 +1070,11 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         Field f;
         for (Map.Entry<String, Class<?>> entry : fieldmap.entrySet()) {
             String prop = entry.getKey();
-            Class<? extends Object> fieldClazz = entry.getValue();
 
             LOGGER.log(Level.FINER, "Rollingback field {0} ....", new String[]{prop});
             Object value = this.___baseElement.getProperty(prop);
             try {
-                // obtener la clase a la que pertenece el campo
-                Class<?> fc = fieldmap.get(prop);
-
-                f = ReflectionUtils.findField(this.___baseClass, prop);
-
-                boolean acc = f.isAccessible();
-                f.setAccessible(true);
-
-//                if (f.getType().isEnum()) {
-//                    LOGGER.log(Level.FINER, "Enum field: " + f.getName() + " type: " + f.getType() + "  value: " + value + "   Enum val: " + Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString()));
-////                    f.set(oproxied, Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString()));
-//                    this.setFieldValue(oproxied, prop, Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString()));
-//                    f.set(___proxyObject, value);
-//                } else 
+                f = classdef.fieldsObject.get(prop);
                 if (f.getType().isAssignableFrom(List.class)) {
                     // se debe hacer una copia del la lista para no quede referenciando al objeto original
                     // dado que en la asignación solo se pasa la referencia del objeto.
@@ -1139,12 +1090,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                     f.set(___proxiedObject, value);
                 }
                 LOGGER.log(Level.FINER, "hidratado campo: " + prop + "=" + value);
-                f.setAccessible(acc);
-            } catch (NoSuchFieldException ex) {
-                Logger.getLogger(ObjectProxy.class.getName()).log(Level.SEVERE, null, ex);
-            } catch (IllegalArgumentException ex) {
-                Logger.getLogger(ObjectProxy.class.getName()).log(Level.SEVERE, null, ex);
-            } catch (IllegalAccessException ex) {
+            } catch (IllegalArgumentException | IllegalAccessException ex) {
                 Logger.getLogger(ObjectProxy.class.getName()).log(Level.SEVERE, null, ex);
             }
         }
@@ -1153,32 +1099,17 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         LOGGER.log(Level.FINER, "Procesando los enums...");
         for (Map.Entry<String, Class<?>> entry : classdef.enumFields.entrySet()) {
             String prop = entry.getKey();
-            Class<? extends Object> fieldClazz = entry.getValue();
-
             LOGGER.log(Level.FINER, "Buscando campo {0} ....", new String[]{prop});
             Object value = this.___baseElement.getProperty(prop);
             try {
-                // obtener la clase a la que pertenece el campo
-                Class<?> fc = fieldmap.get(prop);
-                // FIXME: este código se puede mejorar. Tratar de usar solo setFieldValue()
-                f = ReflectionUtils.findField(this.___baseClass, prop);
-
-                boolean acc = f.isAccessible();
-                f.setAccessible(true);
-
+                f = classdef.fieldsObject.get(prop);
                 if (value != null) {
                     f.set(this.___proxiedObject, Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString()));
                 } else {
                     f.set(this.___proxiedObject, null);
                 }
-
                 LOGGER.log(Level.FINER, "hidratado campo: " + prop + "=" + value);
-                f.setAccessible(acc);
-            } catch (NoSuchFieldException ex) {
-                Logger.getLogger(ObjectProxy.class.getName()).log(Level.SEVERE, null, ex);
-            } catch (IllegalArgumentException ex) {
-                Logger.getLogger(ObjectProxy.class.getName()).log(Level.SEVERE, null, ex);
-            } catch (IllegalAccessException ex) {
+            } catch (IllegalArgumentException | IllegalAccessException ex) {
                 Logger.getLogger(ObjectProxy.class.getName()).log(Level.SEVERE, null, ex);
             }
         }
@@ -1187,19 +1118,11 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         // hidratar los atributos @links
         // procesar todos los links
         for (Map.Entry<String, Class<?>> entry : classdef.links.entrySet()) {
-//        classdef.links.entrySet().stream().forEach((entry) -> {
             try {
                 String field = entry.getKey();
-                Class<?> fc = entry.getValue();
-
-                Field fLink = ReflectionUtils.findField(this.___baseClass, field);
-                boolean acc = fLink.isAccessible();
-                fLink.setAccessible(true);
-
+                Field fLink = classdef.fieldsObject.get(field);
                 fLink.set(this.___proxiedObject, null);
-                fLink.setAccessible(acc);
-
-            } catch (NoSuchFieldException | SecurityException | IllegalArgumentException | IllegalAccessException ex) {
+            } catch (SecurityException | IllegalArgumentException | IllegalAccessException ex) {
                 Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
             }
         }
@@ -1210,31 +1133,21 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         // procesar todos los linkslist
         LOGGER.log(Level.FINER, "Revirtiendo las colecciones...");
         for (Map.Entry<String, Class<?>> entry : classdef.linkLists.entrySet()) {
-
             try {
                 // FIXME: se debería considerar agregar una annotation EAGER!
                 String field = entry.getKey();
                 Class<?> fc = entry.getValue();
                 LOGGER.log(Level.FINER, "Field: {0}   Class: {1}", new String[]{field, fc.getName()});
-                Field fLink = ReflectionUtils.findField(this.___baseClass, field);
-                boolean acc = fLink.isAccessible();
-                fLink.setAccessible(true);
-
+                Field fLink = classdef.fieldsObject.get(field);
                 ILazyCalls lc = (ILazyCalls) fLink.get(___proxiedObject);
                 if (lc != null) {
                     lc.rollback();
                 }
-
-                fLink.setAccessible(acc);
-
-            } catch (NoSuchFieldException ex) {
-                Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
             } catch (IllegalArgumentException ex) {
                 Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
             } catch (IllegalAccessException ex) {
                 Logger.getLogger(ObjectProxy.class.getName()).log(Level.SEVERE, null, ex);
             }
-
         }
         this.___transaction.closeInternalTx();
     }

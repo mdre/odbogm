@@ -29,7 +29,8 @@ public class ClassDef {
     public Field ridField;
     
     /**
-     * Mapa de todos los objetos Field.
+     * Mapa de todos los objetos Field (no incluye el ridField). Todos los campos
+     * tienen ya establecido el acceso privado (setAccesible en true).
      */
     public HashMap<String, Field> fieldsObject = new HashMap<>();
     
