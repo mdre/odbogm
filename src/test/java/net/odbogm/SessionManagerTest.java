@@ -1135,28 +1135,24 @@ public class SessionManagerTest {
         // crear los grupos y los usuarios.
         System.out.println("\n\n\n\n\n\n\n\n\n\n\n\n\n");
         System.out.println("Creando los grupos ----------------------------------");
-//        System.out.println(":"+((ITransparentDirtyDetector)gex).___ogm___isDirty());
-//        gex.setName("otro");
-//        System.out.println("dirty:"+((ITransparentDirtyDetector)gex).___ogm___isDirty());
-//        
-//        System.out.println("GS =======================================================" );
-//        Group gs2 = new Group("gs2", "gs2");
-//        System.out.println("==========================================================");
-//        
+        
         GroupSID gna = new GroupSID("gna", "gna");
         GroupSID gr = new GroupSID("gr", "gr");
         GroupSID gw = new GroupSID("gw", "gw");
+        GroupSID go = new GroupSID("go", "go"); //other
         System.out.println("CL group: " + gna.getClass().getClassLoader() + " > " + gna.getClass().getCanonicalName());
         System.out.println("\n\n\nGuardando los grupos ----------------------------------");
 
         GroupSID sgna = this.sm.store(gna);
         GroupSID sgr = this.sm.store(gr);
         GroupSID sgw = this.sm.store(gw);
+        GroupSID sgo = this.sm.store(go);
 
         // liberar las referencias
         gna = null;
         gr = null;
         gw = null;
+        go = null;
 
         System.out.println("\n\n\nIniciando commit de grupos.............................");
         this.sm.commit();
@@ -1167,12 +1163,14 @@ public class SessionManagerTest {
         UserSID ur = new UserSID("ur", "ur");
         UserSID uw = new UserSID("uw", "uw");
         UserSID urw = new UserSID("urw", "urw");
+        UserSID uo = new UserSID("uo", "uo");
         System.out.println("CL user: " + una.getClass().getClassLoader());
 
         una = this.sm.store(una);
         ur = this.sm.store(ur);
         uw = this.sm.store(uw);
         urw = this.sm.store(urw);
+        uo = this.sm.store(uo);
 
         this.sm.commit();
 
@@ -1182,6 +1180,7 @@ public class SessionManagerTest {
         ur.addGroup(sgr);
 
         uw.addGroup(sgw);
+        uw.addGroup(sgo);
 
         urw.addGroup(sgw);
         urw.addGroup(sgr);
@@ -1227,6 +1226,13 @@ public class SessionManagerTest {
         SSimpleVertex ssvw = this.sm.get(SSimpleVertex.class, reg);
         System.out.println("State: " + ssvw.getSecurityState());
         assertTrue(ssvw.getSecurityState() == AccessRight.WRITE);
+        
+        this.sm.setLoggedInUser(uo);
+        System.out.println("Login UserOther");
+        SSimpleVertex ssvo = this.sm.get(SSimpleVertex.class, reg);
+        System.out.println("State: " + ssvo.getSecurityState());
+        //default AccessRight for Others: PRINT
+        assertTrue(ssvo.getSecurityState() == AccessRight.PRINT);
 
         rssv.removeAcl(sgna);
         sm.commit();
@@ -1334,7 +1340,7 @@ public class SessionManagerTest {
         
         int res = 0;
         for (var v : sm.query(SSimpleVertex.class)) {
-            if (v.getSecurityState() != 0) res++;
+            if (v.getSecurityState() == AccessRight.ACCESSCONTROL) res++;
         }
         assertEquals(1, res);
     }

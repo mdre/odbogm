@@ -10,6 +10,8 @@ import net.odbogm.annotations.Ignore;
 
 @Entity
 public abstract class SObject {
+    
+    private static final String OTHERS_UUID = "__OTHERS__";
 
     private final static Logger LOGGER = Logger.getLogger(SObject.class.getName());
     static {
@@ -62,7 +64,7 @@ public abstract class SObject {
     }
 
     /**
-     * Add or update the AccessRight for the specified SID.
+     * Adds or updates the AccessRight for the specified SID.
      *
      * @param sid the Security ID
      * @param ar the AccessRight to set
@@ -83,6 +85,11 @@ public abstract class SObject {
         return this;
     }
 
+    /**
+     * Removes the AccessRight for the specified SID.
+     * 
+     * @param sid 
+     */
     public final void removeAcl(ISID sid) {
         __acl.remove(sid.getUUID());
     }
@@ -95,6 +102,27 @@ public abstract class SObject {
         __acl.remove(sid.getUUID());
     }
 
+    /**
+     * Sets the AccessRight for others.
+     * 
+     * @param ar
+     * @return 
+     */
+    public final SObject setOthersAcl(AccessRight ar) {
+        __acl.put(OTHERS_UUID, ar.getRights());
+        return this;
+    }
+    
+    /**
+     * Removes the AccessRight for others.
+     * 
+     * @return 
+     */
+    public final SObject removeOthersAcl() {
+        __acl.remove(OTHERS_UUID);
+        return this;
+    }
+    
     public final SObject setOwner(UserSID o) {
         this.__owner = o;
         return this;
@@ -116,17 +144,23 @@ public abstract class SObject {
         Integer gal = 0;
         HashMap<String, Integer> acls = this.getAcls();
         LOGGER.log(Level.FINER, "Lista de acls: {0} : {1}", new Object[]{acls.size(), acls});
+        boolean hasGal = false;
         if (!acls.isEmpty()) {
             for (String securityCredential : sc.showSecurityCredentials()) {
                 gal = acls.get(securityCredential);
                 LOGGER.log(Level.FINER, "SecurityCredential access: {0} {1}", new Object[]{securityCredential, gal});
                 if (gal != null) {
+                    hasGal = true;
                     if (gal == AccessRight.NOACCESS) {
                         partialState = 0;
                         break;
                     }
                     partialState |= gal;
                 }
+            }
+            if (!hasGal) {
+                //si no hay ACL para sc, es considerado OTHER
+                partialState = acls.getOrDefault(OTHERS_UUID, AccessRight.PRINT);
             }
         } else {
             // si no hay ACLs definidos, se conceden todos los permisos por defectos.
@@ -136,7 +170,7 @@ public abstract class SObject {
 
         return this.__state;
     }
-
+    
     /**
      * Devuelve el estado de seguridad actual del objeto.
      *
