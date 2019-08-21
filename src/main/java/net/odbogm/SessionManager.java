@@ -86,7 +86,9 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
      * 
      * @param as Estrategia de detección de dirty.
      * @return this
+     * @deprecated Sólo hay una estrategia y no se puede cambiar.
      */
+    @Deprecated
     public SessionManager setActivationStrategy(ActivationStrategy as) {
         return this.setActivationStrategy(as, true);
     }

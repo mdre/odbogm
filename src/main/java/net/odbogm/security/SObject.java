@@ -11,6 +11,8 @@ import net.odbogm.annotations.Ignore;
 @Entity
 public abstract class SObject {
     
+    public static final int OTHERS_DEFAULT_ACCESS = AccessRight.READ;
+    
     private static final String OTHERS_UUID = "__OTHERS__";
 
     private final static Logger LOGGER = Logger.getLogger(SObject.class.getName());
@@ -160,11 +162,11 @@ public abstract class SObject {
             }
             if (!hasGal) {
                 //si no hay ACL para sc, es considerado OTHER
-                partialState = acls.getOrDefault(OTHERS_UUID, AccessRight.PRINT);
+                partialState = acls.getOrDefault(OTHERS_UUID, OTHERS_DEFAULT_ACCESS);
             }
         } else {
             // si no hay ACLs definidos, se conceden todos los permisos por defectos.
-            partialState = Integer.MAX_VALUE;
+            partialState = AccessRight.FULLACCESS;
         }
         this.__state = partialState;
 
