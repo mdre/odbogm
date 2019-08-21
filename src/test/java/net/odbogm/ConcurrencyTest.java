@@ -18,7 +18,7 @@ import test.SimpleVertexEx;
  *
  * @author jbertinetti
  */
-public class ConcurrenciaTest {
+public class ConcurrencyTest {
 
     private final int poolSize = 5;
 
@@ -29,10 +29,7 @@ public class ConcurrenciaTest {
     public void setUp() {
         System.out.println("Iniciando session manager...");
         sm = new SessionManager("remote:localhost/Test", "admin", "admin",
-                1, poolSize
-        )
-                .setActivationStrategy(SessionManager.ActivationStrategy.CLASS_INSTRUMENTATION)
-                .setClassLevelLog(Transaction.class, Level.FINER);
+                1, poolSize).setClassLevelLog(Transaction.class, Level.FINER);
         sm.begin();
         System.out.println("fin setup.");
     }
@@ -45,7 +42,7 @@ public class ConcurrenciaTest {
 
 
     @Test
-    public void testConcurrencia() throws Exception {
+    public void testConcurrency() throws Exception {
         System.out.println("\n\n\n");
         System.out.println("***************************************************************");
         System.out.println("Múltiples transacciones en paralelo leen el mismo nodo");
