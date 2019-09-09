@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package net.odbogm.proxy;
 
 import com.tinkerpop.blueprints.Direction;
@@ -100,7 +95,8 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
             for (Edge edge : relatedTo.getEdges(next, this.direction, field)) {
                 OrientEdge oe = (OrientEdge) edge;
                 Object k = null;
-                LOGGER.log(Level.FINER, "edge keyclass: " + this.keyClass + "  OE RID:" + oe.getId().toString());
+                LOGGER.log(Level.FINER, "edge keyclass: {0}  OE RID:{1}",
+                        new Object[]{this.keyClass, oe.getId().toString()});
                 // si el keyClass no es de tipo nativo, hidratar un objeto.
                 if (Primitives.PRIMITIVE_MAP.containsKey(this.keyClass)) {
                     LOGGER.log(Level.FINER, "primitive!!");
@@ -498,14 +494,6 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
             this.lazyLoad();
         }
         return super.equals(o); //To change body of generated methods, choose Tools | Templates.
-    }
-
-    @Override
-    protected void finalize() throws Throwable {
-//        if (lazyLoad) {
-//            this.lazyLoad();
-//        }
-        super.finalize(); //To change body of generated methods, choose Tools | Templates.
     }
 
 }

@@ -169,8 +169,10 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     public synchronized void setAsDirty(Object o) throws UnmanagedObject {
         if (o instanceof IObjectProxy) {
-            String rid = ((IObjectProxy) o).___getVertex().getId().toString();
-            LOGGER.log(Level.FINER, "Marcando como dirty: " + o.getClass().getSimpleName() + " - " + o.toString());
+//            String rid = ((IObjectProxy) o).___getVertex().getId().toString();
+            String rid = ((IObjectProxy) o).___getRid();
+            LOGGER.log(Level.FINER, "Marcando como dirty: {0} - {1}",
+                    new Object[]{o.getClass().getSimpleName(), o.toString()});
             LOGGER.log(Level.FINEST, ThreadHelper.getCurrentStackTrace());
             this.dirty.put(rid, o);
         } else {

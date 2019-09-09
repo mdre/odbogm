@@ -753,10 +753,6 @@ public class SessionManagerTest {
         int istoredSize = stored.getOhmSVE().size();
         assertEquals(iretSize, istoredSize);
 
-//        SimpleVertexEx ohmsveGetted = retrieved.getOhmSVE().get("key1");
-//        System.out.println("key1: "+(ohmsveGetted==null?" NULL!":"Ok."));
-//        assertNotNull(ohmsveGetted);
-//        
         System.out.println("\nagregamos un nuevo objeto al hashmap ya inicializado");
         stored.getOhmSVE().put(new EdgeAttrib("nota 3", DateHelper.getCurrentDate()), new SimpleVertexEx());
         System.out.println("\ninicio tercer commit ----------------------------------------------------------");
@@ -769,7 +765,6 @@ public class SessionManagerTest {
         System.out.println("stored: " + stored + " : " + stored.getOhmSVE() + "  hc: " + stored.hashCode());
 
         assertEquals(retrieved.getOhmSVE().size(), stored.getOhmSVE().size());
-
     }
 
     @Test
@@ -2463,14 +2458,43 @@ public class SessionManagerTest {
     @Test
     public void inheritedMapEdge() throws Exception {
         long edges = sm.query("select count(*) from EdgeAttrib", "");
+        long specificEdges = sm.query("select count(*) from SVExChild_ohmSVE", "");
         
         SVExChild v = new SVExChild();
         v.ohmSVE.put(new EdgeAttrib("nota", new Date()), new SimpleVertexEx());
         sm.store(v);
         sm.commit();
         
+        //SVExChild_ohmSVE edges must be subclasses of EdgeAttrib:
+        long newSpecificEdges = sm.query("select count(*) from SVExChild_ohmSVE", "");
+        assertEquals(specificEdges + 1, newSpecificEdges);
         long newEdges = sm.query("select count(*) from EdgeAttrib", "");
         assertEquals(edges + 1, newEdges);
     }
     
+    /*
+     * Tests the fix of a bug that caused a NullPointerException when making
+     * dirty an edge object.
+     */
+    @Test
+    public void dirtyEdge() throws Exception {
+        SimpleVertexEx value = new SimpleVertexEx();
+        SimpleVertexEx v = new SimpleVertexEx();
+        v.setOhmSVE(new HashMap<>());
+        v.getOhmSVE().put(new EdgeAttrib("edge1", new Date()), value);
+        v = sm.store(v);
+        
+        //make dirty the edge:
+        v.getOhmSVE().entrySet().iterator().next().getKey().setNota("dirty");
+        
+        sm.commit();
+        String rid = sm.getRID(v);
+        sm.getCurrentTransaction().clearCache();
+        
+        v = sm.get(SimpleVertexEx.class, rid);
+        assertEquals("dirty", v.getOhmSVE().entrySet().iterator().next().getKey().getNota());
+        
+        v.getOhmSVE().entrySet().iterator().next().getKey().setNota("dirty");
+    }
+        
 }

@@ -105,6 +105,12 @@ if ($exist.size() = 0) {
 alter class EdgeAttrib custom javaClass='test.EdgeAttrib';
 
 
+let exist = select from (select expand(properties)  from (select expand(classes)  from metadata:schema)  where name = 'EdgeAttrib') where name = 'uuid';
+if ($exist.size()=0) {
+    create property EdgeAttrib.uuid STRING;
+}
+
+
 let exist = select from (select expand(properties)  from (select expand(classes)  from metadata:schema)  where name = 'EdgeAttrib') where name = 'nota';
 if ($exist.size()=0) {
     create property EdgeAttrib.nota STRING;

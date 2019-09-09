@@ -2,6 +2,7 @@ package test;
 
 import java.util.Date;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.annotations.Entity;
@@ -18,10 +19,11 @@ public class EdgeAttrib {
         LOGGER.setLevel(Level.INFO);
     }
     
-    @RID String rid;
-    String nota;
-    Date fecha;
-    EnumTest enumValue;
+    @RID private String rid;
+    private final String uuid = UUID.randomUUID().toString();
+    private String nota;
+    private Date fecha;
+    private EnumTest enumValue;
 
     public EdgeAttrib() {
     }
@@ -68,7 +70,7 @@ public class EdgeAttrib {
     @Override
     public int hashCode() {
         int hash = 7;
-        hash = 97 * hash + Objects.hashCode(this.nota);
+        hash = 97 * hash + Objects.hashCode(this.uuid);
         return hash;
     }
 
@@ -84,7 +86,7 @@ public class EdgeAttrib {
             return false;
         }
         final EdgeAttrib other = (EdgeAttrib) obj;
-        return Objects.equals(this.nota, other.nota);
+        return Objects.equals(this.uuid, other.uuid);
     }
     
 }

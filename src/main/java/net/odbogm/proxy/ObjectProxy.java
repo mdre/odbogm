@@ -764,7 +764,6 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                 new Object[]{field, this.___proxiedObject.getClass()});
 
                         f = cDef.fieldsObject.get(field);
-                        f.setAccessible(true);
 
                         // preprarar el nombre de la relación
                         final String graphRelationName = cDef.entityName + "_" + field;
@@ -787,8 +786,8 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                 ILazyCollectionCalls lazyCollectionCalls;
                                 // procesar la colección
 
-                                if (ILazyCollectionCalls.class
-                                        .isAssignableFrom(collectionFieldValue.getClass())) {
+                                if (ILazyCollectionCalls.class.isAssignableFrom(
+                                        collectionFieldValue.getClass())) {
                                     lazyCollectionCalls = (ILazyCollectionCalls) collectionFieldValue;
                                 } else {
                                     // se ha asignado una colección original y se debe exportar todo
@@ -937,6 +936,10 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                             OrientEdge oeRemove = keysToEdges.get(key);
                                             if (this.___transaction.isAuditing()) {
                                                 this.___transaction.auditLog(this, AuditType.WRITE, "LINKLIST REMOVE: " + graphRelationName, oeRemove);
+                                            }
+                                            if (oeRemove == null) {
+                                                throw new IllegalStateException("The edge object couldn't be found. "
+                                                        + "Make sure its hashCode is change-proof.");
                                             }
                                             oeRemove.remove();
                                             // el link se ha removido. Se debe eliminar y verificar si corresponde borrar 
