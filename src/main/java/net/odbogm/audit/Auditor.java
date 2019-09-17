@@ -45,8 +45,10 @@ public class Auditor implements IAuditor {
             OrientVertexType olog = odb.createVertexType(ODBAUDITLOGVERTEXCLASS);
             olog.createProperty("rid", OType.STRING);
             olog.createProperty("timestamp", OType.DATETIME);
+            olog.createProperty("transactionID", OType.STRING);
+            olog.createProperty("opInTx", OType.INTEGER);
             olog.createProperty("user", OType.STRING);
-            olog.createProperty("action", OType.STRING);
+            olog.createProperty("action", OType.INTEGER);
             olog.createProperty("label", OType.STRING);
             olog.createProperty("log", OType.STRING);
             odb.commit();
@@ -86,11 +88,14 @@ public class Auditor implements IAuditor {
         String ovLogID = UUID.randomUUID().toString();
         
         OrientGraph odb = this.transaction.getGraphdb();
+        int opInTx = 0; //operation number in transaction
         
         for (LogData logData : logdata) {
+            opInTx++;
             LOGGER.log(Level.FINER, "valid: {0} : {1}", new Object[]{logData.o.___isValid(), logData.rid});
             Map<String, Object> ologData = new HashMap<>();
             ologData.put("transactionID", ovLogID);
+            ologData.put("opInTx", opInTx);
             ologData.put("rid", (logData.o.___isValid()&!logData.o.___isDeleted()?logData.o.___getRid():logData.rid));
             ologData.put("timestamp", DateHelper.getCurrentDateTime());
             ologData.put("user", this.auditUser);
