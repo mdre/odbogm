@@ -1,6 +1,7 @@
 package net.odbogm.audit;
 
 import com.orientechnologies.orient.core.metadata.schema.OType;
+import com.tinkerpop.blueprints.impls.orient.OrientElement;
 import com.tinkerpop.blueprints.impls.orient.OrientGraph;
 import com.tinkerpop.blueprints.impls.orient.OrientVertexType;
 import java.util.ArrayList;
@@ -28,17 +29,17 @@ public class Auditor implements IAuditor {
         }
     }
     
-    private Transaction transaction;
-    private String auditUser;
-    private ArrayList<LogData> logdata = new ArrayList<>();
     private final static String ODBAUDITLOGVERTEXCLASS = "ODBAuditLog";
+    private final Transaction transaction;
+    private final String auditUser;
+    private final ArrayList<LogData> logdata = new ArrayList<>();
     
     
     public Auditor(Transaction t, String user) {
         this.transaction = t;
         this.auditUser = user;
         
-        // verificar que la clase de auditorías exista
+        // verificar que la clase de auditoría exista
         if (this.transaction.getDBClass(ODBAUDITLOGVERTEXCLASS) == null) {
             OrientGraph odb = this.transaction.getGraphdb();
             OrientVertexType olog = odb.createVertexType(ODBAUDITLOGVERTEXCLASS);
@@ -74,7 +75,7 @@ public class Auditor implements IAuditor {
                 LOGGER.log(Level.FINER, "No corresponde auditar");
             }
         } else {
-            LOGGER.log(Level.FINER, "No auditado: " + o.___getBaseClass().getSimpleName());
+            LOGGER.log(Level.FINER, "No auditado: {0}", o.___getBaseClass().getSimpleName());
         }
     }
     
@@ -87,7 +88,7 @@ public class Auditor implements IAuditor {
         OrientGraph odb = this.transaction.getGraphdb();
         
         for (LogData logData : logdata) {
-            LOGGER.log(Level.FINER, "valid: "+logData.o.___isValid() +" : "+logData.rid);
+            LOGGER.log(Level.FINER, "valid: {0} : {1}", new Object[]{logData.o.___isValid(), logData.rid});
             Map<String, Object> ologData = new HashMap<>();
             ologData.put("transactionID", ovLogID);
             ologData.put("rid", (logData.o.___isValid()&!logData.o.___isDeleted()?logData.o.___getRid():logData.rid));
@@ -95,7 +96,7 @@ public class Auditor implements IAuditor {
             ologData.put("user", this.auditUser);
             ologData.put("action", logData.auditType);
             ologData.put("label", logData.label);
-            ologData.put("log", logData.data);
+            ologData.put("log", logData.odata != null ? logData.odata.toString() : logData.data);
             
             odb.addVertex("class:" + ODBAUDITLOGVERTEXCLASS, ologData);
         }
@@ -104,7 +105,6 @@ public class Auditor implements IAuditor {
         odb.shutdown();
         this.logdata.clear();
     }
-    
 }
 
 class LogData {
@@ -113,13 +113,22 @@ class LogData {
     public int auditType;
     public String label;
     public String data;
+    public Object odata;
 
     public LogData(IObjectProxy o, int auditType, String label, Object data) {
         this.o = o;
         this.rid = o.___getVertex().getIdentity().toString();
         this.auditType = auditType;
         this.label = label;
-        this.data = data!=null?data.toString():"";
+        if (data == null) {
+            this.data = "";
+        } else {
+            //keep the element if it's new, so we can save the final rid and not the temporary:
+            if (data instanceof OrientElement && ((OrientElement)data).getIdentity().isNew()) {
+                this.odata = data;
+            } else {
+                this.data = data.toString();
+            }
+        }
     }
-    
 }

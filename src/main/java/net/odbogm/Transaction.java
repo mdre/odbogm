@@ -857,7 +857,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             }
 
             if (this.isAuditing()) {
-                this.auditLog((IObjectProxy) toRemove, Audit.AuditType.DELETE, "DELETE", "");
+                this.auditLog((IObjectProxy) toRemove, Audit.AuditType.DELETE, "DELETE", null);
             }
 
             //ovToRemove.remove(); movido arriba.
@@ -1031,12 +1031,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                     throw new OdbogmException("Error eliminando vértice.", this);
                 }
             }
-
-            if (this.isAuditing()) {
-                this.auditLog((IObjectProxy) toRemove, Audit.AuditType.DELETE, "InternalDELETE", "");
-            }
-
-            //ovToRemove.remove(); movido arriba.
 
         } else {
             throw new UnknownObject(this);
@@ -1299,7 +1293,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         LOGGER.log(Level.FINER, "Auditar?");
         if (this.isAuditing()) {
             LOGGER.log(Level.FINER, "loguear datos...");
-            this.auditLog((IObjectProxy) o, Audit.AuditType.READ, "READ", "");
+            this.auditLog((IObjectProxy) o, Audit.AuditType.READ, "READ", null);
         }
         LOGGER.log(Level.FINER, "fin auditoría.");
         
@@ -1527,13 +1521,15 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     }
 
     // Procesos de auditoría
+    
     /**
      * Comienza a auditar los objetos y los persiste con el nombre de usuario dado.
+     * Si se pasa un null, se desactiva la auditoría.
      *
      * @param user UserSID String only.
      */
     public void setAuditOnUser(String user) {
-        this.auditor = new Auditor(this, user);
+        this.auditor = user != null ? new Auditor(this, user) : null;
     }
 
     /**

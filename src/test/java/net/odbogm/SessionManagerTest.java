@@ -1397,8 +1397,35 @@ public class SessionManagerTest {
 
         spaces(5);
         System.out.println("--- En Maps ---");
-
     }
+    
+    
+    @Test
+    public void testAudit() throws Exception {
+        sm.setAuditOnUser("test-user");
+        assertTrue(sm.isAuditing());
+        
+        SimpleVertexEx sv = sm.store(new SimpleVertexEx());
+        sm.commit();
+        String rid = sm.getRID(sv);
+        System.out.println("RID: " + rid);
+        
+        String query = String.format("select count(*) from ODBAuditLog where rid = '%s'", rid);
+        long logs = sm.query(query, "");
+        assertEquals(1, logs); //store log
+        
+        sm.getTransaction().clearCache();
+        sv = sm.get(SimpleVertexEx.class, rid);
+        sv.initArrayList();
+        sm.commit();
+        
+        logs = sm.query(query, "");
+        assertEquals(6, logs); //store, read, update and 3 added edges logs
+        
+        sm.setAuditOnUser(null);
+        assertFalse(sm.isAuditing());
+    }
+    
 
     /**
      * Test of delete method, of class SessionManager.

@@ -650,7 +650,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             this.___baseElement.setProperties(omap);
 
             // guardar log de auditoría si corresponde.
-            if (this.___transaction.isAuditing()) {
+            if (this.___transaction.isAuditing() && !this.___baseElement.getIdentity().isNew()) {
                 this.___transaction.auditLog(this, AuditType.WRITE, "UPDATE", omap);
             }
 

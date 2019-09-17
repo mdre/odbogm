@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package net.odbogm.annotations;
 
 import java.lang.annotation.ElementType;
@@ -11,8 +6,9 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Establece una vinculación entre dos objetos
- *
+ * Marks an entity as audited, ie. logs are saved when defined operations are
+ * done against it.
+ * 
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
 @Retention(RetentionPolicy.RUNTIME)
@@ -28,6 +24,6 @@ public @interface Audit {
 
     }
 
-    // por defecto realiza log solo sobre operaciones de write y delete
-    int log() default 4;
+    //only write and delete operations logged by default
+    int log() default AuditType.WRITE | AuditType.DELETE;
 }
