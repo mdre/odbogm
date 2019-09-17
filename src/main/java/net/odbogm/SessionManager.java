@@ -4,6 +4,7 @@ import com.orientechnologies.orient.core.metadata.schema.OClass;
 import com.tinkerpop.blueprints.impls.orient.OrientEdge;
 import com.tinkerpop.blueprints.impls.orient.OrientGraph;
 import com.tinkerpop.blueprints.impls.orient.OrientGraphFactory;
+import com.tinkerpop.blueprints.impls.orient.OrientGraphNoTx;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -261,12 +262,20 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
     }
 
     /**
-     * Devuelve el objeto de comunicación con la base.
+     * Devuelve un objeto de comunicación con la base.
      *
      * @return retorna la referencia directa al driver del la base.
      */
     public OrientGraph getGraphdb() {
-        return this.publicTransaction.getGraphdb();
+        return this.factory.getTx();
+    }
+    
+    /**
+     * Devuelve un objeto de comunicación con la base sin transacciones.
+     * @return 
+     */
+    public OrientGraphNoTx getGraphdbNoTx() {
+        return this.factory.getNoTx();
     }
 
     /**
@@ -317,7 +326,6 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
      * @return resutado de la ejecución de la sentencia SQL
      */
     public ODBOrientDynaElementIterable query(String sql) {
-        
         return this.publicTransaction.query(sql);
     }
 

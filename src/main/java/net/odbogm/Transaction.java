@@ -248,7 +248,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * @return retorna la referencia directa al driver del la base.
      */
     public OrientGraph getGraphdb() {
-        return sm.getFactory().getTx();
+        return sm.getGraphdb();
     }
     
     

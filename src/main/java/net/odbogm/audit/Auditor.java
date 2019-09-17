@@ -3,6 +3,7 @@ package net.odbogm.audit;
 import com.orientechnologies.orient.core.metadata.schema.OType;
 import com.tinkerpop.blueprints.impls.orient.OrientElement;
 import com.tinkerpop.blueprints.impls.orient.OrientGraph;
+import com.tinkerpop.blueprints.impls.orient.OrientGraphNoTx;
 import com.tinkerpop.blueprints.impls.orient.OrientVertexType;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -41,7 +42,7 @@ public class Auditor implements IAuditor {
         
         // verificar que la clase de auditoría exista
         if (this.transaction.getDBClass(ODBAUDITLOGVERTEXCLASS) == null) {
-            OrientGraph odb = this.transaction.getGraphdb();
+            OrientGraphNoTx odb = this.transaction.getSessionManager().getGraphdbNoTx();
             OrientVertexType olog = odb.createVertexType(ODBAUDITLOGVERTEXCLASS);
             olog.createProperty("rid", OType.STRING);
             olog.createProperty("timestamp", OType.DATETIME);
@@ -51,7 +52,6 @@ public class Auditor implements IAuditor {
             olog.createProperty("action", OType.INTEGER);
             olog.createProperty("label", OType.STRING);
             olog.createProperty("log", OType.STRING);
-            odb.commit();
             odb.shutdown();
         }
     }
