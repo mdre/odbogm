@@ -57,11 +57,11 @@ public abstract class SObject {
         this.__owner = owner;
     }
 
-    final void setState(int s) {
+    protected final void setState(int s) {
         this.__state = s;
     }
-
-    final int getState() {
+    
+    protected final int getState() {
         return this.__state;
     }
 
@@ -141,16 +141,29 @@ public abstract class SObject {
      * @return the security state computed.
      */
     public final int validate(ISecurityCredentials sc) {
+        this.__state = validate(this.getAcls(), sc);
+        return this.__state;
+    }
+    
+    /**
+     * Validate all groups of the ISecurityCredentials against the given acls
+     * and return the calculated security state.
+     * 
+     * @param acls
+     * @param sc
+     * @return 
+     */
+    protected final int validate(Map<String, Integer> acls, ISecurityCredentials sc) {
         LOGGER.log(Level.FINER, "validando los permisos de acceso...");
         int partialState = 0;
         Integer gal = 0;
-        HashMap<String, Integer> acls = this.getAcls();
         LOGGER.log(Level.FINER, "Lista de acls: {0} : {1}", new Object[]{acls.size(), acls});
         boolean hasGal = false;
         if (!acls.isEmpty()) {
             for (String securityCredential : sc.showSecurityCredentials()) {
                 gal = acls.get(securityCredential);
-                LOGGER.log(Level.FINER, "SecurityCredential access: {0} {1}", new Object[]{securityCredential, gal});
+                LOGGER.log(Level.FINER, "SecurityCredential access: {0} {1}",
+                        new Object[]{securityCredential, gal});
                 if (gal != null) {
                     hasGal = true;
                     if (gal == AccessRight.NOACCESS) {
@@ -168,9 +181,7 @@ public abstract class SObject {
             // si no hay ACLs definidos, se conceden todos los permisos por defectos.
             partialState = AccessRight.FULLACCESS;
         }
-        this.__state = partialState;
-
-        return this.__state;
+        return partialState;
     }
     
     /**
