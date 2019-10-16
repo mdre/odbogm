@@ -389,7 +389,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         if (this.___loadLazyLinks) {
             this.___transaction.initInternalTx();
 
-            LOGGER.log(Level.FINER, "Base class: " + this.___baseClass.getSimpleName());
+            LOGGER.log(Level.FINER, "Base class: {0}", this.___baseClass.getSimpleName());
             LOGGER.log(Level.FINER, "iniciando loadLazyLinks...");
             boolean currentDirtyState = this.___isDirty();
             // marcar que ya se han incorporado todo los links
@@ -401,7 +401,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
                 // hidratar los atributos @links
                 // procesar todos los links y los indirectLinks
-                LOGGER.log(Level.FINER, "procesando {0} links ", new Object[]{classdef.links.size()});
+                LOGGER.log(Level.FINER, "procesando {0} links ", classdef.links.size());
                 for (Map.Entry<String, Class<?>> entry : classdef.links.entrySet()) {
                     try {
                         String field = entry.getKey();
@@ -483,16 +483,11 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                     Class<?> fc = entry.getValue();
                     Field fLink = classdef.fieldsObject.get(field);
 
-                    String graphRelationName = classdef.entityName + "_" + field;
-                    Direction direction = Direction.OUT;
-                    if (fLink.isAnnotationPresent(Indirect.class)) {
-                        // si es un indirect se debe reemplazar el nombre de la relación por 
-                        // el propuesto por la anotation
-                        Indirect in = fLink.getAnnotation(Indirect.class);
-                        graphRelationName = in.linkName();
-                        direction = Direction.IN;
-                        LOGGER.log(Level.FINER, "Se ha detectado un indirect. Linkname = {0}", new Object[]{in.linkName()});
-                    }
+                    // se debe usar el nombre de la relación propuesto por la anotation
+                    Indirect in = fLink.getAnnotation(Indirect.class);
+                    String graphRelationName = in.linkName();
+                    Direction direction = Direction.IN;
+                    LOGGER.log(Level.FINER, "Se ha detectado un indirect. Linkname = {0}", new Object[]{in.linkName()});
                     LOGGER.log(Level.FINER, "Field: {0}.{1}   Class: {2}  RelationName: {3}", new String[]{this.___baseClass.getSimpleName(), field, fc.getSimpleName(), graphRelationName});
 
                     // recuperar de la base el vértice correspondiente
@@ -549,11 +544,10 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                     LOGGER.log(Level.FINER, "Field: {0}   Class: {1}", new String[]{field, fc.getName()});
 
                     Field fLink = classdef.fieldsObject.get(field);
-                    String graphRelationName = null;
                     Direction relationDirection = Direction.IN;
 
                     Indirect in = fLink.getAnnotation(Indirect.class);
-                    graphRelationName = in.linkName();
+                    String graphRelationName = in.linkName();
 
                     // si hay Vértices conectados o si el constructor del objeto ha inicializado los vectores, convertirlos
                     if ((ov.countEdges(relationDirection, graphRelationName) > 0) || (fLink.get(___proxiedObject) != null)) {
@@ -765,7 +759,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
                         f = cDef.fieldsObject.get(field);
 
-                        // preprarar el nombre de la relación
+                        // preparar el nombre de la relación
                         final String graphRelationName = cDef.entityName + "_" + field;
 
                         Object collectionFieldValue = f.get(this.___proxiedObject);

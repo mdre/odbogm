@@ -331,16 +331,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             
             //limpieza:
             
-            //quito dirty de elementos commiteados
-            this.dirty.entrySet().stream().
-                    map(e -> (IObjectProxy)e.getValue()).
-                    filter(o -> !o.___isDeleted() && o.___isValid()).
-                    forEach(o -> o.___removeDirtyMark());
-            
-            this.dirtyDeleted.clear();
-            this.dirty.clear();
-            this.storedObjects.clear();
-
             // refrescar las referencias del caché
             String newRid;
             LOGGER.log(Level.FINER, "NewRIDs: {0}", newrids.size());
@@ -356,11 +346,18 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                     ((IObjectProxy)o).___injectRid();
                 }
             }
-            // se opta por eliminar el caché de objetos recuperados de la base en un commit o rollback
-            // por lo que futuros pedidos a la base fuera de la transacción devolverá una nueva instancia
-            // del objeto.
-//            this.objectCache.clear();
             newrids.clear();
+            
+            //quito dirty de elementos commiteados y a la vez refresco sus indirectos
+            this.dirty.entrySet().stream().
+                    map(e -> (IObjectProxy)e.getValue()).
+                    filter(o -> !o.___isDeleted() && o.___isValid()).
+                    forEach(o -> { o.___removeDirtyMark(); o.___updateIndirectLinks(); });
+            
+            this.dirtyDeleted.clear();
+            this.dirty.clear();
+            this.storedObjects.clear();
+            
         } else {
             LOGGER.log(Level.FINER, "TransactionLevel: " + this.nestedTransactionLevel);
             this.nestedTransactionLevel--;

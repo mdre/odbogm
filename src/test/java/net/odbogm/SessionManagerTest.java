@@ -2523,5 +2523,37 @@ public class SessionManagerTest {
         
         v.getOhmSVE().entrySet().iterator().next().getKey().setNota("dirty");
     }
+    
+    /*
+     * Tests that indirect links are refreshed after commit.
+     */
+    @Test
+    public void refreshIndirects() throws Exception {
+        IndirectObject main = new IndirectObject("Main");
+        IndirectObject sub = new IndirectObject("Sub");
+        IndirectObject col1 = new IndirectObject("Col1");
+        IndirectObject col2 = new IndirectObject("Col2");
         
+        main.setDirectLink(sub);
+        col1.getAlDirectLinked().add(main);
+        col2.getAlDirectLinked().add(main);
+        
+        main = sm.store(main);
+        sub = sm.store(sub);
+        col1 = sm.store(col1);
+        col2 = sm.store(col2);
+        sm.commit();
+        
+        //after commit the indirect links must be loaded:
+        //main --> sub
+        assertNotNull(sub.getIndirectLink());
+        assertEquals(main, sub.getIndirectLink());
+        //col1 --> main
+        //col2 --> main
+        assertNotNull(main.getAlIndirectLinked());
+        assertEquals(2, main.getAlIndirectLinked().size());
+        assertTrue(main.getAlIndirectLinked().contains(col1));
+        assertTrue(main.getAlIndirectLinked().contains(col2));
+    }
+    
 }
