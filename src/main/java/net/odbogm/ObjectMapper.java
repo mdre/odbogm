@@ -435,7 +435,6 @@ public class ObjectMapper {
             
             ClassDef classdef = classCache.get(c);
             Field fLink = classdef.fieldsObject.get(field);
-            fLink.setAccessible(true);
 
             String graphRelationName = classdef.entityName + "_" + field;
             // Determinar la dirección

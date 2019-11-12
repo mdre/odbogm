@@ -169,7 +169,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     public synchronized void setAsDirty(Object o) throws UnmanagedObject {
         if (o instanceof IObjectProxy) {
-//            String rid = ((IObjectProxy) o).___getVertex().getId().toString();
             String rid = ((IObjectProxy) o).___getRid();
             LOGGER.log(Level.FINER, "Marcando como dirty: {0} - {1}",
                     new Object[]{o.getClass().getSimpleName(), o.toString()});
@@ -329,7 +328,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                 LOGGER.log(Level.FINER, "finalizado.");
             }
             
-            //limpieza:
+            //cleaning:
             
             // refrescar las referencias del caché
             String newRid;
@@ -348,18 +347,27 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             }
             newrids.clear();
             
-            //quito dirty de elementos commiteados y a la vez refresco sus indirectos
+            //remove dirty mark of commited elements
             this.dirty.entrySet().stream().
                     map(e -> (IObjectProxy)e.getValue()).
                     filter(o -> !o.___isDeleted() && o.___isValid()).
-                    forEach(o -> { o.___removeDirtyMark(); o.___updateIndirectLinks(); });
+                    forEach(o -> { /*o.___updateIndirectLinks();*/ o.___removeDirtyMark(); });
+            
+//            for (var e : this.dirty.entrySet()) {
+//                IObjectProxy o = (IObjectProxy)e.getValue();
+//                if (!o.___isDeleted() && o.___isValid()) {
+//                    o.___updateIndirectLinks();
+//                    o.___removeDirtyMark();
+//                    Object oo = o.___getProxiedObject();
+//                }
+//            }
             
             this.dirtyDeleted.clear();
             this.dirty.clear();
             this.storedObjects.clear();
             
         } else {
-            LOGGER.log(Level.FINER, "TransactionLevel: " + this.nestedTransactionLevel);
+            LOGGER.log(Level.FINER, "TransactionLevel: {0}", this.nestedTransactionLevel);
             this.nestedTransactionLevel--;
         }
         LOGGER.log(Level.FINER, "FIN DE COMMIT! ----------------------------\n\n");
@@ -372,14 +380,13 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     public synchronized void rollback() {
         initInternalTx();
         LOGGER.log(Level.FINER, "Rollback ------------------------");
-        LOGGER.log(Level.FINER, "Dirty objects: " + dirty.size());
-        LOGGER.log(Level.FINER, "Dirty deleted objects: " + dirtyDeleted.size());
+        LOGGER.log(Level.FINER, "Dirty objects: {0}", dirty.size());
+        LOGGER.log(Level.FINER, "Dirty deleted objects: {0}", dirtyDeleted.size());
         
         this.orientdbTransact.rollback();
         
         // refrescar todos los objetos
         for (Map.Entry<String, Object> entry : dirty.entrySet()) {
-            String key = entry.getKey();
             IObjectProxy value = (IObjectProxy) entry.getValue();
             value.___rollback();
         }
