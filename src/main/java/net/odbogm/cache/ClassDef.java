@@ -83,5 +83,11 @@ public class ClassDef {
      * Mapa de links indirectos. Son referencias IN hacia el objeto actual.
      */
     public HashMap<String, Class<?>> indirectOnQueryLinkLists = new HashMap<>();
+
+
+    @Override
+    public String toString() {
+        return "ClassDef{" + "entityName=" + entityName + '}';
+    }
     
 }

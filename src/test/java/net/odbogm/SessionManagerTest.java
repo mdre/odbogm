@@ -840,9 +840,11 @@ public class SessionManagerTest {
         assertEquals(1, this.sm.getDirtyCount());
         this.sm.rollback();
         assertEquals(0, this.sm.getDirtyCount());
-        
-        final SimpleVertexEx fstored = stored;
-        assertThrows(InvalidObjectReference.class, () -> fstored.setS("error!"));
+        try {
+            stored.setS("error!");
+        } catch (Exception ex) {
+            assertTrue(ex instanceof InvalidObjectReference);
+        }
         assertEquals(0, this.sm.getDirtyCount());
     }
 
@@ -896,28 +898,39 @@ public class SessionManagerTest {
         System.out.println("Rollback Collections. Se restablecen los atributos que hereden de Collection.");
         System.out.println("***************************************************************");
         SimpleVertexEx sve = new SimpleVertexEx();
-//        sve.initEnum();
-//        sve.initInner();
-//        sve.initArrayList();
-//        sve.initHashMap();
-        sve.alSV = new ArrayList<SimpleVertex>();
+        sve.alSV = new ArrayList<>();
         sve.alSV.add(new SimpleVertex());
         sve.alSV.add(new SimpleVertex());
         sve.alSV.add(new SimpleVertex());
+        sve.alString = new ArrayList<>();
+        sve.alString.add("A string");
+        sve.hmString = new HashMap<>();
+        sve.hmString.put("A key", "A value");
 
         SimpleVertexEx stored = sm.store(sve);
         System.out.println("guardando el objeto con 3 elementos en el AL.");
         sm.commit();
         System.out.println("\n\nSTORE FINALIZADO ========================= \n\n");
-        String rid = sm.getRID(stored);
 
         // modificar los campos.
         stored.alSV.add(new SimpleVertex());
+        stored.alString.add("Another string");
+        stored.hmString.put("Another key", "Another value");
         System.out.println("\n\nINICIANDO ROLLBACK ========================= \n\n");
         sm.rollback();
 
-        System.out.println("" + sve.alSV.size() + " =|= " + stored.alSV.size());
+        //asserts:
+        System.out.println("Simple vertex list: " + sve.alSV.size() + " =|= " + stored.alSV.size());
         assertEquals(sve.alSV.size(), stored.alSV.size());
+        
+        System.out.println("String list: " + sve.alString.size() + " =|= " + stored.alString.size());
+        assertEquals(sve.alString.size(), stored.alString.size());
+        assertEquals("A string", sve.alString.iterator().next());
+        
+        System.out.println("Strings map: " + sve.hmString.size() + " =|= " + stored.hmString.size());
+        assertEquals(sve.hmString.size(), stored.hmString.size());
+        assertEquals("A key", sve.hmString.keySet().iterator().next());
+        assertEquals("A value", sve.hmString.values().iterator().next());
     }
 
     @Test

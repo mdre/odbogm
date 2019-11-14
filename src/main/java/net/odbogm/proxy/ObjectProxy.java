@@ -989,18 +989,17 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
      * @param field
      */
     private synchronized void removeEdge(OrientEdge edgeToRemove, String field) {
-
         try {
-            // f = ReflectionUtils.findField(this.realObj.getClass(), field);
-            Field f = ReflectionUtils.findField(this.___baseClass, field);
-            boolean acc = f.isAccessible();
-            f.setAccessible(true);
+            ClassDef classdef = this.___transaction.getObjectMapper().getClassDef(___baseClass);
+            Field f = classdef.fieldsObject.get(field);
+//            Field f = ReflectionUtils.findField(this.___baseClass, field);
 
             // En el Edge, IN proviene del objeto apuntado. Raro pero es así :(
             String outRid = edgeToRemove.getInVertex().getIdentity().toString();
-            LOGGER.log(Level.FINER, "El edge " + edgeToRemove
-                    + " apunta IN: " + edgeToRemove.getInVertex().getIdentity().toString()
-                    + " apunta OUT: " + edgeToRemove.getOutVertex().getIdentity().toString());
+            LOGGER.log(Level.FINER, "El edge {0} apunta IN: {1} apunta OUT: {2}",
+                    new Object[]{edgeToRemove,
+                        edgeToRemove.getInVertex().getIdentity().toString(),
+                        edgeToRemove.getOutVertex().getIdentity().toString()});
             // remover primero el eje
             edgeToRemove.remove();
 
@@ -1022,15 +1021,8 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                 }
             }
 
-            f.setAccessible(acc);
-
-        } catch (SecurityException | IllegalArgumentException | NoSuchFieldException ex) {
-            Logger.getLogger(SessionManager.class
-                    .getName()).log(Level.SEVERE, null, ex);
-
-        } catch (IllegalAccessException ex) {
-            Logger.getLogger(ObjectProxy.class
-                    .getName()).log(Level.SEVERE, null, ex);
+        } catch (SecurityException | IllegalArgumentException | IllegalAccessException ex) {
+            Logger.getLogger(ObjectProxy.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
 
@@ -1040,14 +1032,15 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
      */
     @Override
     public synchronized void ___rollback() {
-    LOGGER.log(Level.FINER, "\n\n******************* ROLLBACK *******************\n\n");
+        LOGGER.log(Level.FINER, "\n\n******************* ROLLBACK *******************\n\n");
         LOGGER.log(Level.FINER, ThreadHelper.getCurrentStackTrace());
 
         this.___transaction.initInternalTx();
 
         // si es un objeto nuevo
-        LOGGER.log(Level.FINER, "RID: " + this.___baseElement.getIdentity().toString() + " Nueva?: " + this.___baseElement.getIdentity().isNew());
-        if (this.___baseElement.getIdentity().isNew()) {
+        boolean isNew = this.___baseElement.getIdentity().isNew();
+        LOGGER.log(Level.FINER, "RID: {0} Nueva?: {1}", new Object[]{this.___baseElement.getIdentity().toString(), isNew});
+        if (isNew) {
             // invalidar el objeto
             LOGGER.log(Level.FINER, "El objeto aún no se ha persistido en la base. Invalidar");
             this.___isValidObject = false;
@@ -1059,11 +1052,10 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         // recargar todo.
         this.___baseElement.reload();
 
-        LOGGER.log(Level.FINER, "vmap: " + this.___baseElement.getProperties());
+        LOGGER.log(Level.FINER, "vmap: {0}", this.___baseElement.getProperties());
         // restaurar los atributos al estado original.
         ClassDef classdef = this.___transaction.getObjectMapper().getClassDef(___proxiedObject);
         Map<String, Class<?>> fieldmap = classdef.fields;
-
         Field f;
         for (Map.Entry<String, Class<?>> entry : fieldmap.entrySet()) {
             String prop = entry.getKey();
@@ -1072,21 +1064,23 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             Object value = this.___baseElement.getProperty(prop);
             try {
                 f = classdef.fieldsObject.get(prop);
-                if (f.getType().isAssignableFrom(List.class)) {
-                    // se debe hacer una copia del la lista para no quede referenciando al objeto original
-                    // dado que en la asignación solo se pasa la referencia del objeto.
-                    LOGGER.log(Level.FINER, "Lista detectada: realizando una copia del contenido...");
-                    f.set(___proxiedObject, new ArrayListEmbeddedProxy((IObjectProxy) ___proxiedObject, (List) value));
-                } else if (f.getType().isAssignableFrom(Map.class)) {
-                    // se debe hacer una copia del la lista para no quede referenciando al objeto original
-                    // dado que en la asignación solo se pasa la referencia del objeto.
-                    LOGGER.log(Level.FINER, "Map detectado: realizando una copia del contenido...");
-                    // FIXME: Ojo que se hace solo un shalow copy!! no se está conando la clave y el value
-                    f.set(___proxiedObject, new HashMapEmbeddedProxy((IObjectProxy) ___proxiedObject, (Map) value));
-                } else {
-                    f.set(___proxiedObject, value);
-                }
-                LOGGER.log(Level.FINER, "hidratado campo: " + prop + "=" + value);
+                if (value != null) {
+                    if (List.class.isAssignableFrom(f.getType())) {
+                        // se debe hacer una copia del la lista para no quede referenciando al objeto original
+                        // dado que en la asignación solo se pasa la referencia del objeto.
+                        LOGGER.log(Level.FINER, "Lista detectada: realizando una copia del contenido...");
+                        f.set(___proxiedObject, new ArrayListEmbeddedProxy((IObjectProxy) ___proxiedObject, (List) value));
+                    } else if (f.getType().isAssignableFrom(Map.class)) {
+                        // se debe hacer una copia del la lista para no quede referenciando al objeto original
+                        // dado que en la asignación solo se pasa la referencia del objeto.
+                        LOGGER.log(Level.FINER, "Map detectado: realizando una copia del contenido...");
+                        // FIXME: Ojo que se hace solo un shalow copy!! no se está clonando la clave y el value
+                        f.set(___proxiedObject, new HashMapEmbeddedProxy((IObjectProxy) ___proxiedObject, (Map) value));
+                    } else {
+                        f.set(___proxiedObject, value);
+                    }
+                } else f.set(___proxiedObject, null);
+                LOGGER.log(Level.FINER, "hidratado campo: {0}={1}", new Object[]{prop, value});
             } catch (IllegalArgumentException | IllegalAccessException ex) {
                 Logger.getLogger(ObjectProxy.class.getName()).log(Level.SEVERE, null, ex);
             }
@@ -1105,7 +1099,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                 } else {
                     f.set(this.___proxiedObject, null);
                 }
-                LOGGER.log(Level.FINER, "hidratado campo: " + prop + "=" + value);
+                LOGGER.log(Level.FINER, "hidratado campo: {0}={1}", new Object[]{prop, value});
             } catch (IllegalArgumentException | IllegalAccessException ex) {
                 Logger.getLogger(ObjectProxy.class.getName()).log(Level.SEVERE, null, ex);
             }

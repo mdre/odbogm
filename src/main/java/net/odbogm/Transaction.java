@@ -93,7 +93,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     // Auditor asociado a la transacción
     private Auditor auditor;
     
-    private SessionManager sm;
+    private final SessionManager sm;
     private OrientGraph orientdbTransact;
     
     // indica el nivel de anidamiento de la transacción. Cuando se llega a 0 se cierra.
@@ -424,21 +424,21 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     @Override
     public synchronized <T> T store(T o) throws IncorrectRIDField, NoOpenTx, ClassToVertexNotFound {
-        T proxied;
+        T proxy;
         // si el objeto ya fue guardado con anterioridad, devolver la instancia creada previamente.
-        proxied = (T) this.storedObjects.get(o);
-        if (proxied != null) {
+        proxy = (T) this.storedObjects.get(o);
+        if (proxy != null) {
             // devolver la instancia recuperada
             LOGGER.log(Level.FINER, "El objeto original ya había sido persistido. Se devuelve la instancia creada inicialmente.");
 
             // Aplicar los controles de seguridad.
-            if ((this.sm.getLoggedInUser() != null) && (proxied instanceof SObject)) {
+            if ((this.sm.getLoggedInUser() != null) && (proxy instanceof SObject)) {
                 LOGGER.log(Level.FINER, "SObject detectado. Aplicando seguridad de acuerdo al usuario logueado: {0}",
                         this.sm.getLoggedInUser().getName());
-                ((SObject) proxied).validate(this.sm.getLoggedInUser());
+                ((SObject) proxy).validate(this.sm.getLoggedInUser());
             }
 
-            return proxied;
+            return proxy;
         }
         
         initInternalTx();
@@ -460,7 +460,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
             LOGGER.log(Level.FINER, "object data: {0}", omap);
             OrientVertex v = this.orientdbTransact.addVertex("class:" + classname, omap);
-            proxied = ObjectProxyFactory.create(o, v, this);
+            proxy = ObjectProxyFactory.create(o, v, this);
 
             // registrar el rid temporal para futuras referencias.
             newrids.add(v.getId().toString());
@@ -469,9 +469,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             // transferir todos los valores al proxy
             for (Map.Entry<String, Field> entry : oClassDef.fieldsObject.entrySet()) {
                 Field f = entry.getValue();
-                f.setAccessible(true);
                 try {
-                    f.set(proxied, f.get(o));
+                    f.set(proxy, f.get(o));
                 } catch (IllegalArgumentException | IllegalAccessException e) {
                 }
             }
@@ -479,21 +478,19 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             
             
             // convertir los embedded
-            this.sm.getObjectMapper().collectionsToEmbedded(proxied, oClassDef, this);
+            this.sm.getObjectMapper().collectionsToEmbedded(proxy, oClassDef, this);
 
             if (this.isAuditing()) {
-                this.auditLog((IObjectProxy) proxied, Audit.AuditType.WRITE, "STORE", omap);
+                this.auditLog((IObjectProxy) proxy, Audit.AuditType.WRITE, "STORE", omap);
             }
 
-            LOGGER.log(Level.FINER, "Marcando como dirty: " + proxied.getClass().getSimpleName());
-            this.dirty.put(v.getId().toString(), proxied);
+            LOGGER.log(Level.FINER, "Marcando como dirty: {0}", proxy.getClass().getSimpleName());
+            this.dirty.put(v.getId().toString(), proxy);
 
             // si se está en proceso de commit, registrar el objeto junto con el proxy para 
             // que no se genere un loop con objetos internos que lo referencien.
-            this.storedObjects.put(o, proxied);
+            this.storedObjects.put(o, proxy);
 
-            // utlizado para analizar las anotations de campo.
-            Field f;
             /* 
             procesar los objetos internos. Primero se debe determinar
             si los objetos ya existían en el contexto actual. Si no existen
@@ -509,7 +506,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                 Object innerO = this.storedObjects.get(link.getValue());
                 // si no es así, recuperar el valor del campo
                 if (innerO == null) {
-                    LOGGER.log(Level.FINER, field + ": No existe el objeto en el cache de objetos creados.");
+                    LOGGER.log(Level.FINER, "{0}: No existe el objeto en el cache de objetos creados.", field);
                     innerO = link.getValue();
                 }
 
@@ -518,16 +515,16 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                     LOGGER.log(Level.FINER, "innerO nuevo. Crear un vértice y un link");
                     innerO = this.store(innerO);
                     // actualizar la referencia del objeto.
-                    this.objectMapper.setFieldValue(proxied, field, innerO);
+                    this.objectMapper.setFieldValue(proxy, field, innerO);
                 } else {
-                    this.objectMapper.setFieldValue(proxied, field, innerO);
+                    this.objectMapper.setFieldValue(proxy, field, innerO);
                 }
 
                 // crear un link entre los dos objetos.
                 OrientEdge oe = this.orientdbTransact.addEdge("class:" + graphRelationName,
                         v, ((IObjectProxy) innerO).___getVertex(), graphRelationName);
                 if (this.isAuditing()) {
-                    this.auditLog((IObjectProxy) proxied, Audit.AuditType.WRITE, "STORE: " + graphRelationName, oe);
+                    this.auditLog((IObjectProxy) proxy, Audit.AuditType.WRITE, "STORE: " + graphRelationName, oe);
                 }
             }
 
@@ -537,9 +534,9 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             deben ser creados.
              */
             LOGGER.log(Level.FINER, "Procesando los LinkList");
-            LOGGER.log(Level.FINER, "LinkLists: " + oStruct.linkLists.size());
+            LOGGER.log(Level.FINER, "LinkLists: {0}", oStruct.linkLists.size());
 
-            final T finalProxied = proxied;
+            final T finalProxy = proxy;
 
             for (Map.Entry<String, Object> link : oStruct.linkLists.entrySet()) {
                 String field = link.getKey();
@@ -547,14 +544,14 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
                 final String graphRelationName = classname + "_" + field;
 
-                LOGGER.log(Level.FINER, "field: " + field + " clase: " + value.getClass().getName());
+                LOGGER.log(Level.FINER, "field: {0} clase: {1}", new Object[]{field, value.getClass().getName()});
                 if (value instanceof List) {
                     // crear un objeto de la colección correspondiente para poder trabajarlo
                     // Class<?> oColection = oClassDef.linkLists.get(field);
                     Collection innerCol = (Collection) value;
 
                     // recorrer la colección verificando el estado de cada objeto.
-                    LOGGER.log(Level.FINER, "Nueva lista: " + graphRelationName + ": " + innerCol.size() + " elementos");
+                    LOGGER.log(Level.FINER, "Nueva lista: {0}: {1} elementos", new Object[]{graphRelationName, innerCol.size()});
                     for (Object llObject : innerCol) {
                         IObjectProxy ioproxied;
                         // verificar si ya está en el contexto
@@ -573,10 +570,10 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                         }
 
                         // crear un link entre los dos objetos.
-                        LOGGER.log(Level.FINE, "-----> agregando un edge a: " + ioproxied.___getVertex().getId());
+                        LOGGER.log(Level.FINE, "-----> agregando un edge a: {0}", ioproxied.___getVertex().getId());
                         OrientEdge oe = this.orientdbTransact.addEdge("class:" + graphRelationName, v, ioproxied.___getVertex(), graphRelationName);
                         if (this.isAuditing()) {
-                            this.auditLog((IObjectProxy) proxied, Audit.AuditType.WRITE, "STORE: " + graphRelationName, oe);
+                            this.auditLog((IObjectProxy) proxy, Audit.AuditType.WRITE, "STORE: " + graphRelationName, oe);
                         }
                     }
                 } else if (value instanceof Map) {
@@ -600,10 +597,10 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                                 ioproxied = (IObjectProxy) store(imO);
                             }
                             // crear un link entre los dos objetos.
-                            LOGGER.log(Level.FINER, "-----> agregando el edges de " + v.getId().toString() + " para " + ioproxied.___getVertex().toString() + " key: " + imk);
+                            LOGGER.log(Level.FINER, "-----> agregando el edges de {0} para {1} key: {2}", new Object[]{v.getId().toString(), ioproxied.___getVertex().toString(), imk});
                             OrientEdge oe = orientdbTransact.addEdge("class:" + graphRelationName, v, ioproxied.___getVertex(), graphRelationName);
                             if (isAuditing()) {
-                                auditLog((IObjectProxy) finalProxied, Audit.AuditType.WRITE, "STORE: " + graphRelationName, oe);
+                                auditLog((IObjectProxy) finalProxy, Audit.AuditType.WRITE, "STORE: " + graphRelationName, oe);
                             }
                             // agragar la key como atributo.
                             if (Primitives.PRIMITIVE_MAP.get(imk.getClass()) != null) {
@@ -620,11 +617,11 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
                 }
                 // convertir la colección a Lazy para futuras referencias.
-                this.sm.getObjectMapper().colecctionToLazy(proxied, field, v, this);
+                this.sm.getObjectMapper().colecctionToLazy(proxy, field, v, this);
             }
 
             // guardar el objeto en el cache. Se usa el RID como clave
-            addToCache(v.getId().toString(), proxied);
+            addToCache(v.getId().toString(), proxy);
 
         } catch (IllegalArgumentException ex) {
             Logger.getLogger(SessionManager.class.getName()).log(Level.SEVERE, null, ex);
@@ -633,13 +630,13 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         LOGGER.log(Level.FINER, "FIN del Store ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
 
         // Aplicar los controles de seguridad.
-        if ((this.sm.getLoggedInUser() != null) && (proxied instanceof SObject)) {
-            LOGGER.log(Level.FINER, "SObject detectado. Aplicando seguridad de acuerdo al usuario logueado: " + this.sm.getLoggedInUser().getName());
-            ((SObject) proxied).validate(this.sm.getLoggedInUser());
+        if ((this.sm.getLoggedInUser() != null) && (proxy instanceof SObject)) {
+            LOGGER.log(Level.FINER, "SObject detectado. Aplicando seguridad de acuerdo al usuario logueado: {0}", this.sm.getLoggedInUser().getName());
+            ((SObject) proxy).validate(this.sm.getLoggedInUser());
         }
 
         closeInternalTx();
-        return proxied;
+        return proxy;
     }
     
     /**

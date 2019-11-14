@@ -3,6 +3,7 @@ package test;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Logger;
 import net.odbogm.annotations.Audit;
@@ -36,9 +37,13 @@ public class SimpleVertexEx extends SimpleVertex {
     @RemoveOrphan
     public SimpleVertex svinner; 
     
+    public List<String> lString;
+    
     public ArrayList<String> alString;
     
-    public HashMap<String,String> hmString;
+    public Map<String, String> mString;
+    
+    public HashMap<String, String> hmString;
     
     @RemoveOrphan
     @CascadeDelete

@@ -489,30 +489,21 @@ public class ObjectMapper {
             try {
                 String field = entry.getKey();
                 Class<? extends Object> value = entry.getValue();
-
-                Class<?> c;
-                if (o instanceof IObjectProxy) {
-                    c = o.getClass().getSuperclass();
-                } else {
-                    c = o.getClass();
-                }
                 LOGGER.log(Level.FINER, "Procesando campo: {0} type: {1}", new String[]{field, value.getName()});
+                
                 f = classDef.fieldsObject.get(field);
                 // realizar la conversión solo si el campo tiene un valor.
                 if (f.get(o) != null) {
-                    if (value.isAssignableFrom(List.class)) {
+                    if (List.class.isAssignableFrom(value)) {
                         LOGGER.log(Level.FINER, "convirtiendo en ArrayListEmbeddedProxy...");
                         f.set(o, new ArrayListEmbeddedProxy((IObjectProxy) o, (List) f.get(o)));
-                    } else if (value.isAssignableFrom(Map.class)) {
+                    } else if (Map.class.isAssignableFrom(value)) {
                         LOGGER.log(Level.FINER, "convirtiendo en HashMapEmbeddedProxy");
                         f.set(o, new HashMapEmbeddedProxy((IObjectProxy) o, (Map) f.get(o)));
                     }
                 }
-            
-            } catch (IllegalArgumentException ex) {
-                Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
-            } catch (IllegalAccessException ex) {
-                Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (IllegalArgumentException | IllegalAccessException ex) {
+                Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, "Error converting collections to embedded", ex);
             }
         }
     }
