@@ -1070,7 +1070,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                         // dado que en la asignación solo se pasa la referencia del objeto.
                         LOGGER.log(Level.FINER, "Lista detectada: realizando una copia del contenido...");
                         f.set(___proxiedObject, new ArrayListEmbeddedProxy((IObjectProxy) ___proxiedObject, (List) value));
-                    } else if (f.getType().isAssignableFrom(Map.class)) {
+                    } else if (Map.class.isAssignableFrom(f.getType())) {
                         // se debe hacer una copia del la lista para no quede referenciando al objeto original
                         // dado que en la asignación solo se pasa la referencia del objeto.
                         LOGGER.log(Level.FINER, "Map detectado: realizando una copia del contenido...");

@@ -530,9 +530,11 @@ public class SessionManagerTest {
 
         assertEquals(expResult.i, result.i);
         assertEquals(expResult.alSV.size(), result.alSV.size());
+        assertNotNull(expResult.enumTest);
+        assertEquals(expResult.enumTest, result.enumTest);
         System.out.println("Fin Update!.............");
     }
-
+    
     @Test
     public void testLoop() {
         System.out.println("\n\n\n");

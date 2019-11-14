@@ -284,16 +284,15 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         LOGGER.log(Level.FINER, "COMMIT");
         if (this.nestedTransactionLevel <= 0) {
             LOGGER.log(Level.FINER, "Iniciando COMMIT ==================================");
-            LOGGER.log(Level.FINER, "Objetos marcados como Dirty: " + dirty.size());
-            LOGGER.log(Level.FINER, "Objetos marcados como DirtyDeleted: " + dirtyDeleted.size());
+            LOGGER.log(Level.FINER, "Objetos marcados como Dirty: {0}", dirty.size());
+            LOGGER.log(Level.FINER, "Objetos marcados como DirtyDeleted: {0}", dirtyDeleted.size());
             
             // procesar todos los objetos dirty
             for (Map.Entry<String, Object> e : dirty.entrySet()) {
                 String rid = e.getKey();
                 IObjectProxy o = (IObjectProxy) e.getValue();
                 if (!o.___isDeleted() && o.___isValid()) {
-                    LOGGER.log(Level.FINER, "Commiting: " + rid + "   class: " + o.___getBaseClass() + " isValid: " + o.___isValid());
-
+                    LOGGER.log(Level.FINER, "Commiting: {0} class: {1} isValid: {2}", new Object[]{rid, o.___getBaseClass(), o.___isValid()});
                     // actualizar todos los objetos antes de bajarlos.
                     o.___commit();
                 }
@@ -304,7 +303,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                 String rid = e.getKey();
                 IObjectProxy o = (IObjectProxy) e.getValue();
                 if (o.___isDeleted() && o.___isValid()) {
-                    LOGGER.log(Level.FINER, "Commiting delete: " + rid);
+                    LOGGER.log(Level.FINER, "Commiting delete: {0}", rid);
                     this.internalDelete(e.getValue());
                 }
             }

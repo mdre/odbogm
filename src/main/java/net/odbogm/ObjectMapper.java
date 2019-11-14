@@ -253,14 +253,13 @@ public class ObjectMapper {
 
             if (value != null) {
                 f = classdef.fieldsObject.get(prop);
-                f.setAccessible(true);
-                if (f.getType().isAssignableFrom(List.class)) {
+                if (List.class.isAssignableFrom(f.getType())) {
                     // se debe hacer una copia del la lista para no quede referenciando al objeto original
                     // dado que en la asignación solo se pasa la referencia del objeto.
                     LOGGER.log(Level.FINER, "EmbeddedList detectada: realizando una copia del contenido...");
                     LOGGER.log(Level.FINER, "value: {0}", value.getClass());
                     this.setFieldValue(oproxied, prop, new ArrayListEmbeddedProxy((IObjectProxy) oproxied, (List) value));
-                } else if (f.getType().isAssignableFrom(Map.class)) {
+                } else if (Map.class.isAssignableFrom(f.getType())) {
                     // se debe hacer una copia del la lista para no quede referenciando al objeto original
                     // dado que en la asignación solo se pasa la referencia del objeto.
                     LOGGER.log(Level.FINER, "EmbeddedMap detectado: realizando una copia del contenido...");
@@ -274,13 +273,12 @@ public class ObjectMapper {
                 // si el valor es null verificar que no se trate de una Lista embebida 
                 // que pueda haber sido inicializada en el constructor.
                 f = classdef.fieldsObject.get(prop);
-                f.setAccessible(true);
                 Object fv = f.get(oproxied);
-                if ((fv != null) && (f.getType().isAssignableFrom(List.class))) {
+                if ((fv != null) && (List.class.isAssignableFrom(f.getType()))) {
                     // se trata de una lista embebida. Proceder a reemplazarlar con una que esté preparada.
                     LOGGER.log(Level.FINER, "Se ha detectado una lista embebida que no tiene valores. Se la reemplaza por una Embedded.");
                     this.setFieldValue(oproxied, prop, new ArrayListEmbeddedProxy((IObjectProxy) oproxied, (List) f.get(oproxied)));
-                } else if ((fv != null) && (f.getType().isAssignableFrom(Map.class))) {
+                } else if ((fv != null) && (Map.class.isAssignableFrom(f.getType()))) {
                     // se trata de un Map embebido. Proceder a reemplazarlo con uno que esté preparado.
                     LOGGER.log(Level.FINER, "Se ha detectado un Map embebido que no tiene valores. Se lo reemplaza por uno Embedded.");
                     this.setFieldValue(oproxied, prop, new HashMapEmbeddedProxy((IObjectProxy) oproxied, (Map) f.get(oproxied)));
@@ -532,7 +530,7 @@ public class ObjectMapper {
             // puede darse el caso que la base cree un atributo sobre los registros (ej: @rid) 
             // y la clave podría no corresponderse con un campo.
             Class<?> fc = classdef.fields.get(prop);
-            fc = fc == null ? classdef.enumFields.get(prop) : fc;
+            fc = (fc == null) ? classdef.enumFields.get(prop) : fc;
             
             if (fc != null) {
                 f = classdef.fieldsObject.get(prop);
