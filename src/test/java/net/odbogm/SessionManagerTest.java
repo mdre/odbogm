@@ -2396,11 +2396,11 @@ public class SessionManagerTest {
         //@FIX
 //        v.enums.remove(EnumTest.OTRO_MAS);
 //        assertEquals(2, v.enums.size());
+//        assertTrue(((IObjectProxy)v).___isDirty());
 //        sm.commit();
 //        sm.getCurrentTransaction().clearCache();
 //        v = sm.get(Enums.class, rid);
 //        assertEquals(2, v.enums.size());
-        
     }
     
     @Test

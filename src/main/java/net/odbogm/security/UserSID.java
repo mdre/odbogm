@@ -97,12 +97,7 @@ public final class UserSID implements ISID, ISecurityCredentials {
      * @return lista de GroupSID
      */
     public List<GroupSID> getGroups() {
-        // FIXME: existe algún riesgo en esto?
-        List<GroupSID> gr = new ArrayList<>();
-        if (this.groups!=null) {
-             gr = this.groups.stream().map(gid -> gid).collect(Collectors.toList());
-        }
-        return gr;
+        return Collections.unmodifiableList(this.groups);
     }
 
 }

@@ -2,6 +2,7 @@ package net.odbogm;
 
 import com.orientechnologies.orient.core.sql.OCommandSQL;
 import com.tinkerpop.blueprints.impls.orient.OrientGraph;
+import net.odbogm.exceptions.CircularReferenceException;
 import net.odbogm.exceptions.UnknownRID;
 import net.odbogm.security.AccessRight;
 import net.odbogm.security.GroupSID;
@@ -327,6 +328,22 @@ public class SecurityObjectsTest {
         so.setAcl(user1, new AccessRight(AccessRight.NOACCESS));
         so = sm.get(SSimpleVertex.class, rid);
         assertEquals(SObject.OTHERS_DEFAULT_ACCESS, so.getSecurityState());
+    }
+    
+    @Test
+    public void avoidGroupsLoop() throws Exception {
+        GroupSID g1 = sm.store(new GroupSID("g1", "g1"));
+        GroupSID g2 = sm.store(new GroupSID("g2", "g2"));
+        GroupSID g3 = sm.store(new GroupSID("g3", "g3"));
+        
+        //this must not happen:
+        //g1 -> g2 -> g3 -> g1
+        g1.add(g2);
+        g2.add(g3);
+        assertThrows(CircularReferenceException.class, () -> g3.add(g1));
+        
+        //this neither:
+        assertThrows(CircularReferenceException.class, () -> g1.add(g1));
     }
     
 }
