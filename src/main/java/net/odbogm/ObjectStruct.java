@@ -1,32 +1,33 @@
 package net.odbogm;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 
 /**
- * Estructura para soportar los valores de un objeto.
- * Mapea nombre del campo con valor del campo.
+ * Structure to support the values of an object.
+ * It maps the name of a field with its value.
  * 
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
 public class ObjectStruct {
 
     /**
-     * Mapa de atributos básicos (se persisten dentro del vértice).
+     * Map of basic attributes (persisted inside the vertex).
      */
     public HashMap<String, Object> fields = new HashMap<>();
     
     /**
-     * Mapa de atributos enum (se persisten como cadenas).
-     */
-    public HashMap<String, Object> enumFields = new HashMap<>();
-    
-    /**
-     * Mapa de links a otros objetos (aristas).
+     * Map of links to other objects (edges).
      */
     public HashMap<String, Object> links = new HashMap<>();
     
     /**
-     * Mapa de lista de links a otros objetos.
+     * Map of lists of links to other objects.
      */
     public HashMap<String, Object> linkLists = new HashMap<>();
+    
+    /**
+     * List of removed attributes of the vertex.
+     */
+    public ArrayList<String> removedProperties = new ArrayList<>();
 }

@@ -140,21 +140,24 @@ public class ObjectMapper {
         // procesar todos los campos
         classmap.fields.entrySet().stream().forEach(entry -> {
             Field f = classmap.fieldsObject.get(entry.getKey());
-            putValue(oStruct.fields, f, o, null);
+            boolean put = putValue(oStruct.fields, f, o, null);
+            if (!put) oStruct.removedProperties.add(entry.getKey());
         });
 
         // procesar todos los Enums
         classmap.enumFields.entrySet().stream().forEach(entry -> {
             Field f = classmap.fieldsObject.get(entry.getKey());
-            putValue(oStruct.fields, f, o, v -> ((Enum)v).name());
+            boolean put = putValue(oStruct.fields, f, o, v -> ((Enum)v).name());
+            if (!put) oStruct.removedProperties.add(entry.getKey());
         });
         
         // procesar todas las colecciones de Enums
         classmap.enumCollectionFields.entrySet().stream().forEach(entry -> {
             Field f = classmap.fieldsObject.get(entry.getKey());
             //se convierte la colección de enums a colección de strings con el name
-            putValue(oStruct.fields, f, o, v -> ((Collection)v).stream().
+            boolean put = putValue(oStruct.fields, f, o, v -> ((Collection)v).stream().
                     map(e -> ((Enum)e).name()).collect(Collectors.toList()));
+            if (!put) oStruct.removedProperties.add(entry.getKey());
         });
         
         // procesar todos los links
@@ -171,21 +174,22 @@ public class ObjectMapper {
     }
     
     /**
-     * Guarda en el mapa de atributos 'valuesMap' el valor que tiene el objeto 'o'
-     * en su atributo dado por el campo 'f', aplicando la transformación dada.
+     * Saves in the attributes map 'valuesMap' the value that the object 'o'
+     * has in its attribute given by the field 'f', applying the transform if
+     * given. Returns false if the value is null.
      */
-    private void putValue(Map valuesMap, Field f, Object o, Function transform) {
+    private boolean putValue(Map valuesMap, Field f, Object o, Function transform) {
         try {
-            f.setAccessible(true);
             Object value = f.get(o);
-            //guardar sólo si no es nulo
+            LOGGER.log(Level.FINER, "Field: {0}. Class: {1}. Value: {2}",
+                    new Object[]{f.getName(), f.getType().getSimpleName(), value});
             if (value != null) {
-                LOGGER.log(Level.FINER, "Field: {0}. Class: {1}. Value: {2}",
-                        new Object[]{f.getName(), f.getType().getSimpleName(), value});
                 valuesMap.put(f.getName(), transform != null ? transform.apply(value) : value);
             }
-        } catch (SecurityException | IllegalArgumentException | IllegalAccessException ex) {
-            Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
+            return value != null;
+        } catch (IllegalArgumentException | IllegalAccessException ex) {
+            Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, "Couldn't get attribute value", ex);
+            return true;
         }
     }
     
@@ -282,6 +286,9 @@ public class ObjectMapper {
                     // se trata de un Map embebido. Proceder a reemplazarlo con uno que esté preparado.
                     LOGGER.log(Level.FINER, "Se ha detectado un Map embebido que no tiene valores. Se lo reemplaza por uno Embedded.");
                     this.setFieldValue(oproxied, prop, new HashMapEmbeddedProxy((IObjectProxy) oproxied, (Map) f.get(oproxied)));
+                } else {
+                    LOGGER.log(Level.FINER, "Null property");
+                    this.setFieldValue(oproxied, prop, null);
                 }
             }
         }
@@ -295,7 +302,7 @@ public class ObjectMapper {
             String prop = entry.getKey();
             LOGGER.log(Level.FINER, "Buscando campo {0} ....", new String[]{prop});
             Object value = v.getProperty(prop);
-            if (value != null) {
+            if (value != null && value.toString() != null && !value.toString().isBlank()) {
                 // FIXME: este código se puede mejorar. Tratar de usar solo setFieldValue()
                 f = classdef.fieldsObject.get(prop);
                 Object enumValue = Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString());

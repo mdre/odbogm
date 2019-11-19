@@ -621,8 +621,8 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     
     private void doCommit() {
         LOGGER.log(Level.FINER, "Iniciando ___commit() ....");
-        LOGGER.log(Level.FINER, "valid: " + this.___isValidObject);
-        LOGGER.log(Level.FINER, "dirty: " + this.___dirty);
+        LOGGER.log(Level.FINER, "valid: {0}", this.___isValidObject);
+        LOGGER.log(Level.FINER, "dirty: {0}", this.___dirty);
 
         if (this.___dirty || this.___baseElement.getIdentity().isNew()) {
             this.___transaction.initInternalTx();
@@ -642,6 +642,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
             // bajar todo al vértice
             this.___baseElement.setProperties(omap);
+            oStruct.removedProperties.forEach(prop -> this.___baseElement.removeProperty(prop));
 
             // guardar log de auditoría si corresponde.
             if (this.___transaction.isAuditing() && !this.___baseElement.getIdentity().isNew()) {

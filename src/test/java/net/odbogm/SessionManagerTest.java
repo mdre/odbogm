@@ -862,6 +862,30 @@ public class SessionManagerTest {
         sm.getCurrentTransaction().clearCache();
         e = sm.get(Enums.class, rid);
         assertEquals(EnumTest.OTRO_MAS, e.getTheEnum());
+        
+        
+        e.setTheEnum(EnumTest.TRES);
+        sm.commit();
+        sm.getCurrentTransaction().clearCache();
+        e = sm.get(Enums.class, rid);
+        assertEquals(EnumTest.TRES, e.getTheEnum());
+        
+        
+        e.setTheEnum(null);
+        sm.commit();
+        sm.getCurrentTransaction().clearCache();
+        e = sm.get(Enums.class, rid);
+        assertNull(e.getTheEnum());
+        
+        //if the vertex has an empty string as enum value, this must not fail:
+        OrientGraph g = sm.getGraphdb();
+        g.attach(((IObjectProxy)e).___getVertex());
+        ((IObjectProxy)e).___getVertex().setProperty("theEnum", " ");
+        g.commit();
+        
+        sm.getCurrentTransaction().clearCache();
+        e = sm.get(Enums.class, rid);
+        assertNull(e.getTheEnum());
     }
     
     
@@ -2368,6 +2392,15 @@ public class SessionManagerTest {
         assertTrue(v.enums.contains(EnumTest.UNO));
         assertTrue(v.enums.contains(EnumTest.DOS));
         assertTrue(v.enums.contains(EnumTest.OTRO_MAS));
+        
+        //@FIX
+//        v.enums.remove(EnumTest.OTRO_MAS);
+//        assertEquals(2, v.enums.size());
+//        sm.commit();
+//        sm.getCurrentTransaction().clearCache();
+//        v = sm.get(Enums.class, rid);
+//        assertEquals(2, v.enums.size());
+        
     }
     
     @Test
@@ -2573,6 +2606,28 @@ public class SessionManagerTest {
         assertFalse(((IObjectProxy)sub).___isDirty());
         assertFalse(((IObjectProxy)col1).___isDirty());
         assertFalse(((IObjectProxy)col2).___isDirty());
+    }
+    
+    
+    @Test
+    public void saveNulls() throws Exception {
+        SimpleVertexEx sv = sm.store(new SimpleVertexEx());
+        sv.setS("hola");
+        sv.setFecha(new Date());
+        sv.setLooptest(new SimpleVertexEx());
+        sm.commit();
+        String rid = sm.getRID(sv);
+        
+        sv.setS(null);
+        sv.setFecha(null);
+        sv.setLooptest(null);
+        assertTrue(((IObjectProxy)sv).___isDirty());
+        sm.commit();
+        sm.getCurrentTransaction().clearCache();
+        sv = sm.get(SimpleVertexEx.class, rid);
+        assertNull(sv.getS());
+        assertNull(sv.getFecha());
+        assertNull(sv.getLooptest());
     }
     
 }
