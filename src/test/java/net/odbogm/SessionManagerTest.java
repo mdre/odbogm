@@ -6,7 +6,6 @@ import java.lang.reflect.Field;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -88,6 +87,12 @@ public class SessionManagerTest {
     @After
     public void tearDown() {
         sm.shutdown();
+    }
+    
+    private <T> T commitClearAndGet(String rid) {
+        sm.commit();
+        sm.getCurrentTransaction().clearCache();
+        return (T)sm.get(rid);
     }
 
     
@@ -826,7 +831,9 @@ public class SessionManagerTest {
         stored.setoI(45);
         stored.setoF(4.5f);
 
+        assertTrue(((IObjectProxy)stored).___isDirty());
         sm.rollback();
+        assertFalse(((IObjectProxy)stored).___isDirty());
 
         assertEquals(sve.getI(), stored.getI());
         assertEquals(sve.getF(), stored.getF(), 0.0002);
@@ -1131,6 +1138,7 @@ public class SessionManagerTest {
         int size = retRollback.getStringlist().size();
         System.out.println("Elementos en la lista: " + size);
         retRollback.getStringlist().add("rollback");
+        assertEquals(size + 1, retRollback.getStringlist().size());
         System.out.println("Elementos en la lista después de agregar uno para el rollback: " + retRollback.getStringlist().size());
         this.sm.rollback();
         assertEquals(0, sm.getDirtyCount());
@@ -2381,10 +2389,17 @@ public class SessionManagerTest {
     @Test
     public void persistEnumCollection() throws Exception {
         Enums v = new Enums();
-        v.enums = Arrays.asList(EnumTest.UNO, EnumTest.DOS, EnumTest.OTRO_MAS);
+        v.enums.addAll(List.of(EnumTest.UNO, EnumTest.DOS, EnumTest.OTRO_MAS));
         v = sm.store(v);
         sm.commit();
         String rid = sm.getRID(v);
+        
+        v.enums.add(EnumTest.TRES);
+        assertTrue(((IObjectProxy)v).___isDirty());
+        sm.rollback();
+        assertEquals(3, v.enums.size());
+        assertFalse(((IObjectProxy)v).___isDirty());
+        
         
         sm.getCurrentTransaction().clearCache();
         v = sm.get(Enums.class, rid);
@@ -2393,14 +2408,22 @@ public class SessionManagerTest {
         assertTrue(v.enums.contains(EnumTest.DOS));
         assertTrue(v.enums.contains(EnumTest.OTRO_MAS));
         
-        //@FIX
-//        v.enums.remove(EnumTest.OTRO_MAS);
-//        assertEquals(2, v.enums.size());
-//        assertTrue(((IObjectProxy)v).___isDirty());
-//        sm.commit();
-//        sm.getCurrentTransaction().clearCache();
-//        v = sm.get(Enums.class, rid);
-//        assertEquals(2, v.enums.size());
+        v.enums.remove(EnumTest.OTRO_MAS);
+        assertEquals(2, v.enums.size());
+        assertTrue(((IObjectProxy)v).___isDirty());
+        v = commitClearAndGet(rid);
+        assertEquals(2, v.enums.size());
+        
+        
+        v.enums.clear();
+        v = commitClearAndGet(rid);
+        assertTrue(v.enums.isEmpty());
+        
+        v.nullEnums();
+        v = commitClearAndGet(rid);
+        assertTrue(v.enums.isEmpty());
+        
+        assertNull(v.notInitializedEnums);
     }
     
     @Test

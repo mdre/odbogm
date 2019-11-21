@@ -10,11 +10,14 @@ plugins {
 //OrientDB version to use:
 ext.orientDbVersion = '3.0.23'
 
-println "***************************************************************"
-println "SISTEMA: " + name
-println "VERSION: " + version
-println "JAVA   : " + System.getProperty('java.home')
-println "***************************************************************"
+
+def info() {
+    println "***************************************************************"
+    println " SYSTEM: " + name
+    println "VERSION: " + version
+    println "   JAVA: " + System.getProperty('java.home')
+    println "***************************************************************"
+}
 
 
 compileJava {
@@ -81,10 +84,7 @@ if (! project.gradle.startParameter.taskNames.join(",").toLowerCase().contains("
 }
 
 build.doLast {
-    println "***************************************************************"
-    println "SISTEMA: " + name
-    println "VERSION: " + version
-    println "***************************************************************"
+    info()
 }
 
 // seteo carpeta de fuentes para sonar

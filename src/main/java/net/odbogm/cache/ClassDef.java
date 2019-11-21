@@ -45,7 +45,7 @@ public class ClassDef {
     public HashMap<String, Class<?>> enumFields = new HashMap<>();
     
     /**
-     * Mapa de atributos que son colecciones de enums.
+     * Mapa de atributos que son colecciones de enums (only Lists).
      */
     public HashMap<String, Class<?>> enumCollectionFields = new HashMap<>();
     

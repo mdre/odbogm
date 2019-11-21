@@ -477,7 +477,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             
             
             // convertir los embedded
-            this.sm.getObjectMapper().collectionsToEmbedded(proxy, oClassDef, this);
+            this.sm.getObjectMapper().collectionsToEmbedded(proxy, oClassDef);
 
             if (this.isAuditing()) {
                 this.auditLog((IObjectProxy) proxy, Audit.AuditType.WRITE, "STORE", omap);

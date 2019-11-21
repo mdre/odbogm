@@ -1055,10 +1055,9 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
         LOGGER.log(Level.FINER, "vmap: {0}", this.___baseElement.getProperties());
         // restaurar los atributos al estado original.
-        ClassDef classdef = this.___transaction.getObjectMapper().getClassDef(___proxiedObject);
-        Map<String, Class<?>> fieldmap = classdef.fields;
+        ClassDef classdef = this.___transaction.getObjectMapper().getClassDef(this.___proxiedObject);
         Field f;
-        for (Map.Entry<String, Class<?>> entry : fieldmap.entrySet()) {
+        for (var entry : classdef.fields.entrySet()) {
             String prop = entry.getKey();
 
             LOGGER.log(Level.FINER, "Rollingback field {0} ....", new String[]{prop});
@@ -1088,7 +1087,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         }
 
         // procesar los enum
-        LOGGER.log(Level.FINER, "Procesando los enums...");
+        LOGGER.log(Level.FINER, "Reverting enums...");
         for (Map.Entry<String, Class<?>> entry : classdef.enumFields.entrySet()) {
             String prop = entry.getKey();
             LOGGER.log(Level.FINER, "Buscando campo {0} ....", new String[]{prop});
@@ -1106,6 +1105,14 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             }
         }
 
+        
+        
+        LOGGER.log(Level.FINER, "Reverting enum collections.........");
+        this.___transaction.getObjectMapper().hydrateEnumCollections(
+                classdef, (IObjectProxy)this.___proxiedObject, this.___baseElement);
+        
+        
+        
         LOGGER.log(Level.FINER, "Revirtiendo los Links......... ");
         // hidratar los atributos @links
         // procesar todos los links

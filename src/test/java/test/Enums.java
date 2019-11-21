@@ -1,5 +1,6 @@
 package test;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,11 +17,13 @@ public class Enums {
     
     private EnumTest theEnum;
     
-    public List<EnumTest> enums;
+    public List<EnumTest> enums = new ArrayList<>();
     
     public Map<EnumTest, String> enumToString = new HashMap<>();
     
     public Map<String, EnumTest> stringToEnum = new HashMap<>();
+    
+    public List<EnumTest> notInitializedEnums;
 
 
     public Enums() {
@@ -45,6 +48,10 @@ public class Enums {
 
     public void setTheEnum(EnumTest theEnum) {
         this.theEnum = theEnum;
+    }
+    
+    public void nullEnums() {
+        this.enums = null;
     }
     
 }

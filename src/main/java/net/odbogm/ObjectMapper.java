@@ -2,9 +2,11 @@ package net.odbogm;
 
 import com.tinkerpop.blueprints.Direction;
 import com.tinkerpop.blueprints.impls.orient.OrientEdge;
+import com.tinkerpop.blueprints.impls.orient.OrientElement;
 import com.tinkerpop.blueprints.impls.orient.OrientVertex;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
@@ -39,9 +41,6 @@ public class ObjectMapper {
         }
     }
     private final ClassCache classCache;
-
-    // usado para no llamar a Class.forName para clases ya cargadas.
-    private HashMap<String, Class> classLoaded = new HashMap<>();
 
     
     public ObjectMapper() {
@@ -234,7 +233,7 @@ public class ObjectMapper {
         }
 
         // crear un proxy sobre el objeto y devolverlo
-        Object oproxied = ObjectProxyFactory.create(toHydrate, v, t);
+        IObjectProxy proxy = (IObjectProxy)ObjectProxyFactory.create(toHydrate, v, t);
 
         LOGGER.log(Level.FINER, "**************************************************");
         LOGGER.log(Level.FINER, "Hydratando: {0} - Class: {1}", new Object[]{c.getName(), toHydrate});
@@ -244,17 +243,17 @@ public class ObjectMapper {
         ClassDef classdef = classCache.get(toHydrate);
         entityClass = classdef.entityName;
         
+        
         // ********************************************************************************************
         // procesar los atributos básicos
         // ********************************************************************************************
         Field f;
-        for (Map.Entry<String, Class<?>> entry : classdef.fields.entrySet()) {
+        for (var entry : classdef.fields.entrySet()) {
             String prop = entry.getKey();
-            Class<? extends Object> fieldClazz = entry.getValue();
+            LOGGER.log(Level.FINER, "Buscando campo {0} de tipo {1}...",
+                    new String[]{prop, entry.getValue().getSimpleName()});
 
-            LOGGER.log(Level.FINER, "Buscando campo {0} de tipo {1}....", new String[]{prop, fieldClazz.getSimpleName()});
             Object value = v.getProperty(prop);
-
             if (value != null) {
                 f = classdef.fieldsObject.get(prop);
                 if (List.class.isAssignableFrom(f.getType())) {
@@ -262,39 +261,40 @@ public class ObjectMapper {
                     // dado que en la asignación solo se pasa la referencia del objeto.
                     LOGGER.log(Level.FINER, "EmbeddedList detectada: realizando una copia del contenido...");
                     LOGGER.log(Level.FINER, "value: {0}", value.getClass());
-                    this.setFieldValue(oproxied, prop, new ArrayListEmbeddedProxy((IObjectProxy) oproxied, (List) value));
+                    this.setFieldValue(proxy, prop, new ArrayListEmbeddedProxy(proxy, (List) value));
                 } else if (Map.class.isAssignableFrom(f.getType())) {
                     // se debe hacer una copia del la lista para no quede referenciando al objeto original
                     // dado que en la asignación solo se pasa la referencia del objeto.
                     LOGGER.log(Level.FINER, "EmbeddedMap detectado: realizando una copia del contenido...");
                     // FIXME: Ojo que se hace solo un shalow copy!! no se está conando la clave y el value
-                    this.setFieldValue(oproxied, prop, new HashMapEmbeddedProxy((IObjectProxy) oproxied, (Map) value));
+                    this.setFieldValue(proxy, prop, new HashMapEmbeddedProxy(proxy, (Map) value));
                 } else {
                     LOGGER.log(Level.FINER, "hidratado campo: {0}={1}", new Object[]{prop, value});
-                    this.setFieldValue(oproxied, prop, value);
+                    this.setFieldValue(proxy, prop, value);
                 }
             } else {
                 // si el valor es null verificar que no se trate de una Lista embebida 
                 // que pueda haber sido inicializada en el constructor.
                 f = classdef.fieldsObject.get(prop);
-                Object fv = f.get(oproxied);
+                Object fv = f.get(proxy);
                 if ((fv != null) && (List.class.isAssignableFrom(f.getType()))) {
                     // se trata de una lista embebida. Proceder a reemplazarlar con una que esté preparada.
                     LOGGER.log(Level.FINER, "Se ha detectado una lista embebida que no tiene valores. Se la reemplaza por una Embedded.");
-                    this.setFieldValue(oproxied, prop, new ArrayListEmbeddedProxy((IObjectProxy) oproxied, (List) f.get(oproxied)));
+                    this.setFieldValue(proxy, prop, new ArrayListEmbeddedProxy(proxy, (List) f.get(proxy)));
                 } else if ((fv != null) && (Map.class.isAssignableFrom(f.getType()))) {
                     // se trata de un Map embebido. Proceder a reemplazarlo con uno que esté preparado.
                     LOGGER.log(Level.FINER, "Se ha detectado un Map embebido que no tiene valores. Se lo reemplaza por uno Embedded.");
-                    this.setFieldValue(oproxied, prop, new HashMapEmbeddedProxy((IObjectProxy) oproxied, (Map) f.get(oproxied)));
+                    this.setFieldValue(proxy, prop, new HashMapEmbeddedProxy(proxy, (Map) f.get(proxy)));
                 } else {
                     LOGGER.log(Level.FINER, "Null property");
-                    this.setFieldValue(oproxied, prop, null);
+                    this.setFieldValue(proxy, prop, null);
                 }
             }
         }
         // insertar el objeto en el transactionLoopCache
-        t.transactionLoopCache.put(v.getId().toString(), oproxied);
+        t.transactionLoopCache.put(v.getId().toString(), proxy);
 
+        
         // ********************************************************************************************
         // procesar los enum
         // ********************************************************************************************
@@ -308,32 +308,18 @@ public class ObjectMapper {
                 Object enumValue = Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString());
                 LOGGER.log(Level.FINER, "Enum field: {0} type: {1} value: {2} Enum val: {3}",
                         new Object[]{f.getName(), f.getType(), value, enumValue});
-                this.setFieldValue(oproxied, prop, enumValue);
+                this.setFieldValue(proxy, prop, enumValue);
                 LOGGER.log(Level.FINER, "hidratado campo: {0}={1}", new Object[]{prop, value});
             }
         }
 
+        
         // ********************************************************************************************
         // procesar colecciones de enums
         // ********************************************************************************************
-        for (Map.Entry<String, Class<?>> entry : classdef.enumCollectionFields.entrySet()) {
-            String prop = entry.getKey();
-            Object value = v.getProperty(prop);
-            if (value != null) {
-                // reemplazar todos los valores por el emum correspondiente
-                f = classdef.fieldsObject.get(prop);
-                Class<?> listClass = getListType(f);
-                for (int i = 0; i < ((List) value).size(); ++i) {
-                    if (((List) value).get(i) instanceof String) {
-                        // solo si el objeto contenido en la lista es un String.
-                        String sVal = (String) ((List) value).get(i);
-                        ((List) value).set(i, Enum.valueOf(listClass.asSubclass(Enum.class), sVal));
-                    }
-                }
-                setFieldValue(oproxied, prop, value);
-            }
-        }
+        hydrateEnumCollections(classdef, proxy, v);
 
+        
         // ********************************************************************************************
         // hidratar las colecciones
         // procesar todos los linkslist
@@ -352,8 +338,8 @@ public class ObjectMapper {
                 Direction RelationDirection = Direction.OUT;
 
                 // si hay Vértices conectados o si el constructor del objeto ha inicializado los vectores, convertirlos
-                if ((v.countEdges(RelationDirection, graphRelationName) > 0) || (fLink.get(oproxied) != null)) {
-                    this.colecctionToLazy(oproxied, field, fc, v, t);
+                if ((v.countEdges(RelationDirection, graphRelationName) > 0) || (fLink.get(proxy) != null)) {
+                    this.colecctionToLazy(proxy, field, fc, v, t);
                 }
             } catch (IllegalArgumentException ex) {
                 Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
@@ -378,8 +364,8 @@ public class ObjectMapper {
                 Indirect in = fLink.getAnnotation(Indirect.class);
                 String graphRelationName = in.linkName();
                 // si hay Vértices conectados o si el constructor del objeto ha inicializado los vectores, convertirlos
-                if ((v.countEdges(RelationDirection, graphRelationName) > 0) || (fLink.get(oproxied) != null)) {
-                    this.colecctionToLazy(oproxied, field, fc, v, t);
+                if ((v.countEdges(RelationDirection, graphRelationName) > 0) || (fLink.get(proxy) != null)) {
+                    this.colecctionToLazy(proxy, field, fc, v, t);
                 }
             } catch (IllegalArgumentException ex) {
                 Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
@@ -388,7 +374,48 @@ public class ObjectMapper {
         
         LOGGER.log(Level.FINER, "******************* FIN HYDRATE *******************");
         t.closeInternalTx();
-        return (T) oproxied;
+        return (T) proxy;
+    }
+    
+    
+    /**
+     * Given a vertex from the base (or edge), hydrate the enums collections of the given
+     * proxy accordingly to the values of the vertex.
+     * 
+     * @param classdef Class definition of the object to hydrate.
+     * @param proxy The proxy.
+     * @param v An OrientDB element (vertex or edge).
+     */
+    public void hydrateEnumCollections(ClassDef classdef, IObjectProxy proxy, OrientElement v) {
+        Field f;
+        for (Map.Entry<String, Class<?>> entry : classdef.enumCollectionFields.entrySet()) {
+            String prop = entry.getKey();
+            Object vertexValue = v.getProperty(prop);
+            f = classdef.fieldsObject.get(prop);
+            if (vertexValue != null) {
+                // reemplazar todos los valores por el enum correspondiente
+                Class<?> listClass = getListType(f);
+                for (int i = 0; i < ((List) vertexValue).size(); ++i) {
+                    if (((List) vertexValue).get(i) instanceof String) {
+                        // solo si el objeto contenido en la lista es un String.
+                        String sVal = (String) ((List) vertexValue).get(i);
+                        ((List) vertexValue).set(i, Enum.valueOf(listClass.asSubclass(Enum.class), sVal));
+                    }
+                }
+                setFieldValue(proxy, prop, new ArrayListEmbeddedProxy(proxy, (List)vertexValue));
+            } else {
+                /* if the node doesn't have a value, respect the initial value of the attribute
+                 * in the class:
+                 * null -> null
+                 * empty list -> empty proxy list
+                 */
+                if (getFieldValue(proxy, f) != null) {
+                    setFieldValue(proxy, f, new ArrayListEmbeddedProxy(proxy, new ArrayList()));
+                } else {
+                    setFieldValue(proxy, prop, null);
+                }
+            }
+        }
     }
 
     
@@ -486,30 +513,30 @@ public class ObjectMapper {
      *
      * @param o the object to be analyzed
      * @param classDef the class struct
-     * @param t the current transaction
      */
-    public void collectionsToEmbedded(Object o, ClassDef classDef, Transaction t) {
-        Field f;
-        for (Map.Entry<String, Class<?>> entry : classDef.embeddedFields.entrySet()) {
-            try {
-                String field = entry.getKey();
-                Class<? extends Object> value = entry.getValue();
-                LOGGER.log(Level.FINER, "Procesando campo: {0} type: {1}", new String[]{field, value.getName()});
-                
-                f = classDef.fieldsObject.get(field);
-                // realizar la conversión solo si el campo tiene un valor.
-                if (f.get(o) != null) {
-                    if (List.class.isAssignableFrom(value)) {
-                        LOGGER.log(Level.FINER, "convirtiendo en ArrayListEmbeddedProxy...");
-                        f.set(o, new ArrayListEmbeddedProxy((IObjectProxy) o, (List) f.get(o)));
-                    } else if (Map.class.isAssignableFrom(value)) {
-                        LOGGER.log(Level.FINER, "convirtiendo en HashMapEmbeddedProxy");
-                        f.set(o, new HashMapEmbeddedProxy((IObjectProxy) o, (Map) f.get(o)));
-                    }
+    public void collectionsToEmbedded(Object o, ClassDef classDef) {
+        classDef.embeddedFields.entrySet().forEach(entry ->
+                collectionToEmbedded(o, classDef, entry.getKey(), entry.getValue()));
+        classDef.enumCollectionFields.entrySet().forEach(entry ->
+                collectionToEmbedded(o, classDef, entry.getKey(), entry.getValue()));
+    }
+    
+    private void collectionToEmbedded(Object o, ClassDef classDef, String field, Class fieldClass) {
+        try {
+            LOGGER.log(Level.FINER, "Procesando campo: {0} type: {1}", new String[]{field, fieldClass.getName()});
+            Field f = classDef.fieldsObject.get(field);
+            // realizar la conversión solo si el campo tiene un valor.
+            if (f.get(o) != null) {
+                if (List.class.isAssignableFrom(fieldClass)) {
+                    LOGGER.log(Level.FINER, "convirtiendo en ArrayListEmbeddedProxy...");
+                    f.set(o, new ArrayListEmbeddedProxy((IObjectProxy) o, (List) f.get(o)));
+                } else if (Map.class.isAssignableFrom(fieldClass)) {
+                    LOGGER.log(Level.FINER, "convirtiendo en HashMapEmbeddedProxy");
+                    f.set(o, new HashMapEmbeddedProxy((IObjectProxy) o, (Map) f.get(o)));
                 }
-            } catch (IllegalArgumentException | IllegalAccessException ex) {
-                Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, "Error converting collections to embedded", ex);
             }
+        } catch (IllegalArgumentException | IllegalAccessException ex) {
+            Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, "Error converting collections to embedded", ex);
         }
     }
 
@@ -548,6 +575,23 @@ public class ObjectMapper {
         return oproxied;
     }
 
+    
+    private Object getFieldValue(Object o, Field field) {
+        try {
+            return field.get(o);
+        } catch (IllegalArgumentException | IllegalAccessException ex) {
+            Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
+            return null;
+        }
+    }
+    
+    private void setFieldValue(Object o, Field field, Object value) {
+        try {
+            field.set(o, value);
+        } catch (IllegalArgumentException | IllegalAccessException ex) {
+            Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
+        }
+    }
     
     public void setFieldValue(Object o, String field, Object value) {
         try {
