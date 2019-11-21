@@ -1141,6 +1141,8 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                 Logger.getLogger(ObjectProxy.class.getName()).log(Level.SEVERE, null, ex);
             }
         }
+        
+        this.___removeDirtyMark();
         this.___transaction.closeInternalTx();
     }
 
