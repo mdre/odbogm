@@ -1055,38 +1055,28 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
         LOGGER.log(Level.FINER, "vmap: {0}", this.___baseElement.getProperties());
         // restaurar los atributos al estado original.
-        ClassDef classdef = this.___transaction.getObjectMapper().getClassDef(this.___proxiedObject);
-        Field f;
+        ObjectMapper objectMapper = this.___transaction.getObjectMapper();
+        ClassDef classdef = objectMapper.getClassDef(this.___proxiedObject);
+        
+        
+        LOGGER.log(Level.FINER, "Reverting basic attributes.........");
         for (var entry : classdef.fields.entrySet()) {
             String prop = entry.getKey();
-
-            LOGGER.log(Level.FINER, "Rollingback field {0} ....", new String[]{prop});
-            Object value = this.___baseElement.getProperty(prop);
-            try {
-                f = classdef.fieldsObject.get(prop);
-                if (value != null) {
-                    if (List.class.isAssignableFrom(f.getType())) {
-                        // se debe hacer una copia del la lista para no quede referenciando al objeto original
-                        // dado que en la asignación solo se pasa la referencia del objeto.
-                        LOGGER.log(Level.FINER, "Lista detectada: realizando una copia del contenido...");
-                        f.set(___proxiedObject, new ArrayListEmbeddedProxy((IObjectProxy) ___proxiedObject, (List) value));
-                    } else if (Map.class.isAssignableFrom(f.getType())) {
-                        // se debe hacer una copia del la lista para no quede referenciando al objeto original
-                        // dado que en la asignación solo se pasa la referencia del objeto.
-                        LOGGER.log(Level.FINER, "Map detectado: realizando una copia del contenido...");
-                        // FIXME: Ojo que se hace solo un shalow copy!! no se está clonando la clave y el value
-                        f.set(___proxiedObject, new HashMapEmbeddedProxy((IObjectProxy) ___proxiedObject, (Map) value));
-                    } else {
-                        f.set(___proxiedObject, value);
-                    }
-                } else f.set(___proxiedObject, null);
-                LOGGER.log(Level.FINER, "hidratado campo: {0}={1}", new Object[]{prop, value});
-            } catch (IllegalArgumentException | IllegalAccessException ex) {
-                Logger.getLogger(ObjectProxy.class.getName()).log(Level.SEVERE, null, ex);
+            if (!classdef.embeddedFields.containsKey(prop)) {
+                LOGGER.log(Level.FINER, "Rollingback field {0} ....", new String[]{prop});
+                Object value = this.___baseElement.getProperty(prop);
+                objectMapper.setFieldValue(___proxiedObject, prop, value);
             }
         }
+        
+
+        LOGGER.log(Level.FINER, "Reverting embedded collections.........");
+        this.___transaction.getObjectMapper().hydrateEmbeddedCollections(
+                classdef, (IObjectProxy)this.___proxiedObject, this.___baseElement);
+        
 
         // procesar los enum
+        Field f;
         LOGGER.log(Level.FINER, "Reverting enums...");
         for (Map.Entry<String, Class<?>> entry : classdef.enumFields.entrySet()) {
             String prop = entry.getKey();
@@ -1105,13 +1095,13 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             }
         }
 
-        
+
         
         LOGGER.log(Level.FINER, "Reverting enum collections.........");
         this.___transaction.getObjectMapper().hydrateEnumCollections(
                 classdef, (IObjectProxy)this.___proxiedObject, this.___baseElement);
         
-        
+
         
         LOGGER.log(Level.FINER, "Revirtiendo los Links......... ");
         // hidratar los atributos @links

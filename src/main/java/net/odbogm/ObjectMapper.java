@@ -250,49 +250,21 @@ public class ObjectMapper {
         Field f;
         for (var entry : classdef.fields.entrySet()) {
             String prop = entry.getKey();
-            LOGGER.log(Level.FINER, "Buscando campo {0} de tipo {1}...",
-                    new String[]{prop, entry.getValue().getSimpleName()});
-
-            Object value = v.getProperty(prop);
-            if (value != null) {
-                f = classdef.fieldsObject.get(prop);
-                if (List.class.isAssignableFrom(f.getType())) {
-                    // se debe hacer una copia del la lista para no quede referenciando al objeto original
-                    // dado que en la asignación solo se pasa la referencia del objeto.
-                    LOGGER.log(Level.FINER, "EmbeddedList detectada: realizando una copia del contenido...");
-                    LOGGER.log(Level.FINER, "value: {0}", value.getClass());
-                    this.setFieldValue(proxy, prop, new ArrayListEmbeddedProxy(proxy, (List) value));
-                } else if (Map.class.isAssignableFrom(f.getType())) {
-                    // se debe hacer una copia del la lista para no quede referenciando al objeto original
-                    // dado que en la asignación solo se pasa la referencia del objeto.
-                    LOGGER.log(Level.FINER, "EmbeddedMap detectado: realizando una copia del contenido...");
-                    // FIXME: Ojo que se hace solo un shalow copy!! no se está conando la clave y el value
-                    this.setFieldValue(proxy, prop, new HashMapEmbeddedProxy(proxy, (Map) value));
-                } else {
-                    LOGGER.log(Level.FINER, "hidratado campo: {0}={1}", new Object[]{prop, value});
-                    this.setFieldValue(proxy, prop, value);
-                }
-            } else {
-                // si el valor es null verificar que no se trate de una Lista embebida 
-                // que pueda haber sido inicializada en el constructor.
-                f = classdef.fieldsObject.get(prop);
-                Object fv = f.get(proxy);
-                if ((fv != null) && (List.class.isAssignableFrom(f.getType()))) {
-                    // se trata de una lista embebida. Proceder a reemplazarlar con una que esté preparada.
-                    LOGGER.log(Level.FINER, "Se ha detectado una lista embebida que no tiene valores. Se la reemplaza por una Embedded.");
-                    this.setFieldValue(proxy, prop, new ArrayListEmbeddedProxy(proxy, (List) f.get(proxy)));
-                } else if ((fv != null) && (Map.class.isAssignableFrom(f.getType()))) {
-                    // se trata de un Map embebido. Proceder a reemplazarlo con uno que esté preparado.
-                    LOGGER.log(Level.FINER, "Se ha detectado un Map embebido que no tiene valores. Se lo reemplaza por uno Embedded.");
-                    this.setFieldValue(proxy, prop, new HashMapEmbeddedProxy(proxy, (Map) f.get(proxy)));
-                } else {
-                    LOGGER.log(Level.FINER, "Null property");
-                    this.setFieldValue(proxy, prop, null);
-                }
+            if (!classdef.embeddedFields.containsKey(prop)) {
+                LOGGER.log(Level.FINER, "Buscando campo {0} de tipo {1}...",
+                        new String[]{prop, entry.getValue().getSimpleName()});
+                this.setFieldValue(proxy, prop, v.getProperty(prop));
             }
         }
+        
         // insertar el objeto en el transactionLoopCache
         t.transactionLoopCache.put(v.getId().toString(), proxy);
+        
+        
+        // ********************************************************************************************
+        // process embedded collections
+        // ********************************************************************************************
+        hydrateEmbeddedCollections(classdef, proxy, v);
 
         
         // ********************************************************************************************
@@ -377,6 +349,37 @@ public class ObjectMapper {
         return (T) proxy;
     }
     
+    
+    /**
+     * Given a vertex from the base (or edge), hydrate the embedded collections of
+     * the given proxy accordingly to the values of the vertex.
+     * 
+     * @param classdef Class definition of the object to hydrate.
+     * @param proxy The proxy.
+     * @param v An OrientDB element (vertex or edge).
+     */
+    public void hydrateEmbeddedCollections(ClassDef classdef, IObjectProxy proxy, OrientElement v) {
+        Field f;
+        for (Map.Entry<String, Class<?>> entry : classdef.embeddedFields.entrySet()) {
+            String prop = entry.getKey();
+            Object vertexValue = v.getProperty(prop);
+            f = classdef.fieldsObject.get(prop);
+            if (vertexValue != null) {
+                collectionToEmbedded(proxy, f, vertexValue);
+            } else {
+                /* if the node doesn't have a value, respect the initial value of the attribute
+                 * in the class:
+                 * null -> null
+                 * empty collection -> empty proxy collection
+                 */
+                if (getFieldValue(proxy, f) != null) {
+                    collectionToEmbedded(proxy, f);
+                } else {
+                    setFieldValue(proxy, prop, null);
+                }
+            }
+        }
+    }
     
     /**
      * Given a vertex from the base (or edge), hydrate the enums collections of the given
@@ -516,24 +519,55 @@ public class ObjectMapper {
      */
     public void collectionsToEmbedded(Object o, ClassDef classDef) {
         classDef.embeddedFields.entrySet().forEach(entry ->
-                collectionToEmbedded(o, classDef, entry.getKey(), entry.getValue()));
+                collectionToEmbedded(o, classDef, entry.getKey()));
         classDef.enumCollectionFields.entrySet().forEach(entry ->
-                collectionToEmbedded(o, classDef, entry.getKey(), entry.getValue()));
+                collectionToEmbedded(o, classDef, entry.getKey()));
     }
     
-    private void collectionToEmbedded(Object o, ClassDef classDef, String field, Class fieldClass) {
+    /**
+     * Converts the value of a field into an embedded proxy collection if of correct type.
+     */
+    private void collectionToEmbedded(Object o, ClassDef classDef, String field) {
+        Field f = classDef.fieldsObject.get(field);
         try {
-            LOGGER.log(Level.FINER, "Procesando campo: {0} type: {1}", new String[]{field, fieldClass.getName()});
-            Field f = classDef.fieldsObject.get(field);
+            collectionToEmbedded(o, f, f.get(o));
+        } catch (IllegalArgumentException | IllegalAccessException ex) {
+            Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, "Error converting collections to embedded", ex);
+        }
+    }
+    
+    /**
+     * Converts the value of a field into an embedded proxy collection if of correct type.
+     */
+    private void collectionToEmbedded(Object o, Field f, Object value) {
+        try {
+            LOGGER.log(Level.FINER, "Procesando campo: {0} type: {1}", new String[]{f.getName(), f.getType().getName()});
             // realizar la conversión solo si el campo tiene un valor.
-            if (f.get(o) != null) {
-                if (List.class.isAssignableFrom(fieldClass)) {
-                    LOGGER.log(Level.FINER, "convirtiendo en ArrayListEmbeddedProxy...");
-                    f.set(o, new ArrayListEmbeddedProxy((IObjectProxy) o, (List) f.get(o)));
-                } else if (Map.class.isAssignableFrom(fieldClass)) {
-                    LOGGER.log(Level.FINER, "convirtiendo en HashMapEmbeddedProxy");
-                    f.set(o, new HashMapEmbeddedProxy((IObjectProxy) o, (Map) f.get(o)));
-                }
+            if (value != null && List.class.isAssignableFrom(f.getType())) {
+                LOGGER.log(Level.FINER, "convirtiendo en ArrayListEmbeddedProxy...");
+                f.set(o, new ArrayListEmbeddedProxy((IObjectProxy)o, (List)value));
+            } else if (value != null && Map.class.isAssignableFrom(f.getType())) {
+                LOGGER.log(Level.FINER, "convirtiendo en HashMapEmbeddedProxy");
+                f.set(o, new HashMapEmbeddedProxy((IObjectProxy)o, (Map)value));
+            }
+        } catch (IllegalArgumentException | IllegalAccessException ex) {
+            Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, "Error converting collections to embedded", ex);
+        }
+    }
+    
+    /**
+     * Sets the value of a field into an empty embedded proxy collection.
+     */
+    private void collectionToEmbedded(Object o, Field f) {
+        try {
+            LOGGER.log(Level.FINER, "Processing field: {0} type: {1}", new String[]{f.getName(), f.getType().getName()});
+            // realizar la conversión solo si el campo tiene un valor.
+            if (List.class.isAssignableFrom(f.getType())) {
+                LOGGER.log(Level.FINER, "converting into empty ArrayListEmbeddedProxy...");
+                f.set(o, new ArrayListEmbeddedProxy((IObjectProxy)o, new ArrayList()));
+            } else if (Map.class.isAssignableFrom(f.getType())) {
+                LOGGER.log(Level.FINER, "converting into empty HashMapEmbeddedProxy...");
+                f.set(o, new HashMapEmbeddedProxy((IObjectProxy)o, new HashMap()));
             }
         } catch (IllegalArgumentException | IllegalAccessException ex) {
             Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, "Error converting collections to embedded", ex);

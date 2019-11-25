@@ -94,6 +94,13 @@ public class SessionManagerTest {
         sm.getCurrentTransaction().clearCache();
         return (T)sm.get(rid);
     }
+    
+    private <T> T commitClearAndGet(T object) {
+        sm.commit();
+        String rid = sm.getRID(object);
+        sm.getCurrentTransaction().clearCache();
+        return (T)sm.get(rid);
+    }
 
     
     /**
