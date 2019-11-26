@@ -8,7 +8,7 @@ plugins {
 }
 
 //OrientDB version to use:
-ext.orientDbVersion = '3.0.23'
+ext.orientDbVersion = '3.0.25'
 
 
 def info() {
@@ -129,6 +129,7 @@ dependencies {
 
 test {
     jvmArgs '-Djdk.attach.allowAttachSelf=true'
+    outputs.upToDateWhen { false } 
     testLogging {
         // Make sure output from
         // standard out or error is shown
