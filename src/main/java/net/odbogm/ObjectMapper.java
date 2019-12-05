@@ -393,19 +393,20 @@ public class ObjectMapper {
         Field f;
         for (Map.Entry<String, Class<?>> entry : classdef.enumCollectionFields.entrySet()) {
             String prop = entry.getKey();
-            Object vertexValue = v.getProperty(prop);
+            List vertexValue = (List)v.getProperty(prop);
             f = classdef.fieldsObject.get(prop);
             if (vertexValue != null) {
-                // reemplazar todos los valores por el enum correspondiente
+                //replace all values by the correspoinding enum:
                 Class<?> listClass = getListType(f);
-                for (int i = 0; i < ((List) vertexValue).size(); ++i) {
-                    if (((List) vertexValue).get(i) instanceof String) {
-                        // solo si el objeto contenido en la lista es un String.
-                        String sVal = (String) ((List) vertexValue).get(i);
-                        ((List) vertexValue).set(i, Enum.valueOf(listClass.asSubclass(Enum.class), sVal));
+                List enumList = new ArrayList(vertexValue.size());
+                for (int i = 0; i < vertexValue.size(); ++i) {
+                    if (vertexValue.get(i) instanceof String) {
+                        //only convert to enum if the value in the list is a String
+                        String sVal = (String)vertexValue.get(i);
+                        enumList.add(Enum.valueOf(listClass.asSubclass(Enum.class), sVal));
                     }
                 }
-                setFieldValue(proxy, prop, new ArrayListEmbeddedProxy(proxy, (List)vertexValue));
+                setFieldValue(proxy, prop, new ArrayListEmbeddedProxy(proxy, enumList));
             } else {
                 /* if the node doesn't have a value, respect the initial value of the attribute
                  * in the class:
