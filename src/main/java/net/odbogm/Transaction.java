@@ -1128,9 +1128,17 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     }
 
     /**
-     * Retorna el cache de objestos marcados como dirty. Utilizado para actividades de debug.
+     * Returns the dirty objects in the transaction.
+     * @return 
+     */
+    public Collection<Object> getDirty() {
+        return this.dirty.values();
+    }
+    
+    /**
+     * Only for debug. Returns the dirty objects cache.
      *
-     * @return map de objetos marcados como dirty
+     * @return Map of rids and the identity hash code of the dirty objects.
      */
     public Map<String, Object> getDirtyCache() {
         Map <String, Object> dc = new HashMap();
