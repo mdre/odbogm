@@ -27,7 +27,7 @@ public class SimpleVertex {
     private float f;
     private boolean b;
     private Date fecha;
-    @Sequence(sequenceName = "test_sequence") private Long serial;
+    @Sequence(sequenceName = "test_sequence") private final Long serial = null;
     
     public Date getFecha() {
         return fecha;
