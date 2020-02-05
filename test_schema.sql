@@ -361,6 +361,12 @@ let exist = select from (select expand(properties)  from (select expand(classes)
 if ($exist.size()=0) {
     create property SimpleVertex.fecha DATETIME;
 }
+
+
+let exist = select from (select expand(properties)  from (select expand(classes)  from metadata:schema)  where name = 'SimpleVertex') where name = 'serial';
+if ($exist.size()=0) {
+    create property SimpleVertex.serial LONG;
+}
  
 
 let exist = select from (select expand(properties)  from (select expand(classes)  from metadata:schema)  where name = 'SimpleVertex') where name = 'oI';
@@ -639,5 +645,27 @@ let exist = select from (select expand(classes) from metadata:schema) where name
 if ($exist.size()=0) {
     create class SVExChild_ohmSVE extends EdgeAttrib;
 }
+
+
+let exist = select from (select expand(classes) from metadata:schema) where name = 'Serial';
+if ($exist.size() = 0) {
+    create class Serial extends V;
+}
+
+
+let exist = select from (select expand(properties)  from (select expand(classes)  from metadata:schema)  where name = 'Serial') where name = 's1';
+if ($exist.size()=0) {
+    create property Serial.s1 LONG;
+}
+
+
+let exist = select from (select expand(properties)  from (select expand(classes)  from metadata:schema)  where name = 'Serial') where name = 's2';
+if ($exist.size()=0) {
+    create property Serial.s2 LONG;
+}
+
+
+create sequence test_sequence type ordered;
+
 
 end

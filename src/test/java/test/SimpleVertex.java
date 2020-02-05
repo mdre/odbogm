@@ -8,6 +8,7 @@ import java.util.logging.Logger;
 import net.odbogm.annotations.Audit;
 import net.odbogm.annotations.Entity;
 import net.odbogm.annotations.RID;
+import net.odbogm.annotations.Sequence;
 
 /**
  *
@@ -26,6 +27,7 @@ public class SimpleVertex {
     private float f;
     private boolean b;
     private Date fecha;
+    @Sequence(sequenceName = "test_sequence") private Long serial;
     
     public Date getFecha() {
         return fecha;
@@ -58,6 +60,11 @@ public class SimpleVertex {
     public Boolean getoB() {
         return oB;
     }
+
+    public Long getSerial() {
+        return serial;
+    }
+    
     private Integer oI;
     private Float oF;
     private Boolean oB;

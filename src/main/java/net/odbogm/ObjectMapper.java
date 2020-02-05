@@ -1,5 +1,6 @@
 package net.odbogm;
 
+import com.orientechnologies.orient.core.metadata.sequence.OSequenceLibrary;
 import com.tinkerpop.blueprints.Direction;
 import com.tinkerpop.blueprints.impls.orient.OrientEdge;
 import com.tinkerpop.blueprints.impls.orient.OrientElement;
@@ -101,6 +102,24 @@ public class ObjectMapper {
             Field f = classmap.fieldsObject.get(entry.getKey());
             putValue(data, f, o, v -> ((Enum)v).name());
         });
+    }
+    
+    /**
+     * Fills the sequence fields with the values of the corresponding sequences
+     * from the DB.
+     * 
+     * @param o
+     * @param classdef
+     * @param t
+     */
+    public void fillSequenceFields(Object o, ClassDef classdef, Transaction t) {
+        if (!classdef.sequenceFields.isEmpty()) {
+            OSequenceLibrary seqLibrary = t.getCurrentGraphDb().getRawGraph().getMetadata().getSequenceLibrary();
+            classdef.sequenceFields.entrySet().forEach(e -> {
+                Long seqVal = seqLibrary.getSequence(e.getValue()).next();
+                this.setFieldValue(o, e.getKey(), seqVal);
+            });
+        }
     }
     
     //============================================================================================

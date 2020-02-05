@@ -294,6 +294,10 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                 if (!o.___isDeleted() && o.___isValid()) {
                     LOGGER.log(Level.FINER, "Commiting: {0} class: {1} isValid: {2}", new Object[]{rid, o.___getBaseClass(), o.___isValid()});
                     // actualizar todos los objetos antes de bajarlos.
+                    
+                    
+                    //@TODO: CHEQUEAR VERSIÓN YA ACÁ
+                    
                     o.___commit();
                 }
             }
@@ -443,19 +447,21 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         initInternalTx();
         try {
             // Recuperar la definición de clase del objeto.
-            ClassDef oClassDef = this.sm.getObjectMapper().getClassDef(o);
+            ClassDef oClassDef = this.objectMapper.getClassDef(o);
             String classname = oClassDef.entityName;
             LOGGER.log(Level.FINER, "STORE: guardando objeto de la clase {0}", classname);
-
-            // Obtener un map del objeto.
-            ObjectStruct oStruct = objectMapper.objectStruct(o);
-            Map<String, Object> omap = oStruct.fields;
 
             // verificar que la clase existe
             if (getDBClass(classname) == null) {
                 // arrojar una excepción en caso contrario.
                 throw new ClassToVertexNotFound("No se ha encontrado la definición de la clase " + classname + " en la base!");
             }
+            
+            this.objectMapper.fillSequenceFields(o, oClassDef, this);
+
+            // Obtener un map del objeto.
+            ObjectStruct oStruct = this.objectMapper.objectStruct(o);
+            Map<String, Object> omap = oStruct.fields;
 
             LOGGER.log(Level.FINER, "object data: {0}", omap);
             OrientVertex v = this.orientdbTransact.addVertex("class:" + classname, omap);
@@ -477,7 +483,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             
             
             // convertir los embedded
-            this.sm.getObjectMapper().collectionsToEmbedded(proxy, oClassDef);
+            this.objectMapper.collectionsToEmbedded(proxy, oClassDef);
 
             if (this.isAuditing()) {
                 this.auditLog((IObjectProxy) proxy, Audit.AuditType.WRITE, "STORE", omap);
@@ -609,14 +615,14 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                             } else {
                                 LOGGER.log(Level.FINER, "la prop del edge es un Objeto. Se debe mapear!! ");
                                 // mapear la key y asignarla como propiedades
-                                oe.setProperties(sm.getObjectMapper().simpleMap(imk));
+                                oe.setProperties(objectMapper.simpleMap(imk));
                             }
                         }
                     });
 
                 }
                 // convertir la colección a Lazy para futuras referencias.
-                this.sm.getObjectMapper().colecctionToLazy(proxy, field, v, this);
+                this.objectMapper.colecctionToLazy(proxy, field, v, this);
             }
 
             // guardar el objeto en el cache. Se usa el RID como clave
@@ -624,6 +630,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
         } catch (IllegalArgumentException ex) {
             Logger.getLogger(SessionManager.class.getName()).log(Level.SEVERE, null, ex);
+            throw ex;
         }
 
         LOGGER.log(Level.FINER, "FIN del Store ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");

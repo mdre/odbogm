@@ -17,7 +17,9 @@ import net.odbogm.annotations.Entity;
 import net.odbogm.annotations.Ignore;
 import net.odbogm.annotations.Indirect;
 import net.odbogm.annotations.RID;
+import net.odbogm.annotations.Sequence;
 import net.odbogm.exceptions.IncorrectRIDField;
+import net.odbogm.exceptions.IncorrectSequenceField;
 
 /**
  * Caché con la definición de clases (ClassDef's).
@@ -127,6 +129,14 @@ public class ClassCache {
                         
                         if (PRIMITIVE_MAP.get(f.getType()) != null) {
                             cached.fields.put(f.getName(), f.getType());
+                            //check if it's a sequence field:
+                            Sequence annotation = f.getAnnotation(Sequence.class);
+                            if (annotation != null) {
+                                if (!f.getType().equals(Long.class) && !f.getType().equals(long.class)) {
+                                    throw new IncorrectSequenceField();
+                                }
+                                cached.sequenceFields.put(f.getName(), annotation.sequenceName());
+                            }
                         } else if (f.getType().isEnum()) {
                             cached.enumFields.put(f.getName(), f.getType());
                         } else if (Primitives.LAZY_COLLECTION.get(f.getType()) != null) {

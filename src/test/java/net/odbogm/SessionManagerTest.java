@@ -13,9 +13,11 @@ import java.util.function.BiConsumer;
 import net.odbogm.agent.ITransparentDirtyDetector;
 import net.odbogm.annotations.Entity;
 import net.odbogm.annotations.RID;
+import net.odbogm.annotations.Sequence;
 import net.odbogm.cache.SimpleCache;
 import net.odbogm.exceptions.ConcurrentModification;
 import net.odbogm.exceptions.IncorrectRIDField;
+import net.odbogm.exceptions.IncorrectSequenceField;
 import net.odbogm.exceptions.InvalidObjectReference;
 import net.odbogm.exceptions.OdbogmException;
 import net.odbogm.exceptions.ReferentialIntegrityViolation;
@@ -38,6 +40,7 @@ import test.Foo;
 import test.IndirectObject;
 import test.InterfaceTest;
 import test.SVExChild;
+import test.Serial;
 import test.SimpleVertex;
 import test.SimpleVertexEx;
 import test.SimpleVertexInterfaceAttr;
@@ -2658,6 +2661,37 @@ public class SessionManagerTest {
         assertNull(sv.getS());
         assertNull(sv.getFecha());
         assertNull(sv.getLooptest());
+    }
+    
+    
+    /*
+     * Tests the autopopuation of sequence fields.
+     */
+    @Test
+    public void serialField() throws Exception {
+        Long currentSequenceValue = sm.query("select sequence('test_sequence').current()", "");
+        SimpleVertex sv = sm.store(new SimpleVertex());
+        assertEquals(currentSequenceValue + 1, (long)sv.getSerial());
+        
+        sv = commitClearAndGet(sv);
+        assertEquals(currentSequenceValue + 1, (long)sv.getSerial());
+        
+        Serial serial = sm.store(new Serial());
+        assertEquals(currentSequenceValue + 2, serial.s1);
+        assertEquals(currentSequenceValue + 3, serial.s2);
+    }
+    
+    
+    /*
+     * Tests the IncorrectSequenceField exception.
+     */
+    @Test
+    public void incorrectSerialField() throws Exception {
+        @Entity class BadSerial {
+            @Sequence(sequenceName = "test_sequence") Integer s;
+        }
+        BadSerial bad = new BadSerial();
+        assertThrows(IncorrectSequenceField.class, () -> sm.store(bad));
     }
     
 }

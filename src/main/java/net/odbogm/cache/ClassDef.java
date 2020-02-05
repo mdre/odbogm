@@ -76,6 +76,12 @@ public class ClassDef {
      */
     public HashMap<String, Class<?>> indirectLinkLists = new HashMap<>();
     
+    /**
+     * Map of attributes that are assigned a value from a DB sequence (maps
+     * attribute name -> sequence name).
+     */
+    public HashMap<String, String> sequenceFields = new HashMap<>();
+    
 
     @Override
     public String toString() {
