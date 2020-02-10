@@ -109,15 +109,18 @@ public class ObjectMapper {
      * from the DB.
      * 
      * @param o
-     * @param classdef
      * @param t
      */
-    public void fillSequenceFields(Object o, ClassDef classdef, Transaction t) {
+    public void fillSequenceFields(Object o, Transaction t) {
+        ClassDef classdef = this.classCache.get(o.getClass());
         if (!classdef.sequenceFields.isEmpty()) {
             OSequenceLibrary seqLibrary = t.getCurrentGraphDb().getRawGraph().getMetadata().getSequenceLibrary();
             classdef.sequenceFields.entrySet().forEach(e -> {
-                Long seqVal = seqLibrary.getSequence(e.getValue()).next();
-                this.setFieldValue(o, e.getKey(), seqVal);
+                Field f = classdef.fieldsObject.get(e.getKey());
+                if (this.getFieldValue(o, f) == null) {
+                    Long seqVal = seqLibrary.getSequence(e.getValue()).next();
+                    this.setFieldValue(o, f, seqVal);
+                }
             });
         }
     }

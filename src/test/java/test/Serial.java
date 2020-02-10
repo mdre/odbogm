@@ -11,10 +11,10 @@ import net.odbogm.annotations.Sequence;
 public class Serial {
     
     @Sequence(sequenceName = "test_sequence")
-    public long s1;
+    public Long s1;
     
     @Sequence(sequenceName = "test_sequence")
-    public long s2;
+    public Long s2;
 
 
     public Serial() {

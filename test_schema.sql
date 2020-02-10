@@ -651,6 +651,7 @@ let exist = select from (select expand(classes) from metadata:schema) where name
 if ($exist.size() = 0) {
     create class Serial extends V;
 }
+alter class Serial custom javaClass='test.Serial';
 
 
 let exist = select from (select expand(properties)  from (select expand(classes)  from metadata:schema)  where name = 'Serial') where name = 's1';

@@ -2641,7 +2641,6 @@ public class SessionManagerTest {
         assertFalse(((IObjectProxy)col2).___isDirty());
     }
     
-    
     @Test
     public void saveNulls() throws Exception {
         SimpleVertexEx sv = sm.store(new SimpleVertexEx());
@@ -2663,24 +2662,54 @@ public class SessionManagerTest {
         assertNull(sv.getLooptest());
     }
     
-    
     /*
-     * Tests the autopopuation of sequence fields.
+     * Tests the autopopulation of sequence fields.
      */
     @Test
     public void serialField() throws Exception {
         Long currentSequenceValue = sm.query("select sequence('test_sequence').current()", "");
         SimpleVertex sv = sm.store(new SimpleVertex());
-        assertEquals(currentSequenceValue + 1, (long)sv.getSerial());
+        assertNull(sv.getSerial());
         
         sv = commitClearAndGet(sv);
         assertEquals(currentSequenceValue + 1, (long)sv.getSerial());
         
         Serial serial = sm.store(new Serial());
-        assertEquals(currentSequenceValue + 2, serial.s1);
-        assertEquals(currentSequenceValue + 3, serial.s2);
+        assertNull(serial.s1);
+        assertNull(serial.s2);
+        serial = commitClearAndGet(serial);
+        assertEquals(currentSequenceValue + 2, (long)serial.s1);
+        assertEquals(currentSequenceValue + 3, (long)serial.s2);
+        
+        serial = sm.store(new Serial());
+        serial.s1 = 20L;
+        serial = commitClearAndGet(serial);
+        assertEquals(20L, (long)serial.s1);
+        assertEquals(currentSequenceValue + 4, (long)serial.s2);
     }
     
+    /*
+     * Tests the autopopuation of sequence fields in edges.
+     */
+    @Test
+    public void serialFieldInEdge() throws Exception {
+        Long currentSequenceValue = sm.query("select sequence('test_sequence').current()", "");
+        SimpleVertexEx sv = sm.store(new SimpleVertexEx());
+        sv.ohmSVE = new HashMap<>();
+        sv.ohmSVE.put(new EdgeAttrib(), new SimpleVertexEx());
+        
+        sv = commitClearAndGet(sv);
+        EdgeAttrib edge = sv.ohmSVE.entrySet().iterator().next().getKey();
+        assertEquals(currentSequenceValue + 1, (long)sv.getSerial());
+        assertEquals(currentSequenceValue + 2, (long)edge.getSerial());
+        
+        edge.setNota("modified");
+        sv = commitClearAndGet(sv);
+        edge = sv.ohmSVE.entrySet().iterator().next().getKey();
+        assertEquals("modified", edge.getNota());
+        assertEquals(currentSequenceValue + 1, (long)sv.getSerial());
+        assertEquals(currentSequenceValue + 2, (long)edge.getSerial());
+    }
     
     /*
      * Tests the IncorrectSequenceField exception.
@@ -2692,6 +2721,12 @@ public class SessionManagerTest {
         }
         BadSerial bad = new BadSerial();
         assertThrows(IncorrectSequenceField.class, () -> sm.store(bad));
+        
+        @Entity class BadSerial2 {
+            @Sequence(sequenceName = "test_sequence") long s;
+        }
+        BadSerial2 bad2 = new BadSerial2();
+        assertThrows(IncorrectSequenceField.class, () -> sm.store(bad2));
     }
     
 }

@@ -915,6 +915,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                                     (OrientVertex) this.___baseElement, ((IObjectProxy) linkedO).___getVertex(),
                                                     graphRelationName);
                                             // actualizar el edge con los datos de la key.
+                                            this.___transaction.getObjectMapper().fillSequenceFields(key, this.___transaction);
                                             oe.setProperties(this.___transaction.getObjectMapper().simpleMap(key));
 
                                             if (this.___transaction.isAuditing()) {

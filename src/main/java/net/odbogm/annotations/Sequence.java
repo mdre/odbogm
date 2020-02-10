@@ -7,7 +7,10 @@ import java.lang.annotation.Target;
 
 /**
  * A long field marked with this annotation gets populated with the next value of
- * the configured sequence from the DB during the store process.
+ * the configured sequence from the DB during the commit process. Only gets a
+ * value from the DB if the field value is null.
+ * 
+ * @TODO: consider this annotation in DBManger
  * 
  * @author jbertinetti
  */

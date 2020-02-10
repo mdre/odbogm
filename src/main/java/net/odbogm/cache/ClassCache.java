@@ -132,7 +132,7 @@ public class ClassCache {
                             //check if it's a sequence field:
                             Sequence annotation = f.getAnnotation(Sequence.class);
                             if (annotation != null) {
-                                if (!f.getType().equals(Long.class) && !f.getType().equals(long.class)) {
+                                if (!f.getType().equals(Long.class)) {
                                     throw new IncorrectSequenceField();
                                 }
                                 cached.sequenceFields.put(f.getName(), annotation.sequenceName());

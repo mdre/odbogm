@@ -7,6 +7,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.annotations.Entity;
 import net.odbogm.annotations.RID;
+import net.odbogm.annotations.Sequence;
 
 /**
  *
@@ -24,6 +25,7 @@ public class EdgeAttrib {
     private String nota;
     private Date fecha;
     private EnumTest enumValue;
+    @Sequence(sequenceName = "test_sequence") private Long serial;
 
     public EdgeAttrib() {
     }
@@ -65,6 +67,10 @@ public class EdgeAttrib {
 
     public String getRid() {
         return rid;
+    }
+
+    public Long getSerial() {
+        return serial;
     }
 
     @Override
