@@ -287,14 +287,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             LOGGER.log(Level.FINER, "Objetos marcados como Dirty: {0}", dirty.size());
             LOGGER.log(Level.FINER, "Objetos marcados como DirtyDeleted: {0}", dirtyDeleted.size());
             
-            // fill the sequence fields for the newly created objects:
-            storedObjects.values().forEach(o -> {
-                IObjectProxy p = (IObjectProxy)o;
-                if (!p.___isDeleted() && p.___isValid()) {
-                    this.objectMapper.fillSequenceFields(o, this);
-                }
-            });
-            
             // process all the dirty objects:
             for (Map.Entry<String, Object> e : dirty.entrySet()) {
                 String rid = e.getKey();
@@ -310,7 +302,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                 }
             }
             
-            // procesar todos los objetos a ser eliminados
+            // process all objects to be deleted:
             for (Map.Entry<String, Object> e : dirtyDeleted.entrySet()) {
                 String rid = e.getKey();
                 IObjectProxy o = (IObjectProxy) e.getValue();
@@ -320,6 +312,16 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                 }
             }
             
+            // fill the sequence fields for the newly created objects:
+            newrids.forEach(s -> {
+                Object o = getFromCache(s);
+                if (o != null) {
+                    IObjectProxy p = (IObjectProxy)o;
+                    if (!p.___isDeleted() && p.___isValid()) {
+                        this.objectMapper.fillSequenceFields(o, this, p.___getVertex());
+                    }
+                }
+            });
             
             LOGGER.log(Level.FINER, "Fin persistencia. <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n");
             // comitear los vértices

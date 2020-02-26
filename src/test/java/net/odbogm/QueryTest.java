@@ -11,6 +11,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import org.junit.Before;
 import org.junit.Test;
+import test.Config;
 import test.Foo;
 import test.SimpleVertex;
 import test.SimpleVertexEx;
@@ -26,7 +27,7 @@ public class QueryTest {
 
     @Before
     public void setUp() {
-        sm = new SessionManager("remote:localhost/Test", "admin", "admin");
+        sm = new SessionManager(Config.TESTDB, "admin", "admin");
         sm.begin();
     }
 

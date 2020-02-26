@@ -78,7 +78,7 @@ public class ClassDef {
     
     /**
      * Map of attributes that are assigned a value from a DB sequence (maps
-     * attribute name -> sequence name).
+     * attribute name → sequence name).
      */
     public HashMap<String, String> sequenceFields = new HashMap<>();
     

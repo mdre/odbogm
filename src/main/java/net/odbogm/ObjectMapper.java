@@ -110,8 +110,9 @@ public class ObjectMapper {
      * 
      * @param o
      * @param t
+     * @param v If not null, sets also its corresponding property.
      */
-    public void fillSequenceFields(Object o, Transaction t) {
+    public void fillSequenceFields(Object o, Transaction t, OrientVertex v) {
         ClassDef classdef = this.classCache.get(o.getClass());
         if (!classdef.sequenceFields.isEmpty()) {
             OSequenceLibrary seqLibrary = t.getCurrentGraphDb().getRawGraph().getMetadata().getSequenceLibrary();
@@ -120,6 +121,7 @@ public class ObjectMapper {
                 if (this.getFieldValue(o, f) == null) {
                     Long seqVal = seqLibrary.getSequence(e.getValue()).next();
                     this.setFieldValue(o, f, seqVal);
+                    if (v != null) v.setProperty(e.getKey(), seqVal);
                 }
             });
         }

@@ -33,6 +33,7 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.function.ThrowingRunnable;
+import test.Config;
 import test.EdgeAttrib;
 import test.EnumTest;
 import test.Enums;
@@ -67,7 +68,7 @@ public class SessionManagerTest {
     @Before
     public void setUp() {
         System.out.println("Iniciando session manager...");
-        sm = new SessionManager("remote:localhost/Test", "admin", "admin"
+        sm = new SessionManager(Config.TESTDB, "admin", "admin"
                 , 1, 10
                 )
 //                .setClassLevelLog(ObjectProxy.class, Level.FINEST)
@@ -2700,15 +2701,43 @@ public class SessionManagerTest {
         
         sv = commitClearAndGet(sv);
         EdgeAttrib edge = sv.ohmSVE.entrySet().iterator().next().getKey();
-        assertEquals(currentSequenceValue + 1, (long)sv.getSerial());
-        assertEquals(currentSequenceValue + 2, (long)edge.getSerial());
+        SimpleVertex value = sv.ohmSVE.entrySet().iterator().next().getValue();
+        assertEquals(currentSequenceValue + 1, (long)edge.getSerial()); //edges are first
+        assertEquals(currentSequenceValue + 2, (long)sv.getSerial());
+        assertEquals(currentSequenceValue + 3, (long)value.getSerial());
         
         edge.setNota("modified");
         sv = commitClearAndGet(sv);
         edge = sv.ohmSVE.entrySet().iterator().next().getKey();
+        value = sv.ohmSVE.entrySet().iterator().next().getValue();
         assertEquals("modified", edge.getNota());
+        assertEquals(currentSequenceValue + 1, (long)edge.getSerial());
+        assertEquals(currentSequenceValue + 2, (long)sv.getSerial());
+        assertEquals(currentSequenceValue + 3, (long)value.getSerial());
+        
+        //check if there aren't missing sequence values
+        sv = sm.store(new SimpleVertexEx());
+        sv = commitClearAndGet(sv);
+        assertEquals(currentSequenceValue + 4, (long)sv.getSerial());
+    }
+    
+    /*
+     * Tests sequence field in an object stored implicitly.
+     */
+    @Test
+    public void serialFieldImplicitStore() throws Exception {
+        Long currentSequenceValue = sm.query("select sequence('test_sequence').current()", "");
+        SimpleVertexEx sv = sm.store(new SimpleVertexEx());
+        sv.setLooptest(new SimpleVertexEx());
+        
+        sv = commitClearAndGet(sv);
         assertEquals(currentSequenceValue + 1, (long)sv.getSerial());
-        assertEquals(currentSequenceValue + 2, (long)edge.getSerial());
+        assertEquals(currentSequenceValue + 2, (long)sv.getLooptest().getSerial());
+        
+        sv.setS("change");
+        sv = commitClearAndGet(sv);
+        assertEquals(currentSequenceValue + 1, (long)sv.getSerial());
+        assertEquals(currentSequenceValue + 2, (long)sv.getLooptest().getSerial());
     }
     
     /*

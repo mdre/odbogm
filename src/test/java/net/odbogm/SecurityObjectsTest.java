@@ -16,6 +16,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
+import test.Config;
 import test.SSimpleVertex;
 
 /**
@@ -28,7 +29,7 @@ public class SecurityObjectsTest {
 
     @Before
     public void setUp() {
-        sm = new SessionManager("remote:localhost/Test", "admin", "admin");
+        sm = new SessionManager(Config.TESTDB, "admin", "admin");
         sm.begin();
     }
 
