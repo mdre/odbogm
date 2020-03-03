@@ -128,7 +128,7 @@ dependencies {
 }
 
 test {
-    jvmArgs '-Djdk.attach.allowAttachSelf=true'
+    jvmArgs '-Djdk.attach.allowAttachSelf=true', '-DridBag.embeddedToSbtreeBonsaiThreshold=-1'
     outputs.upToDateWhen { false } 
     testLogging {
         // Make sure output from
