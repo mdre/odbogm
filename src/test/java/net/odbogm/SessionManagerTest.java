@@ -106,7 +106,14 @@ public class SessionManagerTest {
         return (T)sm.get(rid);
     }
 
-    
+    /*
+     * Tests that the agent is loaded correctly.
+     */
+    @Test
+    public void agentDetector() throws Exception {
+        assertTrue(sm.isAgentLoaded());
+    }        
+
     /**
      * Test of store method, of class SessionManager.
      */

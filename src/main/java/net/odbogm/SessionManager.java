@@ -11,6 +11,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import net.odbogm.agent.ITransparentDirtyDetector;
 import net.odbogm.agent.TransparentDirtyDetectorAgent;
 import net.odbogm.audit.Auditor;
 import net.odbogm.exceptions.ClassToVertexNotFound;
@@ -26,6 +27,7 @@ import net.odbogm.exceptions.UnmanagedObject;
 import net.odbogm.exceptions.VertexJavaClassNotFound;
 import net.odbogm.proxy.IObjectProxy;
 import net.odbogm.security.UserSID;
+import net.odbogm.utils.AgentDetector;
 import net.odbogm.utils.ODBOrientDynaElementIterable;
 
 /**
@@ -105,13 +107,25 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
         this.activationStrategy = as;
         LOGGER.log(Level.INFO, "ActivationStrategy using {0}", as);
         if (this.activationStrategy == ActivationStrategy.CLASS_INSTRUMENTATION && loadAgent) {
-            TransparentDirtyDetectorAgent.initialize();
+            loadAgent();
         }
         return this;
     }
     
     public ActivationStrategy getActivationStrategy() {
         return this.activationStrategy;
+    }
+    
+    public void loadAgent() {
+        TransparentDirtyDetectorAgent.initialize();
+    }
+    
+    /**
+     * Returns if the agent is loaded.
+     * @return 
+     */
+    public boolean isAgentLoaded() {
+        return ITransparentDirtyDetector.class.isInstance(new AgentDetector());
     }
     
     /**
