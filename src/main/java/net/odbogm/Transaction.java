@@ -70,7 +70,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
     // cache de los objetos recuperados de la base. Si se encuentra en el caché en un get, se recupera desde 
     // acá. En caso contrario se recupera desde la base.
-    private SimpleCache objectCache = new SimpleCache();
+    private SimpleCache objectCache = new SimpleCache(this);
 
     private ConcurrentHashMap<String, Object> dirty = new ConcurrentHashMap<>();
 

@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package net.odbogm.cache;
 
 import java.lang.ref.ReferenceQueue;
@@ -13,6 +8,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import net.odbogm.Transaction;
 
 /**
  * Basado en https://explainjava.com/simple-in-memory-cache-java/
@@ -33,12 +29,15 @@ public class SimpleCache implements Cache {
 
     private final ConcurrentHashMap<String, WeakReference<Object>> cache = new ConcurrentHashMap<>();
     
-    private ReferenceQueue<Object> referenceQueue = new ReferenceQueue<>();
+    private final ReferenceQueue<Object> referenceQueue = new ReferenceQueue<>();
+    
+    private final WeakReference<Transaction> transaction;
     
     
-    public SimpleCache() {
+    public SimpleCache(Transaction owner) {
+        this.transaction = new WeakReference<>(owner);
         Thread cleanerThread = new Thread(() -> {
-            while (!Thread.currentThread().isInterrupted()) {
+            while (this.transaction.get() != null && !Thread.currentThread().isInterrupted()) {
                 try {
                     LOGGER.log(Level.FINER, "Limpiando el cache...");
                     synchronized (this) {
@@ -50,7 +49,7 @@ public class SimpleCache implements Cache {
                 }
             }
         });
-        cleanerThread.setDaemon(true);
+        cleanerThread.setName("SimpleCache-cleaner");
         cleanerThread.start();
     }
 
