@@ -2,13 +2,14 @@ package net.odbogm.cache;
 
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import net.odbogm.Transaction;
+import net.odbogm.utils.DateHelper;
 
 /**
  * Basado en https://explainjava.com/simple-in-memory-cache-java/
@@ -25,32 +26,15 @@ public class SimpleCache implements Cache {
         }
     }
 
+    Thread cleanerThread;
     private int CLEAN_UP_PERIOD_IN_SEC = 3;
-
+    private LocalDateTime cleanUpTime;
+    
     private final ConcurrentHashMap<String, WeakReference<Object>> cache = new ConcurrentHashMap<>();
     
     private final ReferenceQueue<Object> referenceQueue = new ReferenceQueue<>();
     
-    private final WeakReference<Transaction> transaction;
-    
-    
-    public SimpleCache(Transaction owner) {
-        this.transaction = new WeakReference<>(owner);
-        Thread cleanerThread = new Thread(() -> {
-            while (this.transaction.get() != null && !Thread.currentThread().isInterrupted()) {
-                try {
-                    LOGGER.log(Level.FINER, "Limpiando el cache...");
-                    synchronized (this) {
-                        cache.entrySet().removeIf((t) -> t.getValue().get() == null);
-                    }
-                    Thread.sleep(CLEAN_UP_PERIOD_IN_SEC * 1000);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-            }
-        });
-        cleanerThread.setName("SimpleCache-cleaner");
-        cleanerThread.start();
+    public SimpleCache() {
     }
 
     /**
@@ -100,7 +84,10 @@ public class SimpleCache implements Cache {
             if (r == null) {
                 remove(key);
             }
+        } else {
+            this.cache.remove(key);
         }
+        cronCleanup();
         return r;
 //        return Optional.ofNullable(cache.get(key)).map(WeakReference::get).filter(cacheObject -> !cacheObject.isExpired()).map(CacheObject::getValue).orElse(null);
     }
@@ -156,6 +143,31 @@ public class SimpleCache implements Cache {
     public SimpleCache setTimeInterval(int seconds) {
         this.CLEAN_UP_PERIOD_IN_SEC = seconds;
         return this;
+    }
+    
+    private void cronCleanup() {
+        this.cleanUpTime = LocalDateTime.now().plusSeconds(this.CLEAN_UP_PERIOD_IN_SEC);
+        if (cleanerThread == null) {
+            cleanUp();
+        }
+    }
+                
+    private void cleanUp() {
+         cleanerThread = new Thread(() -> {
+            while (this.cleanUpTime.isBefore(LocalDateTime.now()) ) {
+                try {
+                    LOGGER.log(Level.FINER, "Limpiando el cache...");
+                    synchronized (this) {
+                        cache.entrySet().removeIf((t) -> t.getValue().get() == null);
+                    }
+                    Thread.sleep(CLEAN_UP_PERIOD_IN_SEC * 1000);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        });
+        cleanerThread.setName("odbogm-sc-"+DateHelper.dtos(DateHelper.getCurrentDateTime()));
+        cleanerThread.start();
     }
 //    private static class CacheObject {
 // 
