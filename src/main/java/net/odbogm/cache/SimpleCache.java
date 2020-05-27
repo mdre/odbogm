@@ -165,6 +165,7 @@ public class SimpleCache implements Cache {
                     Thread.currentThread().interrupt();
                 }
             }
+            cleanerThread = null;
         });
         cleanerThread.setName("odbogm-sc-"+DateHelper.dtos(DateHelper.getCurrentDateTime()));
         cleanerThread.start();
