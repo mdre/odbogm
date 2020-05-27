@@ -147,7 +147,7 @@ public class SimpleCache implements Cache {
     
     private void cronCleanup() {
         this.cleanUpTime = LocalDateTime.now().plusSeconds(this.CLEAN_UP_PERIOD_IN_SEC);
-        if (cleanerThread == null) {
+        if ((cleanerThread == null)||(cleanerThread.isInterrupted())) {
             cleanUp();
         }
     }
