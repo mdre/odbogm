@@ -2018,8 +2018,7 @@ public class SessionManagerTest {
         System.out.println("***************************************************************");
         System.out.println("Probar el cache de objetos SimpleCache");
         System.out.println("***************************************************************");
-        Transaction t = sm.getCurrentTransaction();
-        SimpleCache sc = new SimpleCache(t);
+        SimpleCache sc = new SimpleCache();
         sc.setTimeInterval(1);
         SimpleVertex sv1 = new SimpleVertex();
         SimpleVertex sv2 = new SimpleVertex();
