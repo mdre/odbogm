@@ -182,7 +182,7 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
     @Override
     public synchronized void rollback() {
         //FIXME: Analizar si se puede implementar una versión que no borre todos los elementos
-        this.clear();
+        super.clear();
         this.listState.clear();
         this.dirty = false;
         this.lazyLoad = true;

@@ -669,4 +669,48 @@ if ($exist.size()=0) {
 create sequence test_sequence type ordered;
 
 
+let exist = select from (select expand(classes) from metadata:schema) where name = 'Secure';
+if ($exist.size() = 0) {
+    create class Secure extends SObject;
+}
+alter class Secure custom javaClass='test.Secure';
+
+
+let exist = select from (select expand(classes) from metadata:schema) where name = 'Secure_subs';
+if ($exist.size()=0) {
+    create class Secure_subs extends E;
+}
+ 
+
+let exist = select from (select expand(properties)  from (select expand(classes)  from metadata:schema)  where name = 'Secure') where name = 's';
+if ($exist.size()=0) {
+    create property Secure.s STRING;
+}
+ 
+
+let exist = select from (select expand(classes) from metadata:schema) where name = 'Secure___owner';
+if ($exist.size()=0) {
+    create class Secure___owner extends SObject___owner;
+}
+ 
+
+let exist = select from (select expand(classes) from metadata:schema) where name = 'Secure___inherit';
+if ($exist.size()=0) {
+    create class Secure___inherit extends SObject___inherit;
+}
+ 
+
+let exist = select from (select expand(classes) from metadata:schema) where name = 'SubSecure';
+if ($exist.size() = 0) {
+    create class SubSecure extends V;
+}
+alter class SubSecure custom javaClass='test.SubSecure';
+
+
+let exist = select from (select expand(classes) from metadata:schema) where name = 'SubSecure_aList';
+if ($exist.size()=0) {
+    create class SubSecure_aList extends E;
+}
+ 
+
 end

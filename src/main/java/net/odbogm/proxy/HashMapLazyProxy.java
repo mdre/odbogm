@@ -218,7 +218,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
     @Override
     public synchronized void rollback() {
         //FIXME: Analizar si se puede implementar una versión que no borre todos los elementos
-        this.clear();
+        super.clear();
         this.entitiesState.clear();
         this.keyToEdge.clear();
         this.keyState.clear();

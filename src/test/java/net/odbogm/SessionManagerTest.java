@@ -10,6 +10,8 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.function.BiConsumer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import net.odbogm.agent.ITransparentDirtyDetector;
 import net.odbogm.annotations.Entity;
 import net.odbogm.annotations.RID;
@@ -22,6 +24,7 @@ import net.odbogm.exceptions.InvalidObjectReference;
 import net.odbogm.exceptions.OdbogmException;
 import net.odbogm.exceptions.ReferentialIntegrityViolation;
 import net.odbogm.exceptions.UnknownRID;
+import net.odbogm.proxy.ArrayListLazyProxy;
 import net.odbogm.proxy.IObjectProxy;
 import net.odbogm.security.*;
 import net.odbogm.utils.DateHelper;
@@ -41,12 +44,14 @@ import test.Foo;
 import test.IndirectObject;
 import test.InterfaceTest;
 import test.SVExChild;
+import test.Secure;
 import test.Serial;
 import test.SimpleVertex;
 import test.SimpleVertexEx;
 import test.SimpleVertexInterfaceAttr;
 import test.SimpleVertexWithEmbedded;
 import test.SimpleVertexWithImplement;
+import test.SubSecure;
 
 /**
  *
@@ -982,6 +987,41 @@ public class SessionManagerTest {
         assertEquals(sve.hmString.size(), stored.hmString.size());
         assertEquals("A key", sve.hmString.keySet().iterator().next());
         assertEquals("A value", sve.hmString.values().iterator().next());
+    }
+    
+    /*
+     * Bug fixed: In certain conditions, rolling back caused the next modifications
+     * to be ignored in commit.
+     */
+    @Test
+    public void testRollbackCollectionsInSObject() {
+        Logger.getLogger(ArrayListLazyProxy.class.getName()).setLevel(Level.FINEST);
+        
+        sm.setLoggedInUser(new UserSID("User", "uuid"));
+        
+        SubSecure ss = new SubSecure();
+        ss.aList.add(new SimpleVertex());
+        Secure sec = new Secure("Secure vertex");
+        sec.subs.add(ss);
+
+        Secure stored = sm.store(sec);
+        sm.commit();
+
+        // modificar los campos.
+        stored.setS("Before rollback");
+        stored.subs.iterator().next().aList.add(new SimpleVertex());
+        stored.subs.add(new SubSecure());
+        sm.rollback();
+
+        //asserts:
+        assertEquals(sec.subs.size(), stored.subs.size());
+        assertEquals("Secure vertex", stored.getS());
+        
+        stored.setS("After rollback");
+        stored = commitClearAndGet(stored);
+        
+        //if bug is fixed, this assert must be satisfied:
+        assertEquals("After rollback", stored.getS());
     }
 
     @Test
