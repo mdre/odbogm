@@ -2,6 +2,7 @@ package net.odbogm;
 
 import com.tinkerpop.blueprints.Vertex;
 import java.util.List;
+import java.util.logging.Level;
 import net.odbogm.utils.ODBOrientDynaElementIterable;
 import org.junit.After;
 import static org.junit.Assert.assertEquals;
@@ -27,7 +28,17 @@ public class QueryTest {
 
     @Before
     public void setUp() {
-        sm = new SessionManager(Config.TESTDB, "admin", "admin");
+        sm = new SessionManager(Config.TESTDB, "admin", "admin")
+                // .setClassLevelLog(ObjectProxy.class, Level.FINEST)
+//                .setClassLevelLog(ClassCache.class, Level.FINER)
+                .setClassLevelLog(Transaction.class, Level.FINEST)
+//                .setClassLevelLog(ObjectProxy.class, Level.FINER)
+//                .setClassLevelLog(SimpleCache.class, Level.FINER)
+//                .setClassLevelLog(ArrayListLazyProxy.class, Level.FINER)
+                .setClassLevelLog(ObjectMapper.class, Level.FINEST)
+//                .setClassLevelLog(SObject.class, Level.FINER)
+//                .setClassLevelLog(TransparentDirtyDetectorInstrumentator.class, Level.FINER)
+                ;
         sm.begin();
     }
 

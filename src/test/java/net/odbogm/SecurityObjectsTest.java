@@ -2,13 +2,16 @@ package net.odbogm;
 
 import com.orientechnologies.orient.core.sql.OCommandSQL;
 import com.tinkerpop.blueprints.impls.orient.OrientGraph;
+import java.util.logging.Level;
+import net.odbogm.agent.InstrumentableClassDetector;
+import net.odbogm.agent.TransparentDirtyDetectorInstrumentator;
 import net.odbogm.exceptions.CircularReferenceException;
 import net.odbogm.exceptions.UnknownRID;
+import net.odbogm.proxy.IObjectProxy;
 import net.odbogm.security.AccessRight;
 import net.odbogm.security.GroupSID;
-import net.odbogm.security.UserSID;
-import net.odbogm.proxy.IObjectProxy;
 import net.odbogm.security.SObject;
+import net.odbogm.security.UserSID;
 import org.apache.commons.lang.RandomStringUtils;
 import org.junit.After;
 import static org.junit.Assert.assertEquals;
@@ -29,7 +32,11 @@ public class SecurityObjectsTest {
 
     @Before
     public void setUp() {
-        sm = new SessionManager(Config.TESTDB, "admin", "admin");
+        sm = new SessionManager(Config.TESTDB, "admin", "admin")
+                    .setClassLevelLog(TransparentDirtyDetectorInstrumentator.class, Level.FINEST)
+                    .setClassLevelLog(InstrumentableClassDetector.class, Level.FINER)
+                    //.setClassLevelLog(ClassCache.class, Level.FINER)
+                ;
         sm.begin();
     }
 
@@ -333,6 +340,11 @@ public class SecurityObjectsTest {
     
     @Test
     public void avoidGroupsLoop() throws Exception {
+        System.out.println("\n\n\n\n\n\n\n\n\n");
+        System.out.println("************************************************************");
+        System.out.println("avoidGroupsLoop");
+        System.out.println("************************************************************");
+        System.out.println("\n\n\n\n\n\n\n\n\n");
         GroupSID g1 = sm.store(new GroupSID("g1", "g1"));
         GroupSID g2 = sm.store(new GroupSID("g2", "g2"));
         GroupSID g3 = sm.store(new GroupSID("g3", "g3"));

@@ -1,6 +1,5 @@
 package net.odbogm;
 
-import static org.junit.Assert.*;
 import com.tinkerpop.blueprints.impls.orient.OrientGraph;
 import java.lang.reflect.Field;
 import java.time.LocalDateTime;
@@ -10,6 +9,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.function.BiConsumer;
+import java.util.logging.Level;
 import net.odbogm.agent.ITransparentDirtyDetector;
 import net.odbogm.annotations.Entity;
 import net.odbogm.annotations.RID;
@@ -29,6 +29,7 @@ import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.RandomStringUtils;
 import org.easymock.EasyMock;
 import org.junit.After;
+import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -60,20 +61,17 @@ public class SessionManagerTest {
 
 
     public SessionManagerTest() throws Exception {
-        orientdbTransactField = Transaction.class.getDeclaredField(
-                "orientdbTransact");
+        orientdbTransactField = Transaction.class.getDeclaredField("orientdbTransact");
         orientdbTransactField.setAccessible(true);
     }
     
     @Before
     public void setUp() {
         System.out.println("Iniciando session manager...");
-        sm = new SessionManager(Config.TESTDB, "admin", "admin"
-                , 1, 10
-                )
+        sm = new SessionManager(Config.TESTDB, "admin", "admin", 1, 10)
 //                .setClassLevelLog(ObjectProxy.class, Level.FINEST)
 //                .setClassLevelLog(ClassCache.class, Level.FINER)
-//                .setClassLevelLog(Transaction.class, Level.FINER)
+                .setClassLevelLog(Transaction.class, Level.FINEST)
 //                .setClassLevelLog(ObjectProxy.class, Level.FINER)
 //                .setClassLevelLog(SimpleCache.class, Level.FINER)
 //                .setClassLevelLog(ArrayListLazyProxy.class, Level.FINER)

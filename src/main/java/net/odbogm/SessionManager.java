@@ -1,10 +1,13 @@
 package net.odbogm;
 
+import com.orientechnologies.orient.core.config.OGlobalConfiguration;
+import com.orientechnologies.orient.core.db.ODatabasePool;
+import com.orientechnologies.orient.core.db.ODatabaseSession;
+import com.orientechnologies.orient.core.db.OrientDB;
+import com.orientechnologies.orient.core.db.OrientDBConfig;
+import com.orientechnologies.orient.core.db.OrientDBConfigBuilder;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
-import com.tinkerpop.blueprints.impls.orient.OrientEdge;
-import com.tinkerpop.blueprints.impls.orient.OrientGraph;
-import com.tinkerpop.blueprints.impls.orient.OrientGraphFactory;
-import com.tinkerpop.blueprints.impls.orient.OrientGraphNoTx;
+import com.orientechnologies.orient.core.record.OEdge;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -43,10 +46,13 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
         }
     }
 
-    private OrientGraphFactory factory;
+    private OrientDB orientDB;
+    
+    
 
     // uso un solo objectMapper para ahorar memoria. Estas instancia se comparte entre las transacciones.
     private ObjectMapper objectMapper;
+    private ODatabasePool dbPool;
     
     public enum ActivationStrategy {
         CLASS_INSTRUMENTATION // modifica con un agente la clase para agregar la detección de escritura
@@ -79,9 +85,19 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
     
     private void init(String url, String user, String passwd, int minPool, int maxPool, boolean loadAgent) {
         LOGGER.log(Level.INFO, "ODBOGM Session Manager initialization...");
-        this.factory = new OrientGraphFactory(url, user, passwd).setupPool(minPool, maxPool);
+        this.orientDB = new OrientDB(url,OrientDBConfig.defaultConfig());
+        
+        OrientDBConfigBuilder poolCfg = OrientDBConfig.builder();
+        poolCfg.addConfig(OGlobalConfiguration.DB_POOL_MIN, 5);
+        poolCfg.addConfig(OGlobalConfiguration.DB_POOL_MAX, 10);
+        
+        
         this.objectMapper = new ObjectMapper();
         this.setActivationStrategy(ActivationStrategy.CLASS_INSTRUMENTATION, loadAgent);
+        
+        this.dbPool = new ODatabasePool(orientDB,url, user, passwd, poolCfg.build());
+        
+        
     }
 
     /**
@@ -132,8 +148,8 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
      * Retorna el factory inicializado por el SessionManager
      * @return 
      */
-    OrientGraphFactory getFactory() {
-        return this.factory;
+    ODatabaseSession getDBTx() {
+        return this.dbPool.acquire();
     }
     
     /**
@@ -272,7 +288,8 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
      * Todas las transacciones abiertas son ROLLBACK y finalizadas.
      */
     public void shutdown() {
-        this.factory.close();
+        this.publicTransaction.close();
+        this.dbPool.close();
     }
 
     /**
@@ -280,18 +297,11 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
      *
      * @return retorna la referencia directa al driver del la base.
      */
-    public OrientGraph getGraphdb() {
-        return this.factory.getTx();
+    public ODatabaseSession getGraphdb() {
+        return this.db;
     }
     
-    /**
-     * Devuelve un objeto de comunicación con la base sin transacciones.
-     * @return 
-     */
-    public OrientGraphNoTx getGraphdbNoTx() {
-        return this.factory.getNoTx();
-    }
-
+    
     /**
      * Retorna la cantidad de objetos marcados como Dirty. Utilizado para los test
      * @return retorna la cantidad de objetos marcados para el próximo commit
@@ -329,7 +339,7 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
     
     
     @Override
-    public <T> T getEdgeAsObject(Class<T> type, OrientEdge e) {
+    public <T> T getEdgeAsObject(Class<T> type, OEdge e) {
         return this.publicTransaction.getEdgeAsObject(type, e);
     }
 

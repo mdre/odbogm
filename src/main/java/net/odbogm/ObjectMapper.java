@@ -230,8 +230,8 @@ public class ObjectMapper {
      */
     public <T> T hydrate(Class<T> c, OrientVertex v, Transaction t) throws DuplicateClassDefinition, InstantiationException, IllegalAccessException, NoSuchFieldException, CollectionNotSupported {
         t.initInternalTx();
-        LOGGER.log(Level.FINER, "class: {0}  vertex: {1}", new Object[]{c, v});
-
+        LOGGER.log(Level.FINER, "class: {0}  vertex: {1}   detached: {2}", new Object[]{c, v, v.isDetached()});
+        
         Class<?> toHydrate = c;
         String entityClass = ClassCache.getEntityName(toHydrate);
         String vertexClass = (v.getType().getName().equals("V") ? entityClass : v.getType().getName());
@@ -332,7 +332,8 @@ public class ObjectMapper {
                 
                 String graphRelationName = entityClass + "_" + field;
                 Direction RelationDirection = Direction.OUT;
-
+                
+                LOGGER.log(Level.FINEST, "graphRelationName: {0}",graphRelationName);
                 // si hay Vértices conectados o si el constructor del objeto ha inicializado los vectores, convertirlos
                 if ((v.countEdges(RelationDirection, graphRelationName) > 0) || (fLink.get(proxy) != null)) {
                     this.colecctionToLazy(proxy, field, fc, v, t);

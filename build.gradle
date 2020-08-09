@@ -8,7 +8,7 @@ plugins {
 }
 
 //OrientDB version to use:
-ext.orientDbVersion = '3.0.27'
+ext.orientDbVersion = '3.1.1'
 
 
 def info() {
@@ -33,7 +33,6 @@ compileJava {
 // 3. ir a: https://oss.sonatype.org/#stagingRepositories
 //    buscar el repositorio y hacer clic en "Close"
 // 4. Una vez cerrado hacer click en "Release"
-
 
 
 //Para guardar el usuario y contraseña en forma segura hacer:
@@ -113,7 +112,7 @@ repositories {
 
 dependencies {
     implementation "cglib:cglib:3.3.0"
-    implementation "com.github.mdre:odbogm-agent:1.1.1"
+    implementation "com.github.mdre:odbogm-agent:1.1.+"
     
     api "com.orientechnologies:orientdb-graphdb:${orientDbVersion}"
     api "com.orientechnologies:orientdb-graphdb:${orientDbVersion}:javadoc"
@@ -128,7 +127,7 @@ dependencies {
 }
 
 test {
-    jvmArgs '-Djdk.attach.allowAttachSelf=true', '-DridBag.embeddedToSbtreeBonsaiThreshold=-1'
+    jvmArgs '-Djdk.attach.allowAttachSelf=true', '-DridBag.embeddedToSbtreeBonsaiThreshold=-1', '-javaagent:../odbogm-agent/build/libs/odbogm-agent-1.1.1.1.jar'
     outputs.upToDateWhen { false } 
     testLogging {
         // Make sure output from

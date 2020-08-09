@@ -1,19 +1,13 @@
 package net.odbogm;
 
 import com.orientechnologies.common.exception.OException;
+import com.orientechnologies.orient.core.config.OGlobalConfiguration;
+import com.orientechnologies.orient.core.db.ODatabaseSession;
 import com.orientechnologies.orient.core.exception.OConcurrentModificationException;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.sql.OCommandSQL;
 import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery;
-import com.tinkerpop.blueprints.Direction;
-import com.tinkerpop.blueprints.Vertex;
-import com.tinkerpop.blueprints.impls.orient.OrientConfigurableGraph;
-import com.tinkerpop.blueprints.impls.orient.OrientDynaElementIterable;
-import com.tinkerpop.blueprints.impls.orient.OrientEdge;
-import com.tinkerpop.blueprints.impls.orient.OrientElement;
-import com.tinkerpop.blueprints.impls.orient.OrientGraph;
-import com.tinkerpop.blueprints.impls.orient.OrientVertex;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -94,7 +88,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     private Auditor auditor;
     
     private final SessionManager sm;
-    private OrientGraph orientdbTransact;
+    private ODatabaseSession orientdbTransact;
     
     // indica el nivel de anidamiento de la transacción. Cuando se llega a 0 se cierra.
     private int orientTransacLevel = 0;
@@ -117,13 +111,13 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         if (this.orientdbTransact == null) {
             LOGGER.log(Level.FINEST, "\nAbriendo una transacción...");
             //inicializar la transacción
-            orientdbTransact = this.sm.getFactory().getTx();
-            orientdbTransact.setThreadMode(OrientConfigurableGraph.THREAD_MODE.ALWAYS_AUTOSET);
+            orientdbTransact = this.sm.getDBTx();
+            //orientdbTransact.setThreadMode(OrientConfigurableGraph.THREAD_MODE.ALWAYS_AUTOSET);
             orientTransacLevel = 0;
         } else {
             //aumentar el anidamiento de transacciones
-            LOGGER.log(Level.FINEST, "Anidando transacción: {0} --> {1}{2}",
-                    new Object[]{orientTransacLevel, orientTransacLevel, 1});
+            LOGGER.log(Level.FINEST, "Anidando transacción: {0} --> {1} - transact light edges: {2}",
+                    new Object[]{orientTransacLevel, (orientTransacLevel + 1), orientdbTransact.getConfiguration().getValue(OGlobalConfiguration.RID_BAG_EMBEDDED_DEFAULT_SIZE)});
             orientTransacLevel++;
         }
         activateOnCurrentThread();
@@ -668,7 +662,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             initInternalTx();
             
             String ridToRemove = ((IObjectProxy) toRemove).___getVertex().getId().toString();
-            
+            LOGGER.log(Level.FINER, "RID to remove: {0}",ridToRemove);
             this.deleteTree(toRemove);
             
             // agregarlo a la lista de vertices a remover.
@@ -687,13 +681,14 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */ 
     private void deleteTree(Object toRemove) throws UnknownObject {
         initInternalTx();
-        
-        LOGGER.log(Level.FINER, "Remove: {0}", toRemove.getClass().getName());
+        String ridToRemove = ((IObjectProxy) toRemove).___getVertex().getId().toString();
+        LOGGER.log(Level.FINER, "Remove: {0}:{1}", new String[]{toRemove.getClass().getName(),ridToRemove});
 
         // si no hereda de IObjectProxy, el objeto no pertenece a la base y no se debe hacer nada.
         if (toRemove instanceof IObjectProxy) {
+            LOGGER.log(Level.FINER, "is a IObjectProxy. Proceed.");
             // verificar que la integridad referencial no se viole.
-//            OrientVertex ovToRemove = ((IObjectProxy) toRemove).___getVertex();
+            OrientVertex ovToRemove = ((IObjectProxy) toRemove).___getVertex();
             // reacargar preventivamente el objeto.
 //            ovToRemove.reload();
             
@@ -751,7 +746,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             
             // elimino el nodo de la base para que se actualicen los vértices a los que apuntaba.
             // de esta forma, los inner quedan libres y pueden ser borrados por un delete simple
-//            ovToRemove.remove();
+            // ovToRemove.remove();
                     
             
             // procesar los links
@@ -877,12 +872,13 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
             //ovToRemove.remove(); movido arriba.
             // si tengo un RID, proceder a removerlo de las colecciones.
-            String ridToRemove = ((IObjectProxy) toRemove).___getVertex().getId().toString();
             this.dirty.remove(ridToRemove);
             this.removeFromCache(ridToRemove);
             
             // invalidar el objeto
             ((IObjectProxy) toRemove).___setDeletedMark();
+            
+            LOGGER.log(Level.FINER, "rid: "+ridToRemove+" removed succefully");
         } else {
             throw new UnknownObject(this);
         }
@@ -909,9 +905,14 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         if (toRemove instanceof IObjectProxy) {
             // verificar que la integridad referencial no se viole.
             OrientVertex ovToRemove = ((IObjectProxy) toRemove).___getVertex();
+            String logRidToRemove = ovToRemove.getIdentity().toString();
+            
             // reacargar preventivamente el objeto.
+            LOGGER.log(Level.FINEST, "pre-reload:  --(in: " + ovToRemove.countEdges(Direction.IN) + ")-->( "+logRidToRemove + ")--(out: "+ ovToRemove.countEdges(Direction.OUT)+"  )---->   ");            
             ovToRemove.reload();
-            LOGGER.log(Level.FINER, "Referencias IN: {0}", ovToRemove.countEdges(Direction.IN));
+            LOGGER.log(Level.FINEST, "post-reload:  --(in: " + ovToRemove.countEdges(Direction.IN) + ")-->( "+logRidToRemove + ")--(out: "+ ovToRemove.countEdges(Direction.OUT)+"  )---->   ");            
+            
+            LOGGER.log(Level.FINER, "Referencias {0} IN: {1}", new String[]{ovToRemove.getIdentity().toString(),(""+ovToRemove.countEdges(Direction.IN))});
             if (ovToRemove.countEdges(Direction.IN) > 0) {
                 throw new ReferentialIntegrityViolation(ovToRemove, this);
             }
@@ -924,12 +925,22 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             
             // elimino el nodo de la base para que se actualicen los vértices a los que apuntaba.
             // de esta forma, los inner quedan libres y pueden ser borrados por un delete simple
+            
+            LOGGER.log(Level.FINEST, "pre-remove:  --(in: " + ovToRemove.countEdges(Direction.IN) + ")-->( "+logRidToRemove+" )--(out: "+ ovToRemove.countEdges(Direction.OUT)+"  )---->   ");            
+            
+            // borrar todo los edges
+            for (Iterator<Edge> it = ovToRemove.getEdges(Direction.OUT).iterator(); it.hasNext();) {
+                Edge ed = it.next();
+                ed.remove();
+            }
             ovToRemove.remove();
+            LOGGER.log(Level.FINEST, "post-remove:  --(in: " + ovToRemove.countEdges(Direction.IN) + ")-->( "+logRidToRemove+" )--(out: "+ ovToRemove.countEdges(Direction.OUT)+"  )---->   ");            
 
             //Lista de vértices a remover
             List<OrientVertex> vertexToRemove = new ArrayList<>();
 
             // procesar los links
+            LOGGER.log(Level.FINEST, "procesar los links de {0}...",logRidToRemove);
             for (Map.Entry<String, Class<?>> entry : classDef.links.entrySet()) {
                 try {
                     String field = entry.getKey();
@@ -942,6 +953,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                         // si se apunta a un objeto, removerlo
                         // CascadeDelete fuerza el borrado y falla si no puede. 
                         // Tiene precedencia sobre RemoveOrphan
+                        LOGGER.log(Level.FINEST, "links: cascade delete detected");
                         Object value = f.get(toRemove);
                         if (value != null) {
                             this.internalDelete(value);
@@ -965,11 +977,12 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                 }
 
             }
-
+            LOGGER.log(Level.FINEST, "<-------------- fin links de {0}...",logRidToRemove);
             // procesar los linkslist
             // la eliminación del Vertex actual elimina de la base los Edges correspondientes por lo que 
             // solo es necesario verificar si es necesario realizar una cascada en el borrado 
             // para eliminar vértices relacionads
+            LOGGER.log(Level.FINEST, "procesar los linkslist de {0}...",logRidToRemove);
             for (Map.Entry<String, Class<?>> entry : classDef.linkLists.entrySet()) {
                 try {
                     String field = entry.getKey();
@@ -989,7 +1002,11 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                     if ((oCol != null) && (f.isAnnotationPresent(CascadeDelete.class))) {
                         if (oCol instanceof List) {
                             for (Object object : oCol) {
+                                LOGGER.log(Level.FINEST, "-----> invocar a InternaDelete desde {0}",logRidToRemove);
+                                OrientVertex ovSendToRemove = ((IObjectProxy) object).___getVertex();
+                                LOGGER.log(Level.FINEST, "-----> {0} in: {1}", new Object[]{ovSendToRemove.getIdentity().toString(), ovSendToRemove.countEdges(Direction.IN)});
                                 this.internalDelete(object);
+                                LOGGER.log(Level.FINEST, "<----- volviendo a InternaDelete de {0}",logRidToRemove);
                             }
 
                         } else if (oCol instanceof Map) {
@@ -1046,6 +1063,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                     throw new OdbogmException("Error eliminando vértice.", this);
                 }
             }
+            LOGGER.log(Level.FINEST, "<-------- fin linkslist de {0}...",logRidToRemove);
 
         } else {
             throw new UnknownObject(this);
