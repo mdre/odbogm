@@ -4,9 +4,16 @@ import com.orientechnologies.common.exception.OException;
 import com.orientechnologies.orient.core.config.OGlobalConfiguration;
 import com.orientechnologies.orient.core.db.ODatabaseSession;
 import com.orientechnologies.orient.core.exception.OConcurrentModificationException;
+import com.orientechnologies.orient.core.id.ORID;
+import com.orientechnologies.orient.core.id.ORecordId;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
+import com.orientechnologies.orient.core.record.ODirection;
+import com.orientechnologies.orient.core.record.OEdge;
+import com.orientechnologies.orient.core.record.OVertex;
 import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.sql.OCommandSQL;
+import com.orientechnologies.orient.core.sql.executor.OResult;
+import com.orientechnologies.orient.core.sql.executor.OResultSet;
 import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -41,9 +48,9 @@ import net.odbogm.exceptions.VertexJavaClassNotFound;
 import net.odbogm.proxy.IObjectProxy;
 import net.odbogm.proxy.ObjectProxyFactory;
 import net.odbogm.security.SObject;
-import net.odbogm.utils.ODBOrientDynaElementIterable;
 import net.odbogm.utils.ReflectionUtils;
 import net.odbogm.utils.ThreadHelper;
+import net.odbogm.utils.VertexUtils;
 
 /**
  * Constituye un marco de control para los objetos recuperados.
@@ -128,9 +135,12 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     public synchronized void closeInternalTx() {
         if (orientdbTransact == null) return; //no se abrió todavía
+        //FIXME: existe la posibilidad de que se intente cerrar la base con vertex nuevos creados. 
+        //       se debería como mínimo tirar una excepción.
         if (orientTransacLevel <= 0 && newrids.isEmpty()) {
             LOGGER.log(Level.FINEST, "termnando la transacción\n");
-            orientdbTransact.shutdown(true, false);
+            //orientdbTransact.shutdown(true, false);
+            orientdbTransact.close();
             orientdbTransact = null;
             orientTransacLevel = 0;
         } else {
@@ -240,12 +250,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      *
      * @return retorna la referencia directa al driver del la base.
      */
-    public OrientGraph getGraphdb() {
-        return sm.getGraphdb();
-    }
-    
-    
-    public OrientGraph getCurrentGraphDb() {
+    public ODatabaseSession getCurrentGraphDb() {
         return orientdbTransact;
     }
 
@@ -331,6 +336,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             if (this.isAuditing()) {
                 LOGGER.log(Level.FINER, "grabando auditoría...");
                 this.getAuditor().commit();
+                
                 this.orientdbTransact.commit();
                 LOGGER.log(Level.FINER, "finalizado.");
             }
@@ -466,11 +472,15 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             Map<String, Object> omap = oStruct.fields;
 
             LOGGER.log(Level.FINER, "object data: {0}", omap);
-            OrientVertex v = this.orientdbTransact.addVertex("class:" + classname, omap);
+            OVertex v = this.orientdbTransact.newVertex(classname);
+            
+            //completar el template del vertex con los datos.
+            VertexUtils.fillElement(v,omap);
+            
             proxy = ObjectProxyFactory.create(o, v, this);
 
             // registrar el rid temporal para futuras referencias.
-            newrids.add(v.getId().toString());
+            newrids.add(v.getIdentity().toString());
 
             //=====================================================
             // transferir todos los valores al proxy
@@ -492,7 +502,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             }
 
             LOGGER.log(Level.FINER, "Marcando como dirty: {0}", proxy.getClass().getSimpleName());
-            this.dirty.put(v.getId().toString(), proxy);
+            this.dirty.put(v.getIdentity().toString(), proxy);
 
             // si se está en proceso de commit, registrar el objeto junto con el proxy para 
             // que no se genere un loop con objetos internos que lo referencien.
@@ -528,8 +538,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                 }
 
                 // crear un link entre los dos objetos.
-                OrientEdge oe = this.orientdbTransact.addEdge("class:" + graphRelationName,
-                        v, ((IObjectProxy) innerO).___getVertex(), graphRelationName);
+                OEdge oe = this.orientdbTransact.newEdge(v, ((IObjectProxy) innerO).___getVertex(), graphRelationName);
                 if (this.isAuditing()) {
                     this.auditLog((IObjectProxy) proxy, Audit.AuditType.WRITE, "STORE: " + graphRelationName, oe);
                 }
@@ -577,8 +586,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                         }
 
                         // crear un link entre los dos objetos.
-                        LOGGER.log(Level.FINE, "-----> agregando un edge a: {0}", ioproxied.___getVertex().getId());
-                        OrientEdge oe = this.orientdbTransact.addEdge("class:" + graphRelationName, v, ioproxied.___getVertex(), graphRelationName);
+                        LOGGER.log(Level.FINE, "-----> agregando un edge a: {0}", ioproxied.___getVertex().getIdentity());
+                        OEdge oe = this.orientdbTransact.newEdge(v, ioproxied.___getVertex(), graphRelationName);
                         if (this.isAuditing()) {
                             this.auditLog((IObjectProxy) proxy, Audit.AuditType.WRITE, "STORE: " + graphRelationName, oe);
                         }
@@ -604,8 +613,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                                 ioproxied = (IObjectProxy) store(imO);
                             }
                             // crear un link entre los dos objetos.
-                            LOGGER.log(Level.FINER, "-----> agregando el edges de {0} para {1} key: {2}", new Object[]{v.getId().toString(), ioproxied.___getVertex().toString(), imk});
-                            OrientEdge oe = orientdbTransact.addEdge("class:" + graphRelationName, v, ioproxied.___getVertex(), graphRelationName);
+                            LOGGER.log(Level.FINER, "-----> agregando el edges de {0} para {1} key: {2}", new Object[]{v.getIdentity().toString(), ioproxied.___getVertex().toString(), imk});
+                            OEdge oe = orientdbTransact.newEdge(v, ioproxied.___getVertex(), graphRelationName);
                             if (isAuditing()) {
                                 auditLog((IObjectProxy) finalProxy, Audit.AuditType.WRITE, "STORE: " + graphRelationName, oe);
                             }
@@ -617,7 +626,9 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                             } else {
                                 LOGGER.log(Level.FINER, "la prop del edge es un Objeto. Se debe mapear!! ");
                                 // mapear la key y asignarla como propiedades
-                                oe.setProperties(objectMapper.simpleMap(imk));
+                                objectMapper.simpleMap(imk).entrySet().stream().forEach(entry -> {
+                                    oe.setProperty(entry.getKey(),entry.getValue());
+                                });
                             }
                         }
                     });
@@ -628,7 +639,10 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             }
 
             // guardar el objeto en el cache. Se usa el RID como clave
-            addToCache(v.getId().toString(), proxy);
+            addToCache(v.getIdentity().toString(), proxy);
+            
+            // grabar! MMAPI no lo hace solo como tinker
+            v.save();
 
         } catch (IllegalArgumentException ex) {
             Logger.getLogger(SessionManager.class.getName()).log(Level.SEVERE, null, ex);
@@ -642,7 +656,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             LOGGER.log(Level.FINER, "SObject detectado. Aplicando seguridad de acuerdo al usuario logueado: {0}", this.sm.getLoggedInUser().getName());
             ((SObject) proxy).validate(this.sm.getLoggedInUser());
         }
-
         closeInternalTx();
         return proxy;
     }
@@ -661,7 +674,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         if (toRemove instanceof IObjectProxy) {
             initInternalTx();
             
-            String ridToRemove = ((IObjectProxy) toRemove).___getVertex().getId().toString();
+            String ridToRemove = ((IObjectProxy) toRemove).___getVertex().getIdentity().toString();
             LOGGER.log(Level.FINER, "RID to remove: {0}",ridToRemove);
             this.deleteTree(toRemove);
             
@@ -681,14 +694,14 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */ 
     private void deleteTree(Object toRemove) throws UnknownObject {
         initInternalTx();
-        String ridToRemove = ((IObjectProxy) toRemove).___getVertex().getId().toString();
+        String ridToRemove = ((IObjectProxy) toRemove).___getVertex().getIdentity().toString();
         LOGGER.log(Level.FINER, "Remove: {0}:{1}", new String[]{toRemove.getClass().getName(),ridToRemove});
 
         // si no hereda de IObjectProxy, el objeto no pertenece a la base y no se debe hacer nada.
         if (toRemove instanceof IObjectProxy) {
             LOGGER.log(Level.FINER, "is a IObjectProxy. Proceed.");
             // verificar que la integridad referencial no se viole.
-            OrientVertex ovToRemove = ((IObjectProxy) toRemove).___getVertex();
+            OVertex ovToRemove = ((IObjectProxy) toRemove).___getVertex();
             // reacargar preventivamente el objeto.
 //            ovToRemove.reload();
             
@@ -904,16 +917,16 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         // si no hereda de IObjectProxy, el objeto no pertenece a la base y no se debe hacer nada.
         if (toRemove instanceof IObjectProxy) {
             // verificar que la integridad referencial no se viole.
-            OrientVertex ovToRemove = ((IObjectProxy) toRemove).___getVertex();
+            OVertex ovToRemove = ((IObjectProxy) toRemove).___getVertex();
             String logRidToRemove = ovToRemove.getIdentity().toString();
             
             // reacargar preventivamente el objeto.
-            LOGGER.log(Level.FINEST, "pre-reload:  --(in: " + ovToRemove.countEdges(Direction.IN) + ")-->( "+logRidToRemove + ")--(out: "+ ovToRemove.countEdges(Direction.OUT)+"  )---->   ");            
+            //LOGGER.log(Level.FINEST, "pre-reload:  --(in: " + ovToRemove.countEdges(ODirection.IN) + ")-->( "+logRidToRemove + ")--(out: "+ ovToRemove.countEdges(ODirection.OUT)+"  )---->   ");            
             ovToRemove.reload();
-            LOGGER.log(Level.FINEST, "post-reload:  --(in: " + ovToRemove.countEdges(Direction.IN) + ")-->( "+logRidToRemove + ")--(out: "+ ovToRemove.countEdges(Direction.OUT)+"  )---->   ");            
+            //LOGGER.log(Level.FINEST, "post-reload:  --(in: " + ovToRemove.countEdges(ODirection.IN) + ")-->( "+logRidToRemove + ")--(out: "+ ovToRemove.countEdges(Direction.OUT)+"  )---->   ");            
             
-            LOGGER.log(Level.FINER, "Referencias {0} IN: {1}", new String[]{ovToRemove.getIdentity().toString(),(""+ovToRemove.countEdges(Direction.IN))});
-            if (ovToRemove.countEdges(Direction.IN) > 0) {
+            //LOGGER.log(Level.FINER, "Referencias {0} IN: {1}", new String[]{ovToRemove.getIdentity().toString(),(""+ovToRemove.countEdges(ODirection.IN))});
+            if (ovToRemove.getEdges(ODirection.IN).iterator().hasNext()) {
                 throw new ReferentialIntegrityViolation(ovToRemove, this);
             }
             // Activar todos los campos que estén marcados con CascadeDelete o RemoveOrphan para poder procesarlos.
@@ -926,18 +939,20 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             // elimino el nodo de la base para que se actualicen los vértices a los que apuntaba.
             // de esta forma, los inner quedan libres y pueden ser borrados por un delete simple
             
-            LOGGER.log(Level.FINEST, "pre-remove:  --(in: " + ovToRemove.countEdges(Direction.IN) + ")-->( "+logRidToRemove+" )--(out: "+ ovToRemove.countEdges(Direction.OUT)+"  )---->   ");            
+            //LOGGER.log(Level.FINEST, "pre-remove:  --(in: " + ovToRemove.countEdges(Direction.IN) + ")-->( "+logRidToRemove+" )--(out: "+ ovToRemove.countEdges(Direction.OUT)+"  )---->   ");            
             
             // borrar todo los edges
-            for (Iterator<Edge> it = ovToRemove.getEdges(Direction.OUT).iterator(); it.hasNext();) {
-                Edge ed = it.next();
-                ed.remove();
-            }
-            ovToRemove.remove();
-            LOGGER.log(Level.FINEST, "post-remove:  --(in: " + ovToRemove.countEdges(Direction.IN) + ")-->( "+logRidToRemove+" )--(out: "+ ovToRemove.countEdges(Direction.OUT)+"  )---->   ");            
+            // eliminaod en la conversión a MMAPI. Se había agregado para solucionar el problema que se presentaba a borrar directamente
+            // el vertex y que no actualzaba el los edges. Remover si todo da ok. 15/08/2020.
+//            for (Iterator<Edge> it = ovToRemove.getEdges(Direction.OUT).iterator(); it.hasNext();) {
+//                Edge ed = it.next();
+//                ed.remove();
+//            }
+            ovToRemove.delete();
+            //LOGGER.log(Level.FINEST, "post-remove:  --(in: " + ovToRemove.countEdges(Direction.IN) + ")-->( "+logRidToRemove+" )--(out: "+ ovToRemove.countEdges(Direction.OUT)+"  )---->   ");            
 
             //Lista de vértices a remover
-            List<OrientVertex> vertexToRemove = new ArrayList<>();
+            List<OVertex> vertexToRemove = new ArrayList<>();
 
             // procesar los links
             LOGGER.log(Level.FINEST, "procesar los links de {0}...",logRidToRemove);
@@ -1003,8 +1018,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                         if (oCol instanceof List) {
                             for (Object object : oCol) {
                                 LOGGER.log(Level.FINEST, "-----> invocar a InternaDelete desde {0}",logRidToRemove);
-                                OrientVertex ovSendToRemove = ((IObjectProxy) object).___getVertex();
-                                LOGGER.log(Level.FINEST, "-----> {0} in: {1}", new Object[]{ovSendToRemove.getIdentity().toString(), ovSendToRemove.countEdges(Direction.IN)});
+                                OVertex ovSendToRemove = ((IObjectProxy) object).___getVertex();
+                                //LOGGER.log(Level.FINEST, "-----> {0} in: {1}", new Object[]{ovSendToRemove.getIdentity().toString(), ovSendToRemove.countEdges(Direction.IN)});
                                 this.internalDelete(object);
                                 LOGGER.log(Level.FINEST, "<----- volviendo a InternaDelete de {0}",logRidToRemove);
                             }
@@ -1139,10 +1154,10 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 //     * Vincula el elemento a la transacción actual.
 //     * @param e 
 //     */
-//    public void attach(OrientElement e) {
+//    public void attach(OElement e) {
 //        this.orientdbTransact.attach(e);
 //    }
-    
+//    
     /**
      * Retorna la cantidad de objetos marcados como Dirty. Utilizado para los test
      *
@@ -1216,12 +1231,12 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
             // si ret == null, recuperar el objeto desde la base, en caso contrario devolver el objeto desde el caché
             if (ret == null) {
-
-                OrientVertex v = this.orientdbTransact.getVertex(rid);
+                ORID toLoad = new ORecordId(rid);
+                OVertex v = this.orientdbTransact.load(toLoad);
                 if (v == null) {
                     throw new UnknownRID(rid, this);
                 }
-                String javaClass = v.getType().getCustom("javaClass");
+                String javaClass = v.getSchemaType().get().getCustom("javaClass");
                 if (javaClass == null) {
                     throw new VertexJavaClassNotFound("La clase del Vértice no tiene la propiedad javaClass");
                 }
@@ -1294,7 +1309,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
             if (o == null) {
                 // recuperar el vértice solicitado
-                OrientVertex v = this.orientdbTransact.getVertex(rid);
+                ORID toLoad = new ORecordId(rid);
+                OVertex v = this.orientdbTransact.load(toLoad);
                 if (v == null) {
                     throw new UnknownRID(rid, this);
                 }
@@ -1345,7 +1361,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     }
 
     @Override
-    public <T> T getEdgeAsObject(Class<T> type, OrientEdge e) {
+    public <T> T getEdgeAsObject(Class<T> type, OEdge e) {
         initInternalTx();
         T o = null;
         try {
@@ -1376,15 +1392,15 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * @return resutado de la ejecución de la sentencia SQL
      */
     @Override
-    public ODBOrientDynaElementIterable query(String sql) {
+    public OResultSet query(String sql) {
         // usar una transacción interna para que el iterable pueda seguir funcionando
         // por fuera del OGM
-        OrientGraph localtx = this.sm.getFactory().getTx();
+        ODatabaseSession localtx = this.sm.getDBTx();
         flush();
 
         OCommandSQL osql = new OCommandSQL(sql);
-        ODBOrientDynaElementIterable ret = new ODBOrientDynaElementIterable(localtx,localtx.command(osql).execute());
-
+        //ODBOrientDynaElementIterable ret = new ODBOrientDynaElementIterable(localtx,localtx.command(osql).execute());
+        OResultSet ret = localtx.query(sql, "");
         return ret;
     }
 
@@ -1396,15 +1412,15 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * @return resutado de la ejecución de la sentencia SQL
      */
     @Override
-    public ODBOrientDynaElementIterable query(String sql, Object... param) {
+    public OResultSet query(String sql, Object... param) {
         // usar una transacción interna para que el iterable pueda seguir funcionando
         // por fuera del OGM
-        OrientGraph localtx = this.sm.getFactory().getTx();
-        localtx.makeActive();
+        ODatabaseSession localtx = this.sm.getDBTx();
+        localtx.activateOnCurrentThread();
         flush();
 
-        OCommandSQL osql = new OCommandSQL(sql);
-        ODBOrientDynaElementIterable ret = new ODBOrientDynaElementIterable(localtx,localtx.command(osql).execute(param));
+        //OCommandSQL osql = new OCommandSQL(sql);
+        OResultSet ret = localtx.query(sql, param);
 
         return ret; 
     }
@@ -1422,20 +1438,22 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     public long query(String sql, String retVal) {
         initInternalTx();
         this.flush();
-
-        OCommandSQL osql = new OCommandSQL(sql);
-        OrientVertex ov = (OrientVertex) ((OrientDynaElementIterable) this.orientdbTransact.command(osql).execute()).iterator().next();
-        if (retVal.isEmpty()) {
-            retVal = ov.getProperties().keySet().iterator().next();
-        }
-        long ret = ov.getProperty(retVal);
         
+        //OCommandSQL osql = new OCommandSQL(sql);
+        OResultSet ors = this.orientdbTransact.query(sql);
+        OResult or = ors.next();
+        if (retVal.isEmpty()) {
+            retVal = or.getPropertyNames().iterator().next();
+        }
+        long ret = or.getProperty(retVal);
+        ors.close();
         closeInternalTx();
         return ret;
     }
 
     /**
-     * Return all record of the reference class. Devuelve todos los registros a partir de una clase base.
+     * Return all record of the reference class with all subclasses. 
+     * Devuelve todos los registros a partir de una clase base con todos los de las subclases.
      *
      * @param <T> Reference class
      * @param clazz reference class
@@ -1450,19 +1468,17 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
         ArrayList<T> ret = new ArrayList<>();
 
-        Iterable<Vertex> vertices = this.orientdbTransact.getVerticesOfClass(
-                ClassCache.getEntityName(clazz));
+        OResultSet vertices = this.orientdbTransact.query("select from ?",ClassCache.getEntityName(clazz));
         LOGGER.log(Level.FINER, "Enlapsed ODB response: " + (System.currentTimeMillis() - init));
-        for (Vertex verticesOfClas : vertices) {
-            ret.add(this.get(clazz, verticesOfClas.getId().toString()));
-//            LOGGER.log(Level.FINER, "vertex: " + verticesOfClas.getId().toString() + "  class: " + ((OrientVertex) verticesOfClas).getType().getName());
-        }
+        vertices.stream().forEach(vertexOfClass->{
+            ret.add(this.get(clazz, vertexOfClass.getIdentity().toString()));
+        }); 
         LOGGER.log(Level.FINER, "Enlapsed time query to List: " + (System.currentTimeMillis() - init));
-        
+        vertices.close();
         closeInternalTx();
         return ret;
     }
-
+    
     /**
      * Devuelve todos los registros a partir de una clase base en una lista, filtrando los datos por lo que se agregue en el body.
      *
@@ -1480,10 +1496,11 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
         String cSQL = "SELECT FROM " + ClassCache.getEntityName(clase) + " " + body;
         LOGGER.log(Level.FINER, cSQL);
-        for (Vertex v : (Iterable<Vertex>) this.orientdbTransact.command(
-                new OCommandSQL(cSQL)).execute()) {
-            ret.add(this.get(clase, v.getId().toString()));
-        }
+        OResultSet ors  = this.orientdbTransact.query(cSQL);
+        ors.stream().forEach(v->{
+            ret.add(this.get(clase, v.getIdentity().toString()));
+        });
+        ors.close();
         closeInternalTx();
         return ret;
     }
@@ -1503,12 +1520,13 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
         OSQLSynchQuery<ODocument> query = new OSQLSynchQuery<>(sql);
         ArrayList<T> ret = new ArrayList<>();
-
-        LOGGER.log(Level.FINER, sql + " param: " + param);
-        for (Vertex v : (Iterable<Vertex>) this.orientdbTransact.command(query).execute(param)) {
-            ret.add(this.get(clase, v.getId().toString()));
-        }
         
+        LOGGER.log(Level.FINER, sql + " param: " + param);
+        OResultSet ors = this.orientdbTransact.command(sql,param);
+        ors.stream().forEach(v->{
+            ret.add(this.get(clase, v.getIdentity().toString()));
+        });
+        ors.close();
         closeInternalTx();
         return ret;
     }
@@ -1537,14 +1555,15 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     public <T> List<T> query(Class<T> clase, String sql, HashMap<String, Object> param) {
         initInternalTx();
 
-        OSQLSynchQuery<ODocument> query = new OSQLSynchQuery<>(sql);
         ArrayList<T> ret = new ArrayList<>();
 
         LOGGER.log(Level.FINER, sql);
-        for (Vertex v : (Iterable<Vertex>) this.orientdbTransact.command(query).execute(param)) {
-            ret.add(this.get(clase, v.getId().toString()));
-        }
+        OResultSet ors = this.orientdbTransact.command(sql,param);
+        ors.stream().forEach(v->{
+            ret.add(this.get(clase, v.getIdentity().toString()));
+        });
         closeInternalTx();
+        ors.close();
         return ret;
     }
 
@@ -1556,7 +1575,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     public OClass getDBClass(String clase) {
         initInternalTx();
-        OClass ret = orientdbTransact.getRawGraph().getMetadata().getSchema().getClass(clase);
+        OClass ret = orientdbTransact.getClass(clase);
         closeInternalTx();
         return ret;
     }
@@ -1618,7 +1637,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     private void activateOnCurrentThread() {
         LOGGER.log(Level.FINEST, "Activando en el Thread actual...");
         LOGGER.log(Level.FINEST, "current thread: " + Thread.currentThread().getName());
-        orientdbTransact.makeActive();
+        orientdbTransact.activateOnCurrentThread();
     }
 
     /**
@@ -1636,8 +1655,10 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     }
     
     
-    public void attach(final OrientElement element) {
-        orientdbTransact.attach(element);
-    }
+//    public void attach(final OElement element) {
+//        
+//        orientdbTransact.attach(element);
+//    }
+    
     
 }

@@ -1,13 +1,11 @@
 package net.odbogm.audit;
 
+import com.orientechnologies.orient.core.db.ODatabaseSession;
+import com.orientechnologies.orient.core.metadata.schema.OClass;
 import com.orientechnologies.orient.core.metadata.schema.OType;
-import com.tinkerpop.blueprints.impls.orient.OrientElement;
-import com.tinkerpop.blueprints.impls.orient.OrientGraph;
-import com.tinkerpop.blueprints.impls.orient.OrientGraphNoTx;
-import com.tinkerpop.blueprints.impls.orient.OrientVertexType;
+import com.orientechnologies.orient.core.record.OElement;
+import com.orientechnologies.orient.core.record.OVertex;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -42,8 +40,8 @@ public class Auditor implements IAuditor {
         
         // verificar que la clase de auditoría exista
         if (this.transaction.getDBClass(ODBAUDITLOGVERTEXCLASS) == null) {
-            OrientGraphNoTx odb = this.transaction.getSessionManager().getGraphdbNoTx();
-            OrientVertexType olog = odb.createVertexType(ODBAUDITLOGVERTEXCLASS);
+            ODatabaseSession odb = this.transaction.getSessionManager().getDBTx();
+            OClass olog = odb.createClass(ODBAUDITLOGVERTEXCLASS);
             olog.createProperty("rid", OType.STRING);
             olog.createProperty("timestamp", OType.DATETIME);
             olog.createProperty("transactionID", OType.STRING);
@@ -52,7 +50,7 @@ public class Auditor implements IAuditor {
             olog.createProperty("action", OType.INTEGER);
             olog.createProperty("label", OType.STRING);
             olog.createProperty("log", OType.STRING);
-            odb.shutdown();
+            odb.close();
         }
     }
     
@@ -86,28 +84,31 @@ public class Auditor implements IAuditor {
     public void commit() {
         // crear un UUDI para todo el log a comitear.
         String ovLogID = UUID.randomUUID().toString();
+        ODatabaseSession current = this.transaction.getCurrentGraphDb();
         
-        OrientGraph odb = this.transaction.getGraphdb();
+        ODatabaseSession odb = this.transaction.getSessionManager().getDBTx();
         int opInTx = 0; //operation number in transaction
         
         for (LogData logData : logdata) {
             opInTx++;
             LOGGER.log(Level.FINER, "valid: {0} : {1}", new Object[]{logData.o.___isValid(), logData.rid});
-            Map<String, Object> ologData = new HashMap<>();
-            ologData.put("transactionID", ovLogID);
-            ologData.put("opInTx", opInTx);
-            ologData.put("rid", (logData.o.___isValid()&!logData.o.___isDeleted()?logData.o.___getRid():logData.rid));
-            ologData.put("timestamp", DateHelper.getCurrentDateTime());
-            ologData.put("user", this.auditUser);
-            ologData.put("action", logData.auditType);
-            ologData.put("label", logData.label);
-            ologData.put("log", logData.odata != null ? logData.odata.toString() : logData.data);
+            OVertex ologData = odb.newVertex(ODBAUDITLOGVERTEXCLASS);
             
-            odb.addVertex("class:" + ODBAUDITLOGVERTEXCLASS, ologData);
+            ologData.setProperty("transactionID", ovLogID);
+            ologData.setProperty("opInTx", opInTx);
+            ologData.setProperty("rid", (logData.o.___isValid()&!logData.o.___isDeleted()?logData.o.___getRid():logData.rid));
+            ologData.setProperty("timestamp", DateHelper.getCurrentDateTime());
+            ologData.setProperty("user", this.auditUser);
+            ologData.setProperty("action", logData.auditType);
+            ologData.setProperty("label", logData.label);
+            ologData.setProperty("log", logData.odata != null ? logData.odata.toString() : logData.data);
+            
         }
         
         odb.commit();
-        odb.shutdown();
+        odb.close();
+        
+        current.activateOnCurrentThread();
         this.logdata.clear();
     }
 }
@@ -129,7 +130,7 @@ class LogData {
             this.data = "";
         } else {
             //keep the element if it's new, so we can save the final rid and not the temporary:
-            if (data instanceof OrientElement && ((OrientElement)data).getIdentity().isNew()) {
+            if (data instanceof OElement && ((OElement)data).getIdentity().isNew()) {
                 this.odata = data;
             } else {
                 this.data = data.toString();

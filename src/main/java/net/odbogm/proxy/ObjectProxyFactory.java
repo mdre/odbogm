@@ -1,10 +1,10 @@
 package net.odbogm.proxy;
 
-import com.tinkerpop.blueprints.impls.orient.OrientElement;
+import com.orientechnologies.orient.core.record.OElement;
 import java.util.logging.Logger;
-import net.sf.cglib.proxy.Enhancer;
 import net.odbogm.LogginProperties;
 import net.odbogm.Transaction;
+import net.sf.cglib.proxy.Enhancer;
 
 /**
  *
@@ -20,18 +20,18 @@ public class ObjectProxyFactory {
     }
 
 
-    public static <T> T create(T o, OrientElement oe, Transaction transaction) {
+    public static <T> T create(T o, OElement oe, Transaction transaction) {
         return cglibcreate((Class<T>)o.getClass(), oe, transaction);
     }
 
 
-    public static <T> T create(Class<T> c, OrientElement ov, Transaction transaction) {
+    public static <T> T create(Class<T> c, OElement ov, Transaction transaction) {
         return cglibcreate(c, ov, transaction);
     }
 
 
     // Implementación con CGLib
-    private static <T> T cglibcreate(Class<T> c, OrientElement oe, Transaction transaction) {
+    private static <T> T cglibcreate(Class<T> c, OElement oe, Transaction transaction) {
         // this is the main cglib api entry-point
         // this object will 'enhance' (in terms of CGLIB) with new capabilities
         // one can treat this class as a 'Builder' for the dynamic proxy

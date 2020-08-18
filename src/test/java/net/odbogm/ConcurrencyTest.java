@@ -1,9 +1,10 @@
 package net.odbogm;
 
 import com.orientechnologies.orient.core.config.OGlobalConfiguration;
-import com.tinkerpop.blueprints.Direction;
-import com.tinkerpop.blueprints.impls.orient.OrientGraph;
-import com.tinkerpop.blueprints.impls.orient.OrientVertex;
+import com.orientechnologies.orient.core.db.ODatabaseSession;
+import com.orientechnologies.orient.core.id.ORecordId;
+import com.orientechnologies.orient.core.record.ODirection;
+import com.orientechnologies.orient.core.record.OVertex;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -143,21 +144,21 @@ public class ConcurrencyTest {
         int val = OGlobalConfiguration.RID_BAG_EMBEDDED_TO_SBTREEBONSAI_THRESHOLD.getValue();
         assertEquals(-1, val);
         
-        OrientGraph g = sm.getGraphdb();
-        OrientVertex v1 = g.addVertex("class:V");
-        OrientVertex v2 = g.addVertex("class:V");
-        v1.addEdge("class:E", v2);
+        ODatabaseSession g = sm.getGraphdb();
+        OVertex v1 = g.newVertex();
+        OVertex v2 = g.newVertex();
+        v1.addEdge(v2);
         int version = v1.getProperty("@version");
-        long out = v1.countEdges(Direction.OUT, "class:E");
-        long in = v1.countEdges(Direction.IN, "class:E");
+        long out = v1.getEdges(ODirection.OUT).spliterator().estimateSize();
+        long in = v1.getEdges(ODirection.IN).spliterator().estimateSize();;
         System.out.println("Version: " + version);
         System.out.println("v1 out: " + out);
         System.out.println("v1 in: " + in);
 
         g.commit();
         int version2 = v1.getProperty("@version");
-        long out2 = v1.countEdges(Direction.OUT, "class:E");
-        long in2 = v1.countEdges(Direction.IN, "class:E");
+        long out2 = v1.getEdges(ODirection.OUT).spliterator().estimateSize();;
+        long in2 = v1.getEdges(ODirection.IN).spliterator().estimateSize();;
         System.out.println("After commit:");
         System.out.println("Version: " + version2);
         System.out.println("v1 out: " + out2);
@@ -166,13 +167,13 @@ public class ConcurrencyTest {
         assertEquals(out, out2);
         assertEquals(in, in2);
         
-        String rid1 = v1.getId().toString();
-        g.shutdown(true);
-        g = sm.getGraphdb();
-        v1 = g.getVertex(rid1);
+        String rid1 = v1.getIdentity().toString();
+        g.close();
+        g = sm.getDBTx();
+        v1 = g.load(new ORecordId(rid1));
         version2 = v1.getProperty("@version");
-        out2 = v1.countEdges(Direction.OUT, "class:E");
-        in2 = v1.countEdges(Direction.IN, "class:E");
+        out2 = v1.getEdges(ODirection.OUT).spliterator().getExactSizeIfKnown();
+        in2 = v1.getEdges(ODirection.IN).spliterator().getExactSizeIfKnown();;
         System.out.println("New transaction:");
         System.out.println("Version: " + version2);
         System.out.println("v1 out: " + out2);
@@ -181,12 +182,12 @@ public class ConcurrencyTest {
         assertEquals(out, out2);
         assertEquals(in, in2);
         
-        OrientVertex v3 = g.addVertex("class:V");
-        v1.addEdge("class:E", v3);
+        OVertex v3 = g.newVertex();
+        v1.addEdge(v3);
         g.commit();
         version2 = v1.getProperty("@version");
-        out2 = v1.countEdges(Direction.OUT, "class:E");
-        in2 = v1.countEdges(Direction.IN, "class:E");
+        out2 = v1.getEdges(ODirection.OUT).spliterator().getExactSizeIfKnown();;
+        in2 = v1.getEdges(ODirection.IN).spliterator().getExactSizeIfKnown();;
         System.out.println("New edge:");
         System.out.println("Version: " + version2);
         System.out.println("v1 out: " + out2);

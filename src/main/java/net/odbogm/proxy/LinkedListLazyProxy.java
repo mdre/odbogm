@@ -1,8 +1,7 @@
 package net.odbogm.proxy;
 
-import com.tinkerpop.blueprints.Direction;
-import com.tinkerpop.blueprints.Vertex;
-import com.tinkerpop.blueprints.impls.orient.OrientVertex;
+import com.orientechnologies.orient.core.record.ODirection;
+import com.orientechnologies.orient.core.record.OVertex;
 import java.lang.ref.WeakReference;
 import java.util.Collection;
 import java.util.Comparator;
@@ -42,10 +41,10 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
     private boolean lazyLoading = false;
 
     private Transaction transaction;
-    private OrientVertex relatedTo;
+    private OVertex relatedTo;
     private String field;
     private Class<?> fieldClass;
-    private Direction direction;
+    private ODirection direction;
 
     // referencia debil al objeto padre. Se usa para notificar al padre que la colección ha cambiado.
     private WeakReference<IObjectProxy> parent;
@@ -59,7 +58,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
      * @param c: clase genérica de la colección.
      */
     @Override
-    public void init(Transaction t, OrientVertex relatedTo, IObjectProxy parent, String field, Class<?> c, Direction d) {
+    public void init(Transaction t, OVertex relatedTo, IObjectProxy parent, String field, Class<?> c, ODirection d) {
         try {
             this.transaction = t;
             this.relatedTo = relatedTo;
@@ -68,7 +67,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
             this.fieldClass = c;
             this.direction = d;
             LOGGER.log(Level.FINER, "relatedTo: {0} - field: {1} - Class: {2}", new Object[]{relatedTo, field, c.getSimpleName()});
-            LOGGER.log(Level.FINER, "relatedTo.getGraph : " + relatedTo.getGraph());
+            //LOGGER.log(Level.FINER, "relatedTo.getGraph : " + relatedTo.getGraph());
         } catch (Exception ex) {
             Logger.getLogger(LinkedListLazyProxy.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -80,7 +79,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
     private void lazyLoad() {
         this.transaction.initInternalTx();
         
-        LOGGER.log(Level.FINER, "getGraph: " + relatedTo.getGraph());
+        //LOGGER.log(Level.FINER, "getGraph: " + relatedTo.getGraph());
 //        if (relatedTo.getGraph() == null) {
 //            this.transaction.getSessionManager().getGraphdb().attach(relatedTo);
 //        }
@@ -97,14 +96,14 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         this.lazyLoading = true;
         LOGGER.log(Level.FINER, "relatedTo: {0} - field: {1} - Class: {2}", new Object[]{relatedTo, field, fieldClass.getSimpleName()});
         // recuperar todos los elementos desde el vértice y agregarlos a la colección
-        Iterable<Vertex> rt = relatedTo.getVertices(this.direction, field);
+        Iterable<OVertex> rt = relatedTo.getVertices(this.direction, field);
 //        for (Iterator<Vertex> iterator = relatedTo.getVertices(Direction.OUT, field).iterator(); iterator.hasNext();) {
-        for (Iterator<Vertex> iterator = rt.iterator(); iterator.hasNext();) {
-            OrientVertex next = (OrientVertex) iterator.next();
+        for (Iterator<OVertex> iterator = rt.iterator(); iterator.hasNext();) {
+            OVertex next = (OVertex) iterator.next();
 //            LOGGER.log(Level.INFO, "loading: " + next.getId().toString());
             
             Object o = null;
-            o = transaction.get(fieldClass, next.getId().toString());
+            o = transaction.get(fieldClass, next.getIdentity().toString());
             
             this.add(o);
             // se asume que todos fueron borrados
@@ -154,7 +153,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         // Si es una colección sobre una dirección saliente proceder a marcar
         // en caso contrario se la considera como un Indirect no NO REPORTA 
         // las modificaciones
-        if (this.direction == Direction.OUT) {
+        if (this.direction == ODirection.OUT) {
             LOGGER.log(Level.FINER, "Colección marcada como Dirty. Avisar al padre.");
             this.dirty = true;
             LOGGER.log(Level.FINER, "weak:" + this.parent.get());
@@ -173,7 +172,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
     @Override
     public void rollback() {
         //FIXME: Analizar si se puede implementar una versión que no borre todos los elementos
-        this.clear();
+        super.clear();
         this.listState.clear();
         this.dirty = false;
         this.lazyLoad = true;

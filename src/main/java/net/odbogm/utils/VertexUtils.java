@@ -5,9 +5,11 @@
  */
 package net.odbogm.utils;
 
-import com.tinkerpop.blueprints.Direction;
-import com.tinkerpop.blueprints.Edge;
-import com.tinkerpop.blueprints.impls.orient.OrientVertex;
+import com.orientechnologies.orient.core.record.ODirection;
+import com.orientechnologies.orient.core.record.OEdge;
+import com.orientechnologies.orient.core.record.OElement;
+import com.orientechnologies.orient.core.record.OVertex;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.LogginProperties;
@@ -32,13 +34,15 @@ public class VertexUtils {
      * @param edgeLabel etiqueta del edge
      * @return true if any conection exist
      */
-    public static boolean areConected(OrientVertex v1, OrientVertex v2, String edgeLabel) {
+    public static boolean areConected(OVertex v1, OVertex v2, String edgeLabel) {
         boolean connected = false;
         if ((v1 != null)&&(v2 != null)) {
-            Iterable<Edge> result = v1.getEdges(v2, Direction.BOTH, edgeLabel==null?"E":edgeLabel);
-            for (Edge e : result) {
-                connected = true;
-                break;
+            Iterable<OVertex> result = v1.getVertices(ODirection.BOTH.BOTH, edgeLabel==null?"E":edgeLabel);
+            for (OVertex ov : result) {
+                if (ov.getIdentity().toString().equals(v2.getIdentity().toString())) {
+                    connected = true;
+                    break;
+                }
             }
         }
         return connected;
@@ -53,17 +57,33 @@ public class VertexUtils {
      * @param edgeLabel edge label to test. Null to test any label.
      * @return true if a conection exist
      */
-    public static boolean isConectedTo(OrientVertex v1, OrientVertex v2, String edgeLabel) {
+    public static boolean isConectedTo(OVertex v1, OVertex v2, String edgeLabel) {
         boolean connected = false;
-        LOGGER.log(Level.FINER, "Verificando edges entre "+v1.getId()+" y "+v2.getId()+ " a través de la realción "+edgeLabel);
+        LOGGER.log(Level.FINER, "Verificando edges entre "+v1.getIdentity()+" y "+v2.getIdentity()+ " a través de la realción "+edgeLabel);
         if ((v1 != null)&&(v2 != null)) {
-            Iterable<Edge> result = v1.getEdges(v2, Direction.OUT, edgeLabel==null?"E":edgeLabel);
-            for (Edge e : result) {
-                LOGGER.log(Level.FINER, "Conectados por el edge: "+e.getId());
-                connected = true;
-                break;
+            Iterable<OEdge> result = v1.getEdges(ODirection.OUT, edgeLabel==null?"E":edgeLabel);
+            for (OEdge oe : result) {
+                if (oe.getTo().getIdentity().toString().equals(v2.getIdentity().toString())) {
+                    LOGGER.log(Level.FINER, "Conectados por el edge: "+oe.getIdentity());
+                    connected = true;
+                    break;
+                }
             }
         }
         return connected;
+    }
+    
+    /**
+     * Helper class to fill elements with properties throught a Map
+     * MMAPI does has not have that funcionality as provided by Tinkerpop
+     * Helper para asignación masiva de campos a través de un hashmap. 
+     * MMAPI no tiene esa funcionalidad como la proveía Tinkerpop
+     * @param oe     vértice a completar con los datos
+     * @param omap  pares de valores con el nombre de los campos y los valores a asignar.
+     */
+    public static void fillElement(OElement oe, Map<String,Object> omap) {
+        omap.entrySet().stream().forEach(entry->{
+            oe.setProperty(entry.getKey(), entry.getValue());
+        });
     }
 }

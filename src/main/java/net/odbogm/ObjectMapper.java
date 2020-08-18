@@ -1,10 +1,10 @@
 package net.odbogm;
 
 import com.orientechnologies.orient.core.metadata.sequence.OSequenceLibrary;
-import com.tinkerpop.blueprints.Direction;
-import com.tinkerpop.blueprints.impls.orient.OrientEdge;
-import com.tinkerpop.blueprints.impls.orient.OrientElement;
-import com.tinkerpop.blueprints.impls.orient.OrientVertex;
+import com.orientechnologies.orient.core.record.ODirection;
+import com.orientechnologies.orient.core.record.OEdge;
+import com.orientechnologies.orient.core.record.OElement;
+import com.orientechnologies.orient.core.record.OVertex;
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
 import java.util.ArrayList;
@@ -112,10 +112,10 @@ public class ObjectMapper {
      * @param t
      * @param v If not null, sets also its corresponding property.
      */
-    public void fillSequenceFields(Object o, Transaction t, OrientVertex v) {
+    public void fillSequenceFields(Object o, Transaction t, OVertex v) {
         ClassDef classdef = this.classCache.get(o.getClass());
         if (!classdef.sequenceFields.isEmpty()) {
-            OSequenceLibrary seqLibrary = t.getCurrentGraphDb().getRawGraph().getMetadata().getSequenceLibrary();
+            OSequenceLibrary seqLibrary = t.getCurrentGraphDb().getMetadata().getSequenceLibrary();
             classdef.sequenceFields.entrySet().forEach(e -> {
                 Field f = classdef.fieldsObject.get(e.getKey());
                 if (this.getFieldValue(o, f) == null) {
@@ -228,19 +228,22 @@ public class ObjectMapper {
      * @throws IllegalAccessException cuando no se puede acceder
      * @throws NoSuchFieldException no existe el campo.
      */
-    public <T> T hydrate(Class<T> c, OrientVertex v, Transaction t) throws DuplicateClassDefinition, InstantiationException, IllegalAccessException, NoSuchFieldException, CollectionNotSupported {
+    public <T> T hydrate(Class<T> c, OVertex v, Transaction t) throws DuplicateClassDefinition, InstantiationException, IllegalAccessException, NoSuchFieldException, CollectionNotSupported {
         t.initInternalTx();
-        LOGGER.log(Level.FINER, "class: {0}  vertex: {1}   detached: {2}", new Object[]{c, v, v.isDetached()});
+        LOGGER.log(Level.FINER, "class: {0}  vertex: {1}", new Object[]{c, v});
         
         Class<?> toHydrate = c;
         String entityClass = ClassCache.getEntityName(toHydrate);
-        String vertexClass = (v.getType().getName().equals("V") ? entityClass : v.getType().getName());
+//        String vertexClass = (v.getType().getName().equals("V") ? entityClass : v.getType().getName());
+        String vertexClass = (v.getSchemaType().isPresent() & v.getSchemaType().get().getName().equals("V") ? 
+                                entityClass : 
+                                v.getSchemaType().get().getName());
 
         // validar que el Vertex sea instancia de la clase solicitada
         // o que la clase solicitada sea su superclass
         if (!entityClass.equals(vertexClass)) {
             LOGGER.log(Level.FINER, "Tipos distintos. {0} <> {1}", new Object[]{entityClass, vertexClass});
-            String javaClass = v.getType().getCustom("javaClass");
+            String javaClass = v.getSchemaType().get().getCustom("javaClass");
             if (javaClass != null) {
                 try {
                     // validar que sea un super de la clase del vértice
@@ -282,7 +285,7 @@ public class ObjectMapper {
         }
         
         // insertar el objeto en el transactionLoopCache
-        t.transactionLoopCache.put(v.getId().toString(), proxy);
+        t.transactionLoopCache.put(v.getIdentity().toString(), proxy);
         
         
         // ********************************************************************************************
@@ -331,11 +334,12 @@ public class ObjectMapper {
                 fLink.setAccessible(true);
                 
                 String graphRelationName = entityClass + "_" + field;
-                Direction RelationDirection = Direction.OUT;
+                ODirection RelationDirection = ODirection.OUT;
                 
                 LOGGER.log(Level.FINEST, "graphRelationName: {0}",graphRelationName);
                 // si hay Vértices conectados o si el constructor del objeto ha inicializado los vectores, convertirlos
-                if ((v.countEdges(RelationDirection, graphRelationName) > 0) || (fLink.get(proxy) != null)) {
+                //if ((v.countEdges(RelationDirection, graphRelationName) > 0) || (fLink.get(proxy) != null)) {
+                if ((v.getEdges(RelationDirection, graphRelationName).iterator().hasNext() ) || (fLink.get(proxy) != null)) {
                     this.colecctionToLazy(proxy, field, fc, v, t);
                 }
             } catch (IllegalArgumentException ex) {
@@ -357,11 +361,11 @@ public class ObjectMapper {
                 Field fLink = classdef.fieldsObject.get(field);
                 fLink.setAccessible(true);
 
-                Direction RelationDirection = Direction.IN;
+                ODirection RelationDirection = ODirection.IN;
                 Indirect in = fLink.getAnnotation(Indirect.class);
                 String graphRelationName = in.linkName();
                 // si hay Vértices conectados o si el constructor del objeto ha inicializado los vectores, convertirlos
-                if ((v.countEdges(RelationDirection, graphRelationName) > 0) || (fLink.get(proxy) != null)) {
+                if ((v.getEdges(RelationDirection, graphRelationName).iterator().hasNext()) || (fLink.get(proxy) != null)) {
                     this.colecctionToLazy(proxy, field, fc, v, t);
                 }
             } catch (IllegalArgumentException ex) {
@@ -383,7 +387,7 @@ public class ObjectMapper {
      * @param proxy The proxy.
      * @param v An OrientDB element (vertex or edge).
      */
-    public void hydrateEmbeddedCollections(ClassDef classdef, IObjectProxy proxy, OrientElement v) {
+    public void hydrateEmbeddedCollections(ClassDef classdef, IObjectProxy proxy, OElement v) {
         Field f;
         for (Map.Entry<String, Class<?>> entry : classdef.embeddedFields.entrySet()) {
             String prop = entry.getKey();
@@ -414,7 +418,7 @@ public class ObjectMapper {
      * @param proxy The proxy.
      * @param v An OrientDB element (vertex or edge).
      */
-    public void hydrateEnumCollections(ClassDef classdef, IObjectProxy proxy, OrientElement v) {
+    public void hydrateEnumCollections(ClassDef classdef, IObjectProxy proxy, OElement v) {
         Field f;
         for (Map.Entry<String, Class<?>> entry : classdef.enumCollectionFields.entrySet()) {
             String prop = entry.getKey();
@@ -448,7 +452,7 @@ public class ObjectMapper {
     }
 
     
-    public void colecctionToLazy(Object o, String field, OrientVertex v, Transaction t) {
+    public void colecctionToLazy(Object o, String field, OVertex v, Transaction t) {
         LOGGER.log(Level.FINER, "convertir colection a Lazy: {0}", field);
         ClassDef classdef;
         if (o instanceof IObjectProxy) {
@@ -482,7 +486,7 @@ public class ObjectMapper {
      * @param t Vínculo a la transacción actual
      *
      */
-    public void colecctionToLazy(Object o, String field, Class<?> fc, OrientVertex v, Transaction t) {
+    public void colecctionToLazy(Object o, String field, Class<?> fc, OVertex v, Transaction t) {
         LOGGER.log(Level.FINER, "***************************************************************");
         LOGGER.log(Level.FINER, "convertir colection a Lazy: " + field + " class: " + fc.getName());
         LOGGER.log(Level.FINER, "***************************************************************");
@@ -499,14 +503,14 @@ public class ObjectMapper {
 
             String graphRelationName = classdef.entityName + "_" + field;
             // Determinar la dirección
-            Direction direction = Direction.OUT;
+            ODirection direction = ODirection.OUT;
 
             if (fLink.isAnnotationPresent(Indirect.class)) {
                 // si es un indirect se debe reemplazar el nombre de la relación por 
                 // el propuesto por la anotation
                 Indirect in = fLink.getAnnotation(Indirect.class);
                 graphRelationName = in.linkName();
-                direction = Direction.IN;
+                direction = ODirection.IN;
             }
 
             Class<?> lazyClass = Primitives.LAZY_COLLECTION.get(fc);
@@ -612,11 +616,11 @@ public class ObjectMapper {
      * @throws IllegalAccessException si no se puede acceder
      * @throws NoSuchFieldException si no se encuentra alguno de los campos.
      */
-    public <T> T hydrate(Class<T> c, OrientEdge e, Transaction t) throws InstantiationException, IllegalAccessException, NoSuchFieldException {
+    public <T> T hydrate(Class<T> c, OEdge e, Transaction t) throws InstantiationException, IllegalAccessException, NoSuchFieldException {
         T oproxied = ObjectProxyFactory.create(c, e, t);
         ClassDef classdef = classCache.get(c);
         Field f;
-        for (String prop : e.getPropertyKeys()) {
+        for (String prop : e.getPropertyNames()) {
             Object value = e.getProperty(prop);
 
             // obtener la clase a la que pertenece el campo

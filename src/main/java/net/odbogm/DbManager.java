@@ -1,7 +1,11 @@
 package net.odbogm;
 
-import com.tinkerpop.blueprints.impls.orient.OrientGraph;
-import com.tinkerpop.blueprints.impls.orient.OrientGraphFactory;
+import com.orientechnologies.orient.core.config.OGlobalConfiguration;
+import com.orientechnologies.orient.core.db.ODatabasePool;
+import com.orientechnologies.orient.core.db.ODatabaseSession;
+import com.orientechnologies.orient.core.db.OrientDB;
+import com.orientechnologies.orient.core.db.OrientDBConfig;
+import com.orientechnologies.orient.core.db.OrientDBConfigBuilder;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -59,8 +63,9 @@ public class DbManager {
         LOGGER.setLevel(LogginProperties.DbManager);
     }
 
-    private OrientGraph graphdb;
-    private OrientGraphFactory factory;
+    private OrientDB orientDB;
+    private ODatabasePool dbPool;
+    private ODatabaseSession graphdb;
 
     private static final String BAD_PACKAGE_ERROR = "Unable to get resources from path '%s'. Are you sure the package '%s' exists?";
     private static final char PKG_SEPARATOR = '.';
@@ -119,11 +124,18 @@ public class DbManager {
 
 
     private void init(String url, String user, String passwd){
-        this.factory = new OrientGraphFactory(url, user, passwd).setupPool(1, 10);
+        LOGGER.log(Level.INFO, "ODBOGM Session Manager initialization...");
+        this.orientDB = new OrientDB(url,OrientDBConfig.defaultConfig());
+        
+        OrientDBConfigBuilder poolCfg = OrientDBConfig.builder();
+        poolCfg.addConfig(OGlobalConfiguration.DB_POOL_MIN, 5);
+        poolCfg.addConfig(OGlobalConfiguration.DB_POOL_MAX, 10);
+        
+        this.dbPool = new ODatabasePool(orientDB,url, user, passwd, poolCfg.build());
     }
     
     public void begin() {
-        graphdb = factory.getTx();
+        graphdb = this.dbPool.acquire();
     }
 
     public DbManager setClassLevelLog(Class<?> clazz, Level level) {

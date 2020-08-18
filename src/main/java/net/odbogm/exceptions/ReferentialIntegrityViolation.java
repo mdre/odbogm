@@ -1,6 +1,6 @@
 package net.odbogm.exceptions;
 
-import com.tinkerpop.blueprints.impls.orient.OrientVertex;
+import com.orientechnologies.orient.core.record.OVertex;
 import net.odbogm.Transaction;
 
 /**
@@ -9,9 +9,9 @@ import net.odbogm.Transaction;
  */
 public class ReferentialIntegrityViolation extends OdbogmException {
     
-    public ReferentialIntegrityViolation(OrientVertex referencedVertex, Transaction transaction) {
+    public ReferentialIntegrityViolation(OVertex referencedVertex, Transaction transaction) {
         super(String.format("El vértice %s aún tiene referencias entrantes.",
-                referencedVertex.getId()), transaction);
+                referencedVertex.getIdentity()), transaction);
     }
 
 

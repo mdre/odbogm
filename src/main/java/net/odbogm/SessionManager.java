@@ -8,6 +8,7 @@ import com.orientechnologies.orient.core.db.OrientDBConfig;
 import com.orientechnologies.orient.core.db.OrientDBConfigBuilder;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
 import com.orientechnologies.orient.core.record.OEdge;
+import com.orientechnologies.orient.core.sql.executor.OResultSet;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -31,7 +32,6 @@ import net.odbogm.exceptions.VertexJavaClassNotFound;
 import net.odbogm.proxy.IObjectProxy;
 import net.odbogm.security.UserSID;
 import net.odbogm.utils.AgentDetector;
-import net.odbogm.utils.ODBOrientDynaElementIterable;
 
 /**
  *
@@ -148,7 +148,7 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
      * Retorna el factory inicializado por el SessionManager
      * @return 
      */
-    ODatabaseSession getDBTx() {
+    public ODatabaseSession getDBTx() {
         return this.dbPool.acquire();
     }
     
@@ -233,7 +233,7 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
      */
     public String getRID(Object o) {
         if ((o != null) && (o instanceof IObjectProxy)) {
-            return ((IObjectProxy) o).___getVertex().getId().toString();
+            return ((IObjectProxy) o).___getVertex().getIdentity().toString();
         }
         return null;
     }
@@ -288,7 +288,7 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
      * Todas las transacciones abiertas son ROLLBACK y finalizadas.
      */
     public void shutdown() {
-        this.publicTransaction.close();
+        //this.publicTransaction.close();
         this.dbPool.close();
     }
 
@@ -298,7 +298,7 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
      * @return retorna la referencia directa al driver del la base.
      */
     public ODatabaseSession getGraphdb() {
-        return this.db;
+        return this.publicTransaction.getCurrentGraphDb();
     }
     
     
@@ -349,7 +349,7 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
      * @param sql sentencia a ejecutar 
      * @return resutado de la ejecución de la sentencia SQL
      */
-    public ODBOrientDynaElementIterable query(String sql) {
+    public OResultSet query(String sql) {
         return this.publicTransaction.query(sql);
     }
 
@@ -374,7 +374,7 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
      * @param param parámetros a utilizar en el query
      * @return resutado de la ejecución de la sentencia SQL
      */
-    public ODBOrientDynaElementIterable query(String sql, Object... param) {
+    public OResultSet query(String sql, Object... param) {
         return this.publicTransaction.query(sql, param);
     }
     

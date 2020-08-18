@@ -1,9 +1,9 @@
 package net.odbogm;
 
-import com.tinkerpop.blueprints.Vertex;
+import com.orientechnologies.orient.core.record.OVertex;
+import com.orientechnologies.orient.core.sql.executor.OResultSet;
 import java.util.List;
 import java.util.logging.Level;
-import net.odbogm.utils.ODBOrientDynaElementIterable;
 import org.junit.After;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -110,14 +110,13 @@ public class QueryTest {
         sm.commit();
         String rid = sm.getRID(foo);
         
-        try (ODBOrientDynaElementIterable<Vertex> list = sm.query(
-                "select expand(out('FooNode_lsve')) from (select from " + rid + ")")) {
+        try ( OResultSet list = sm.query("select expand(out('FooNode_lsve')) from (select from " + rid + ")")) {
             
-            if (!list.iterator().hasNext()) {
+            if (!list.hasNext()) {
                 fail("Empty list!");
             } else {
-                Vertex v = list.iterator().next();
-                SimpleVertex sv = sm.get(SimpleVertex.class, v.getId().toString());
+                OVertex v = list.next().getVertex().get();
+                SimpleVertex sv = sm.get(SimpleVertex.class, v.getIdentity().toString());
                 assertNotNull(sv);
             }
         }

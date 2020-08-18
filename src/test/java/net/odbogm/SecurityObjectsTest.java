@@ -1,7 +1,7 @@
 package net.odbogm;
 
+import com.orientechnologies.orient.core.db.ODatabaseSession;
 import com.orientechnologies.orient.core.sql.OCommandSQL;
-import com.tinkerpop.blueprints.impls.orient.OrientGraph;
 import java.util.logging.Level;
 import net.odbogm.agent.InstrumentableClassDetector;
 import net.odbogm.agent.TransparentDirtyDetectorInstrumentator;
@@ -56,7 +56,7 @@ public class SecurityObjectsTest {
         System.out.println("***************************************************************");
 
         // elminar los grupos
-        OrientGraph db = sm.getGraphdb();
+        ODatabaseSession db = sm.getDBTx();
         
         db.command(new OCommandSQL("delete vertex GroupSID")).execute();
 
@@ -66,7 +66,7 @@ public class SecurityObjectsTest {
         // eliminar los SSVertex
         db.command(new OCommandSQL("delete vertex SSimpleVertex")).execute();
         
-        db.shutdown();
+        db.close();
 
         // crear los grupos y los usuarios.
         System.out.println("\n\n\n\n\n\n\n\n\n\n\n\n\n");
