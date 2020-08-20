@@ -119,12 +119,13 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             LOGGER.log(Level.FINEST, "\nAbriendo una transacción...");
             //inicializar la transacción
             orientdbTransact = this.sm.getDBTx();
+            orientdbTransact.begin();
             //orientdbTransact.setThreadMode(OrientConfigurableGraph.THREAD_MODE.ALWAYS_AUTOSET);
             orientTransacLevel = 0;
         } else {
             //aumentar el anidamiento de transacciones
             LOGGER.log(Level.FINEST, "Anidando transacción: {0} --> {1} - transact light edges: {2}",
-                    new Object[]{orientTransacLevel, (orientTransacLevel + 1), orientdbTransact.getConfiguration().getValue(OGlobalConfiguration.RID_BAG_EMBEDDED_DEFAULT_SIZE)});
+                    new Object[]{orientTransacLevel, (orientTransacLevel + 1), orientdbTransact.getConfiguration().getValue(OGlobalConfiguration.RID_BAG_EMBEDDED_TO_SBTREEBONSAI_THRESHOLD)});
             orientTransacLevel++;
         }
         activateOnCurrentThread();
@@ -437,6 +438,12 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     @Override
     public synchronized <T> T store(T o) throws IncorrectRIDField, NoOpenTx, ClassToVertexNotFound {
+        LOGGER.log(Level.FINER, "*****************************************************************************");
+        LOGGER.log(Level.FINER, "STORE: {0}",o);
+        LOGGER.log(Level.FINER, "*****************************************************************************");
+        
+        LOGGER.log(Level.FINEST, "dirty: size: {0}",new Object[]{this.dirty.mappingCount()});
+        
         T proxy;
         // si el objeto ya fue guardado con anterioridad, devolver la instancia creada previamente.
         proxy = (T) this.storedObjects.get(o);
@@ -460,7 +467,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             ClassDef oClassDef = this.objectMapper.getClassDef(o);
             String classname = oClassDef.entityName;
             LOGGER.log(Level.FINER, "STORE: guardando objeto de la clase {0}", classname);
-
+            
             // verificar que la clase existe
             if (getDBClass(classname) == null) {
                 // arrojar una excepción en caso contrario.
@@ -473,9 +480,14 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
             LOGGER.log(Level.FINER, "object data: {0}", omap);
             OVertex v = this.orientdbTransact.newVertex(classname);
+            // forzar el fijado del rid temporal
+            LOGGER.log(Level.FINEST, "virtual RID: {0}",v.getIdentity().toString());
             
             //completar el template del vertex con los datos.
             VertexUtils.fillElement(v,omap);
+            
+            // fijar el RID temporal.
+            v.save();
             
             proxy = ObjectProxyFactory.create(o, v, this);
 
@@ -503,7 +515,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
             LOGGER.log(Level.FINER, "Marcando como dirty: {0}", proxy.getClass().getSimpleName());
             this.dirty.put(v.getIdentity().toString(), proxy);
-
+            LOGGER.log(Level.FINER, "dirty.size: {0}",this.dirty.size());
+            
             // si se está en proceso de commit, registrar el objeto junto con el proxy para 
             // que no se genere un loop con objetos internos que lo referencien.
             this.storedObjects.put(o, proxy);
@@ -1574,9 +1587,11 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * @return OClass o null si la clase no existe
      */
     public OClass getDBClass(String clase) {
+        LOGGER.log(Level.FINEST, "object class: {0}",clase);
         initInternalTx();
         OClass ret = orientdbTransact.getClass(clase);
         closeInternalTx();
+        LOGGER.log(Level.FINEST, "^^^^^^^ end.");
         return ret;
     }
 
@@ -1635,9 +1650,13 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * Asegurarse que la base esté activa en el thread en el que se encuentra la transacción
      */
     private void activateOnCurrentThread() {
-        LOGGER.log(Level.FINEST, "Activando en el Thread actual...");
-        LOGGER.log(Level.FINEST, "current thread: " + Thread.currentThread().getName());
-        orientdbTransact.activateOnCurrentThread();
+        if (!orientdbTransact.isActiveOnCurrentThread()) {
+            LOGGER.log(Level.FINEST, "Activando en el Thread actual...");
+            LOGGER.log(Level.FINEST, "current thread: " + Thread.currentThread().getName());
+            orientdbTransact.activateOnCurrentThread();
+        } else {
+            LOGGER.log(Level.FINEST, "base activada previamente en el Thread actual");
+        }
     }
 
     /**
