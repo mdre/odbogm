@@ -75,7 +75,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
     private synchronized void lazyLoad() {
         this.transaction.initInternalTx();
         
-//        LOGGER.log(Level.FINER, "Lazy Load.....");
+        LOGGER.log(Level.FINEST, "Lazy Load.....");
         this.lazyLoad = false;
         this.lazyLoading = true;
 
@@ -83,11 +83,10 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         for (OEdge edge : relatedTo.getEdges(this.direction, field)) {
 //        for (Iterator<OVertex> iterator = relatedTo.getVertices(this.direction, field).iterator(); iterator.hasNext();) {
             OVertex next = edge.getTo();
-            // LOGGER.log(Level.FINER, "loading: " + next.getId().toString());
+            LOGGER.log(Level.FINER, "loading edge: {0} to: {1}", new Object[]{edge.getIdentity().toString(),next.getIdentity()});
             // el Lazy simpre se hace recuperado los datos desde la base de datos.
             Object o = null;
             o = transaction.get(valueClass, next.getIdentity().toString());
-            
             
             // para cada vértice conectado, es necesario mapear todos los Edges que los unen.
             Object k = null;
@@ -96,15 +95,15 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
             
             // si el keyClass no es de tipo nativo, hidratar un objeto.
             if (Primitives.PRIMITIVE_MAP.containsKey(this.keyClass)) {
-                LOGGER.log(Level.FINER, "primitive!!");
-                for (String prop : edge.getPropertyNames()) {
-                    k = edge.getProperty(prop);
-                }
+                k = edge.getProperty("key");
+                LOGGER.log(Level.INFO, "primitive edge key: {0}",k);
             } else {
                 LOGGER.log(Level.FINER, "clase como key");
                 k = transaction.getEdgeAsObject(keyClass, edge);
             }
-            this.put(k, o);
+            // llamar a super para que no se marque como dirty el objeto padre dado que el loadLazy no debería 
+            // registrar cambios en el padre porque se los datos son recuperados de la base
+            super.put(k, o);
             this.keyState.put(k, ObjectCollectionState.REMOVED);
             this.keyToEdge.put(k, edge);
 
@@ -117,6 +116,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         }
         this.lazyLoading = false;
         this.transaction.closeInternalTx();
+        LOGGER.log(Level.FINEST, "final size: {0} ",super.size());
     }
 
     /**

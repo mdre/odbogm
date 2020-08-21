@@ -72,7 +72,7 @@ public class SessionManagerTest {
     @Before
     public void setUp() {
         System.out.println("Iniciando session manager...");
-        sm = new SessionManager(Config.TESTDB, "admin", "admin", 1, 10)
+        sm = new SessionManager(Config.TESTDB, "admin", "nimda", 1, 10)
 //                .setClassLevelLog(ObjectProxy.class, Level.FINEST)
 //                .setClassLevelLog(ClassCache.class, Level.FINER)
                 .setClassLevelLog(Transaction.class, Level.FINEST)
@@ -440,6 +440,8 @@ public class SessionManagerTest {
 
         assertEquals("verificando svinner.string ...", expResult.getSvinner().getS(), sve.getSvinner().getS());
         assertEquals("verificando AL.size()...", expResult.getAlSV().size(), sve.getAlSV().size());
+        
+        System.out.println("\n\n\n\n---------------------------------------");
         assertEquals("verificando HM.size()...", expResult.getHmSV().size(), sve.getHmSV().size());
 
         System.out.println("============================= FIN testStoreFullObject ===============================");
@@ -2370,12 +2372,19 @@ public class SessionManagerTest {
     public void commitNotStored() throws Exception {
         String random = RandomStringUtils.randomAlphanumeric(30);
         
+        System.out.println("crear objeto foo...");
         Foo foo = new Foo();
+        System.out.println("\n\n\nllamar a store...");
         foo = sm.store(foo);
+        System.out.println("\n\n\nllamar a commit...");
         sm.commit();
         
+        // agregar un objeto a la lista.
+        System.out.println("\n\n\n Agregar un elelento a la lista...");
         foo.add(new SimpleVertex(random));
+        System.out.println("\n\n\n Llamar a commit...");
         sm.commit(); //nunca hice store del SV random
+        System.out.println("************************ fin commit ********************************");
         sm.getCurrentTransaction().clearCache();
         
         assertFalse(sm.query(SimpleVertex.class,

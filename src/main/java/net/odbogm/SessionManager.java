@@ -32,6 +32,7 @@ import net.odbogm.exceptions.VertexJavaClassNotFound;
 import net.odbogm.proxy.IObjectProxy;
 import net.odbogm.security.UserSID;
 import net.odbogm.utils.AgentDetector;
+import net.odbogm.utils.ODBResultSet;
 
 /**
  *
@@ -350,7 +351,7 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
      * @param sql sentencia a ejecutar 
      * @return resutado de la ejecución de la sentencia SQL
      */
-    public OResultSet query(String sql) {
+    public ODBResultSet query(String sql) {
         return this.publicTransaction.query(sql);
     }
 

@@ -11,7 +11,6 @@ import com.orientechnologies.orient.core.record.ODirection;
 import com.orientechnologies.orient.core.record.OEdge;
 import com.orientechnologies.orient.core.record.OVertex;
 import com.orientechnologies.orient.core.record.impl.ODocument;
-import com.orientechnologies.orient.core.sql.OCommandSQL;
 import com.orientechnologies.orient.core.sql.executor.OResult;
 import com.orientechnologies.orient.core.sql.executor.OResultSet;
 import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery;
@@ -48,6 +47,7 @@ import net.odbogm.exceptions.VertexJavaClassNotFound;
 import net.odbogm.proxy.IObjectProxy;
 import net.odbogm.proxy.ObjectProxyFactory;
 import net.odbogm.security.SObject;
+import net.odbogm.utils.ODBResultSet;
 import net.odbogm.utils.ReflectionUtils;
 import net.odbogm.utils.ThreadHelper;
 import net.odbogm.utils.VertexUtils;
@@ -481,13 +481,13 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             LOGGER.log(Level.FINER, "object data: {0}", omap);
             OVertex v = this.orientdbTransact.newVertex(classname);
             // forzar el fijado del rid temporal
-            LOGGER.log(Level.FINEST, "virtual RID: {0}",v.getIdentity().toString());
             
             //completar el template del vertex con los datos.
             VertexUtils.fillElement(v,omap);
             
             // fijar el RID temporal.
             v.save();
+            LOGGER.log(Level.FINEST, "virtual RID: {0}",v.getIdentity().toString());
             
             proxy = ObjectProxyFactory.create(o, v, this);
 
@@ -1244,8 +1244,14 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
             // si ret == null, recuperar el objeto desde la base, en caso contrario devolver el objeto desde el caché
             if (ret == null) {
-                ORID toLoad = new ORecordId(rid);
-                OVertex v = this.orientdbTransact.load(toLoad);
+                OVertex v = null;
+                try {
+                    ORID toLoad = new ORecordId(rid);
+                    v = this.orientdbTransact.load(toLoad);
+                } catch (Exception e) {
+                    v = null;
+                }
+                
                 if (v == null) {
                     throw new UnknownRID(rid, this);
                 }
@@ -1405,15 +1411,20 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * @return resutado de la ejecución de la sentencia SQL
      */
     @Override
-    public OResultSet query(String sql) {
+    public ODBResultSet query(String sql) {
+        initInternalTx();
         // usar una transacción interna para que el iterable pueda seguir funcionando
         // por fuera del OGM
-        ODatabaseSession localtx = this.sm.getDBTx();
+        ODatabaseSession localtx = this.orientdbTransact;
+        localtx.activateOnCurrentThread();
         flush();
 
-        OCommandSQL osql = new OCommandSQL(sql);
+        //OCommandSQL osql = new OCommandSQL(sql);
         //ODBOrientDynaElementIterable ret = new ODBOrientDynaElementIterable(localtx,localtx.command(osql).execute());
-        OResultSet ret = localtx.query(sql, "");
+        LOGGER.log(Level.FINEST, "sql: {0}",sql);
+        ODBResultSet ret = new ODBResultSet(localtx, localtx.query(sql));
+        
+        closeInternalTx();
         return ret;
     }
 
@@ -1425,7 +1436,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * @return resutado de la ejecución de la sentencia SQL
      */
     @Override
-    public OResultSet query(String sql, Object... param) {
+    public ODBResultSet query(String sql, Object... param) {
+        initInternalTx();
         // usar una transacción interna para que el iterable pueda seguir funcionando
         // por fuera del OGM
         ODatabaseSession localtx = this.sm.getDBTx();
@@ -1433,8 +1445,9 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         flush();
 
         //OCommandSQL osql = new OCommandSQL(sql);
-        OResultSet ret = localtx.query(sql, param);
-
+        //OResultSet ret = localtx.query(sql, param);
+        ODBResultSet ret = new ODBResultSet(localtx, localtx.query(sql,param));
+        closeInternalTx();
         return ret; 
     }
 
@@ -1484,7 +1497,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         OResultSet vertices = this.orientdbTransact.query("select from ?",ClassCache.getEntityName(clazz));
         LOGGER.log(Level.FINER, "Enlapsed ODB response: " + (System.currentTimeMillis() - init));
         vertices.stream().forEach(vertexOfClass->{
-            ret.add(this.get(clazz, vertexOfClass.getIdentity().toString()));
+            ret.add(this.get(clazz, vertexOfClass.getIdentity().get().toString()));
         }); 
         LOGGER.log(Level.FINER, "Enlapsed time query to List: " + (System.currentTimeMillis() - init));
         vertices.close();
@@ -1511,7 +1524,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         LOGGER.log(Level.FINER, cSQL);
         OResultSet ors  = this.orientdbTransact.query(cSQL);
         ors.stream().forEach(v->{
-            ret.add(this.get(clase, v.getIdentity().toString()));
+            ret.add(this.get(clase, v.getIdentity().get().toString()));
         });
         ors.close();
         closeInternalTx();
@@ -1537,7 +1550,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         LOGGER.log(Level.FINER, sql + " param: " + param);
         OResultSet ors = this.orientdbTransact.command(sql,param);
         ors.stream().forEach(v->{
-            ret.add(this.get(clase, v.getIdentity().toString()));
+            ret.add(this.get(clase, v.getIdentity().get().toString()));
         });
         ors.close();
         closeInternalTx();
@@ -1573,7 +1586,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         LOGGER.log(Level.FINER, sql);
         OResultSet ors = this.orientdbTransact.command(sql,param);
         ors.stream().forEach(v->{
-            ret.add(this.get(clase, v.getIdentity().toString()));
+            ret.add(this.get(clase, v.getIdentity().get().toString()));
         });
         closeInternalTx();
         ors.close();

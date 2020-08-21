@@ -1,9 +1,9 @@
 package net.odbogm;
 
 import com.orientechnologies.orient.core.record.OVertex;
-import com.orientechnologies.orient.core.sql.executor.OResultSet;
 import java.util.List;
 import java.util.logging.Level;
+import net.odbogm.utils.ODBResultSet;
 import org.junit.After;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -28,7 +28,7 @@ public class QueryTest {
 
     @Before
     public void setUp() {
-        sm = new SessionManager(Config.TESTDB, "admin", "admin")
+        sm = new SessionManager(Config.TESTDB, "admin", "nimda")
                 // .setClassLevelLog(ObjectProxy.class, Level.FINEST)
 //                .setClassLevelLog(ClassCache.class, Level.FINER)
                 .setClassLevelLog(Transaction.class, Level.FINEST)
@@ -106,12 +106,20 @@ public class QueryTest {
         Foo foo = new Foo();
         foo.add(sv1);
         foo.add(sv2);
+        System.out.println("llamando a store....");
         foo = sm.store(foo);
+        System.out.println("");
+        System.out.println("");
+        System.out.println("");
+        System.out.println("llamando a commit....");
         sm.commit();
+        System.out.println("");
+        System.out.println("");
+        System.out.println("");
+        System.out.println("");
         String rid = sm.getRID(foo);
-        
-        try ( OResultSet list = sm.query("select expand(out('FooNode_lsve')) from (select from " + rid + ")")) {
-            
+        System.out.println("rid: "+rid);
+        try ( ODBResultSet list = sm.query("select expand(out('FooNode_lsve')) from (select from " + rid + ");")) {
             if (!list.hasNext()) {
                 fail("Empty list!");
             } else {

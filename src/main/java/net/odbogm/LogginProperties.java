@@ -21,7 +21,7 @@ public class LogginProperties {
     public static Level ClassDef                    = Level.INFO;
     public static Level DbManager                   = Level.INFO;
     public static Level HashMapEmbeddedProxy        = Level.INFO;
-    public static Level HashMapLazyProxy            = Level.INFO;
+    public static Level HashMapLazyProxy            = Level.FINEST;
     public static Level LinkedListLazyProxy         = Level.INFO;
     public static Level ObjectMapper                = Level.INFO;
     public static Level ObjectProxy                 = Level.FINER;

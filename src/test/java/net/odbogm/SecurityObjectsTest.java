@@ -32,7 +32,7 @@ public class SecurityObjectsTest {
 
     @Before
     public void setUp() {
-        sm = new SessionManager(Config.TESTDB, "admin", "admin")
+        sm = new SessionManager(Config.TESTDB, "admin", "nimda")
                     .setClassLevelLog(TransparentDirtyDetectorInstrumentator.class, Level.FINEST)
                     .setClassLevelLog(InstrumentableClassDetector.class, Level.FINER)
                     //.setClassLevelLog(ClassCache.class, Level.FINER)
