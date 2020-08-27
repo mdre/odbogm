@@ -2,9 +2,6 @@ package net.odbogm;
 
 import com.orientechnologies.orient.core.db.ODatabaseSession;
 import com.orientechnologies.orient.core.sql.OCommandSQL;
-import java.util.logging.Level;
-import net.odbogm.agent.InstrumentableClassDetector;
-import net.odbogm.agent.TransparentDirtyDetectorInstrumentator;
 import net.odbogm.exceptions.CircularReferenceException;
 import net.odbogm.exceptions.UnknownRID;
 import net.odbogm.proxy.IObjectProxy;
@@ -33,8 +30,8 @@ public class SecurityObjectsTest {
     @Before
     public void setUp() {
         sm = new SessionManager(Config.TESTDB, "admin", "nimda")
-                    .setClassLevelLog(TransparentDirtyDetectorInstrumentator.class, Level.FINEST)
-                    .setClassLevelLog(InstrumentableClassDetector.class, Level.FINER)
+                    //.setClassLevelLog(TransparentDirtyDetectorInstrumentator.class, Level.INFO)
+                    //.setClassLevelLog(InstrumentableClassDetector.class, Level.INFO)
                     //.setClassLevelLog(ClassCache.class, Level.FINER)
                 ;
         sm.begin();

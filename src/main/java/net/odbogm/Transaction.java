@@ -121,14 +121,14 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             orientdbTransact = this.sm.getDBTx();
             orientdbTransact.begin();
             //orientdbTransact.setThreadMode(OrientConfigurableGraph.THREAD_MODE.ALWAYS_AUTOSET);
-            orientTransacLevel = 0;
+            orientTransacLevel = 1;
         } else {
             //aumentar el anidamiento de transacciones
+            activateOnCurrentThread();
             LOGGER.log(Level.FINEST, "Anidando transacción: {0} --> {1} - transact light edges: {2}",
                     new Object[]{orientTransacLevel, (orientTransacLevel + 1), orientdbTransact.getConfiguration().getValue(OGlobalConfiguration.RID_BAG_EMBEDDED_TO_SBTREEBONSAI_THRESHOLD)});
             orientTransacLevel++;
         }
-        activateOnCurrentThread();
     }
     
     /**
@@ -138,6 +138,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         if (orientdbTransact == null) return; //no se abrió todavía
         //FIXME: existe la posibilidad de que se intente cerrar la base con vertex nuevos creados. 
         //       se debería como mínimo tirar una excepción.
+        LOGGER.log(Level.FINEST, "transacLevel: {0} - newRids: {1}",new Object[]{orientTransacLevel,newrids.size()});
         if (orientTransacLevel <= 0 && newrids.isEmpty()) {
             LOGGER.log(Level.FINEST, "termnando la transacción\n");
             //orientdbTransact.shutdown(true, false);
@@ -145,9 +146,17 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             orientdbTransact = null;
             orientTransacLevel = 0;
         } else {
-            LOGGER.log(Level.FINEST, "decrementando la transacción: {0} --> {1}",
-                    new Object[]{orientTransacLevel, orientTransacLevel-1});
-            orientTransacLevel--;
+            if (orientTransacLevel>0) {
+                LOGGER.log(Level.FINEST, "decrementando la transacción: {0} --> {1}",
+                                         new Object[]{orientTransacLevel, orientTransacLevel-1}
+                          );
+                orientTransacLevel--;
+            } else {
+                LOGGER.log(Level.FINEST, "\n\n\n\n\n\n");
+                LOGGER.log(Level.FINEST, "la transacción ya estaba en 0!!!!!  New RIDs: {0}",newrids.size());
+                LOGGER.log(Level.FINEST, "\n\n\n\n\n\n");
+                
+            }
         }
     }
     
@@ -346,7 +355,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             
             // refrescar las referencias del caché
             String newRid;
-            LOGGER.log(Level.FINER, "NewRIDs: {0}", newrids.size());
+            LOGGER.log(Level.FINER, "update NewRIDs: {0}", newrids.size());
             for (Iterator<String> iterator = newrids.iterator(); iterator.hasNext();) {
                 String tempRid = iterator.next();
                 if (getFromCache(tempRid) != null) {
@@ -355,6 +364,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                     removeFromCache(tempRid);
                     newRid = sm.getRID(o);
                     addToCache(newRid, o);
+                    LOGGER.log(Level.FINEST, "{0} --> {1}",new String[]{tempRid,newRid});
                     //actualizar rid inyectado si corresponde
                     ((IObjectProxy)o).___injectRid();
                 }
@@ -480,10 +490,12 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
             LOGGER.log(Level.FINER, "object data: {0}", omap);
             OVertex v = this.orientdbTransact.newVertex(classname);
+            LOGGER.log(Level.FINEST, "virtual RID pre-save: {0}",v.getIdentity().toString());
             // forzar el fijado del rid temporal
             
             //completar el template del vertex con los datos.
             VertexUtils.fillElement(v,omap);
+            LOGGER.log(Level.FINEST, "fill RID: {0}",v.getIdentity().toString());
             
             // fijar el RID temporal.
             v.save();

@@ -16,12 +16,12 @@ public class LogginProperties {
     public static Level AccessRight                 = Level.INFO;
     public static Level ArrayListEmbeddedProxy      = Level.INFO;
     public static Level ArrayListLazyProxy          = Level.INFO;
-    public static Level Auditor                     = Level.INFO;
+    public static Level Auditor                     = Level.FINEST;
     public static Level ClassCache                  = Level.INFO;
     public static Level ClassDef                    = Level.INFO;
     public static Level DbManager                   = Level.INFO;
     public static Level HashMapEmbeddedProxy        = Level.INFO;
-    public static Level HashMapLazyProxy            = Level.FINEST;
+    public static Level HashMapLazyProxy            = Level.INFO;
     public static Level LinkedListLazyProxy         = Level.INFO;
     public static Level ObjectMapper                = Level.INFO;
     public static Level ObjectProxy                 = Level.FINER;

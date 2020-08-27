@@ -59,17 +59,17 @@ public class Auditor implements IAuditor {
      * Realiza una auditoría a partir del objeto indicado.
      *
      * @param o IOBjectProxy a auditar
-     * @param at AuditType
+     * @param auditType AuditType
      * @param label Etiqueta de referencia
      * @param data objeto a loguear con un toString
      */
     @Override
-    public synchronized void auditLog(IObjectProxy o, int at, String label, Object data) {
+    public synchronized void auditLog(IObjectProxy o, int auditType, String label, Object data) {
         // guardar log de auditoría si corresponde.
         if (o.___getBaseClass().isAnnotationPresent(Audit.class)) {
             int logVal = o.___getBaseClass().getAnnotation(Audit.class).log();
-            if ((logVal & at) > 0) {
-                this.logdata.add(new LogData(o, at, label, data));
+            if ((logVal & auditType) > 0) {
+                this.logdata.add(new LogData(o, auditType, label, data));
                 LOGGER.log(Level.FINER, "objeto auditado");
             } else {
                 LOGGER.log(Level.FINER, "No corresponde auditar");
@@ -84,31 +84,38 @@ public class Auditor implements IAuditor {
     public void commit() {
         // crear un UUDI para todo el log a comitear.
         String ovLogID = UUID.randomUUID().toString();
-        ODatabaseSession current = this.transaction.getCurrentGraphDb();
+        ODatabaseSession odb = this.transaction.getCurrentGraphDb();
         
-        ODatabaseSession odb = this.transaction.getSessionManager().getDBTx();
+        //ODatabaseSession odb = this.transaction.getSessionManager().getDBTx();
         int opInTx = 0; //operation number in transaction
         
         for (LogData logData : logdata) {
             opInTx++;
-            LOGGER.log(Level.FINER, "valid: {0} : {1}", new Object[]{logData.o.___isValid(), logData.rid});
+            LOGGER.log(Level.FINER, "valid: {0} : deleted: {1}  : o.getRid: {2}   : log.rid: {3}", 
+                                        new Object[]{logData.o.___isValid(),
+                                                     logData.o.___isDeleted(), 
+                                                     logData.o.___isDeleted()?"-deleted-":logData.o.___getRid(), 
+                                                     logData.rid}
+                       );
             OVertex ologData = odb.newVertex(ODBAUDITLOGVERTEXCLASS);
-            
+
             ologData.setProperty("transactionID", ovLogID);
             ologData.setProperty("opInTx", opInTx);
-            ologData.setProperty("rid", (logData.o.___isValid()&!logData.o.___isDeleted()?logData.o.___getRid():logData.rid));
+            ologData.setProperty("rid", (logData.o.___isValid() &
+                                         !logData.o.___isDeleted() 
+                                        ?logData.o.___getRid():logData.rid));
             ologData.setProperty("timestamp", DateHelper.getCurrentDateTime());
             ologData.setProperty("user", this.auditUser);
             ologData.setProperty("action", logData.auditType);
             ologData.setProperty("label", logData.label);
             ologData.setProperty("log", logData.odata != null ? logData.odata.toString() : logData.data);
-            
+            ologData.save();
         }
         
-        odb.commit();
-        odb.close();
+        //odb.commit();
+        //odb.close();
         
-        current.activateOnCurrentThread();
+        //current.activateOnCurrentThread();
         this.logdata.clear();
     }
 }

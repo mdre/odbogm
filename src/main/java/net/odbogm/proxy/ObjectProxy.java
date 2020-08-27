@@ -109,6 +109,12 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             }
         }
 
+        if (method.getName().equals("___geElement")) {
+            if (this.___objectReady) {
+                return this.___getElement();
+            }
+        }
+
         if (method.getName().equals("___getBaseClass")) {
             if (this.___objectReady) {
                 return this.___getBaseClass();
@@ -283,6 +289,16 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         }
     }
 
+
+    /**
+     * retorna el OElement asociado a este proxi.
+     *
+     * @return referencia al OElement
+     */
+    @Override
+    public OElement ___getElement() {
+        return this.___baseElement;
+    }
 
     /**
      * retorna el vértice asociado a este proxi o null en caso que no exista
@@ -674,6 +690,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                         // si es que existe
                         if (ov.getEdges(ODirection.OUT, graphRelationName).iterator().hasNext()) {
                             // se ha eliminado el objeto y debe ser removido el Vértice o el Edge correspondiente
+                            LOGGER.log(Level.FINEST, "se ha eliminado el objeto y debe ser removido el Vértice o el Edge correspondiente");
                             OEdge removeEdge = null;
                             for (OEdge edge : ov.getEdges(ODirection.OUT, graphRelationName)) {
                                 removeEdge = (OEdge) edge;
@@ -1011,9 +1028,8 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             Field f = classdef.fieldsObject.get(field);
 //            Field f = ReflectionUtils.findField(this.___baseClass, field);
 
-            // En el Edge, IN proviene del objeto apuntado. Raro pero es así :(
-            String outRid = edgeToRemove.getFrom().getIdentity().toString();
-            LOGGER.log(Level.FINER, "El edge {0} apunta IN: {1} apunta OUT: {2}",
+            String outTo = edgeToRemove.getTo().getIdentity().toString();
+            LOGGER.log(Level.FINER, "El edge {0} apunta from: {1} ---(to)--> {2}",
                     new Object[]{edgeToRemove,
                         edgeToRemove.getFrom().getIdentity().toString(),
                         edgeToRemove.getTo().getIdentity().toString()});
@@ -1034,7 +1050,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                     this.___transaction.delete(f.get(this.___proxiedObject));
                 } else {
                     LOGGER.log(Level.FINER, "la referencia estaba en null, recupear y eliminar el objeto.");
-                    this.___transaction.delete(this.___transaction.get(outRid));
+                    this.___transaction.delete(this.___transaction.get(outTo));
                 }
             }
 

@@ -1,6 +1,7 @@
 package net.odbogm.proxy;
 
 import com.orientechnologies.orient.core.record.OEdge;
+import com.orientechnologies.orient.core.record.OElement;
 import com.orientechnologies.orient.core.record.OVertex;
 
 
@@ -13,6 +14,7 @@ public interface IObjectProxy {
     public void ___setDeletedMark();
     public boolean ___isDeleted();
     
+    public OElement ___getElement();
     public OVertex ___getVertex();
     public String ___getRid();
     public void ___setVertex(OVertex v);
