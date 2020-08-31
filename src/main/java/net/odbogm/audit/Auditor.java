@@ -41,7 +41,7 @@ public class Auditor implements IAuditor {
         // verificar que la clase de auditoría exista
         if (this.transaction.getDBClass(ODBAUDITLOGVERTEXCLASS) == null) {
             ODatabaseSession odb = this.transaction.getSessionManager().getDBTx();
-            OClass olog = odb.createClass(ODBAUDITLOGVERTEXCLASS);
+            OClass olog = odb.createClass(ODBAUDITLOGVERTEXCLASS,"V");
             olog.createProperty("rid", OType.STRING);
             olog.createProperty("timestamp", OType.DATETIME);
             olog.createProperty("transactionID", OType.STRING);

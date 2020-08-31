@@ -13,6 +13,7 @@ import java.util.concurrent.Executors;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 import net.odbogm.proxy.IObjectProxy;
 import org.junit.After;
 import static org.junit.Assert.*;
@@ -144,55 +145,82 @@ public class ConcurrencyTest {
         int val = OGlobalConfiguration.RID_BAG_EMBEDDED_TO_SBTREEBONSAI_THRESHOLD.getValue();
         assertEquals(-1, val);
         
-        ODatabaseSession g = sm.getGraphdb();
+        ODatabaseSession g = sm.getDBTx();
+        g.begin();
+        
         OVertex v1 = g.newVertex();
+        v1.save();
         OVertex v2 = g.newVertex();
-        v1.addEdge(v2);
+        v2.save();
+        g.commit();
+        
         int version = v1.getProperty("@version");
-        long out = v1.getEdges(ODirection.OUT).spliterator().estimateSize();
-        long in = v1.getEdges(ODirection.IN).spliterator().estimateSize();;
+        long out = StreamSupport.stream(v1.getEdges(ODirection.OUT).spliterator(),false).count();
+        long in = StreamSupport.stream(v1.getEdges(ODirection.IN).spliterator(),false).count();
         System.out.println("Version: " + version);
         System.out.println("v1 out: " + out);
         System.out.println("v1 in: " + in);
-
+        
+        System.out.println("");
+        System.out.println("addEdge");
+        System.out.println("");
+        g.begin();
+        v1.addEdge(v2);
+        v1.save();
+        System.out.println("pre-commit");
+        version = v1.getProperty("@version");
+        out = StreamSupport.stream(v1.getEdges(ODirection.OUT).spliterator(),false).count();
+        in = StreamSupport.stream(v1.getEdges(ODirection.IN).spliterator(),false).count();
+        System.out.println("Version: " + version);
+        System.out.println("v1 out: " + out);
+        System.out.println("v1 in: " + in);
+        
         g.commit();
+        
+        System.out.println("");
+        System.out.println("post-commit");
+        
         int version2 = v1.getProperty("@version");
-        long out2 = v1.getEdges(ODirection.OUT).spliterator().estimateSize();;
-        long in2 = v1.getEdges(ODirection.IN).spliterator().estimateSize();;
+        long out2 = StreamSupport.stream(v1.getEdges(ODirection.OUT).spliterator(),false).count();
+        long in2 = StreamSupport.stream(v1.getEdges(ODirection.IN).spliterator(),false).count();
         System.out.println("After commit:");
         System.out.println("Version: " + version2);
         System.out.println("v1 out: " + out2);
         System.out.println("v1 in: " + in2);
-        assertEquals(version + 1, version2);
+        assertEquals(version+1, version2);
         assertEquals(out, out2);
         assertEquals(in, in2);
         
         String rid1 = v1.getIdentity().toString();
+        System.out.println("RID: "+rid1);
         g.close();
+        
         g = sm.getDBTx();
+        g.begin();
         v1 = g.load(new ORecordId(rid1));
         version2 = v1.getProperty("@version");
-        out2 = v1.getEdges(ODirection.OUT).spliterator().getExactSizeIfKnown();
-        in2 = v1.getEdges(ODirection.IN).spliterator().getExactSizeIfKnown();;
+        out2 = StreamSupport.stream(v1.getEdges(ODirection.OUT).spliterator(),false).count();
+        in2 = StreamSupport.stream(v1.getEdges(ODirection.IN).spliterator(),false).count();
         System.out.println("New transaction:");
         System.out.println("Version: " + version2);
         System.out.println("v1 out: " + out2);
         System.out.println("v1 in: " + in2);
-        assertEquals(version + 1, version2);
+        assertEquals(version+1 , version2);
         assertEquals(out, out2);
         assertEquals(in, in2);
         
         OVertex v3 = g.newVertex();
         v1.addEdge(v3);
+        v1.save();
         g.commit();
         version2 = v1.getProperty("@version");
-        out2 = v1.getEdges(ODirection.OUT).spliterator().getExactSizeIfKnown();;
-        in2 = v1.getEdges(ODirection.IN).spliterator().getExactSizeIfKnown();;
+        out2 = StreamSupport.stream(v1.getEdges(ODirection.OUT).spliterator(),false).count();
+        in2 = StreamSupport.stream(v1.getEdges(ODirection.IN).spliterator(),false).count();
         System.out.println("New edge:");
         System.out.println("Version: " + version2);
         System.out.println("v1 out: " + out2);
         System.out.println("v1 in: " + in2);
-        assertEquals(version + 1, version2);
+        assertEquals(version+1 , version2);
         assertEquals(out + 1, out2);
         assertEquals(in, in2);
     }

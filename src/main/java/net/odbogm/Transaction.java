@@ -1,7 +1,6 @@
 package net.odbogm;
 
 import com.orientechnologies.common.exception.OException;
-import com.orientechnologies.orient.core.config.OGlobalConfiguration;
 import com.orientechnologies.orient.core.db.ODatabaseSession;
 import com.orientechnologies.orient.core.exception.OConcurrentModificationException;
 import com.orientechnologies.orient.core.id.ORID;
@@ -125,8 +124,11 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         } else {
             //aumentar el anidamiento de transacciones
             activateOnCurrentThread();
-            LOGGER.log(Level.FINEST, "Anidando transacción: {0} --> {1} - transact light edges: {2}",
-                    new Object[]{orientTransacLevel, (orientTransacLevel + 1), orientdbTransact.getConfiguration().getValue(OGlobalConfiguration.RID_BAG_EMBEDDED_TO_SBTREEBONSAI_THRESHOLD)});
+//            LOGGER.log(Level.FINEST, "Anidando transacción: {0} --> {1} - transact light edges: {2}",
+//                    new Object[]{orientTransacLevel, (orientTransacLevel + 1), 
+//                        orientdbTransact!=null?orientdbTransact.getConfiguration().getValue(OGlobalConfiguration.RID_BAG_EMBEDDED_TO_SBTREEBONSAI_THRESHOLD):
+//                                "orientdbTransact = null"
+//                                });
             orientTransacLevel++;
         }
     }
@@ -138,6 +140,17 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         if (orientdbTransact == null) return; //no se abrió todavía
         //FIXME: existe la posibilidad de que se intente cerrar la base con vertex nuevos creados. 
         //       se debería como mínimo tirar una excepción.
+        if (orientTransacLevel>0) {
+            LOGGER.log(Level.FINEST, "decrementando la transacción: {0} --> {1}",
+                                     new Object[]{orientTransacLevel, orientTransacLevel-1}
+                      );
+            orientTransacLevel--;
+        } else {
+            LOGGER.log(Level.FINEST, "\n\n\n\n\n\n");
+            LOGGER.log(Level.FINEST, "la transacción ya estaba en 0!!!!!  New RIDs: {0}",newrids.size());
+            LOGGER.log(Level.FINEST, "\n\n\n\n\n\n");
+        }
+        
         LOGGER.log(Level.FINEST, "transacLevel: {0} - newRids: {1}",new Object[]{orientTransacLevel,newrids.size()});
         if (orientTransacLevel <= 0 && newrids.isEmpty()) {
             LOGGER.log(Level.FINEST, "termnando la transacción\n");
@@ -145,18 +158,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             orientdbTransact.close();
             orientdbTransact = null;
             orientTransacLevel = 0;
-        } else {
-            if (orientTransacLevel>0) {
-                LOGGER.log(Level.FINEST, "decrementando la transacción: {0} --> {1}",
-                                         new Object[]{orientTransacLevel, orientTransacLevel-1}
-                          );
-                orientTransacLevel--;
-            } else {
-                LOGGER.log(Level.FINEST, "\n\n\n\n\n\n");
-                LOGGER.log(Level.FINEST, "la transacción ya estaba en 0!!!!!  New RIDs: {0}",newrids.size());
-                LOGGER.log(Level.FINEST, "\n\n\n\n\n\n");
-                
-            }
         }
     }
     
@@ -1234,7 +1235,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     @Override
     public Object get(String rid) throws UnknownRID, VertexJavaClassNotFound {
         if (rid == null) {
-            throw new UnknownRID(this);
+            throw new UnknownRID("The rid must not be null",this);
         }
         
         initInternalTx();
