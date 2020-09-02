@@ -877,6 +877,15 @@ public class SessionManagerTest {
         } catch (Exception ex) {
             assertTrue(ex instanceof InvalidObjectReference);
         }
+        
+        //the commit must ignore the stored vertex:
+        
+        rid = sm.getRID(stored);
+        assertTrue(rid.contains("-")); //must be new
+        sm.commit();
+        String rid2 = sm.getRID(stored);
+        assertEquals(rid, rid2);
+        
         assertEquals(0, this.sm.getDirtyCount());
     }
 
