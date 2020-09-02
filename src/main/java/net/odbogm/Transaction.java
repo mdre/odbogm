@@ -272,13 +272,15 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     public synchronized void commit() throws ConcurrentModification, OdbogmException {
         try {
             doCommit();
-        } catch (OException ex) {
+        } catch (OdbogmException ex) {
+            throw ex;
+        } catch (Exception ex) {
             throw new OdbogmException(ex, this);
         }
     }
     
     
-    private void doCommit() throws ConcurrentModification, OdbogmException {
+    private void doCommit() {
         initInternalTx();
         
         LOGGER.log(Level.FINER, "COMMIT");
@@ -467,7 +469,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             // verificar que la clase existe
             if (getDBClass(classname) == null) {
                 // arrojar una excepción en caso contrario.
-                throw new ClassToVertexNotFound("No se ha encontrado la definición de la clase " + classname + " en la base!");
+                throw new ClassToVertexNotFound("No se ha encontrado la definición de la clase " +
+                        classname + " en la base!", this);
             }
             
             // Obtener un map del objeto.
@@ -1178,6 +1181,16 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     @Override
     public Object get(String rid) throws UnknownRID, VertexJavaClassNotFound {
+        try {
+            return doGet(rid);
+        } catch (OdbogmException ex) {
+            throw ex;
+        } catch (Throwable ex) {
+            throw new OdbogmException(ex, this);
+        }
+    }
+    
+    private Object doGet(String rid) throws UnknownRID, VertexJavaClassNotFound {
         if (rid == null) {
             throw new UnknownRID(this);
         }

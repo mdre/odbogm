@@ -881,6 +881,7 @@ public class SessionManagerTest {
             assertTrue(ex instanceof InvalidObjectReference);
         }
         
+        
         //the commit must ignore the stored vertex:
         
         rid = sm.getRID(stored);
@@ -2222,6 +2223,8 @@ public class SessionManagerTest {
         Transaction t = sm.getCurrentTransaction();
         assertNull(orientdbTransactField.get(t));
         
+        //store and commit:
+        
         SimpleVertexEx s1 = new SimpleVertexEx();
         s1 = t.store(s1);
         //mientras no comitee, el store mantiene la transacción
@@ -2230,28 +2233,83 @@ public class SessionManagerTest {
         t.commit();
         assertNull(orientdbTransactField.get(t));
         
-        s1.setS("modificado");
+        //get:
+        
+        String rid = sm.getRID(s1);
+        t.get(rid);
+        assertNull(orientdbTransactField.get(t));
+        
+        //commit:
+        
+        s1.setS("modified");
         t.commit();
         assertNull(orientdbTransactField.get(t));
         
+        //refresh:
+        
         t.refreshObject(s1);
         assertNull(orientdbTransactField.get(t));
+        
+        //rollback:
+        
+        s1.setS("rollback");
+        t.rollback();
+        assertNull(orientdbTransactField.get(t));
+        
+        //delete:
         
         t.delete(s1);
         assertNull(orientdbTransactField.get(t));
         t.commit();
         assertNull(orientdbTransactField.get(t));
+        
+        //queries:
+        
+        t.query(SimpleVertex.class);
+        assertNull(orientdbTransactField.get(t));
+        t.query("select from SimpleVertex");
+        assertNull(orientdbTransactField.get(t));
+        t.query(SimpleVertex.class, "where aprop = true");
+        assertNull(orientdbTransactField.get(t));
+        t.query("select from V where aprop = ?", true);
+        assertNull(orientdbTransactField.get(t));
+        t.query("select count(*) from V", "");
+        assertNull(orientdbTransactField.get(t));
+        t.query(SimpleVertex.class, "select from V where aprop = true", new HashMap<>());
+        assertNull(orientdbTransactField.get(t));
+        t.query(SimpleVertex.class, "select from V where aprop = ?", true);
+        assertNull(orientdbTransactField.get(t));
     }
     
     
+    /*
+     * All operations that open a new database transaction must always close it 
+     * 
+     */
     @Test
     public void finalizeTransactionsWithException() throws Exception {
         Transaction t = sm.getCurrentTransaction();
-        try {
-            t.get("unknown");
-        } catch (UnknownRID ex) {
-        }
+        SimpleVertex sv = t.store(new SimpleVertex());
+        t.commit();
+        String rid = sm.getRID(sv);
+        
+        OrientGraph db = EasyMock.createStrictMock(OrientGraph.class);
+        EasyMock.replay(db); //it throws exception on every method call
+        
+        //get:
+        
+        orientdbTransactField.set(t, db);
+        assertThrows(Throwable.class, () -> t.get(rid));
         assertNull(orientdbTransactField.get(t));
+        
+        //commit:
+        
+        orientdbTransactField.set(t, db);
+        assertThrows(Throwable.class, () -> t.commit());
+        assertNull(orientdbTransactField.get(t));
+        
+        
+
     }
     
     

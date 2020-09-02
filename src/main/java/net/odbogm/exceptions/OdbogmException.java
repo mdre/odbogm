@@ -11,6 +11,10 @@ public class OdbogmException extends RuntimeException {
     
     private boolean canRetry = false;
     
+    public OdbogmException(String message) {
+        super(message);
+    }
+    
     public OdbogmException(Transaction transaction) {
         transaction.closeInternalTx();
     }
