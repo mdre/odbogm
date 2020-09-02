@@ -138,15 +138,19 @@ public class SessionManagerTest {
 
         assertEquals(1, sm.getDirtyCount());
         assertTrue(result instanceof IObjectProxy);
-
         assertEquals(expResult.i, result.i);
+        
+        //still not in database
+        String rid = ((IObjectProxy) result).___getRid();
+        var exist = this.sm.query("select count(*) from V where @rid = " + rid, "");
+        assertEquals(0, exist);
 
         this.sm.commit();
         assertEquals(0, sm.getDirtyCount());
 
         System.out.println("Recuperar el objeto de la base");
-        String rid = ((IObjectProxy) result).___getRid();
-        expResult = this.sm.get(SimpleVertex.class, rid);
+        String rid2 = ((IObjectProxy) result).___getRid();
+        expResult = commitClearAndGet(rid2);
 
         assertEquals(0, sm.getDirtyCount());
 
@@ -157,7 +161,6 @@ public class SessionManagerTest {
         assertEquals(((IObjectProxy) expResult).___getRid(), ((IObjectProxy) result).___getRid());
 
         assertEquals(expResult.getI(), sv.getI());
-//        assertEquals((float)expResult.getF(), (float)sv.getF());
         assertEquals(expResult.getS(), sv.getS());
         assertEquals(expResult.getoB(), sv.getoB());
         assertEquals(expResult.getoF(), sv.getoF());
