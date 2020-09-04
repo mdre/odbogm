@@ -882,9 +882,10 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                 }
 
                                 // refrescar los estados
-                                final Map<Object, ObjectCollectionState> keysState = ((ILazyMapCalls) mapFieldValue).collectionState();
-                                final Map<Object, OrientEdge> keysToEdges = ((ILazyMapCalls) mapFieldValue).getKeyToEdge();
-                                final Map<Object, ObjectCollectionState> entitiesState = ((ILazyMapCalls) mapFieldValue).getEntitiesState();
+                                ILazyMapCalls lazyMap = (ILazyMapCalls) mapFieldValue;
+                                final Map<Object, ObjectCollectionState> keysState = lazyMap.collectionState();
+                                final Map<Object, OrientEdge> keysToEdges = lazyMap.getKeyToEdge();
+                                final Map<Object, ObjectCollectionState> entitiesState = lazyMap.getEntitiesState();
 
                                 // recorrer todas las claves del mapa
                                 for (Map.Entry<Object, ObjectCollectionState> entry1 : keysState.entrySet()) {
@@ -905,13 +906,12 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                         }
                                     }
 
-                                    OrientEdge oe;
                                     // verificar el estado del objeto en la colección.
                                     switch (keyState) {
                                         case ADDED:
                                             // crear un link entre los dos objetos.
                                             LOGGER.log(Level.FINER, "-----> agregando un LinkList al Map!");
-                                            oe = this.___transaction.getCurrentGraphDb().addEdge("class:" + graphRelationName,
+                                            OrientEdge oe = this.___transaction.getCurrentGraphDb().addEdge("class:" + graphRelationName,
                                                     (OrientVertex) this.___baseElement, ((IObjectProxy) linkedO).___getVertex(),
                                                     graphRelationName);
                                             // actualizar el edge con los datos de la key.
@@ -921,6 +921,9 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                             if (this.___transaction.isAuditing()) {
                                                 this.___transaction.auditLog(this, AuditType.WRITE, "LINKLIST ADD: " + graphRelationName, oe);
                                             }
+                                            
+                                            //update the map with the managed key
+                                            lazyMap.updateKey(key, oe);
                                             break;
 
                                         case NOCHANGE:

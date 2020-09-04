@@ -94,22 +94,11 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
             // para cada vértice conectado, es necesario mapear todos los Edges que los unen.
             for (Edge edge : relatedTo.getEdges(next, this.direction, field)) {
                 OrientEdge oe = (OrientEdge) edge;
-                Object k = null;
                 LOGGER.log(Level.FINER, "edge keyclass: {0}  OE RID:{1}",
                         new Object[]{this.keyClass, oe.getId().toString()});
-                // si el keyClass no es de tipo nativo, hidratar un objeto.
-                if (Primitives.PRIMITIVE_MAP.containsKey(this.keyClass)) {
-                    LOGGER.log(Level.FINER, "primitive!!");
-                    for (String prop : oe.getPropertyKeys()) {
-                        k = oe.getProperty(prop);
-                    }
-                } else {
-                    LOGGER.log(Level.FINER, "clase como key");
-                    k = transaction.getEdgeAsObject(keyClass, oe);
-                }
+                Object k = edgeToObject(oe);
                 this.put(k, o);
                 this.keyState.put(k, ObjectCollectionState.REMOVED);
-                this.keyToEdge.put(k, oe);
             }
 
             // como puede estar varias veces un objecto agregado al map con distintos keys
@@ -496,4 +485,31 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         return super.equals(o); //To change body of generated methods, choose Tools | Templates.
     }
 
+    @Override
+    public void updateKey(Object originalKey, OrientEdge edge) {
+        Object key = this.edgeToObject(edge);
+        Object value = this.get(originalKey);
+        //we must replace the original key object with the proxy
+        this.remove(originalKey);
+        this.put(key, value);
+        this.keyState.put(key, ObjectCollectionState.REMOVED); //default state
+    }
+
+    private Object edgeToObject(OrientEdge edge) {
+        Object k = null;
+        if (Primitives.PRIMITIVE_MAP.containsKey(this.keyClass)) {
+            LOGGER.log(Level.FINER, "primitive!!");
+            //@TODO: see this...
+            for (String prop : edge.getPropertyKeys()) {
+                k = edge.getProperty(prop);
+            }
+        } else {
+            //if keyClass is not a native type, we must hydrate an object
+            LOGGER.log(Level.FINER, "clase como key");
+            k = transaction.getEdgeAsObject(keyClass, edge);
+        }
+        this.keyToEdge.put(k, edge);
+        return k;
+    }
+    
 }

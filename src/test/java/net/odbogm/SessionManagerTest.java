@@ -2572,6 +2572,41 @@ public class SessionManagerTest {
     }
     
     /*
+     * Bug fixed: in edge map, add an edge, commit, remove edge, commit, caused
+     * and exception. Also, a recently added key didn't detect changes to be
+     * persisted.
+     */
+    @Test
+    public void edgeAttributes2() throws Exception {
+        SimpleVertexEx to = sm.store(new SimpleVertexEx());
+        SimpleVertexEx v = sm.store(new SimpleVertexEx());
+        v.setOhmSVE(new HashMap<>());
+        
+        EdgeAttrib e1 = new EdgeAttrib();
+        EdgeAttrib e2 = new EdgeAttrib();
+        v.ohmSVE.put(e1, to);
+        v.ohmSVE.put(e2, to);
+        sm.commit();
+        assertEquals(2, v.getOhmSVE().size());
+        
+        v.ohmSVE.remove(e2);
+        //if bug is fixed, this must not throw exception:
+        sm.commit();
+        assertEquals(1, v.getOhmSVE().size());
+        
+        //edit a new edge
+        
+        e1 = v.getOhmSVE().keySet().iterator().next();
+        e1.setNota("a text");
+        
+        //the commit must persist the change
+        v = commitClearAndGet(v);
+        assertEquals(1, v.getOhmSVE().size());
+        e1 = v.getOhmSVE().keySet().iterator().next();
+        assertEquals("a text", e1.getNota());
+    }
+    
+    /*
      * Testea que persista y cargue bien atributos de tipo enum en aristas.
      */
     @Test
