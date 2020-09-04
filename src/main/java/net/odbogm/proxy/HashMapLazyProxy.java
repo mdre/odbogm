@@ -10,6 +10,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
@@ -72,13 +73,12 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
 
     //********************* change control **************************************
     private Map<Object, ObjectCollectionState> entitiesState = new ConcurrentHashMap<>();
-    private ConcurrentHashMap<Object, ObjectCollectionState> keyState = new ConcurrentHashMap<>();
+    private Map<Object, ObjectCollectionState> keyState = new ConcurrentHashMap<>();
     private Map<Object, OrientEdge> keyToEdge = new ConcurrentHashMap<>();
 
     private synchronized void lazyLoad() {
         this.transaction.initInternalTx();
         
-//        LOGGER.log(Level.FINER, "Lazy Load.....");
         this.lazyLoad = false;
         this.lazyLoading = true;
 
@@ -115,6 +115,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
     /**
      * Vuelve establecer el punto de verificación.
      */
+    @Override
     public synchronized void clearState() {
         this.entitiesState.clear();
         this.keyState.clear();
@@ -172,17 +173,20 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
                 this.entitiesState.replace(value, ObjectCollectionState.NOCHANGE);
             }
         }
-        return this.keyState;
+        return Map.copyOf(this.keyState);
     }
 
+    @Override
     public Map<Object, ObjectCollectionState> getEntitiesState() {
         return entitiesState;
     }
 
+    @Override
     public Map<Object, ObjectCollectionState> getKeyState() {
         return keyState;
     }
 
+    @Override
     public Map<Object, OrientEdge> getKeyToEdge() {
         return keyToEdge;
     }
@@ -426,7 +430,20 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
             this.lazyLoad();
         }
         this.setDirty();
-        return super.put(key, value); //To change body of generated methods, choose Tools | Templates.
+        Object previous = super.put(key, value);
+        if (previous != null) {
+            if (!Objects.equals(value, previous)) {
+                //there a was a change, we remove the key state to consider it added
+                this.keyState.remove(key);
+                //we consider the value as removed to remove the old edge
+                this.entitiesState.put(previous, ObjectCollectionState.REMOVED);
+            }
+        }
+        if (this.keyState.containsKey(key)) {
+            //if it was previously marked as REMOVED, remove the mark
+            this.keyState.remove(key);
+        }
+        return previous;
     }
 
     @Override
@@ -490,9 +507,13 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         Object key = this.edgeToObject(edge);
         Object value = this.get(originalKey);
         //we must replace the original key object with the proxy
-        this.remove(originalKey);
-        this.put(key, value);
-        this.keyState.put(key, ObjectCollectionState.REMOVED); //default state
+        super.remove(originalKey);
+        super.put(key, value);
+        //and the state
+        ObjectCollectionState state = this.keyState.get(originalKey);
+        if (state != null) {
+            this.keyState.put(key, state);
+        }
     }
 
     private Object edgeToObject(OrientEdge edge) {

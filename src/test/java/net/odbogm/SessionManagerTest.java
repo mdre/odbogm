@@ -1,5 +1,6 @@
 package net.odbogm;
 
+import com.tinkerpop.blueprints.Direction;
 import static org.junit.Assert.*;
 import com.tinkerpop.blueprints.impls.orient.OrientGraph;
 import java.lang.reflect.Field;
@@ -2522,7 +2523,7 @@ public class SessionManagerTest {
     }
     
     /*
-     * Testea los mapas que son persistidos como relaciones a nodos.
+     * Tests that maps are persisted as relations to vertices.
      */
     @Test
     public void edgeAttributes() throws Exception {
@@ -2530,27 +2531,21 @@ public class SessionManagerTest {
         SimpleVertexEx v = new SimpleVertexEx();
         v.setOhmSVE(new HashMap<>());
         
-        EdgeAttrib e1 = new EdgeAttrib("relación 1", new Date());
-        EdgeAttrib e2 = new EdgeAttrib("relación 2", new Date());
+        EdgeAttrib e1 = new EdgeAttrib("relation 1", new Date());
+        EdgeAttrib e2 = new EdgeAttrib("relation 2", new Date());
         v.ohmSVE.put(e1, to);
         v.ohmSVE.put(e2, to);
         
         v = sm.store(v);
-        sm.commit();
-        String rid = sm.getRID(v);
-        sm.getCurrentTransaction().clearCache();
-        
-        v = sm.get(SimpleVertexEx.class, rid);
+        v = commitClearAndGet(v);
         assertEquals(2, v.ohmSVE.size());
         
-        //elimino una relación
+        //remove a relation
         v.ohmSVE.remove(e1);
-        sm.commit();
-        sm.getCurrentTransaction().clearCache();
-        
-        v = sm.get(SimpleVertexEx.class, rid);
+        v = commitClearAndGet(v);
         assertEquals(1, v.ohmSVE.size());
-        assertNotNull(v.ohmSVE.get(e2));
+        to = v.ohmSVE.get(e2);
+        assertNotNull(to);
         assertNull(v.ohmSVE.get(e1));
         
         v.ohmSVE.remove(e2);
@@ -2558,17 +2553,13 @@ public class SessionManagerTest {
         sm.rollback();
         assertFalse(v.ohmSVE.isEmpty());
         
-        //agregar más elementos al mapa
-        //@TODO: ver bien, esto no anda como debiera
-//        v.ohmSVE.clear();
-//        EdgeAttrib e3 = new EdgeAttrib("nueva relación", new Date());
-//        v.ohmSVE.put(e3, to);
-//        sm.commit();
-//        sm.getCurrentTransaction().clearCache();
-//        
-//        v = sm.get(SimpleVertexEx.class, rid);
-//        assertEquals(1, v.ohmSVE.size());
-//        assertEquals("nueva relación", v.ohmSVE.keySet().iterator().next().getNota());
+        //add more elements to the map
+        v.ohmSVE.clear();
+        EdgeAttrib e3 = new EdgeAttrib("new relation", new Date());
+        v.ohmSVE.put(e3, to);
+        v = commitClearAndGet(v);
+        assertEquals(1, v.ohmSVE.size());
+        assertEquals("new relation", v.ohmSVE.keySet().iterator().next().getNota());
     }
     
     /*
@@ -2587,6 +2578,7 @@ public class SessionManagerTest {
         v.ohmSVE.put(e1, to);
         v.ohmSVE.put(e2, to);
         sm.commit();
+        System.out.println("Rid: " + sm.getRID(v));
         assertEquals(2, v.getOhmSVE().size());
         
         v.ohmSVE.remove(e2);
@@ -2604,6 +2596,76 @@ public class SessionManagerTest {
         assertEquals(1, v.getOhmSVE().size());
         e1 = v.getOhmSVE().keySet().iterator().next();
         assertEquals("a text", e1.getNota());
+    }
+    
+    /*
+     * More tests with maps of edged.
+     */
+    @Test
+    public void edgeAttributes3() throws Exception {
+        SimpleVertexEx to1 = sm.store(new SimpleVertexEx());
+        to1.setS("to1");
+        SimpleVertexEx to2 = sm.store(new SimpleVertexEx());
+        to2.setS("to2");
+        SimpleVertexEx to3 = sm.store(new SimpleVertexEx());
+        to3.setS("to3");
+        SimpleVertexEx v = sm.store(new SimpleVertexEx());
+        v.setOhmSVE(new HashMap<>());
+        
+        EdgeAttrib e = new EdgeAttrib();
+        v.ohmSVE.put(e, to1);
+        sm.commit();
+        String rid = sm.getRID(v);
+        System.out.println("Rid: " + rid);
+        
+        v.ohmSVE.put(e, to2);
+        assertEquals(to2, v.getOhmSVE().get(e));
+        v.ohmSVE.put(e, to3);
+        assertEquals(to3, v.getOhmSVE().get(e));
+        
+        v = commitClearAndGet(v);
+        
+        SimpleVertexEx to = v.getOhmSVE().values().iterator().next();
+        assertEquals(to, to3);
+        assertEquals("to3", to.getS());
+        
+        v.ohmSVE.remove(e);
+        v.ohmSVE.put(e, to1);
+        assertEquals(to1, v.getOhmSVE().get(e));
+        
+        v = commitClearAndGet(v);
+        
+        to = v.getOhmSVE().values().iterator().next();
+        assertEquals(to, to1);
+        assertEquals("to1", to.getS());
+        
+        //same value
+        v.ohmSVE.put(e, to1);
+        assertEquals(to1, v.getOhmSVE().get(e));
+        v = commitClearAndGet(v);
+        to = v.getOhmSVE().values().iterator().next();
+        assertEquals(to, to1);
+        assertEquals("to1", to.getS());
+        
+        //same value, different key (two edges to same vertex)
+        EdgeAttrib e2 = new EdgeAttrib();
+        v.ohmSVE.put(e2, to1);
+        assertEquals(2, v.getOhmSVE().size());
+        
+        v = commitClearAndGet(v);
+        assertEquals(2, v.getOhmSVE().size());
+        
+        v.ohmSVE.remove(e);
+        assertEquals(1, v.getOhmSVE().size());
+        v = commitClearAndGet(v);
+        assertEquals(1, v.getOhmSVE().size());
+        assertEquals(e2, v.getOhmSVE().keySet().iterator().next());
+        
+        //verify the edges:
+        var g = sm.getGraphdb();
+        var vertex = g.getVertex(rid);
+        assertEquals(1L, vertex.countEdges(Direction.OUT, "SimpleVertexEx_ohmSVE"));
+        g.shutdown();
     }
     
     /*

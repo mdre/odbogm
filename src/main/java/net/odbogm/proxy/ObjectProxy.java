@@ -933,27 +933,37 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                         case REMOVED:
                                             // quitar el Edge
                                             OrientEdge oeRemove = keysToEdges.get(key);
-                                            if (this.___transaction.isAuditing()) {
-                                                this.___transaction.auditLog(this, AuditType.WRITE, "LINKLIST REMOVE: " + graphRelationName, oeRemove);
-                                            }
                                             if (oeRemove == null) {
                                                 throw new IllegalStateException("The edge object couldn't be found. "
                                                         + "Make sure its hashCode is change-proof.");
                                             }
-                                            oeRemove.remove();
-                                            // el link se ha removido. Se debe eliminar y verificar si corresponde borrar 
-                                            // el vértice en caso de estar marcado con @RemoveOrphan.
+                                            
+                                            // verificar si corresponde borrar el vértice en caso de estar marcado con @RemoveOrphan.
+                                            boolean removeOrphan = false;
                                             if (f.isAnnotationPresent(RemoveOrphan.class)) {
-                                                if (entitiesState.get(key) == ObjectCollectionState.REMOVED) {
-                                                    this.___transaction.delete(entitiesState.get(key));
-                                                    if (this.___transaction.isAuditing()) {
-                                                        this.___transaction.auditLog(this, AuditType.DELETE, "LINKLIST REMOVE: " + graphRelationName, key);
-                                                    }
+                                                if (entitiesState.get(linkedO) == ObjectCollectionState.REMOVED) {
+                                                    removeOrphan = true;
                                                 }
                                             }
+                                            removeEdge(graphRelationName, oeRemove, removeOrphan ?
+                                                    (IObjectProxy)linkedO : null);
                                             break;
                                     }
                                 }
+                                
+                                for (Map.Entry<Object, ObjectCollectionState> e : entitiesState.entrySet()) {
+                                    Object value = e.getKey();
+                                    ObjectCollectionState valueState = e.getValue();
+                                    if (value instanceof IObjectProxy && valueState == ObjectCollectionState.REMOVED) {
+                                        //we must remove the old edge
+                                        IObjectProxy valueop = (IObjectProxy)value;
+                                        boolean removeOrphan = f.isAnnotationPresent(RemoveOrphan.class);
+                                        valueop.___getVertex().getEdges(this.___getVertex(), Direction.IN, graphRelationName).forEach(edge -> {
+                                            removeEdge(graphRelationName, (OrientEdge)edge, removeOrphan ? valueop : null);
+                                        });
+                                    }
+                                }
+                                
                                 ((ILazyMapCalls) mapFieldValue).clearState();
                             } else {
                                 LOGGER.log(Level.FINER, "********************************************");
@@ -971,6 +981,19 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             this.___transaction.closeInternalTx();
         }
         LOGGER.log(Level.FINER, "fin commit ----");
+    }
+    
+    private void removeEdge(String graphRelationName, OrientEdge edge, IObjectProxy vertexToRemove) {
+        if (this.___transaction.isAuditing()) {
+            this.___transaction.auditLog(this, AuditType.WRITE, "LINKLIST REMOVE: " + graphRelationName, edge);
+        }
+        edge.remove();
+        if (vertexToRemove != null) {
+            this.___transaction.delete(vertexToRemove);
+            if (this.___transaction.isAuditing()) {
+                this.___transaction.auditLog(this, AuditType.DELETE, "LINKLIST REMOVE: " + graphRelationName, vertexToRemove);
+            }
+        }
     }
     
 
