@@ -274,7 +274,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             doCommit();
         } catch (OdbogmException ex) {
             throw ex;
-        } catch (Exception ex) {
+        } catch (Throwable ex) {
             throw new OdbogmException(ex, this);
         }
     }

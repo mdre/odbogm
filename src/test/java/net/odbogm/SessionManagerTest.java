@@ -2,6 +2,7 @@ package net.odbogm;
 
 import static org.junit.Assert.*;
 import com.tinkerpop.blueprints.impls.orient.OrientGraph;
+import com.tinkerpop.blueprints.impls.orient.OrientGraphFactory;
 import java.lang.reflect.Field;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -2294,21 +2295,30 @@ public class SessionManagerTest {
         String rid = sm.getRID(sv);
         
         OrientGraph db = EasyMock.createStrictMock(OrientGraph.class);
+        db.shutdown(EasyMock.anyBoolean(), EasyMock.anyBoolean());
+        EasyMock.expectLastCall().anyTimes();
         EasyMock.replay(db); //it throws exception on every method call
+        OrientGraphFactory factory = EasyMock.createNiceMock(OrientGraphFactory.class);
+        EasyMock.expect(factory.getTx()).andReturn(db).anyTimes();
+        Field ffield = SessionManager.class.getDeclaredField("factory");
+        ffield.setAccessible(true);
+        ffield.set(sm, factory);
+        EasyMock.replay(factory);
         
         //get:
         
-        orientdbTransactField.set(t, db);
         assertThrows(Throwable.class, () -> t.get(rid));
         assertNull(orientdbTransactField.get(t));
         
         //commit:
         
-        orientdbTransactField.set(t, db);
         assertThrows(Throwable.class, () -> t.commit());
         assertNull(orientdbTransactField.get(t));
         
+        //refresh:
         
+//        assertThrows(Throwable.class, () -> t.refreshObject(sv));
+//        assertNull(orientdbTransactField.get(t));
 
     }
     
