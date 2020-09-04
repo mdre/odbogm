@@ -116,6 +116,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     public synchronized void initInternalTx() {
         if (this.orientdbTransact == null) {
             LOGGER.log(Level.FINEST, "\nAbriendo una transacción...");
+            LOGGER.log(Level.FINEST, "\ntransacLevel: {0}  (siempre debería ser 0)",orientTransacLevel);
             //inicializar la transacción
             orientdbTransact = this.sm.getDBTx();
             orientdbTransact.begin();
@@ -129,6 +130,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 //                        orientdbTransact!=null?orientdbTransact.getConfiguration().getValue(OGlobalConfiguration.RID_BAG_EMBEDDED_TO_SBTREEBONSAI_THRESHOLD):
 //                                "orientdbTransact = null"
 //                                });
+            LOGGER.log(Level.FINEST, "transacLevel: {0} --> {1}",new Object[]{orientTransacLevel, (orientTransacLevel + 1)});
             orientTransacLevel++;
         }
     }
@@ -281,6 +283,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     public synchronized void commit() throws ConcurrentModification, OdbogmException {
         try {
+            LOGGER.log(Level.FINEST, "dirties: {0}",this.dirty);
+            LOGGER.log(Level.FINEST, "news: {0}",this.newrids);
             doCommit();
         } catch (OException ex) {
             throw new OdbogmException(ex, this);
@@ -289,9 +293,9 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     
     
     private void doCommit() throws ConcurrentModification, OdbogmException {
+        LOGGER.log(Level.FINER, "COMMIT");
         initInternalTx();
         
-        LOGGER.log(Level.FINER, "COMMIT");
         if (this.nestedTransactionLevel <= 0) {
             LOGGER.log(Level.FINER, "Iniciando COMMIT ==================================");
             LOGGER.log(Level.FINER, "Objetos marcados como Dirty: {0}", dirty.size());
@@ -339,6 +343,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             try {
                 this.orientdbTransact.commit();
             } catch (OConcurrentModificationException ex) {
+                closeInternalTx();
                 throw new ConcurrentModification(ex, this);
             }
             LOGGER.log(Level.FINER, "finalizado.");
@@ -407,6 +412,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         LOGGER.log(Level.FINER, "Rollback ------------------------");
         LOGGER.log(Level.FINER, "Dirty objects: {0}", dirty.size());
         LOGGER.log(Level.FINER, "Dirty deleted objects: {0}", dirtyDeleted.size());
+        LOGGER.log(Level.FINER, "New objects: {0}", this.newrids.size());
         
         this.orientdbTransact.rollback();
         
@@ -425,6 +431,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         this.dirty.clear();
         // lipiar el caché de objetos a borrar.
         this.dirtyDeleted.clear();
+        // limpiar los nuevos RIDs dado que fueron invalidados.
+        this.newrids.clear();
         
         this.nestedTransactionLevel = 0;
         LOGGER.log(Level.FINER, "FIN ROLLBACK.");
@@ -482,6 +490,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             // verificar que la clase existe
             if (getDBClass(classname) == null) {
                 // arrojar una excepción en caso contrario.
+                closeInternalTx();
                 throw new ClassToVertexNotFound("No se ha encontrado la definición de la clase " + classname + " en la base!");
             }
             
@@ -672,6 +681,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
         } catch (IllegalArgumentException ex) {
             Logger.getLogger(SessionManager.class.getName()).log(Level.SEVERE, null, ex);
+            closeInternalTx();
             throw ex;
         }
 
@@ -812,6 +822,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                                 this.deleteTree(value);
                             } catch (ReferentialIntegrityViolation riv) {
                                 LOGGER.log(Level.FINER, "RemoveOrphan: El objeto aún tiene vínculos.");
+                                closeInternalTx();
                                 throw new ReferentialIntegrityViolation(
                                         "RemoveOrphan: " + riv.getMessage(), this);
                             }
@@ -860,6 +871,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                             LOGGER.log(Level.FINER, "********************************************");
                             LOGGER.log(Level.FINER, "field: {0}", field);
                             LOGGER.log(Level.FINER, "********************************************");
+                            closeInternalTx();
                             throw new CollectionNotSupported(oCol.getClass().getSimpleName());
                         }
                         f.setAccessible(acc);
@@ -872,6 +884,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                                     this.deleteTree(object);
                                 } catch (ReferentialIntegrityViolation riv) {
                                     LOGGER.log(Level.FINER, "RemoveOrphan: El objeto aún tiene vínculos.");
+                                    closeInternalTx();
                                     throw new ReferentialIntegrityViolation(
                                             "RemoveOrphan: " + riv.getMessage(), this);
                                 }
@@ -885,6 +898,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                                     this.deleteTree(v);
                                 } catch (ReferentialIntegrityViolation riv) {
                                     LOGGER.log(Level.FINER, "RemoveOrphan: El objeto aún tiene vínculos.");
+                                    closeInternalTx();
                                     throw new ReferentialIntegrityViolation(
                                             "RemoveOrphan: " + riv.getMessage(), this);
                                 }
@@ -894,6 +908,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                             LOGGER.log(Level.FINER, "********************************************");
                             LOGGER.log(Level.FINER, "field: {0}", field);
                             LOGGER.log(Level.FINER, "********************************************");
+                            closeInternalTx();
                             throw new CollectionNotSupported(oCol.getClass().getSimpleName());
                         }
                         f.setAccessible(acc);
@@ -919,6 +934,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             
             LOGGER.log(Level.FINER, "rid: "+ridToRemove+" removed succefully");
         } else {
+            closeInternalTx();
             throw new UnknownObject(this);
         }
         
@@ -953,6 +969,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             
             //LOGGER.log(Level.FINER, "Referencias {0} IN: {1}", new String[]{ovToRemove.getIdentity().toString(),(""+ovToRemove.countEdges(ODirection.IN))});
             if (ovToRemove.getEdges(ODirection.IN).iterator().hasNext()) {
+                closeInternalTx();
                 throw new ReferentialIntegrityViolation(ovToRemove, this);
             }
             // Activar todos los campos que estén marcados con CascadeDelete o RemoveOrphan para poder procesarlos.
@@ -1007,6 +1024,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                                 this.internalDelete(value);
                             } catch (ReferentialIntegrityViolation riv) {
                                 LOGGER.log(Level.FINER, "RemoveOrphan: El objeto aún tiene vínculos.");
+                                closeInternalTx();
                                 throw new ReferentialIntegrityViolation(
                                         "RemoveOrphan: " + riv.getMessage(), this);
                             }
@@ -1060,6 +1078,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                             LOGGER.log(Level.FINER, "********************************************");
                             LOGGER.log(Level.FINER, "field: {0}", field);
                             LOGGER.log(Level.FINER, "********************************************");
+                            closeInternalTx();
                             throw new CollectionNotSupported(oCol.getClass().getSimpleName());
                         }
                         f.setAccessible(acc);
@@ -1072,6 +1091,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                                     this.internalDelete(object);
                                 } catch (ReferentialIntegrityViolation riv) {
                                     LOGGER.log(Level.FINER, "RemoveOrphan: El objeto aún tiene vínculos.");
+                                    closeInternalTx();
                                     throw new ReferentialIntegrityViolation(
                                             "RemoveOrphan: " + riv.getMessage(), this);
                                 }
@@ -1085,6 +1105,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                                     this.internalDelete(v);
                                 } catch (ReferentialIntegrityViolation riv) {
                                     LOGGER.log(Level.FINER, "RemoveOrphan: El objeto aún tiene vínculos.");
+                                    closeInternalTx();
                                     throw new ReferentialIntegrityViolation(
                                             "RemoveOrphan: " + riv.getMessage(), this);
                                 }
@@ -1094,6 +1115,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                             LOGGER.log(Level.FINER, "********************************************");
                             LOGGER.log(Level.FINER, "field: {0}", field);
                             LOGGER.log(Level.FINER, "********************************************");
+                            closeInternalTx();
                             throw new CollectionNotSupported(oCol.getClass().getSimpleName());
                         }
                         f.setAccessible(acc);
@@ -1101,12 +1123,14 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
                 } catch (NoSuchFieldException | IllegalArgumentException | IllegalAccessException ex) {
                     Logger.getLogger(SessionManager.class.getName()).log(Level.SEVERE, null, ex);
+                    closeInternalTx();
                     throw new OdbogmException("Error eliminando vértice.", this);
                 }
             }
             LOGGER.log(Level.FINEST, "<-------- fin linkslist de {0}...",logRidToRemove);
 
         } else {
+            closeInternalTx();
             throw new UnknownObject(this);
         }
         
@@ -1266,10 +1290,12 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                 }
                 
                 if (v == null) {
+                    closeInternalTx();
                     throw new UnknownRID(rid, this);
                 }
                 String javaClass = v.getSchemaType().get().getCustom("javaClass");
                 if (javaClass == null) {
+                    closeInternalTx();
                     throw new VertexJavaClassNotFound("La clase del Vértice no tiene la propiedad javaClass");
                 }
                 javaClass = javaClass.replaceAll("[\'\"]", "");
@@ -1344,6 +1370,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                 ORID toLoad = new ORecordId(rid);
                 OVertex v = this.orientdbTransact.load(toLoad);
                 if (v == null) {
+                    closeInternalTx();
                     throw new UnknownRID(rid, this);
                 }
                 

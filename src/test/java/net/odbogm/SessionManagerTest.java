@@ -27,9 +27,7 @@ import net.odbogm.proxy.ArrayListLazyProxy;
 import net.odbogm.proxy.IObjectProxy;
 import net.odbogm.security.*;
 import net.odbogm.utils.DateHelper;
-import org.apache.commons.lang.NotImplementedException;
 import org.apache.commons.lang.RandomStringUtils;
-import org.easymock.EasyMock;
 import org.junit.After;
 import static org.junit.Assert.*;
 import org.junit.Before;
@@ -1718,7 +1716,7 @@ public class SessionManagerTest {
         SimpleVertexEx sDup2 = sm.store(dup2);
         String currentUUID = sDup2.getUuid();
         String rid = ((IObjectProxy) sDup2).___getRid();
-
+        
         System.out.println("RID: " + rid);
         System.out.println("current UUID: " + currentUUID);
         System.out.println("Es válido: " + ((IObjectProxy) sDup2).___isValid());
@@ -2248,25 +2246,63 @@ public class SessionManagerTest {
      */
     @Test
     public void retryCommitNewObjects() throws Exception {
-        Transaction t = sm.getCurrentTransaction();
+        
         SimpleVertexEx s1 = new SimpleVertexEx();
-        s1 = t.store(s1);
-        assertTrue(((IObjectProxy)s1).___getVertex().getIdentity().isNew());
+        s1 = sm.store(s1);
         
-        //para simular una falla uso un mock:
-        ODatabaseSession db = EasyMock.createNiceMock(ODatabaseSession.class);
-        db.commit();
-        EasyMock.expectLastCall().andThrow(new NotImplementedException());
-        EasyMock.replay(db);
+        System.out.println("verificar que esté marcado como nuevo:"+((IObjectProxy)s1).___getVertex().getIdentity().isNew());
+        System.out.println("InternalStatus: "+((IObjectProxy)s1).___getVertex().getInternalStatus());
+        System.out.println("Version: "+((IObjectProxy)s1).___getVertex().getVersion());
+        System.out.println("Dirty: "+((IObjectProxy)s1).___getVertex().isDirty());
         
-        orientdbTransactField.set(t, db);
+        sm.commit();
+        System.out.println("rid: "+((IObjectProxy)s1).___getVertex().getIdentity());
+        System.out.println("svuuid: "+s1.getUuid());
+        String existentUUID = s1.getUuid();
         
-        try { t.commit(); } catch (Exception ex) { /*falló, reintentar*/ }
+        // Crear un nuevo SVE
+        System.out.println("Duplicar el UUID: ");
+        SimpleVertexEx s2 = new SimpleVertexEx();
+        String s2UUID = s2.getUuid();
+        // duplicar el UUID
+        s2.setUuid(existentUUID);
         
-        assertTrue(((IObjectProxy)s1).___getVertex().getIdentity().isNew());
-        orientdbTransactField.set(t, null);
-        t.commit();
-        assertFalse(((IObjectProxy)s1).___getVertex().getIdentity().isNew());
+        s2 = sm.store(s2);
+        
+        System.out.println("rid: "+((IObjectProxy)s2).___getVertex().getIdentity());
+        System.out.println("svuuid: "+s2.getUuid());
+        
+        // hacer commit y solucionar
+        try {
+            sm.commit();
+        } catch (Exception ex) {
+            System.out.println("Exception: "+ex.getMessage());
+            
+            // verificar que siga siendo nuevo.
+            assertTrue(((IObjectProxy)s2).___getVertex().getIdentity().isNew());
+            
+        }
+        
+        // soluicioanar el problema.
+        System.out.println("restableciendo el uuid....");
+        s2.setUuid(s2UUID);
+        
+        try {
+            System.out.println("llamando a commit final.");
+            System.out.println("verificar que esté marcado como nuevo:"+((IObjectProxy)s2).___getVertex().getIdentity().isNew());
+            System.out.println("InternalStatus: "+((IObjectProxy)s2).___getVertex().getInternalStatus());
+            //((IObjectProxy)s2).___getVertex().setInternalStatus(ORecordElement.STATUS.LOADED);
+            System.out.println("Version: "+((IObjectProxy)s2).___getVertex().getVersion());
+            System.out.println("Dirty: "+((IObjectProxy)s2).___getVertex().isDirty());
+            //((IObjectProxy)s2).___getVertex().setDirty();
+            sm.commit();
+            System.out.println("rid: "+((IObjectProxy)s2).___getVertex().getIdentity());
+            assertFalse(((IObjectProxy)s2).___getVertex().getIdentity().isNew());
+        } catch (Exception ex) {
+            ex.printStackTrace();
+            fail();
+        }
+       
     }
     
     
@@ -2310,32 +2346,45 @@ public class SessionManagerTest {
      */
     @Test
     public void retryCommitDeleted() throws Exception {
-        Transaction t = sm.getCurrentTransaction();
+        
         SimpleVertexEx sv = new SimpleVertexEx();
-        sv = t.store(sv);
-        t.commit();
+        sv = sm.store(sv);
+        
+        SimpleVertexEx svToDelete = new SimpleVertexEx();
+        svToDelete = sm.store(svToDelete);
+        
+        sm.commit();
         String rid = sm.getRID(sv);
+        String uuid = sv.getUuid();
+        String ridToDelete = sm.getRID(svToDelete);
         
-        //para simular una falla uso un mock:
-        ODatabaseSession db = EasyMock.createNiceMock(ODatabaseSession.class);
-        db.commit();
-        EasyMock.expectLastCall().andThrow(new NotImplementedException());
-        EasyMock.replay(db);
-        orientdbTransactField.set(t, db);
+        //generar un store, un delete y producir una falla, todo dentro de la misma transacción.
+        // 1. borrar un registro.
+        sm.delete(svToDelete);
         
-        t.delete(sv);
-        try { t.commit(); } catch (Exception ex) { /*falló, reintentar*/ }
+        // intentar agregar uno que produzca un fallo. Utilizo el unique del uuid para generar el fallo.
+        SimpleVertexEx svDup = new SimpleVertexEx();
+        String svdupUUID = svDup.getUuid();
+        svDup.setUuid(uuid);
         
+        svDup = sm.store(svDup);
+        
+        try {
+            sm.commit();
+            fail("NO SE CAPTURÓ LA DUPLICIDAD DEL UUID");
+        } catch (Exception ex) {
+            System.out.println("Todo ok. Solucionar el problema de la duplicidad");
+            svDup.setUuid(svdupUUID);
+        }
         //comprobar que no se borró todavía de la base
-        assertNotNull(sm.getTransaction().get(rid));
+        assertNotNull(sm.getTransaction().get(ridToDelete));
         
         //reintentar
-        orientdbTransactField.set(t, null);
-        t.commit();
+        sm.commit();
         
-        assertThrows(UnknownRID.class, () -> sm.getTransaction().get(rid));
-        assertEquals(0, t.getDirtyCount());
-        assertEquals(0, t.getDirtyDeletedCount());
+        assertThrows(UnknownRID.class, () -> sm.getTransaction().get(ridToDelete));
+        assertEquals(0, sm.getDirtyCount());
+        assertEquals(0, sm.getTransaction().getDirtyDeletedCount());
     }
     
     

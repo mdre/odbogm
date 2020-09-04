@@ -1,6 +1,7 @@
 package net.odbogm.proxy;
 
 import com.orientechnologies.common.exception.OException;
+import com.orientechnologies.orient.core.db.record.ORecordElement;
 import com.orientechnologies.orient.core.record.ODirection;
 import com.orientechnologies.orient.core.record.OEdge;
 import com.orientechnologies.orient.core.record.OElement;
@@ -642,10 +643,20 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         LOGGER.log(Level.FINER, "Iniciando ___commit() ....");
         LOGGER.log(Level.FINER, "valid: {0}", this.___isValidObject);
         LOGGER.log(Level.FINER, "dirty: {0}", this.___dirty);
+        LOGGER.log(Level.FINER, "new: {0}", this.___baseElement.getIdentity().isNew());
+        LOGGER.log(Level.FINER, "rid: {0}", this.___baseElement.getIdentity());
 
         if (this.___dirty || this.___baseElement.getIdentity().isNew()) {
             this.___transaction.initInternalTx();
 
+            // verifciar que si el objeto es nuevo esté correctamente confirgurado.
+            // puede cambiar en el caso de que un commit falle y lo deja inconsistente.
+            if (this.___baseElement.getIdentity().isNew()) {
+                this.___baseElement.setInternalStatus(ORecordElement.STATUS.LOADED);
+                this.___baseElement.setDirty();
+            }
+            
+            
             // asegurarse que está atachado
 //            if (this.___baseElement.getDatabase() == null) {
 //                LOGGER.log(Level.FINER, "El objeto no está atachado!");
