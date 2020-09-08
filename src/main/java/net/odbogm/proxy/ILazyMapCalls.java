@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package net.odbogm.proxy;
 
 import com.orientechnologies.orient.core.record.ODirection;
@@ -18,9 +13,8 @@ import net.odbogm.Transaction;
 public interface ILazyMapCalls extends ILazyCalls {
     public void init(Transaction t, OVertex relatedTo, IObjectProxy parent, String field, Class<?> keyClass, Class<?> valueClass, ODirection d);
     public Map<Object,ObjectCollectionState> collectionState();
-    
-    
     public Map<Object, ObjectCollectionState> getEntitiesState();
     public Map<Object, ObjectCollectionState> getKeyState();
     public Map<Object, OEdge> getKeyToEdge();
+    public void updateKey(Object originalKey, OEdge edge);
 }

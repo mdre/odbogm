@@ -136,9 +136,20 @@ dependencies {
     testImplementation "org.easymock:easymock:4.0.2"
 }
 
+//task to find the path of the ogm agent automatically:
+task findAgentPath {
+    configurations.runtimeClasspath.files.each {
+        if (it.getName().contains('odbogm-agent')) {
+            project.ext.setProperty('odbogmAgentPath', it.toString())
+        }
+    }
+}
+
 test {
-    jvmArgs '-Djdk.attach.allowAttachSelf=true', '-DridBag.embeddedToSbtreeBonsaiThreshold=-1', '-javaagent:../odbogm-agent/build/libs/odbogm-agent-1.1.1.1.jar'
-    outputs.upToDateWhen { false } 
+    dependsOn findAgentPath
+    jvmArgs '-Djdk.attach.allowAttachSelf=true', '-DridBag.embeddedToSbtreeBonsaiThreshold=-1'
+    jvmArgs += "-javaagent:${project.odbogmAgentPath}"
+    outputs.upToDateWhen { false }
     testLogging {
         // Make sure output from
         // standard out or error is shown

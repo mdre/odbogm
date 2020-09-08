@@ -7,6 +7,7 @@ import java.lang.ref.WeakReference;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
@@ -69,7 +70,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
 
     //********************* change control **************************************
     private Map<Object, ObjectCollectionState> entitiesState = new ConcurrentHashMap<>();
-    private ConcurrentHashMap<Object, ObjectCollectionState> keyState = new ConcurrentHashMap<>();
+    private Map<Object, ObjectCollectionState> keyState = new ConcurrentHashMap<>();
     private Map<Object, OEdge> keyToEdge = new ConcurrentHashMap<>();
 
     private synchronized void lazyLoad() {
@@ -81,7 +82,6 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
 
         // recuperar todos los elementos desde el vértice y agregarlos a la colección
         for (OEdge edge : relatedTo.getEdges(this.direction, field)) {
-//        for (Iterator<OVertex> iterator = relatedTo.getVertices(this.direction, field).iterator(); iterator.hasNext();) {
             OVertex next = edge.getTo();
             LOGGER.log(Level.FINER, "loading edge: {0} to: {1}", new Object[]{edge.getIdentity().toString(),next.getIdentity()});
             // el Lazy simpre se hace recuperado los datos desde la base de datos.
@@ -89,23 +89,12 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
             o = transaction.get(valueClass, next.getIdentity().toString());
             
             // para cada vértice conectado, es necesario mapear todos los Edges que los unen.
-            Object k = null;
-            LOGGER.log(Level.FINER, "edge keyclass: {0}  OE RID:{1}",
-                                    new Object[]{this.keyClass, edge.getIdentity().toString()});
+            Object k = edgeToObject(edge);
             
-            // si el keyClass no es de tipo nativo, hidratar un objeto.
-            if (Primitives.PRIMITIVE_MAP.containsKey(this.keyClass)) {
-                k = edge.getProperty("key");
-                LOGGER.log(Level.INFO, "primitive edge key: {0}",k);
-            } else {
-                LOGGER.log(Level.FINER, "clase como key");
-                k = transaction.getEdgeAsObject(keyClass, edge);
-            }
             // llamar a super para que no se marque como dirty el objeto padre dado que el loadLazy no debería 
             // registrar cambios en el padre porque se los datos son recuperados de la base
             super.put(k, o);
             this.keyState.put(k, ObjectCollectionState.REMOVED);
-            this.keyToEdge.put(k, edge);
 
             // como puede estar varias veces un objecto agregado al map con distintos keys
             // primero verificamos su existencia para no duplicarlos.
@@ -122,6 +111,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
     /**
      * Vuelve establecer el punto de verificación.
      */
+    @Override
     public synchronized void clearState() {
         this.entitiesState.clear();
         this.keyState.clear();
@@ -179,17 +169,20 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
                 this.entitiesState.replace(value, ObjectCollectionState.NOCHANGE);
             }
         }
-        return this.keyState;
+        return Map.copyOf(this.keyState);
     }
 
+    @Override
     public Map<Object, ObjectCollectionState> getEntitiesState() {
         return entitiesState;
     }
 
+    @Override
     public Map<Object, ObjectCollectionState> getKeyState() {
         return keyState;
     }
 
+    @Override
     public Map<Object, OEdge> getKeyToEdge() {
         return keyToEdge;
     }
@@ -433,7 +426,20 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
             this.lazyLoad();
         }
         this.setDirty();
-        return super.put(key, value); //To change body of generated methods, choose Tools | Templates.
+        Object previous = super.put(key, value);
+        if (previous != null) {
+            if (!Objects.equals(value, previous)) {
+                //there a was a change, we remove the key state to consider it added
+                this.keyState.remove(key);
+                //we consider the value as removed to remove the old edge
+                this.entitiesState.put(previous, ObjectCollectionState.REMOVED);
+            }
+        }
+        if (this.keyState.containsKey(key)) {
+            //if it was previously marked as REMOVED, remove the mark
+            this.keyState.remove(key);
+        }
+        return previous;
     }
 
     @Override
@@ -492,4 +498,34 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         return super.equals(o); //To change body of generated methods, choose Tools | Templates.
     }
 
+    @Override
+    public void updateKey(Object originalKey, OEdge edge) {
+        Object key = this.edgeToObject(edge);
+        Object value = this.get(originalKey);
+        //we must replace the original key object with the proxy
+        super.remove(originalKey);
+        super.put(key, value);
+        //and the state
+        ObjectCollectionState state = this.keyState.get(originalKey);
+        if (state != null) {
+            this.keyState.put(key, state);
+        }
+    }
+
+    private Object edgeToObject(OEdge edge) {
+        Object k;
+        LOGGER.log(Level.FINER, "edge keyclass: {0}  OE RID:{1}",
+                new Object[]{this.keyClass, edge.getIdentity().toString()});
+        if (Primitives.PRIMITIVE_MAP.containsKey(this.keyClass)) {
+            k = edge.getProperty("key");
+            LOGGER.log(Level.INFO, "primitive edge key: {0}",k);
+        } else {
+            //if keyClass is not a native type, we must hydrate an object
+            LOGGER.log(Level.FINER, "clase como key");
+            k = transaction.getEdgeAsObject(keyClass, edge);
+        }
+        this.keyToEdge.put(k, edge);
+        return k;
+    }
+    
 }
