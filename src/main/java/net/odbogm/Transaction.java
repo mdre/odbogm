@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.logging.Level;
@@ -85,10 +86,13 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     ConcurrentHashMap<String, Object> transactionLoopCache = new ConcurrentHashMap<>();
     
     // Los RIDs temporales deben ser convertidos a los permanentes en el proceso de commit
-    private List<String> newrids = new ArrayList<>();
+    private final List<String> newrids = new ArrayList<>();
     
     // mapa objeto -> proxy: contiene los objetos que se van almacenando mientras no se haga commit
-    private ConcurrentHashMap<Object, Object> storedObjects = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Object, Object> storedObjects = new ConcurrentHashMap<>();
+    
+    // objects that must be updated after database commit before ending transaction's commit
+    private final Set<IObjectProxy> afterCommit = ConcurrentHashMap.newKeySet();
     
     // Auditor asociado a la transacción
     private Auditor auditor;
@@ -325,13 +329,13 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             
             LOGGER.log(Level.FINER, "Fin persistencia. <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n\n");
             // comitear los vértices
-            LOGGER.log(Level.FINER, "llamando al commit de la base");
+            LOGGER.log(Level.FINER, "llamando al commit de la base"); //---------------------------------------
             try {
                 this.orientdbTransact.commit();
             } catch (OConcurrentModificationException ex) {
                 throw new ConcurrentModification(ex, this);
             }
-            LOGGER.log(Level.FINER, "finalizado.");
+            LOGGER.log(Level.FINER, "finalizado."); //-------------------------------------------------........
 
             // si se está en modalidad audit, grabar los logs
             if (this.isAuditing()) {
@@ -343,7 +347,12 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             
             //cleaning:
             
-            // refrescar las referencias del caché
+            //process objects that depend on database commit
+            this.afterCommit.stream().filter(o -> !o.___isDeleted() && o.___isValid()).
+                    forEach(o -> o.___uptadeVersion());
+            this.afterCommit.clear();
+            
+            //refresh references from cache
             String newRid;
             LOGGER.log(Level.FINER, "NewRIDs: {0}", newrids.size());
             for (Iterator<String> iterator = newrids.iterator(); iterator.hasNext();) {
@@ -364,7 +373,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             this.dirty.entrySet().stream().
                     map(e -> (IObjectProxy)e.getValue()).
                     filter(o -> !o.___isDeleted() && o.___isValid()).
-                    forEach(o -> { /*o.___updateIndirectLinks();*/ o.___removeDirtyMark(); });
+                    forEach(o -> o.___removeDirtyMark());
             
 //            for (var e : this.dirty.entrySet()) {
 //                IObjectProxy o = (IObjectProxy)e.getValue();
@@ -1119,6 +1128,14 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             transactionLoopCache.clear();
         }
     }
+    
+    /**
+     * Enqueues a proxy object to be processed after database commit.
+     * @param proxy 
+     */
+    public void processAfterDbCommit(IObjectProxy proxy) {
+        this.afterCommit.add(proxy);
+    }
 
 //    /**
 //     * Vincula el elemento a la transacción actual.
@@ -1136,6 +1153,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     public int getDirtyCount() {
         return this.dirty.size();
     }
+    
     /**
      * Retorna la cantidad de objetos marcados para ser eliminados cuando se cierre la transacción. Utilizado para los test
      *
@@ -1329,24 +1347,24 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         return o;
     }
 
-    @Override
+    
     public <T> T getEdgeAsObject(Class<T> type, OrientEdge e) {
         initInternalTx();
         T o = null;
         try {
-            // verificar si ya no se ha cargado
             o = this.objectMapper.hydrate(type, e, this);
 
-            // Aplicar los controles de seguridad.
+            //apply security controls
             if ((this.sm.getLoggedInUser() != null) && (o instanceof SObject)) {
                 ((SObject) o).validate(this.sm.getLoggedInUser());
             }
+            
+            //if we must update version field, enqueue in transaction
+            if (this.objectMapper.getClassDef(type).versionField != null) {
+                processAfterDbCommit((IObjectProxy)o);
+            }
 
-        } catch (InstantiationException ex) {
-            Logger.getLogger(SessionManager.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (IllegalAccessException ex) {
-            Logger.getLogger(SessionManager.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (NoSuchFieldException ex) {
+        } catch (InstantiationException | IllegalAccessException | NoSuchFieldException ex) {
             Logger.getLogger(SessionManager.class.getName()).log(Level.SEVERE, null, ex);
         }
         
@@ -1354,6 +1372,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         return o;
     }
 
+    
     /**
      * Realiza un query direto a la base de datos y devuelve el resultado directamente sin procesarlo.
      *

@@ -1,7 +1,6 @@
 package net.odbogm;
 
 import com.orientechnologies.orient.core.metadata.schema.OClass;
-import com.tinkerpop.blueprints.impls.orient.OrientEdge;
 import com.tinkerpop.blueprints.impls.orient.OrientGraph;
 import com.tinkerpop.blueprints.impls.orient.OrientGraphFactory;
 import com.tinkerpop.blueprints.impls.orient.OrientGraphNoTx;
@@ -217,7 +216,7 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
      */
     public String getRID(Object o) {
         if ((o != null) && (o instanceof IObjectProxy)) {
-            return ((IObjectProxy) o).___getVertex().getId().toString();
+            return ((IObjectProxy) o).___getRid();
         }
         return null;
     }
@@ -328,11 +327,6 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
     }
     
     
-    @Override
-    public <T> T getEdgeAsObject(Class<T> type, OrientEdge e) {
-        return this.publicTransaction.getEdgeAsObject(type, e);
-    }
-
     /**
      * Realiza un query direto a la base de datos y devuelve el resultado directamente sin procesarlo.
      *

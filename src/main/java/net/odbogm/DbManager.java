@@ -29,6 +29,7 @@ import net.odbogm.annotations.Ignore;
 import net.odbogm.annotations.IgnoreClass;
 import net.odbogm.annotations.Indexed;
 import net.odbogm.annotations.RID;
+import net.odbogm.annotations.Version;
 import net.odbogm.cache.ClassCache;
 import net.odbogm.security.GroupSID;
 import net.odbogm.security.SObject;
@@ -307,6 +308,7 @@ public class DbManager {
                             || (Modifier.isStatic(field.getModifiers()) && Modifier.isFinal(field.getModifiers())
                             || fieldName.startsWith("___ogm___"))
                             || field.isAnnotationPresent(RID.class)
+                            || field.isAnnotationPresent(Version.class)
                             )) {
                 FieldAttributes fa = field.getAnnotation(FieldAttributes.class);
                 

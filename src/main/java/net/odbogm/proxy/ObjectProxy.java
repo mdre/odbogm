@@ -105,15 +105,18 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         }
 
         if (method.getName().equals("___getVertex")) {
-            if (this.___objectReady) {
-                return this.___getVertex();
-            }
+            return this.___getVertex();
+        }
+        if (method.getName().equals("___getEdge")) {
+            return this.___getEdge();
         }
 
+        if (method.getName().equals("___getRid")) {
+            return this.___getRid();
+        }
+        
         if (method.getName().equals("___getBaseClass")) {
-            if (this.___objectReady) {
-                return this.___getBaseClass();
-            }
+            return this.___getBaseClass();
         }
 
         if (!this.___isValidObject) {
@@ -139,9 +142,9 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         // modificar el llamado
         if (!this.___deletedMark) {
             switch (method.getName()) {
-                case "___getRid":
+                case "___uptadeVersion":
                     if (this.___objectReady) {
-                        res = this.___getRid();
+                        this.___uptadeVersion();
                     }
                     break;
                 case "___injectRid":
@@ -183,8 +186,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                     /**
                      * FIXME: se podría evitar si se controlara si los links se
                      * han cargado o no al momento de hacer el commit para
-                     * evitar realizar el
-                     * load sin necesidad.
+                     * evitar realizar el load sin necesidad.
                      */
                     if (this.___objectReady) {
                         if (this.___loadLazyLinks) {
@@ -273,13 +275,26 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     
     @Override
     public void ___injectRid() {
-        //inyectar RID si está definido el campo
+        //inject RID if the field is defined
         ClassDef classdef = ___transaction.getObjectMapper().getClassDef(___baseClass);
         if (classdef.ridField != null) {
             try {
                 classdef.ridField.set(___proxiedObject, ___baseElement.getId().toString());
             } catch (IllegalArgumentException | IllegalAccessException ex) {
                 LOGGER.log(Level.WARNING, "Couldn't inject RID in proxy.", ex);
+            }
+        }
+    }
+    
+    
+    @Override
+    public void ___uptadeVersion() {
+        ClassDef classdef = ___transaction.getObjectMapper().getClassDef(___baseClass);
+        if (classdef.versionField != null) {
+            try {
+                classdef.versionField.set(___proxiedObject, ___baseElement.getProperty("@version"));
+            } catch (IllegalArgumentException | IllegalAccessException ex) {
+                LOGGER.log(Level.WARNING, "Couldn't inject element version in proxy.", ex);
             }
         }
     }
@@ -302,10 +317,9 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
 
     /**
-     * retorna el vértice asociado a este proxi o null en caso que no exista
-     * uno.
+     * Returns the Record ID of the associated element.
      *
-     * @return el RID del object en la base
+     * @return RID of element.
      */
     @Override
     public String ___getRid() {
@@ -336,9 +350,9 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
      * @return la referencia al OrientVertex
      */
     @Override
-    public OrientVertex ___getEdge() {
+    public OrientEdge ___getEdge() {
         if (this.___baseElement.getElementType().equals("Edge")) {
-            return (OrientVertex) this.___baseElement;
+            return (OrientEdge) this.___baseElement;
         } else {
             return null;
         }
@@ -978,10 +992,16 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                     }
                 }
             }
+            
+            //if we must update version field, enqueue in transaction
+            if (cDef.versionField != null) {
+                this.___transaction.processAfterDbCommit(this);
+            }
             this.___transaction.closeInternalTx();
         }
         LOGGER.log(Level.FINER, "fin commit ----");
     }
+    
     
     private void removeEdge(String graphRelationName, OrientEdge edge, IObjectProxy vertexToRemove) {
         if (this.___transaction.isAuditing()) {

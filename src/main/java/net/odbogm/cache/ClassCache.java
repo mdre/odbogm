@@ -18,8 +18,10 @@ import net.odbogm.annotations.Ignore;
 import net.odbogm.annotations.Indirect;
 import net.odbogm.annotations.RID;
 import net.odbogm.annotations.Sequence;
+import net.odbogm.annotations.Version;
 import net.odbogm.exceptions.IncorrectRIDField;
 import net.odbogm.exceptions.IncorrectSequenceField;
+import net.odbogm.exceptions.IncorrectVersionField;
 
 /**
  * Caché con la definición de clases (ClassDef's).
@@ -110,16 +112,32 @@ public class ClassCache {
                             || f.getName().startsWith("___ogm___"))
                             )) {
                         
+                        f.setAccessible(true);
+                        
+                        //rid field:
                         if (f.isAnnotationPresent(RID.class)) {
                             if (!f.getType().equals(String.class)) {
-                                throw new IncorrectRIDField();
+                                throw new IncorrectRIDField("A field annotated with @RID must be of type String.");
                             }
-                            f.setAccessible(true);
+                            if (cached.ridField != null) {
+                                throw new IncorrectRIDField("Only one field can be annotated with @RID.");
+                            }
                             cached.ridField = f;
                             continue;
                         }
-                        //preservar el field.
-                        f.setAccessible(true);
+                        
+                        //version field:
+                        if (f.isAnnotationPresent(Version.class)) {
+                            if (!f.getType().equals(Integer.class) && !f.getType().equals(int.class)) {
+                                throw new IncorrectVersionField("A field annotated with @Version must be of type int or Integer.");
+                            }
+                            if (cached.versionField != null) {
+                                throw new IncorrectVersionField("Only one field can be annotated with @Version.");
+                            }
+                            cached.versionField = f;
+                            continue;
+                        }
+                        
                         cached.fieldsObject.put(f.getName(), f);
 
                         // determinar si es un campo permitido

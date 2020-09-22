@@ -8,6 +8,7 @@ import java.util.logging.Logger;
 import net.odbogm.annotations.Entity;
 import net.odbogm.annotations.RID;
 import net.odbogm.annotations.Sequence;
+import net.odbogm.annotations.Version;
 
 /**
  *
@@ -21,6 +22,7 @@ public class EdgeAttrib {
     }
     
     @RID private String rid;
+    @Version private Integer version = -1;
     private final String uuid = UUID.randomUUID().toString();
     private String nota;
     private Date fecha;
@@ -63,6 +65,10 @@ public class EdgeAttrib {
     @Override
     public String toString() {
         return "EdgeAttrib{" + "nota=" + nota + ", fecha=" + fecha + "}";
+    }
+
+    public Integer getVersion() {
+        return version;
     }
 
     public String getRid() {

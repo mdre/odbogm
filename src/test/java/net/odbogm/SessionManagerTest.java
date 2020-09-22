@@ -10,17 +10,18 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
-import java.util.function.BiConsumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.agent.ITransparentDirtyDetector;
 import net.odbogm.annotations.Entity;
 import net.odbogm.annotations.RID;
 import net.odbogm.annotations.Sequence;
+import net.odbogm.annotations.Version;
 import net.odbogm.cache.SimpleCache;
 import net.odbogm.exceptions.ConcurrentModification;
 import net.odbogm.exceptions.IncorrectRIDField;
 import net.odbogm.exceptions.IncorrectSequenceField;
+import net.odbogm.exceptions.IncorrectVersionField;
 import net.odbogm.exceptions.InvalidObjectReference;
 import net.odbogm.exceptions.OdbogmException;
 import net.odbogm.exceptions.ReferentialIntegrityViolation;
@@ -2399,7 +2400,7 @@ public class SessionManagerTest {
     }
     
     /*
-     * Testea que inyecte bien el RID si un campo es anotado para eso.
+     * Tests that RID gets injected correctly.
      */
     @Test
     public void ridInjection() throws Exception {
@@ -2413,7 +2414,7 @@ public class SessionManagerTest {
         sm.commit();
         assertFalse(v.getRid().startsWith("#-"));
         
-        //cargo de nuevo el vértice desde la base
+        //reload vertex from base
         sm.getCurrentTransaction().clearCache();
         String rid = v.getRid();
         v = sm.get(SimpleVertex.class, rid);
@@ -2421,7 +2422,7 @@ public class SessionManagerTest {
     }
 
     /*
-     * Testea que inyecte bien el RID en un objeto mapeado a una arista.
+     * Tests that RID gets injected correctly in an edge object.
      */
     @Test
     public void injectRidInEdge() throws Exception {
@@ -2434,16 +2435,13 @@ public class SessionManagerTest {
         v = sm.store(v);
         sm.commit();
         
-        v.getOhmSVE().forEach(new BiConsumer<EdgeAttrib, SimpleVertexEx>() {
-            @Override
-            public void accept(EdgeAttrib key, SimpleVertexEx val) {
-                assertNotNull(key.getRid());
-            }
-        });
+        EdgeAttrib edge = v.getOhmSVE().keySet().iterator().next();
+        assertNotNull(edge.getRid());
+        assertEquals(sm.getRID(edge), edge.getRid());
     }
     
     /*
-     * Testea que falle si se anota como RID un campo que no es String.
+     * Tests that it fails if a non String field is annotated as RID.
      */
     @Test
     public void badRidField() throws Exception {
@@ -2451,7 +2449,22 @@ public class SessionManagerTest {
             @RID Integer rid;
         }
         BadRid br = new BadRid();
-        assertThrows(IncorrectRIDField.class, () -> sm.store(br));
+        var ex = assertThrows(IncorrectRIDField.class, () -> sm.store(br));
+        assertEquals("A field annotated with @RID must be of type String.", ex.getMessage());
+    }
+    
+    /*
+     * Tests that it fails if two or more fields are annotated as RID.
+     */
+    @Test
+    public void duplicatedRidField() throws Exception {
+        @Entity class DuplicatedRid {
+            @RID String rid1;
+            @RID String rid2;
+        }
+        DuplicatedRid dr = new DuplicatedRid();
+        var ex = assertThrows(IncorrectRIDField.class, () -> sm.store(dr));
+        assertEquals("Only one field can be annotated with @RID.", ex.getMessage());
     }
     
     /*
@@ -2912,6 +2925,91 @@ public class SessionManagerTest {
         }
         BadSerial2 bad2 = new BadSerial2();
         assertThrows(IncorrectSequenceField.class, () -> sm.store(bad2));
+    }
+    
+    /*
+     * Tests that it fails if a non integer field is annotated as Version.
+     */
+    @Test
+    public void badVersionField() throws Exception {
+        @Entity class BadVersion {
+            @Version long version;
+        }
+        BadVersion bv = new BadVersion();
+        var ex = assertThrows(IncorrectVersionField.class, () -> sm.store(bv));
+        assertEquals("A field annotated with @Version must be of type int or Integer.", ex.getMessage());
+    }
+    
+    /*
+     * Tests that it fails if two or more fields are annotated as Version.
+     */
+    @Test
+    public void duplicatedVersionField() throws Exception {
+        @Entity class DuplicatedVersion {
+            @Version int v1;
+            @Version Integer v2;
+        }
+        DuplicatedVersion dv = new DuplicatedVersion();
+        var ex = assertThrows(IncorrectVersionField.class, () -> sm.store(dv));
+        assertEquals("Only one field can be annotated with @Version.", ex.getMessage());
+    }
+    
+    /*
+     * Tests that vertex version are injected correctly in the object.
+     */
+    @Test
+    public void versionField() throws Exception {
+        SimpleVertex v = sm.store(new SimpleVertex());
+        int version = ((IObjectProxy)v).___getVertex().getProperty("@version");
+        //initial version of unsaved vertex is not necessarily the same of object
+        System.out.println(version);
+        System.out.println(v.getVersion());
+        
+        sm.commit();
+        version = ((IObjectProxy)v).___getVertex().getProperty("@version");
+        assertEquals(version, v.getVersion());
+        
+        sm.rollback();
+        version = ((IObjectProxy)v).___getVertex().getProperty("@version");
+        assertEquals(version, v.getVersion());
+        
+        sm.commit();
+        version = ((IObjectProxy)v).___getVertex().getProperty("@version");
+        assertEquals(version, v.getVersion());
+        
+        v.setS("change");
+        sm.commit();
+        version = ((IObjectProxy)v).___getVertex().getProperty("@version");
+        assertEquals(version, v.getVersion());
+    }
+    
+    /*
+     * Tests that edge version are injected correctly in the object.
+     */
+    @Test
+    public void injectVersionInEdge() throws Exception {
+        SimpleVertexEx value = new SimpleVertexEx();
+        value.setS("value");
+        
+        SimpleVertexEx v = new SimpleVertexEx();
+        v.setOhmSVE(new HashMap<>());
+        v.getOhmSVE().put(new EdgeAttrib("edge1", new Date()), value);
+        v = sm.store(v);
+        
+        EdgeAttrib edge = v.getOhmSVE().keySet().iterator().next();
+        Integer version = ((IObjectProxy)edge).___getEdge().getProperty("@version");
+        //initial version of unsaved edge is not necessarily the same of object
+        System.out.println(version);
+        System.out.println(edge.getVersion());
+        
+        sm.commit();
+        version = ((IObjectProxy)edge).___getEdge().getProperty("@version");
+        assertEquals(version, edge.getVersion());
+        
+        edge.setNota("change");
+        sm.commit();
+        version = ((IObjectProxy)edge).___getEdge().getProperty("@version");
+        assertEquals(version, edge.getVersion());
     }
     
 }

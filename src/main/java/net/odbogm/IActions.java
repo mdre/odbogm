@@ -44,7 +44,6 @@ public interface IActions {
 
         <T> T get(Class<T> type, String rid) throws UnknownRID, VertexJavaClassNotFound;
         
-        public <T> T getEdgeAsObject(Class<T> type, OrientEdge e);
     }
 
     public interface IQuery {

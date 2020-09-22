@@ -10,7 +10,7 @@ import java.lang.annotation.Target;
  * the configured sequence from the DB during the commit process. Only gets a
  * value from the DB if the field value is null.
  * 
- * @TODO: consider this annotation in DBManger
+ * //TODO: consider this annotation in DBManger
  * 
  * @author jbertinetti
  */
