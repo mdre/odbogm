@@ -7,7 +7,6 @@ import com.orientechnologies.orient.core.db.OrientDB;
 import com.orientechnologies.orient.core.db.OrientDBConfig;
 import com.orientechnologies.orient.core.db.OrientDBConfigBuilder;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
-import com.orientechnologies.orient.core.record.OEdge;
 import com.orientechnologies.orient.core.sql.executor.OResultSet;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -235,7 +234,7 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
      */
     public String getRID(Object o) {
         if ((o != null) && (o instanceof IObjectProxy)) {
-            return ((IObjectProxy) o).___getVertex().getIdentity().toString();
+            return ((IObjectProxy) o).___getRid();
         }
         return null;
     }
@@ -340,11 +339,6 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
     }
     
     
-    @Override
-    public <T> T getEdgeAsObject(Class<T> type, OEdge e) {
-        return this.publicTransaction.getEdgeAsObject(type, e);
-    }
-
     /**
      * Realiza un query direto a la base de datos y devuelve el resultado directamente sin procesarlo.
      *

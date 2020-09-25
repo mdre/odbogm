@@ -1,9 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
 package net.odbogm.utils;
 
 import com.orientechnologies.orient.core.db.ODatabaseSession;
@@ -24,7 +18,6 @@ import java.util.stream.Stream;
 /**
  *
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
- * @param <Object> Se puede tipar el iterador con cualquier clase.
  */
 public class ODBResultSet implements OResultSet, AutoCloseable {
     private final static Logger LOGGER = Logger.getLogger(ODBResultSet.class .getName());

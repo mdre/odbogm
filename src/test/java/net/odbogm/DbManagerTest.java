@@ -21,7 +21,7 @@ public class DbManagerTest {
     }
     
     /*
-     * Testea que el DBManager ignore el campo anotado con @RID.
+     * Tests that DBManager ignores the @RID field.
      */
     @Test
     public void dbManagerIgnoreRid() throws Exception {
@@ -30,7 +30,7 @@ public class DbManagerTest {
     }
     
     /*
-     * Testea que cree bien las clases de aristas.
+     * Tests that edge classes are defined correctly.
      */
     @Test
     public void edgeClass() throws Exception {
@@ -45,7 +45,7 @@ public class DbManagerTest {
     }
     
     /*
-     * Testea que tenga en cuenta los SID.
+     * Tests that SIDs are taken into account.
      */
     @Test
     public void sids() throws Exception {
@@ -59,7 +59,7 @@ public class DbManagerTest {
     }
     
     /*
-     * Testea que tenga en cuenta los nombres personalizados de las entidades.
+     * Tests that it respects the custom names of entity classes.
      */
     @Test
     public void entityName() throws Exception {
@@ -73,7 +73,7 @@ public class DbManagerTest {
     }
     
     /*
-     * Testea que tenga en cuenta las relaciones heredadas.
+     * Tests that inherited relationships are taken into account.
      */
     @Test
     public void inheritedRelations() throws Exception {
@@ -89,13 +89,22 @@ public class DbManagerTest {
     }
     
     /*
-     * Testea que tenga en cuenta los mapas con clases de aristas heredados.
+     * Tests that inherited maps of edge classes are taken into account.
      */
     @Test
     public void inheritedMapEdge() throws Exception {
         List<String> l = dbm.generateDBSQL("test");
         assertTrue(l.stream().anyMatch(
                 s -> s.contains("create class SVExChild_ohmSVE extends EdgeAttrib")));
+    }
+    
+    /*
+     * Tests that DBManager ignores the @Version field.
+     */
+    @Test
+    public void dbManagerIgnoreVersionField() throws Exception {
+        List<String> l = dbm.generateDBSQL("test");
+        l.forEach(s -> assertFalse(s.contains("version INTEGER")));
     }
     
 }

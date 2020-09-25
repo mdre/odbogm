@@ -9,6 +9,7 @@ import net.odbogm.annotations.Audit;
 import net.odbogm.annotations.Entity;
 import net.odbogm.annotations.RID;
 import net.odbogm.annotations.Sequence;
+import net.odbogm.annotations.Version;
 
 /**
  *
@@ -21,6 +22,7 @@ public class SimpleVertex {
     private final static Logger LOGGER = Logger.getLogger(SimpleVertex.class .getName());
 
     @RID private String rid;
+    @Version private int version = -1;
     private String uuid;
     private String s;
     public int i;
@@ -98,6 +100,10 @@ public class SimpleVertex {
     
     public String getRid() {
         return rid;
+    }
+
+    public int getVersion() {
+        return version;
     }
     
     public String getS(){

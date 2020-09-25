@@ -19,6 +19,7 @@ public interface IObjectProxy {
     public String ___getRid();
     public void ___setVertex(OVertex v);
     public void ___injectRid();
+    public void ___uptadeVersion();
     
     public OEdge ___getEdge();
     public void ___setEdge(OEdge v);

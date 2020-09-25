@@ -30,8 +30,13 @@ public class ClassDef {
     public Field ridField;
     
     /**
+     * Field to be used to inject the version of the vertex/edge if the appropriate annotation exists.
+     */
+    public Field versionField;
+    
+    /**
      * Map of all Field objects (doesn't include the ridField). All fields have
-     * already setted the private access (setAccessible as true).
+     * already set the private access (setAccessible as true).
      */
     public HashMap<String, Field> fieldsObject = new HashMap<>();
     
