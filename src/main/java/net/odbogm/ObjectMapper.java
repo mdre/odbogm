@@ -281,6 +281,9 @@ public class ObjectMapper {
             }
         }
         
+        //version field
+        proxy.___uptadeVersion();
+        
         // insertar el objeto en el transactionLoopCache
         t.transactionLoopCache.put(v.getId().toString(), proxy);
         

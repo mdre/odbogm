@@ -1025,6 +1025,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         this.___transaction.initInternalTx();
 
         this.___baseElement.reload();
+        this.___uptadeVersion();
 
         this.___transaction.closeInternalTx();
     }
@@ -1098,7 +1099,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         this.___deletedMark = false;
 
         // recargar todo.
-        this.___baseElement.reload();
+        this.___reload();
 
         LOGGER.log(Level.FINER, "vmap: {0}", this.___baseElement.getProperties());
         // restaurar los atributos al estado original.

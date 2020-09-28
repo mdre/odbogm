@@ -2981,6 +2981,10 @@ public class SessionManagerTest {
         sm.commit();
         version = ((IObjectProxy)v).___getVertex().getProperty("@version");
         assertEquals(version, v.getVersion());
+        
+        sm.getCurrentTransaction().clearCache();
+        v = sm.get(SimpleVertex.class, v.getRid());
+        assertEquals(version, v.getVersion());
     }
     
     /*
