@@ -35,6 +35,7 @@ import net.odbogm.utils.ThreadHelper;
 import net.odbogm.utils.VertexUtils;
 import net.sf.cglib.proxy.MethodInterceptor;
 import net.sf.cglib.proxy.MethodProxy;
+import net.odbogm.annotations.DontLoadLinks;
 
 /**
  *
@@ -208,31 +209,35 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                     res = methodProxy.invokeSuper(o, args);
                     break;
                 case "___ogm___isDirty":
-//                    LOGGER.log(Level.INFO, "Method: sup.name: "+methodProxy.getSuperName()+
-//                                                       " - sig: "+methodProxy.getSignature()+
-//                                                       " - sup idx: "+methodProxy.getSuperIndex()
-//                            );
                     res = methodProxy.invokeSuper(o, args);
                     break;
+                    
                 default:
-                    // invoke the method on the real object with the given params
-                    if (this.___objectReady) {
-                        if (this.___loadLazyLinks) {
+                    // invoke the method on the real object with the given params:
+                    
+                    if (method.getName().equals("toString")) {
+                        try {
+                            //if object doesn't have toString defined, we implement one on the fly
+                            ReflectionUtils.findMethod(this.___baseClass, "toString", (Class<?>[]) null);
+                        } catch (NoSuchMethodException nsme) {
+                            res = this.___baseElement.getId().toString(); //returns rid
+                            break;
+                        }
+                    }
+                    
+                    if (this.___loadLazyLinks) {
+                        boolean methodTriggersLoadLazyLink = true;
+                        if (method.getName().equals("equals") || method.getName().equals("hashCode")) {
+                            methodTriggersLoadLazyLink &= this.___transaction.getSessionManager().isEqualsAndHashCodeTriggerLoadLazyLinks();
+                        }
+                        methodTriggersLoadLazyLink &= !method.isAnnotationPresent(DontLoadLinks.class);
+                        if (this.___objectReady && methodTriggersLoadLazyLink) {
                             this.___loadLazyLinks();
                         }
                     }
-
-                    if (method.getName().equals("toString")) {
-                        try {
-                            ReflectionUtils.findMethod(this.___baseClass, "toString", (Class<?>[]) null);
-                            res = methodProxy.invokeSuper(o, args);
-                        } catch (NoSuchMethodException nsme) {
-                            res = this.___baseElement.getId().toString();
-                        }
-                    } else {
-                        LOGGER.log(Level.FINEST, "invocando: " + method.getName());
-                        res = methodProxy.invokeSuper(o, args);
-                    }
+                    
+                    LOGGER.log(Level.FINEST, "Invoking: {0}", method.getName());
+                    res = methodProxy.invokeSuper(o, args);
 
                     // verificar si hay diferencias entre los objetos dependiendo de la estrategia seleccionada.
                     if (this.___objectReady) {
@@ -240,7 +245,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                             case CLASS_INSTRUMENTATION:
                                 // si se está usando la instrumentación de clase, directamente verificar en el objeto
                                 // cual es su estado.
-                                LOGGER.log(Level.FINEST, "o: " + o.getClass().getName() + " ITrans: " + (o instanceof ITransparentDirtyDetector));
+                                LOGGER.log(Level.FINEST, "o: {0} ITrans: {1}", new Object[]{o.getClass().getName(), o instanceof ITransparentDirtyDetector});
                                 if (((ITransparentDirtyDetector) o).___ogm___isDirty()) {
                                     LOGGER.log(Level.FINEST, "objeto {0} marcado como dirty por ASM. Agregarlo a la lista de pendientes.", o.getClass().getName());
                                     this.___setDirty();
@@ -396,13 +401,13 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
 
     /**
-     * Carga todos los links del objeto
+     * Load all links of object.
      */
     @Override
     public synchronized void ___loadLazyLinks() {
         if (this.___loadLazyLinks) {
             this.___transaction.initInternalTx();
-
+            
             LOGGER.log(Level.FINER, "Base class: {0}", this.___baseClass.getSimpleName());
             LOGGER.log(Level.FINER, "iniciando loadLazyLinks...");
             boolean currentDirtyState = this.___isDirty();
@@ -444,15 +449,11 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                 this.___transaction.addToTransactionCache(this.___getRid(), ___proxiedObject);
 
                                 // si es una interface llamar a get solo con el RID.
-                                Object innerO = null;
+                                Object innerO = fc.isInterface() ? this.___transaction.get(vertice.getId().toString()) :
+                                        this.___transaction.get(fc, vertice.getId().toString());
 
-                                innerO = fc.isInterface() ? this.___transaction.get(vertice.getId().toString()) : this.___transaction.get(fc, vertice.getId().toString());
-
-                                LOGGER.log(Level.FINER, "Inner object " + field + ": "
-                                        + (innerO == null ? "NULL" : "" + innerO.toString())
-                                        + "  FC: " + fc.getSimpleName()
-                                        + "   innerO.class: " + innerO.getClass().getSimpleName()
-                                        + " hashCode: " + System.identityHashCode(innerO));
+                                LOGGER.log(Level.FINER, "Inner object {0}: {1}  FC: {2}   innerO.class: {3} hashCode: {4}", new Object[]{
+                                    field, vertice, fc.getSimpleName(), innerO.getClass().getSimpleName(), System.identityHashCode(innerO)});
                                 fLink.set(this.___proxiedObject, fc.cast(innerO));
                                 duplicatedLinkGuard = true;
 
@@ -460,7 +461,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                             } else if (false) {
                                 throw new DuplicateLink();
                             }
-                            LOGGER.log(Level.FINER, "FIN hydrate innerO: " + vertice.getId() + "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
+                            LOGGER.log(Level.FINER, "FIN hydrate innerO: {0}^^^^^^^^^^^^^^^^^^^^^^^^^^^^^", vertice.getId());
                         }
                     } catch (SecurityException | IllegalArgumentException | IllegalAccessException ex) {
                         Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
@@ -565,7 +566,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
                     // si hay Vértices conectados o si el constructor del objeto ha inicializado los vectores, convertirlos
                     if ((ov.countEdges(relationDirection, graphRelationName) > 0) || (fLink.get(___proxiedObject) != null)) {
-                        this.___transaction.getObjectMapper().colecctionToLazy(___proxiedObject, field, fc, ov, ___transaction);
+                        this.___transaction.getObjectMapper().collectionToLazy(___proxiedObject, field, fc, ov, ___transaction);
                     }
 
                 } catch (IllegalAccessException | IllegalArgumentException ex) {
@@ -577,7 +578,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             this.___dirty = preservDirtyState;
         }
     }
-
+    
 
     @Override
     public boolean ___isValid() {
@@ -800,7 +801,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                     lazyCollectionCalls = (ILazyCollectionCalls) collectionFieldValue;
                                 } else {
                                     // se ha asignado una colección original y se debe exportar todo
-                                    this.___transaction.getObjectMapper().colecctionToLazy(
+                                    this.___transaction.getObjectMapper().collectionToLazy(
                                             this.___proxiedObject, field, ov, this.___transaction);
 
                                     //recuperar la nueva colección
@@ -885,7 +886,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                 } else {
                                     // se ha asignado una colección original y se debe exportar todo
                                     // this.sm.getObjectMapper().colecctionToLazy(this.realObj, field, ov);
-                                    this.___transaction.getObjectMapper().colecctionToLazy(this.___proxiedObject, field, ov, this.___transaction);
+                                    this.___transaction.getObjectMapper().collectionToLazy(this.___proxiedObject, field, ov, this.___transaction);
                                     //recuperar la nueva colección
                                     // Collection inter = (Collection) f.get(this.realObj);
                                     Map inter = (Map) f.get(this.___proxiedObject);

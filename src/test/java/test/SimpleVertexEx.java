@@ -13,6 +13,8 @@ import net.odbogm.annotations.FieldAttributes;
 import net.odbogm.annotations.Ignore;
 import net.odbogm.annotations.Indexed;
 import net.odbogm.annotations.RemoveOrphan;
+import net.odbogm.annotations.DontLoadLinks;
+import net.odbogm.annotations.Indirect;
 
 /**
  *
@@ -59,6 +61,10 @@ public class SimpleVertexEx extends SimpleVertex {
     public HashMap<String, SimpleVertexEx> hmSVE;
     
     public HashMap<EdgeAttrib, SimpleVertexEx> ohmSVE;
+    
+    @Indirect(linkName = "SimpleVertexEx_looptest")
+    private SimpleVertexEx indirectLoopTest;
+    
     
     public SimpleVertexEx(String svex, String s, int i, float f, boolean b, Integer oI, Float oF, Boolean oB) {
         super(s, i, f, b, oI, oF, oB);
@@ -176,9 +182,23 @@ public class SimpleVertexEx extends SimpleVertex {
     public SimpleVertexEx getLooptest() {
         return looptest;
     }
+    
+    @DontLoadLinks
+    public SimpleVertexEx getLooptestLinkNotLoaded() {
+        return looptest;
+    }
 
     public void setLooptest(SimpleVertexEx looptest) {
         this.looptest = looptest;
+    }
+
+    @DontLoadLinks
+    public SimpleVertexEx getIndirectLoopTestDontLoad() {
+        return indirectLoopTest;
+    }
+    
+    public SimpleVertexEx getIndirectLoopTest() {
+        return indirectLoopTest;
     }
 
     public String getUuid() {
