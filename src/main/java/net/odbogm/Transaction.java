@@ -1325,6 +1325,9 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             LOGGER.log(Level.FINER, "Agregando el objeto al cache de objetos de la transacción: {0}: ihc: {1}",
                     new Object[]{rid, System.identityHashCode(o)});
             addToCache(rid, o);
+            
+            //trigger eager load of configured links
+            ((IObjectProxy) o).___eagerLoad();
         }
 
         // Aplicar los controles de seguridad.

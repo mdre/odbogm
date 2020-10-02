@@ -36,6 +36,7 @@ import net.odbogm.utils.VertexUtils;
 import net.sf.cglib.proxy.MethodInterceptor;
 import net.sf.cglib.proxy.MethodProxy;
 import net.odbogm.annotations.DontLoadLinks;
+import net.odbogm.annotations.Eager;
 
 /**
  *
@@ -163,9 +164,9 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                         this.___loadLazyLinks();
                     }
                     break;
-                case "___updateIndirectLinks":
+                case "___eagerLoad":
                     if (this.___objectReady) {
-                        this.___updateIndirectLinks();
+                        this.___eagerLoad();
                     }
                     break;
                 case "___isDirty":
@@ -281,26 +282,18 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     @Override
     public void ___injectRid() {
         //inject RID if the field is defined
-        ClassDef classdef = ___transaction.getObjectMapper().getClassDef(___baseClass);
+        ClassDef classdef = getClassDef();
         if (classdef.ridField != null) {
-            try {
-                classdef.ridField.set(___proxiedObject, ___baseElement.getId().toString());
-            } catch (IllegalArgumentException | IllegalAccessException ex) {
-                LOGGER.log(Level.WARNING, "Couldn't inject RID in proxy.", ex);
-            }
+            objectMapper().setFieldValue(___proxiedObject, classdef.ridField, ___baseElement.getId().toString());
         }
     }
     
     
     @Override
     public void ___uptadeVersion() {
-        ClassDef classdef = ___transaction.getObjectMapper().getClassDef(___baseClass);
+        ClassDef classdef = getClassDef();
         if (classdef.versionField != null) {
-            try {
-                classdef.versionField.set(___proxiedObject, ___baseElement.getProperty("@version"));
-            } catch (IllegalArgumentException | IllegalAccessException ex) {
-                LOGGER.log(Level.WARNING, "Couldn't inject element version in proxy.", ex);
-            }
+            objectMapper().setFieldValue(___proxiedObject, classdef.versionField, ___baseElement.getProperty("@version"));
         }
     }
 
@@ -415,61 +408,9 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             this.___loadLazyLinks = false;
 
             if (this.___baseElement instanceof OrientVertex) {
-                OrientVertex ov = (OrientVertex) this.___baseElement;
-                ClassDef classdef = this.___transaction.getObjectMapper().getClassDef(this.___proxiedObject);
-
-                // hidratar los atributos @links
-                // procesar todos los links y los indirectLinks
-                LOGGER.log(Level.FINER, "procesando {0} links ", classdef.links.size());
-                for (Map.Entry<String, Class<?>> entry : classdef.links.entrySet()) {
-                    try {
-                        String field = entry.getKey();
-                        Class<?> fc = entry.getValue();
-                        Field fLink = classdef.fieldsObject.get(field);
-
-                        String graphRelationName = classdef.entityName + "_" + field;
-                        Direction direction = Direction.OUT;
-                        LOGGER.log(Level.FINER, "Field: {0}.{1}   Class: {2}  RelationName: {3}",
-                                new String[]{this.___baseClass.getSimpleName(), field,
-                                    fc.getSimpleName(), graphRelationName});
-
-                        // recuperar de la base el vértice correspondiente
-                        boolean duplicatedLinkGuard = false;
-                        for (Vertex vertice : ov.getVertices(direction, graphRelationName)) {
-                            LOGGER.log(Level.FINER, "hydrate innerO: {0}", vertice.getId());
-
-                            if (!duplicatedLinkGuard) {
-                                /*
-                                 * FIXME: esto genera una dependencia cruzada.
-                                 * Habría que revisar
-                                 * como solucionarlo. Esta llamada se hace para
-                                 * que quede el objeto
-                                 * mapeado
-                                 */
-                                this.___transaction.addToTransactionCache(this.___getRid(), ___proxiedObject);
-
-                                // si es una interface llamar a get solo con el RID.
-                                Object innerO = fc.isInterface() ? this.___transaction.get(vertice.getId().toString()) :
-                                        this.___transaction.get(fc, vertice.getId().toString());
-
-                                LOGGER.log(Level.FINER, "Inner object {0}: {1}  FC: {2}   innerO.class: {3} hashCode: {4}", new Object[]{
-                                    field, vertice, fc.getSimpleName(), innerO.getClass().getSimpleName(), System.identityHashCode(innerO)});
-                                fLink.set(this.___proxiedObject, fc.cast(innerO));
-                                duplicatedLinkGuard = true;
-
-                                ___transaction.decreseTransactionCache();
-                            } else if (false) {
-                                throw new DuplicateLink();
-                            }
-                            LOGGER.log(Level.FINER, "FIN hydrate innerO: {0}^^^^^^^^^^^^^^^^^^^^^^^^^^^^^", vertice.getId());
-                        }
-                    } catch (SecurityException | IllegalArgumentException | IllegalAccessException ex) {
-                        Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
-                    }
-                }
-
-                // actualizar los indirectLinks
-                this.___updateIndirectLinks();
+                // hydrate links attributes: process all links and indirectLinks
+                this.updateLinks();
+                this.updateIndirectLinks();
             }
 
             // resetear dirty si corresponde.
@@ -478,107 +419,189 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             this.___transaction.closeInternalTx();
         }
     }
-
-
-    @Override
-    public void ___updateIndirectLinks() {
-        if (this.___baseElement instanceof OrientVertex) {
-            boolean preservDirtyState = this.___dirty;
-
-            OrientVertex ov = (OrientVertex) this.___baseElement;
-            ClassDef classdef = this.___transaction.getObjectMapper().getClassDef(this.___proxiedObject);
-
-            // hidratar los atributos @indirectLinks
-            Map<String, Class<?>> lnks = new HashMap<>();
-            lnks.putAll(classdef.indirectLinks);
-            LOGGER.log(Level.FINER, "procesando {0} indirected links", new Object[]{classdef.indirectLinks.size()});
-            for (Map.Entry<String, Class<?>> entry : lnks.entrySet()) {
-                try {
-                    String field = entry.getKey();
-                    Class<?> fc = entry.getValue();
-                    Field fLink = classdef.fieldsObject.get(field);
-
-                    // se debe usar el nombre de la relación propuesto por la anotation
+    
+    
+    private void updateLinks() {
+        ClassDef classdef = getClassDef();
+        OrientVertex ov = (OrientVertex) this.___baseElement;
+        LOGGER.log(Level.FINER, "Processing {0} links ", classdef.links.size());
+        this.loadLinks(ov, classdef, classdef.links, false, false);
+    }
+    
+    
+    /**
+     * Load the links of the given vertex.
+     * 
+     * @param ov The vertex.
+     * @param linksFields Fields to hydrate.
+     * @param onlyEager If true, only fields marked as Eager, else all fields.
+     * @param indirect If must load indirect links instead of direct.
+     */
+    private void loadLinks(OrientVertex ov, ClassDef classdef, HashMap<String, Class<?>> linksFields, boolean onlyEager, boolean indirect) {
+        for (Map.Entry<String, Class<?>> entry : linksFields.entrySet()) {
+            try {
+                String field = entry.getKey();
+                Class<?> fc = entry.getValue();
+                Field fLink = classdef.fieldsObject.get(field);
+                
+                if (onlyEager && !fLink.isAnnotationPresent(Eager.class)) {
+                    continue; //only eager, discard field. Go to next
+                }
+                
+                String graphRelationName;
+                Direction direction;
+                
+                if (indirect) {
+                    //the name configured in annotation must be used
                     Indirect in = fLink.getAnnotation(Indirect.class);
-                    String graphRelationName = in.linkName();
-                    Direction direction = Direction.IN;
+                    graphRelationName = in.linkName();
+                    direction = Direction.IN;
                     LOGGER.log(Level.FINER, "Se ha detectado un indirect. Linkname = {0}", new Object[]{in.linkName()});
-                    LOGGER.log(Level.FINER, "Field: {0}.{1}   Class: {2}  RelationName: {3}", new String[]{this.___baseClass.getSimpleName(), field, fc.getSimpleName(), graphRelationName});
-
-                    // recuperar de la base el vértice correspondiente
-                    boolean duplicatedLinkGuard = false;
-                    for (Vertex vertice : ov.getVertices(direction, graphRelationName)) {
-                        LOGGER.log(Level.FINER, "hydrate innerO: " + vertice.getId());
-
-                        if (!duplicatedLinkGuard) {
-//                        Object innerO = this.hydrate(fc, vertice);
-                            /*
-                             * FIXME: esto genera una dependencia cruzada.
-                             * Habría que revisar
-                             * como solucionarlo. Esta llamada se hace para que
-                             * quede el objeto
-                             * mapeado
-                             */
-                            this.___transaction.addToTransactionCache(this.___getRid(), ___proxiedObject);
-
-                            // si es una interface llamar a get solo con el RID.
-                            Object innerO = null;
-
-                            innerO = fc.isInterface() ? this.___transaction.get(vertice.getId().toString()) : this.___transaction.get(fc, vertice.getId().toString());
-
-                            LOGGER.log(Level.FINER, "Inner object " + field + ": "
-                                    + (innerO == null ? "NULL" : "" + innerO.toString())
-                                    + "  FC: " + fc.getSimpleName()
-                                    + "   innerO.class: " + innerO.getClass().getSimpleName()
-                                    + " hashCode: " + System.identityHashCode(innerO));
-                            fLink.set(this.___proxiedObject, fc.cast(innerO));
-                            duplicatedLinkGuard = true;
-
-                            ___transaction.decreseTransactionCache();
-                        } else if (false) {
-                            throw new DuplicateLink();
-                        }
-                        LOGGER.log(Level.FINER, "FIN hydrate innerO: " + vertice.getId() + "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
-                    }
-                } catch (SecurityException | IllegalArgumentException | IllegalAccessException ex) {
-                    Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
+                } else {
+                    graphRelationName = classdef.entityName + "_" + field;
+                    direction = Direction.OUT;
                 }
-            }
+                LOGGER.log(Level.FINER, "Field: {0}.{1}   Class: {2}  RelationName: {3}",
+                        new String[]{this.___baseClass.getSimpleName(), field,
+                            fc.getSimpleName(), graphRelationName});
 
-            // forzar la recarga de las colecciones.
-            LOGGER.log(Level.FINER, "Refrescando las colecciones indirectas...");
-            // ********************************************************************************************
-            // hidratar las colecciones indirectas
-            // procesar todos los indirectLinkslist
-            // ********************************************************************************************
-            for (Map.Entry<String, Class<?>> entry : classdef.indirectLinkLists.entrySet()) {
-                try {
-                    // FIXME: se debería considerar agregar una annotation EAGER!
-                    String field = entry.getKey();
-                    Class<?> fc = entry.getValue();
-                    LOGGER.log(Level.FINER, "Field: {0}   Class: {1}", new String[]{field, fc.getName()});
+                // recuperar de la base el vértice correspondiente
+                boolean duplicatedLinkGuard = false;
+                for (Vertex vertice : ov.getVertices(direction, graphRelationName)) {
+                    LOGGER.log(Level.FINER, "hydrate innerO: {0}", vertice.getId());
 
-                    Field fLink = classdef.fieldsObject.get(field);
-                    Direction relationDirection = Direction.IN;
+                    if (!duplicatedLinkGuard) {
+                        /*
+                         * FIXME: esto genera una dependencia cruzada.
+                         * Habría que revisar
+                         * como solucionarlo. Esta llamada se hace para
+                         * que quede el objeto
+                         * mapeado
+                         */
+                        this.___transaction.addToTransactionCache(this.___getRid(), ___proxiedObject);
 
-                    Indirect in = fLink.getAnnotation(Indirect.class);
-                    String graphRelationName = in.linkName();
+                        // si es una interface llamar a get solo con el RID.
+                        Object innerO = fc.isInterface() ? this.___transaction.get(vertice.getId().toString()) :
+                                this.___transaction.get(fc, vertice.getId().toString());
 
-                    // si hay Vértices conectados o si el constructor del objeto ha inicializado los vectores, convertirlos
-                    if ((ov.countEdges(relationDirection, graphRelationName) > 0) || (fLink.get(___proxiedObject) != null)) {
-                        this.___transaction.getObjectMapper().collectionToLazy(___proxiedObject, field, fc, ov, ___transaction);
+                        LOGGER.log(Level.FINER, "Inner object {0}: {1}  FC: {2}   innerO.class: {3} hashCode: {4}", new Object[]{
+                            field, vertice, fc.getSimpleName(), innerO.getClass().getSimpleName(), System.identityHashCode(innerO)});
+                        fLink.set(this.___proxiedObject, fc.cast(innerO));
+                        duplicatedLinkGuard = true;
+
+                        ___transaction.decreseTransactionCache();
+                    } else if (false) {
+                        throw new DuplicateLink();
                     }
-
-                } catch (IllegalAccessException | IllegalArgumentException ex) {
-                    Logger.getLogger(ObjectProxy.class.getName()).log(Level.SEVERE, null, ex);
+                    LOGGER.log(Level.FINER, "FIN hydrate innerO: {0}^^^^^^^^^^^^^^^^^^^^^^^^^^^^^", vertice.getId());
                 }
+            } catch (SecurityException | IllegalArgumentException | IllegalAccessException ex) {
+                Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
             }
+        }
+    }
 
-            // volver a establecer el estado de Dirty.
-            this.___dirty = preservDirtyState;
+
+    private void updateIndirectLinks() {
+        boolean preservDirtyState = this.___dirty;
+
+        OrientVertex ov = (OrientVertex) this.___baseElement;
+        ClassDef classdef = getClassDef();
+
+        LOGGER.log(Level.FINER, "procesando {0} indirected links", new Object[]{classdef.indirectLinks.size()});
+        this.loadLinks(ov, classdef, classdef.indirectLinks, false, true);
+
+        
+        //ANALYZE WELL IF THIS CODE IS VALID OR UNNECESSARY AND REMOVE IT
+        
+//        // forzar la recarga de las colecciones.
+//        LOGGER.log(Level.FINER, "Refrescando las colecciones indirectas...");
+        // ********************************************************************************************
+        // hidratar las colecciones indirectas
+        // procesar todos los indirectLinkslist
+        // ********************************************************************************************
+//            for (Map.Entry<String, Class<?>> entry : classdef.indirectLinkLists.entrySet()) {
+//                try {
+//                    // FIXME: se debería considerar agregar una annotation EAGER!
+//                    String field = entry.getKey();
+//                    Class<?> fc = entry.getValue();
+//                    LOGGER.log(Level.FINER, "Field: {0}   Class: {1}", new String[]{field, fc.getName()});
+//
+//                    Field fLink = classdef.fieldsObject.get(field);
+//                    Direction relationDirection = Direction.IN;
+//
+//                    Indirect in = fLink.getAnnotation(Indirect.class);
+//                    String graphRelationName = in.linkName();
+//
+//                    // si hay Vértices conectados o si el constructor del objeto ha inicializado los vectores, convertirlos
+//                    if ((ov.countEdges(relationDirection, graphRelationName) > 0) || (fLink.get(___proxiedObject) != null)) {
+//                        this.___transaction.getObjectMapper().collectionToLazy(___proxiedObject, field, fc, ov, ___transaction);
+//                    }
+//
+//                } catch (IllegalAccessException | IllegalArgumentException ex) {
+//                    Logger.getLogger(ObjectProxy.class.getName()).log(Level.SEVERE, null, ex);
+//                }
+//            }
+
+
+        //----------------------------------------------------------------------
+        //restart indirect collections to reload them
+//        classdef.indirectLinks.keySet().forEach(field -> {
+//            Field f = classdef.fieldsObject.get(field);
+//                try {
+//                    ILazyCalls coll = (ILazyCalls)f.get(this.___proxiedObject);
+//                    coll.rollback();
+//                } catch (IllegalArgumentException | IllegalAccessException ex) {
+//                    LOGGER.log(Level.SEVERE, "Error eager loading link list! " + f, ex);
+//            }
+//        });
+        //----------------------------------------------------------------------
+
+        // volver a establecer el estado de Dirty.
+        this.___dirty = preservDirtyState;
+    }
+    
+    
+    /**
+     * Loads the vertex links marked as eager load.
+     */
+    @Override
+    public void ___eagerLoad() {
+        if (this.___baseElement instanceof OrientVertex) {
+            this.___transaction.initInternalTx();
+            LOGGER.log(Level.FINER, "Eager loading of {0}", this.___baseElement);
+
+            ClassDef classdef = getClassDef();
+            if (this.___baseClass.isAnnotationPresent(Eager.class)) {
+                //eager load of whole class
+                this.___loadLazyLinks();
+                this.eagerLoadLinkLists(classdef, classdef.linkLists, false); //force load of link lists
+                this.eagerLoadLinkLists(classdef, classdef.indirectLinkLists, false); //force load of indirect link lists
+            } else {
+                OrientVertex ov = (OrientVertex) this.___baseElement;
+                this.loadLinks(ov, classdef, classdef.links, true, false); //eager load of links
+                this.eagerLoadLinkLists(classdef, classdef.linkLists, true); //eager load of link lists
+                this.loadLinks(ov, classdef, classdef.indirectLinks, true, true); //eager load of indirect links
+                this.eagerLoadLinkLists(classdef, classdef.indirectLinkLists, true); //eager load of indirect link lists
+            }
+            this.___transaction.closeInternalTx();
         }
     }
     
+    
+    /**
+     * Forces the load of collections of links.
+     */
+    private void eagerLoadLinkLists(ClassDef classdef, HashMap<String, Class<?>> linksFields, boolean onlyEager) {
+        linksFields.keySet().forEach(field -> {
+            Field f = classdef.fieldsObject.get(field);
+            if (!onlyEager || f.isAnnotationPresent(Eager.class)) {
+                ILazyCalls coll = (ILazyCalls)objectMapper().getFieldValue(this.___proxiedObject, f);
+                if (coll != null) coll.forceLoad();
+            }
+        });
+    }
+
 
     @Override
     public boolean ___isValid() {
@@ -1192,4 +1215,13 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         this.___transaction.closeInternalTx();
     }
 
+    
+    private ClassDef getClassDef() {
+        return this.___transaction.getObjectMapper().getClassDef(this.___baseClass);
+    }
+    
+    private ObjectMapper objectMapper() {
+        return this.___transaction.getObjectMapper();
+    }
+    
 }

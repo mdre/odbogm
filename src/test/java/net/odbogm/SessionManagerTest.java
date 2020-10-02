@@ -3072,4 +3072,39 @@ public class SessionManagerTest {
         assertNotNull(v.getLooptestLinkNotLoaded());
     }
     
+    /*
+     * Tests the use of the @Eager annotation.
+     */
+    @Test
+    public void eagerLoad() throws Exception {
+        SimpleVertexEx v = sm.store(new SimpleVertexEx());
+        SimpleVertexEx v2 = sm.store(new SimpleVertexEx());
+        v.setLooptest(v2);
+        v.setEagerTest(v2);
+        v = commitClearAndGet(v);
+        
+        //call to a @DontLoadLinks method
+        assertNull(v.getLooptestLinkNotLoaded());
+        
+        //call to a @DontLoadLinks method but link loaded eagerly
+        assertNotNull(v.getEagerTest());
+        
+        //call to a @DontLoadLinks method again to make sure lazy load was not activated
+        assertNull(v.getLooptestLinkNotLoaded());
+        
+        //call to normal method
+        assertNotNull(v.getSvex());
+        
+        //now all loaded
+        assertNotNull(v.getLooptestLinkNotLoaded());
+        
+        //with indirects:
+        v2 = v.getEagerTest();
+        assertNull(v2.getIndirectEagerTest()); //not loaded
+        assertNotNull(v2.getEagerIndirectEagerTest()); //eager loaded
+        assertNull(v2.getIndirectEagerTest()); //still not loaded
+        v2.getSvex();
+        assertNotNull(v2.getIndirectEagerTest()); //now loaded
+    }
+    
 }
