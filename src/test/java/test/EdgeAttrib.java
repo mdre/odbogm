@@ -88,7 +88,7 @@ public class EdgeAttrib {
         if (obj == null) {
             return false;
         }
-        if (!(obj instanceof EdgeAttrib)) {
+        if (!EdgeAttrib.class.isInstance(obj)) {
             return false;
         }
         final EdgeAttrib other = (EdgeAttrib) obj;

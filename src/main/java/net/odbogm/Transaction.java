@@ -427,9 +427,12 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 //        // por lo que futuros pedidos a la base fuera de la transacción devolverá una nueva instancia
 //        // del objeto.
 //        this.objectCache.clear();
-        // limpiar el caché de objetos modificados
+
+        // clean the cache of new and modified objects
         this.dirty.clear();
-        // lipiar el caché de objetos a borrar.
+        this.storedObjects.clear();
+        this.newrids.clear();
+        // clean the cache of objects to delete
         this.dirtyDeleted.clear();
         // limpiar los nuevos RIDs dado que fueron invalidados.
         this.newrids.clear();

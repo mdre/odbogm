@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.LogginProperties;
@@ -967,9 +968,10 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                 }
 
                                 // refrescar los estados
-                                final Map<Object, ObjectCollectionState> keysState = ((ILazyMapCalls) mapFieldValue).collectionState();
-                                final Map<Object, OEdge> keysToEdges = ((ILazyMapCalls) mapFieldValue).getKeyToEdge();
-                                final Map<Object, ObjectCollectionState> entitiesState = ((ILazyMapCalls) mapFieldValue).getEntitiesState();
+                                ILazyMapCalls lazyMap = (ILazyMapCalls) mapFieldValue;
+                                final Map<Object, ObjectCollectionState> keysState = lazyMap.collectionState();
+                                final Map<Object, OEdge> keysToEdges = lazyMap.getKeyToEdge();
+                                final Map<Object, ObjectCollectionState> entitiesState = lazyMap.getEntitiesState();
 
                                 // recorrer todas las claves del mapa
                                 for (Map.Entry<Object, ObjectCollectionState> entry1 : keysState.entrySet()) {
@@ -990,16 +992,12 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                         }
                                     }
 
-                                    OEdge oe;
                                     // verificar el estado del objeto en la colección.
                                     switch (keyState) {
                                         case ADDED:
                                             // crear un link entre los dos objetos.
                                             LOGGER.log(Level.FINER, "-----> agregando un LinkList al Map!");
-                                            //oe = this.___transaction.getCurrentGraphDb().addEdge("class:" + graphRelationName,
-                                            //        (OVertex) this.___baseElement, ((IObjectProxy) linkedO).___getVertex(),
-                                            //        graphRelationName);
-                                            oe = ((OVertex) this.___baseElement).addEdge(((IObjectProxy) linkedO).___getVertex(),graphRelationName);
+                                            OEdge oe = ((OVertex) this.___baseElement).addEdge(((IObjectProxy) linkedO).___getVertex(), graphRelationName);
                                             // actualizar el edge con los datos de la key.
                                             this.___transaction.getObjectMapper().fillSequenceFields(key, this.___transaction, null);
                                             VertexUtils.fillElement(oe,this.___transaction.getObjectMapper().simpleMap(key));
@@ -1007,6 +1005,9 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                             if (this.___transaction.isAuditing()) {
                                                 this.___transaction.auditLog(this, AuditType.WRITE, "LINKLIST ADD: " + graphRelationName, oe);
                                             }
+                                            
+                                            //update the map with the managed key
+                                            lazyMap.updateKey(key, oe);
                                             break;
 
                                         case NOCHANGE:
@@ -1016,27 +1017,40 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                         case REMOVED:
                                             // quitar el Edge
                                             OEdge oeRemove = keysToEdges.get(key);
-                                            if (this.___transaction.isAuditing()) {
-                                                this.___transaction.auditLog(this, AuditType.WRITE, "LINKLIST REMOVE: " + graphRelationName, oeRemove);
-                                            }
                                             if (oeRemove == null) {
                                                 throw new IllegalStateException("The edge object couldn't be found. "
                                                         + "Make sure its hashCode is change-proof.");
                                             }
-                                            oeRemove.delete();
-                                            // el link se ha removido. Se debe eliminar y verificar si corresponde borrar 
-                                            // el vértice en caso de estar marcado con @RemoveOrphan.
+                                            
+                                            // verificar si corresponde borrar el vértice en caso de estar marcado con @RemoveOrphan.
+                                            boolean removeOrphan = false;
                                             if (f.isAnnotationPresent(RemoveOrphan.class)) {
-                                                if (entitiesState.get(key) == ObjectCollectionState.REMOVED) {
-                                                    this.___transaction.delete(entitiesState.get(key));
-                                                    if (this.___transaction.isAuditing()) {
-                                                        this.___transaction.auditLog(this, AuditType.DELETE, "LINKLIST REMOVE: " + graphRelationName, key);
-                                                    }
+                                                if (entitiesState.get(linkedO) == ObjectCollectionState.REMOVED) {
+                                                    removeOrphan = true;
                                                 }
                                             }
+                                            removeEdge(graphRelationName, oeRemove, removeOrphan ?
+                                                    (IObjectProxy)linkedO : null);
                                             break;
                                     }
                                 }
+                                
+                                for (Map.Entry<Object, ObjectCollectionState> e : entitiesState.entrySet()) {
+                                    Object value = e.getKey();
+                                    ObjectCollectionState valueState = e.getValue();
+                                    if (value instanceof IObjectProxy && valueState == ObjectCollectionState.REMOVED) {
+                                        //we must remove the old edge
+                                        IObjectProxy valueop = (IObjectProxy)value;
+                                        boolean removeOrphan = f.isAnnotationPresent(RemoveOrphan.class);
+                                        
+                                        valueop.___getVertex().getEdges(ODirection.IN, graphRelationName).forEach(edge -> {
+                                            if (Objects.equals(this.___baseElement, edge.getFrom())) {
+                                                removeEdge(graphRelationName, edge, removeOrphan ? valueop : null);
+                                            }
+                                        });
+                                    }
+                                }
+                                
                                 ((ILazyMapCalls) mapFieldValue).clearState();
                             } else {
                                 LOGGER.log(Level.FINER, "********************************************");
@@ -1057,6 +1071,19 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             this.___transaction.closeInternalTx();
         }
         LOGGER.log(Level.FINER, "fin commit ----");
+    }
+    
+    private void removeEdge(String graphRelationName, OEdge edge, IObjectProxy vertexToRemove) {
+        if (this.___transaction.isAuditing()) {
+            this.___transaction.auditLog(this, AuditType.WRITE, "LINKLIST REMOVE: " + graphRelationName, edge);
+        }
+        edge.delete();
+        if (vertexToRemove != null) {
+            this.___transaction.delete(vertexToRemove);
+            if (this.___transaction.isAuditing()) {
+                this.___transaction.auditLog(this, AuditType.DELETE, "LINKLIST REMOVE: " + graphRelationName, vertexToRemove);
+            }
+        }
     }
     
 
