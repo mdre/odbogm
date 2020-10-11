@@ -5,6 +5,8 @@ import com.orientechnologies.orient.core.id.ORecordId;
 import com.orientechnologies.orient.core.record.ODirection;
 import com.orientechnologies.orient.core.record.OVertex;
 import static org.junit.Assert.*;
+import com.orientechnologies.orient.core.record.OEdge;
+import com.orientechnologies.orient.core.record.OVertex;
 import java.lang.reflect.Field;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -628,6 +630,98 @@ public class SessionManagerTest {
         System.out.println("============================= FIN LoopTest ===============================");
     }
 
+    /**
+     * Verificar que las reasignaciones queden consistentes.
+     * @throws Exception 
+     */
+    @Test
+    public void bug() throws Exception {
+        // borrar datos viejos para mantener la base.
+        sm.getDBTx().execute("sql", "delete vertex SimpleVertex where s = \"bug\"", "");
+        
+        
+        SimpleVertexEx v1 = sm.store(new SimpleVertexEx());
+        SimpleVertexEx v2 = sm.store(new SimpleVertexEx());
+        v1.setS("bug");
+        v2.setS("bug");
+        System.out.println("crear la primera referencia. v --> v2");
+        //v apunta a v2
+        v1.setLooptest(v2);
+        System.out.println("");
+        System.out.println("");
+        System.out.println("");
+        
+        System.out.println("llamar a commit");
+        sm.commit();
+        
+        String v1rid = sm.getRID(v1);
+        System.out.println("v1: "+v1rid);
+        System.out.println("v2: "+sm.getRID(v2));
+        System.out.println("v2.uuid: "+v2.getUuid());
+        
+        System.out.println("");
+        System.out.println("");
+        System.out.println("");
+        System.out.println("");
+        System.out.println("pasar a null =================================");
+        v1.setLooptest(null);
+        
+        sm.commit();
+        
+        System.out.println("");
+        System.out.println("");
+        System.out.println("");
+        System.out.println("");
+        //ahora v apunta a v3
+        System.out.println("reasingar a v3");
+//        SimpleVertexEx v3 = sm.store(new SimpleVertexEx());
+        SimpleVertexEx v3 = sm.store(new SimpleVertexEx());
+        String v3uuid = v3.getUuid();
+        v3.setS("bug");
+        v1.setLooptest(v3);
+        System.out.println("");
+        System.out.println("");
+        System.out.println("");
+        System.out.println("llamar a segundo commit");
+        sm.commit();
+        System.out.println("liberar v1");
+        v1 = null;
+        v1 = sm.get(SimpleVertexEx.class,v1rid);
+        
+        System.out.println("v1->v3.uuid: "+v1.getLooptest().getUuid());
+        assertEquals(v3uuid, v1.getLooptest().getUuid());
+        
+        
+//        SimpleVertexEx v4 = sm.store(new SimpleVertexEx());
+//        String v4uuid = v4.getUuid();
+//        //ahora v apunta a v3
+//        System.out.println("reasingar a v4");
+//        v1.setLooptest(v4);
+//        System.out.println("");
+//        System.out.println("");
+//        System.out.println("");
+//        System.out.println("llamar a segundo commit");
+//        sm.commit();
+//        System.out.println("liberar v1");
+//        v1 = null;
+//        v1 = sm.get(SimpleVertexEx.class,v1rid);
+//        
+//        System.out.println("v1->v4.uuid: "+v1.getLooptest().getUuid());
+//        assertEquals(v4uuid, v1.getLooptest().getUuid());
+        
+        System.out.println("");
+        System.out.println("");
+        System.out.println("*************************************");
+        System.out.println("v1 rid: "+sm.getRID(v1));
+        ODatabaseSession odbs = sm.getDBTx();
+        odbs.activateOnCurrentThread();
+        System.out.println("v1 SimpleVertexEx_looptest: "+((IObjectProxy)v1).___getVertex().getEdges(ODirection.OUT, "SimpleVertexEx_looptest"));
+
+        for (OEdge edge : ((IObjectProxy)v1).___getVertex().getEdges(ODirection.OUT, "SimpleVertexEx_looptest")) {
+            System.out.println("--: "+edge);
+        }
+    }
+    
     /**
      * Verificar la correscta inicialización de los objetos en un arraylist
      */
@@ -2325,36 +2419,36 @@ public class SessionManagerTest {
     /*
      * Testea que se pueda reintentar un commit con objetos modificados.
      */
-    @Test
-    public void retryCommit() throws Exception {
-        SimpleVertexEx sv = new SimpleVertexEx();
-        sv = sm.store(sv);
-        sm.commit();
-        String rid = sm.getRID(sv);
-        
-        Transaction t1 = sm.getTransaction();
-        SimpleVertexEx s1 = t1.get(SimpleVertexEx.class, rid);
-        
-        Transaction t2 = sm.getTransaction();
-        SimpleVertexEx s2 = t2.get(SimpleVertexEx.class, rid);
-
-        s1.setS("en tran 1");
-        t1.commit();
-        
-        s2.setS("en tran 2");
-        assertThrows(ConcurrentModification.class, () -> t2.commit());
-        
-        //reintento
-        t2.commit();
-        
-        //ver si se guardó correctamente el cambio de t2
-        t2.clearCache();
-        s2 = t2.get(SimpleVertexEx.class, rid);
-        assertEquals("en tran 2", s2.getS());
-        t1.clearCache();
-        s1 = t1.get(SimpleVertexEx.class, rid);
-        assertEquals("en tran 2", s1.getS());
-    }
+//    @Test
+//    public void retryCommit() throws Exception {
+//        SimpleVertexEx sv = new SimpleVertexEx();
+//        sv = sm.store(sv);
+//        sm.commit();
+//        String rid = sm.getRID(sv);
+//        
+//        Transaction t1 = sm.getTransaction();
+//        SimpleVertexEx s1 = t1.get(SimpleVertexEx.class, rid);
+//        
+//        Transaction t2 = sm.getTransaction();
+//        SimpleVertexEx s2 = t2.get(SimpleVertexEx.class, rid);
+//
+//        s1.setS("en tran 1");
+//        t1.commit();
+//        
+//        s2.setS("en tran 2");
+//        assertThrows(ConcurrentModification.class, () -> t2.commit());
+//        
+//        //reintento
+//        t2.commit();
+//        
+//        //ver si se guardó correctamente el cambio de t2
+//        t2.clearCache();
+//        s2 = t2.get(SimpleVertexEx.class, rid);
+//        assertEquals("en tran 2", s2.getS());
+//        t1.clearCache();
+//        s1 = t1.get(SimpleVertexEx.class, rid);
+//        assertEquals("en tran 2", s1.getS());
+//    }
     
     
     /*
