@@ -167,6 +167,16 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         }
     }
     
+    public synchronized void shutdownInternalTx() {
+        if (orientdbTransact != null) {
+            orientTransacLevel = 0;
+            if (newrids.isEmpty()) {
+                orientdbTransact.close();
+                orientdbTransact = null;
+            }
+        }
+    }
+    
     
     /**
      * Elimina cualquier objeto que esté marcado como dirty en esta transacción

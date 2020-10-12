@@ -12,18 +12,22 @@ public class OdbogmException extends RuntimeException {
     private boolean canRetry = false;
     
     public OdbogmException(Transaction transaction) {
-        transaction.closeInternalTx();
+        shutdownTransaction(transaction);
     }
     
     public OdbogmException(String message, Transaction transaction) {
         super(message);
-        transaction.closeInternalTx();
+        shutdownTransaction(transaction);
     }
 
     public OdbogmException(Throwable cause, Transaction transaction) {
         super(cause.getMessage(), cause);
-        transaction.closeInternalTx();
+        shutdownTransaction(transaction);
         canRetry = cause instanceof ONeedRetryException;
+    }
+    
+    private void shutdownTransaction(Transaction transaction) {
+        transaction.shutdownInternalTx();
     }
     
     /**
