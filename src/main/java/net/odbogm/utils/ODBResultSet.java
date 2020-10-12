@@ -24,7 +24,6 @@ import java.util.stream.Stream;
 /**
  *
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
- * @param <Object> Se puede tipar el iterador con cualquier clase.
  */
 public class ODBResultSet implements OResultSet, AutoCloseable {
     private final static Logger LOGGER = Logger.getLogger(ODBResultSet.class .getName());
