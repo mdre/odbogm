@@ -298,16 +298,12 @@ public class ObjectMapper {
         for (Map.Entry<String, Class<?>> entry : classdef.enumFields.entrySet()) {
             String prop = entry.getKey();
             LOGGER.log(Level.FINER, "Buscando campo {0} ....", new String[]{prop});
+            f = classdef.fieldsObject.get(prop);
             Object value = v.getProperty(prop);
-            if (value != null && value.toString() != null && !value.toString().isBlank()) {
-                // FIXME: este código se puede mejorar. Tratar de usar solo setFieldValue()
-                f = classdef.fieldsObject.get(prop);
-                Object enumValue = Enum.valueOf(f.getType().asSubclass(Enum.class), value.toString());
-                LOGGER.log(Level.FINER, "Enum field: {0} type: {1} value: {2} Enum val: {3}",
-                        new Object[]{f.getName(), f.getType(), value, enumValue});
-                this.setFieldValue(proxy, prop, enumValue);
-                LOGGER.log(Level.FINER, "hidratado campo: {0}={1}", new Object[]{prop, value});
-            }
+            LOGGER.log(Level.FINER, "Enum field: {0} type: {1} value: {2}",
+                    new Object[]{f.getName(), f.getType(), value});
+            setEnumField(proxy, f, value);
+            LOGGER.log(Level.FINER, "hidratado campo: {0}={1}", new Object[]{prop, value});
         }
 
         
@@ -620,18 +616,21 @@ public class ObjectMapper {
         Field f;
         for (String prop : e.getPropertyKeys()) {
             Object value = e.getProperty(prop);
-
-            // obtener la clase a la que pertenece el campo
-            // (puede ser un enum en lugar de un atributo básico)
-            // puede darse el caso que la base cree un atributo sobre los registros (ej: @rid) 
-            // y la clave podría no corresponderse con un campo.
-            Class<?> fc = classdef.fields.get(prop);
-            fc = (fc == null) ? classdef.enumFields.get(prop) : fc;
-            
-            if (fc != null) {
+            if (value != null) {
                 f = classdef.fieldsObject.get(prop);
-                f.set(oproxied, fc.isEnum() ? Enum.valueOf(
-                        f.getType().asSubclass(Enum.class), value.toString()) : value);
+                // obtener la clase a la que pertenece el campo
+                // (puede ser un enum en lugar de un atributo básico)
+                // puede darse el caso que la base cree un atributo sobre los registros (ej: @rid) 
+                // y la clave podría no corresponderse con un campo.
+                Class<?> fc = classdef.fields.get(prop);
+                if (fc != null) {
+                    setFieldValue(oproxied, f, value);
+                } else {
+                    fc = classdef.enumFields.get(prop);
+                    if (fc != null) {
+                        setEnumField(oproxied, f, value);
+                    }
+                }
             }
         }
         return oproxied;
@@ -664,4 +663,14 @@ public class ObjectMapper {
         }
     }
 
+    public void setEnumField(Object o, Field field, Object value) {
+        try {
+            if (value != null && value.toString() != null && !value.toString().isBlank()) {
+                field.set(o, Enum.valueOf(field.getType().asSubclass(Enum.class), value.toString()));
+            }
+        } catch (IllegalArgumentException | IllegalAccessException ex) {
+            LOGGER.log(Level.SEVERE, "Error setting enum value for " + field, ex);
+        }
+    }
+    
 }
