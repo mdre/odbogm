@@ -678,6 +678,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                     }
                     // si todo está ok
                     // reemplazar la referencia y continuar
+                    LOGGER.log(Level.FINEST, "\n\nInstance replace with fresh database load\n\n");
                     this.___baseElement = oeTmp;
                 }
             }
@@ -1077,6 +1078,10 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         if (this.___transaction.isAuditing()) {
             this.___transaction.auditLog(this, AuditType.WRITE, "LINKLIST REMOVE: " + graphRelationName, edge);
         }
+        // FIXME: ojo que esto puede haber cambiado.
+        edge.reload();
+        //--- 
+        
         edge.delete();
         if (vertexToRemove != null) {
             this.___transaction.delete(vertexToRemove);
