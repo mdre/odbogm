@@ -932,7 +932,6 @@ public class SessionManagerTest {
         assertNull(e.getTheEnum());
     }
     
-    
     @Test
     public void testRollbackEnum() {
         System.out.println("\n\n\n");
@@ -941,17 +940,12 @@ public class SessionManagerTest {
         System.out.println("***************************************************************");
         SimpleVertexEx sve = new SimpleVertexEx();
         sve.initEnum();
-//        sve.initInner();
-//        sve.initArrayList();
-//        sve.initHashMap();
 
         sve.setEnumTest(EnumTest.UNO);
 
         System.out.println("guardado del objeto.");
         SimpleVertexEx stored = sm.store(sve);
         sm.commit();
-
-        String rid = sm.getRID(stored);
 
         // modificar los campos.
         stored.setEnumTest(EnumTest.DOS);
@@ -1004,6 +998,28 @@ public class SessionManagerTest {
     }
     
     /*
+     * Tests that when rollbacking, a new collection not yet managed by the OGM
+     * gets correctly reverted.
+     */
+    @Test
+    public void testRollbackUnmanagedCollection() throws Exception {
+        SimpleVertexEx sv = sm.store(new SimpleVertexEx());
+        sv = commitClearAndGet(sv);
+        
+        //new list
+        assertNull(sv.getAlSV());
+        sv.initArrayList();
+        sm.rollback();
+        assertNull(sv.getAlSV());
+        
+        //new map
+        assertNull(sv.getHmSV());
+        sv.initHashMap();
+        sm.rollback();
+        assertNull(sv.getHmSV());
+    }
+    
+    /*
      * Bug fixed: In certain conditions, rolling back caused the next modifications
      * to be ignored in commit.
      */
@@ -1021,7 +1037,7 @@ public class SessionManagerTest {
         Secure stored = sm.store(sec);
         sm.commit();
 
-        // modificar los campos.
+        //modify the fields
         stored.setS("Before rollback");
         stored.subs.iterator().next().aList.add(new SimpleVertex());
         stored.subs.add(new SubSecure());
@@ -1045,10 +1061,6 @@ public class SessionManagerTest {
         System.out.println("Rollback Maps. Se restablecen los atributos que hereden de Collection.");
         System.out.println("***************************************************************");
         SimpleVertexEx sve = new SimpleVertexEx();
-//        sve.initEnum();
-//        sve.initInner();
-//        sve.initArrayList();
-//        sve.initHashMap();
         sve.hmSV = new HashMap<String, SimpleVertex>();
         SimpleVertex sv = new SimpleVertex();
         sve.hmSV.put("key1", sv);
@@ -1058,8 +1070,6 @@ public class SessionManagerTest {
         System.out.println("guardando el objeto con 3 elementos en el HM.");
         SimpleVertexEx stored = sm.store(sve);
         sm.commit();
-
-        String rid = sm.getRID(stored);
 
         // modificar los campos.
         stored.hmSV.put("key rollback", new SimpleVertex());
@@ -1516,7 +1526,6 @@ public class SessionManagerTest {
         System.out.println("--- En Maps ---");
     }
     
-    
     @Test
     public void testAudit() throws Exception {
         sm.setAuditOnUser("test-user");
@@ -1533,7 +1542,8 @@ public class SessionManagerTest {
         
         sm.getTransaction().clearCache();
         sv = sm.get(SimpleVertexEx.class, rid);
-        sv.initArrayList();
+        sv.initArrayList(); //initialize list with 3 elements
+        assertEquals(3, sv.getAlSV().size());
         sm.commit();
         
         logs = sm.query(query, "");
@@ -1543,6 +1553,52 @@ public class SessionManagerTest {
         assertFalse(sm.isAuditing());
     }
     
+    /*
+     * Tests that audits correctly when there is a rollback involved.
+     */
+    @Test
+    public void testAuditOnRollback() throws Exception {
+        sm.setAuditOnUser("test-user");
+        assertTrue(sm.isAuditing());
+        
+        SimpleVertexEx sv = sm.store(new SimpleVertexEx());
+        sv = commitClearAndGet(sv);
+        
+        String rid = sm.getRID(sv);
+        String query = String.format("select count(*) from ODBAuditLog where rid = '%s'", rid);
+        long logs = sm.query(query, "");
+        assertEquals(1, logs); //store log
+        
+        sv.setAlSVE(new ArrayList<>());
+        sv.getAlSVE().add(sm.store(new SimpleVertexEx()));
+        sm.rollback();
+        
+        sv.setS("Without changes");
+        sm.commit();
+        
+        logs = sm.query(query, "");
+        assertEquals(3, logs); //store, read, update
+    }
+    
+    /*
+     * Bug fixed: there was a scenario that when auditing was enabled, rollbacking
+     * a store and then commiting a new store caused an exception.
+     */
+    @Test
+    public void fixAuditOnRollback() throws Exception {
+        sm.setAuditOnUser("test-user");
+        assertTrue(sm.isAuditing());
+        
+        SimpleVertexEx stored = new SimpleVertexEx();
+        stored.lSV = new ArrayList<>();
+        stored.lSV.add(new SimpleVertex("link"));
+        sm.store(stored);
+        sm.rollback();
+        
+        //if bug is fixed then this must not throw exception:
+        sm.store(new SimpleVertexEx());
+        sm.commit();
+    }
 
     /**
      * Test of delete method, of class SessionManager.

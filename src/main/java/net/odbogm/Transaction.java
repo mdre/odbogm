@@ -341,7 +341,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             if (this.isAuditing()) {
                 LOGGER.log(Level.FINER, "grabando auditoría...");
                 this.getAuditor().commit();
-                this.orientdbTransact.commit();
                 LOGGER.log(Level.FINER, "finalizado.");
             }
             
@@ -413,18 +412,16 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             value.___rollback();
         }
 
-        
-//        // se opta por eliminar el caché de objetos recuperados de la base en un commit o rollback
-//        // por lo que futuros pedidos a la base fuera de la transacción devolverá una nueva instancia
-//        // del objeto.
-//        this.objectCache.clear();
-
         // clean the cache of new and modified objects
         this.dirty.clear();
         this.storedObjects.clear();
         this.newrids.clear();
         // clean the cache of objects to delete
         this.dirtyDeleted.clear();
+        // clean the invalid entries of auditor cache
+        if (this.isAuditing()) {
+            getAuditor().rollback();
+        }
         
         this.nestedTransactionLevel = 0;
         LOGGER.log(Level.FINER, "FIN ROLLBACK.");

@@ -655,11 +655,11 @@ public class ObjectMapper {
     }
     
     public void setFieldValue(Object o, String field, Object value) {
+        Field f = this.classCache.get(o.getClass()).fieldsObject.get(field);
         try {
-            Field f = this.classCache.get(o.getClass()).fieldsObject.get(field);
             f.set(o, value);
         } catch (IllegalArgumentException | IllegalAccessException ex) {
-            LOGGER.log(Level.SEVERE, "Error setting value for " + field, ex);
+            LOGGER.log(Level.SEVERE, "Error setting value for " + f, ex);
         }
     }
 

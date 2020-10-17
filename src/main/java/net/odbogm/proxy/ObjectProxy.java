@@ -1127,8 +1127,8 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
         LOGGER.log(Level.FINER, "vmap: {0}", this.___baseElement.getProperties());
         // restaurar los atributos al estado original.
-        ObjectMapper objectMapper = this.___transaction.getObjectMapper();
-        ClassDef classdef = objectMapper.getClassDef(this.___proxiedObject);
+        ObjectMapper objectMapper = objectMapper();
+        ClassDef classdef = getClassDef();
         
         
         LOGGER.log(Level.FINER, "Reverting basic attributes.........");
@@ -1194,20 +1194,16 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         // procesar todos los linkslist
         LOGGER.log(Level.FINER, "Revirtiendo las colecciones...");
         for (Map.Entry<String, Class<?>> entry : classdef.linkLists.entrySet()) {
-            try {
-                // FIXME: se debería considerar agregar una annotation EAGER!
-                String field = entry.getKey();
-                Class<?> fc = entry.getValue();
-                LOGGER.log(Level.FINER, "Field: {0}   Class: {1}", new String[]{field, fc.getName()});
-                Field fLink = classdef.fieldsObject.get(field);
-                ILazyCalls lc = (ILazyCalls) fLink.get(___proxiedObject);
-                if (lc != null) {
-                    lc.rollback();
-                }
-            } catch (IllegalArgumentException ex) {
-                Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
-            } catch (IllegalAccessException ex) {
-                Logger.getLogger(ObjectProxy.class.getName()).log(Level.SEVERE, null, ex);
+            String field = entry.getKey();
+            Class<?> fc = entry.getValue();
+            LOGGER.log(Level.FINER, "Field: {0}   Class: {1}", new String[]{field, fc.getName()});
+
+            Field fLink = classdef.fieldsObject.get(field);
+            Object coll = objectMapper.getFieldValue(this.___proxiedObject, fLink);
+            if (coll != null && coll instanceof ILazyCalls) {
+                ((ILazyCalls)coll).rollback();
+            } else {
+                objectMapper.setFieldValue(this.___proxiedObject, fLink, null);
             }
         }
         

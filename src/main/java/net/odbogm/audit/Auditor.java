@@ -110,6 +110,17 @@ public class Auditor implements IAuditor {
         odb.shutdown();
         this.logdata.clear();
     }
+    
+    
+    @Override
+    public void rollback() {
+        //discard the entries for stores and deletes
+        new ArrayList<>(logdata).forEach(l -> {
+            if (l.label.startsWith("STORE") || l.label.startsWith("DELETE")) {
+                this.logdata.remove(l);
+            }
+        });
+    }
 }
 
 class LogData {
@@ -128,7 +139,7 @@ class LogData {
         if (data == null) {
             this.data = "";
         } else {
-            //keep the element if it's new, so we can save the final rid and not the temporary:
+            //keep the element if it's new, so we can save the final rid and not the temporary in the "log" field:
             if (data instanceof OrientElement && ((OrientElement)data).getIdentity().isNew()) {
                 this.odata = data;
             } else {
