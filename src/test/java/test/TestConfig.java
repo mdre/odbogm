@@ -4,7 +4,7 @@ package test;
  *
  * @author jbertinetti
  */
-public interface Config {
+public interface TestConfig {
     
     public static final String TESTDB = "remote:localhost/ogm-test";
     

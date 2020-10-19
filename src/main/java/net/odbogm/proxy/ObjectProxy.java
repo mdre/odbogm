@@ -137,132 +137,136 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             LOGGER.log(Level.FINER, "RID nuevo. No procesar porque el store preparó todo y no hay nada que recuperar de la base.");
             this.___loadLazyLinks = false;
         }
-        // BEFORE
-        // measure the current time         
-//        long time1 = System.currentTimeMillis();
-//        System.out.println("intercepted: " + method.getName());
-        // modificar el llamado
-        if (!this.___deletedMark) {
+        
+        //if object was deleted:
+        if (this.___deletedMark) {
             switch (method.getName()) {
-                case "___uptadeVersion":
-                    if (this.___objectReady) {
-                        this.___uptadeVersion();
+                case "equals":
+                case "hashCode":
+                    if (!this.___transaction.getSessionManager().getConfig().
+                            isEqualsAndHashCodeOnDeletedThrowsException()) {
+                        return methodProxy.invokeSuper(o, args);
                     }
-                    break;
-                case "___injectRid":
-                    if (this.___objectReady) {
-                        this.___injectRid();
-                    }
-                    break;
-                case "___getProxiedObject":
-                    if (this.___objectReady) {
-                        res = this.___getProxiedObject();
-                    }
-                    break;
-                case "___loadLazyLinks":
-                    if (this.___objectReady) {
+                default:
+                    throw new ObjectMarkedAsDeleted("The object " + this.___baseElement.getId().toString() + " was deleted from the database. Trying to call to " + method.getName());
+            }
+        }
+        
+        // modificar el llamado
+        switch (method.getName()) {
+            case "___uptadeVersion":
+                if (this.___objectReady) {
+                    this.___uptadeVersion();
+                }
+                break;
+            case "___injectRid":
+                if (this.___objectReady) {
+                    this.___injectRid();
+                }
+                break;
+            case "___getProxiedObject":
+                if (this.___objectReady) {
+                    res = this.___getProxiedObject();
+                }
+                break;
+            case "___loadLazyLinks":
+                if (this.___objectReady) {
+                    this.___loadLazyLinks();
+                }
+                break;
+            case "___eagerLoad":
+                if (this.___objectReady) {
+                    this.___eagerLoad();
+                }
+                break;
+            case "___isDirty":
+                if (this.___objectReady) {
+                    res = this.___isDirty();
+                }
+                break;
+            case "___setDirty":
+                if (this.___objectReady) {
+                    this.___setDirty();
+                }
+                break;
+            case "___removeDirtyMark":
+                if (this.___objectReady) {
+                    this.___removeDirtyMark();
+                }
+                break;
+            case "___commit":
+                /**
+                 * FIXME: se podría evitar si se controlara si los links se
+                 * han cargado o no al momento de hacer el commit para
+                 * evitar realizar el load sin necesidad.
+                 */
+                if (this.___objectReady) {
+                    if (this.___loadLazyLinks) {
                         this.___loadLazyLinks();
                     }
-                    break;
-                case "___eagerLoad":
-                    if (this.___objectReady) {
-                        this.___eagerLoad();
-                    }
-                    break;
-                case "___isDirty":
-                    if (this.___objectReady) {
-                        res = this.___isDirty();
-                    }
-                    break;
-                case "___setDirty":
-                    if (this.___objectReady) {
-                        this.___setDirty();
-                    }
-                    break;
-                case "___removeDirtyMark":
-                    if (this.___objectReady) {
-                        this.___removeDirtyMark();
-                    }
-                    break;
-                case "___commit":
-                    /**
-                     * FIXME: se podría evitar si se controlara si los links se
-                     * han cargado o no al momento de hacer el commit para
-                     * evitar realizar el load sin necesidad.
-                     */
-                    if (this.___objectReady) {
-                        if (this.___loadLazyLinks) {
-                            this.___loadLazyLinks();
-                        }
-                        this.___commit();
-                    }
-                    break;
-                case "___reload":
-                    if (this.___objectReady) {
-                        this.___reload();
-                    }
-                    break;
-                case "___setDeletedMark":
-                    this.___setDeletedMark();
-                    break;
+                    this.___commit();
+                }
+                break;
+            case "___reload":
+                if (this.___objectReady) {
+                    this.___reload();
+                }
+                break;
+            case "___setDeletedMark":
+                this.___setDeletedMark();
+                break;
 
-                case "___ogm___setDirty":
-                    res = methodProxy.invokeSuper(o, args);
-                    break;
-                case "___ogm___isDirty":
-                    res = methodProxy.invokeSuper(o, args);
-                    break;
-                    
-                default:
-                    // invoke the method on the real object with the given params:
-                    
-                    if (method.getName().equals("toString")) {
-                        try {
-                            //if object doesn't have toString defined, we implement one on the fly
-                            ReflectionUtils.findMethod(this.___baseClass, "toString", (Class<?>[]) null);
-                        } catch (NoSuchMethodException nsme) {
-                            res = this.___baseElement.getId().toString(); //returns rid
-                            break;
-                        }
-                    }
-                    
-                    if (this.___loadLazyLinks) {
-                        boolean methodTriggersLoadLazyLink = true;
-                        if (method.getName().equals("equals") || method.getName().equals("hashCode")) {
-                            methodTriggersLoadLazyLink &= this.___transaction.getSessionManager().isEqualsAndHashCodeTriggerLoadLazyLinks();
-                        }
-                        methodTriggersLoadLazyLink &= !method.isAnnotationPresent(DontLoadLinks.class);
-                        if (this.___objectReady && methodTriggersLoadLazyLink) {
-                            this.___loadLazyLinks();
-                        }
-                    }
-                    
-                    LOGGER.log(Level.FINEST, "Invoking: {0}", method.getName());
-                    res = methodProxy.invokeSuper(o, args);
+            case "___ogm___setDirty":
+                res = methodProxy.invokeSuper(o, args);
+                break;
+            case "___ogm___isDirty":
+                res = methodProxy.invokeSuper(o, args);
+                break;
 
-                    // verificar si hay diferencias entre los objetos dependiendo de la estrategia seleccionada.
-                    if (this.___objectReady) {
-                        switch (this.___transaction.getSessionManager().getActivationStrategy()) {
-                            case CLASS_INSTRUMENTATION:
-                                // si se está usando la instrumentación de clase, directamente verificar en el objeto
-                                // cual es su estado.
-                                LOGGER.log(Level.FINEST, "o: {0} ITrans: {1}", new Object[]{o.getClass().getName(), o instanceof ITransparentDirtyDetector});
-                                if (((ITransparentDirtyDetector) o).___ogm___isDirty()) {
-                                    LOGGER.log(Level.FINEST, "objeto {0} marcado como dirty por ASM. Agregarlo a la lista de pendientes.", o.getClass().getName());
-                                    this.___setDirty();
-                                }
-                        }
-                    }
+            default:
+                // invoke the method on the real object with the given params:
 
-                    break;
-            }
-        } else {
-            throw new ObjectMarkedAsDeleted("The object " + this.___baseElement.getId().toString() + " was deleted from the database. Trying to call to " + method.getName());
+                if (method.getName().equals("toString")) {
+                    try {
+                        //if object doesn't have toString defined, we implement one on the fly
+                        ReflectionUtils.findMethod(this.___baseClass, "toString", (Class<?>[]) null);
+                    } catch (NoSuchMethodException nsme) {
+                        res = this.___baseElement.getId().toString(); //returns rid
+                        break;
+                    }
+                }
+
+                if (this.___loadLazyLinks) {
+                    boolean methodTriggersLoadLazyLink = true;
+                    if (method.getName().equals("equals") || method.getName().equals("hashCode")) {
+                        methodTriggersLoadLazyLink &= this.___transaction.getSessionManager().
+                                getConfig().isEqualsAndHashCodeTriggerLoadLazyLinks();
+                    }
+                    methodTriggersLoadLazyLink &= !method.isAnnotationPresent(DontLoadLinks.class);
+                    if (this.___objectReady && methodTriggersLoadLazyLink) {
+                        this.___loadLazyLinks();
+                    }
+                }
+
+                LOGGER.log(Level.FINEST, "Invoking: {0}", method.getName());
+                res = methodProxy.invokeSuper(o, args);
+
+                // verificar si hay diferencias entre los objetos dependiendo de la estrategia seleccionada.
+                if (this.___objectReady) {
+                    switch (this.___transaction.getSessionManager().getActivationStrategy()) {
+                        case CLASS_INSTRUMENTATION:
+                            // si se está usando la instrumentación de clase, directamente verificar en el objeto
+                            // cual es su estado.
+                            LOGGER.log(Level.FINEST, "o: {0} ITrans: {1}", new Object[]{o.getClass().getName(), o instanceof ITransparentDirtyDetector});
+                            if (((ITransparentDirtyDetector) o).___ogm___isDirty()) {
+                                LOGGER.log(Level.FINEST, "objeto {0} marcado como dirty por ASM. Agregarlo a la lista de pendientes.", o.getClass().getName());
+                                this.___setDirty();
+                            }
+                    }
+                }
+                break;
         }
-        // AFTER
-        // print how long it took to execute the method on the proxified object
-//        System.out.println("Took: " + (System.currentTimeMillis() - time1) + " ms");
-        // return the result         
+        // return the result
         return res;
     }
 

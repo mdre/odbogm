@@ -40,19 +40,21 @@ public class Auditor implements IAuditor {
         this.transaction = t;
         this.auditUser = user;
         
-        // verificar que la clase de auditoría exista
-        if (this.transaction.getDBClass(ODBAUDITLOGVERTEXCLASS) == null) {
-            OrientGraphNoTx odb = this.transaction.getSessionManager().getGraphdbNoTx();
-            OrientVertexType olog = odb.createVertexType(ODBAUDITLOGVERTEXCLASS);
-            olog.createProperty("rid", OType.STRING);
-            olog.createProperty("timestamp", OType.DATETIME);
-            olog.createProperty("transactionID", OType.STRING);
-            olog.createProperty("opInTx", OType.INTEGER);
-            olog.createProperty("user", OType.STRING);
-            olog.createProperty("action", OType.INTEGER);
-            olog.createProperty("label", OType.STRING);
-            olog.createProperty("log", OType.STRING);
-            odb.shutdown();
+        //verify and create the audit class in schema if necessary:
+        if (this.transaction.getSessionManager().getConfig().isAuditorCreatesAuditSchema()) {
+            if (this.transaction.getDBClass(ODBAUDITLOGVERTEXCLASS) == null) {
+                OrientGraphNoTx odb = this.transaction.getSessionManager().getGraphdbNoTx();
+                OrientVertexType olog = odb.createVertexType(ODBAUDITLOGVERTEXCLASS);
+                olog.createProperty("rid", OType.STRING);
+                olog.createProperty("timestamp", OType.DATETIME);
+                olog.createProperty("transactionID", OType.STRING);
+                olog.createProperty("opInTx", OType.INTEGER);
+                olog.createProperty("user", OType.STRING);
+                olog.createProperty("action", OType.INTEGER);
+                olog.createProperty("label", OType.STRING);
+                olog.createProperty("log", OType.STRING);
+                odb.shutdown();
+            }
         }
     }
     

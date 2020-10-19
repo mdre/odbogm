@@ -59,9 +59,8 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
     // usuario logueado sobre el que se ejecutan los controles de seguridad si corresponden
     private UserSID loggedInUser;
     
-    //configs:
-    
-    private boolean equalsAndHashCodeTriggerLoadLazyLinks = true;
+    //configs
+    private final Config config = new Config();
 
     
     public SessionManager(String url, String user, String passwd) {
@@ -510,12 +509,8 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
     }
 
     
-    public boolean isEqualsAndHashCodeTriggerLoadLazyLinks() {
-        return equalsAndHashCodeTriggerLoadLazyLinks;
-    }
-
-    public void setEqualsAndHashCodeTriggerLoadLazyLinks(boolean val) {
-        this.equalsAndHashCodeTriggerLoadLazyLinks = val;
+    public Config getConfig() {
+        return config;
     }
     
 }

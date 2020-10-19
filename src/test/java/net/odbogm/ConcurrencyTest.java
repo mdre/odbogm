@@ -17,9 +17,9 @@ import org.junit.After;
 import static org.junit.Assert.*;
 import org.junit.Before;
 import org.junit.Test;
-import test.Config;
 import test.IndirectObject;
 import test.SimpleVertexEx;
+import test.TestConfig;
 
 /**
  *
@@ -35,7 +35,7 @@ public class ConcurrencyTest {
     @Before
     public void setUp() {
         System.out.println("Initializing session manager...");
-        sm = new SessionManager(Config.TESTDB, "admin", "admin",
+        sm = new SessionManager(TestConfig.TESTDB, "admin", "admin",
                 1, poolSize).setClassLevelLog(Transaction.class, Level.FINER);
         sm.begin();
         System.out.println("End setup.");

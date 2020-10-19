@@ -23,6 +23,7 @@ import net.odbogm.exceptions.IncorrectRIDField;
 import net.odbogm.exceptions.IncorrectSequenceField;
 import net.odbogm.exceptions.IncorrectVersionField;
 import net.odbogm.exceptions.InvalidObjectReference;
+import net.odbogm.exceptions.ObjectMarkedAsDeleted;
 import net.odbogm.exceptions.OdbogmException;
 import net.odbogm.exceptions.ReferentialIntegrityViolation;
 import net.odbogm.exceptions.UnknownRID;
@@ -38,7 +39,6 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.function.ThrowingRunnable;
-import test.Config;
 import test.EdgeAttrib;
 import test.EnumTest;
 import test.Enums;
@@ -54,6 +54,7 @@ import test.SimpleVertexInterfaceAttr;
 import test.SimpleVertexWithEmbedded;
 import test.SimpleVertexWithImplement;
 import test.SubSecure;
+import test.TestConfig;
 
 /**
  *
@@ -75,7 +76,7 @@ public class SessionManagerTest {
     @Before
     public void setUp() {
         System.out.println("Iniciando session manager...");
-        sm = new SessionManager(Config.TESTDB, "admin", "admin"
+        sm = new SessionManager(TestConfig.TESTDB, "admin", "admin"
                 , 1, 10
                 )
 //                .setClassLevelLog(ObjectProxy.class, Level.FINEST)
@@ -3110,13 +3111,13 @@ public class SessionManagerTest {
         v = commitClearAndGet(v);
         
         //if option is deactivated, the call to equals or hashCode must not fire a link loading
-        sm.setEqualsAndHashCodeTriggerLoadLazyLinks(false);
+        sm.getConfig().setEqualsAndHashCodeTriggerLoadLazyLinks(false);
         v.equals(v);
         v.hashCode();
         assertNull(v.getLooptestLinkNotLoaded());
         
         //if option is activated, the call to equals or hashCode does fire a link loading
-        sm.setEqualsAndHashCodeTriggerLoadLazyLinks(true);
+        sm.getConfig().setEqualsAndHashCodeTriggerLoadLazyLinks(true);
         
         v.equals(v);
         assertNotNull(v.getLooptestLinkNotLoaded());
@@ -3161,6 +3162,22 @@ public class SessionManagerTest {
         assertNull(v2.getIndirectEagerTest()); //still not loaded
         v2.getSvex();
         assertNotNull(v2.getIndirectEagerTest()); //now loaded
+    }
+    
+    /*
+     * Tests the SM option to configure if calls to equals and hashCode methods
+     * on deleted objects must throw an exception or not.
+     */
+    @Test
+    public void equalsAndHashcodeOnDeleted() throws Exception {
+        SimpleVertex v = sm.store(new SimpleVertex());
+        sm.delete(v);
+        assertThrows(ObjectMarkedAsDeleted.class, () -> v.equals(v));
+        assertThrows(ObjectMarkedAsDeleted.class, () -> v.hashCode());
+        
+        sm.getConfig().setEqualsAndHashCodeOnDeletedThrowsException(false);
+        assertTrue(v.equals(v));
+        assertNotNull(v.hashCode());
     }
     
 }
