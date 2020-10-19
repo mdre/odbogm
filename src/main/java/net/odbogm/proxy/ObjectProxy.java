@@ -571,11 +571,11 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
      */
     @Override
     public void ___eagerLoad() {
-        if (this.___baseElement instanceof OrientVertex) {
+        ClassDef classdef = getClassDef();
+        if (classdef.isEager && this.___baseElement instanceof OrientVertex) {
             this.___transaction.initInternalTx();
             LOGGER.log(Level.FINER, "Eager loading of {0}", this.___baseElement);
-
-            ClassDef classdef = getClassDef();
+            
             if (this.___baseClass.isAnnotationPresent(Eager.class)) {
                 //eager load of whole class
                 this.___loadLazyLinks();
