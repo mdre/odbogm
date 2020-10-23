@@ -54,16 +54,7 @@ public class VertexUtils {
      * @return true if a conection exist
      */
     public static boolean isConectedTo(OrientVertex v1, OrientVertex v2, String edgeLabel) {
-        boolean connected = false;
-        LOGGER.log(Level.FINER, "Verificando edges entre "+v1.getId()+" y "+v2.getId()+ " a través de la realción "+edgeLabel);
-        if ((v1 != null)&&(v2 != null)) {
-            Iterable<Edge> result = v1.getEdges(v2, Direction.OUT, edgeLabel==null?"E":edgeLabel);
-            for (Edge e : result) {
-                LOGGER.log(Level.FINER, "Conectados por el edge: "+e.getId());
-                connected = true;
-                break;
-            }
-        }
-        return connected;
+        LOGGER.log(Level.FINER, "Verificando edges entre {0} y {1} a trav\u00e9s de la realci\u00f3n {2}", new Object[]{v1.getId(), v2.getId(), edgeLabel});
+        return v1.getEdges(v2, Direction.OUT, edgeLabel==null?"E":edgeLabel).iterator().hasNext();
     }
 }

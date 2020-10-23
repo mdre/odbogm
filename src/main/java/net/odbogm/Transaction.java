@@ -140,7 +140,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         if (orientdbTransact == null) return; //no se abrió todavía
         if (orientTransacLevel <= 0 && newrids.isEmpty()) {
             LOGGER.log(Level.FINEST, "termnando la transacción\n");
-            orientdbTransact.shutdown(true, false);
+            orientdbTransact.shutdown(true, false); //close, no commit
             orientdbTransact = null;
             orientTransacLevel = 0;
         } else {
@@ -424,6 +424,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         }
         
         this.nestedTransactionLevel = 0;
+        this.orientTransacLevel = 0;
         LOGGER.log(Level.FINER, "FIN ROLLBACK.");
         closeInternalTx();
     }
