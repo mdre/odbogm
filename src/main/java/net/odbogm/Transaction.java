@@ -645,6 +645,11 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
             // guardar el objeto en el cache. Se usa el RID como clave
             addToCache(v.getId().toString(), proxy);
+            
+            //if we must update version field, enqueue in transaction
+            if (oClassDef.versionField != null) {
+                this.processAfterDbCommit((IObjectProxy)proxy);
+            }
 
         } catch (IllegalArgumentException ex) {
             Logger.getLogger(SessionManager.class.getName()).log(Level.SEVERE, null, ex);
