@@ -506,6 +506,11 @@ let exist = select from (select expand(classes) from metadata:schema) where name
 if ($exist.size()=0) {
     create class SimpleVertexEx_looptest extends E;
 }
+
+let exist = select from (select expand(classes) from metadata:schema) where name = 'SimpleVertexEx_eagerTest';
+if ($exist.size()=0) {
+    create class SimpleVertexEx_eagerTest extends E;
+}
  
 
 let exist = select from (select expand(properties)  from (select expand(classes)  from metadata:schema)  where name = 'SimpleVertexEx') where name = 'enumTest';

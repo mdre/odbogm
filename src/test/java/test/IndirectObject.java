@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import net.odbogm.annotations.DontLoadLinks;
+import net.odbogm.annotations.Eager;
 import net.odbogm.annotations.Entity;
 import net.odbogm.annotations.Indirect;
 
@@ -38,6 +40,11 @@ public class IndirectObject {
     
     @Indirect(linkName = "IndirectObject_hmDirectLinked")
     private HashMap<String,IndirectObject> hmIndirectLinked = new HashMap<>();
+    
+    @Eager
+    @Indirect(linkName = "IndirectObject_directLink")
+    private IndirectObject indirectEagerLink;
+    
 
     public IndirectObject() {
     }
@@ -105,6 +112,15 @@ public class IndirectObject {
     public IndirectObject getIndirectLinkedFromAL() {
         return indirectLinkedFromAL;
     }
+
+    @DontLoadLinks
+    public IndirectObject getIndirectEagerLink() {
+        return indirectEagerLink;
+    }
     
+    @DontLoadLinks
+    public IndirectObject getIndirectDontLoad() {
+        return indirectLink;
+    }
     
 }

@@ -14,6 +14,7 @@ import net.odbogm.annotations.Ignore;
 import net.odbogm.annotations.Indexed;
 import net.odbogm.annotations.RemoveOrphan;
 import net.odbogm.annotations.DontLoadLinks;
+import net.odbogm.annotations.Eager;
 import net.odbogm.annotations.Indirect;
 
 /**
@@ -64,6 +65,16 @@ public class SimpleVertexEx extends SimpleVertex {
     
     @Indirect(linkName = "SimpleVertexEx_looptest")
     private SimpleVertexEx indirectLoopTest;
+    
+    @Eager
+    private SimpleVertexEx eagerTest;
+    
+    @Indirect(linkName = "SimpleVertexEx_eagerTest")
+    private SimpleVertexEx indirectEagerTest;
+    
+    @Eager
+    @Indirect(linkName = "SimpleVertexEx_eagerTest")
+    private SimpleVertexEx eagerIndirectEagerTest;
     
     
     public SimpleVertexEx(String svex, String s, int i, float f, boolean b, Integer oI, Float oF, Boolean oB) {
@@ -193,12 +204,31 @@ public class SimpleVertexEx extends SimpleVertex {
     }
 
     @DontLoadLinks
+    public SimpleVertexEx getEagerTest() {
+        return eagerTest;
+    }
+
+    public void setEagerTest(SimpleVertexEx eagerTest) {
+        this.eagerTest = eagerTest;
+    }
+
+    @DontLoadLinks
     public SimpleVertexEx getIndirectLoopTestDontLoad() {
         return indirectLoopTest;
     }
     
     public SimpleVertexEx getIndirectLoopTest() {
         return indirectLoopTest;
+    }
+
+    @DontLoadLinks
+    public SimpleVertexEx getIndirectEagerTest() {
+        return indirectEagerTest;
+    }
+    
+    @DontLoadLinks
+    public SimpleVertexEx getEagerIndirectEagerTest() {
+        return eagerIndirectEagerTest;
     }
 
     public String getUuid() {

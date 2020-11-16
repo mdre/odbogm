@@ -267,7 +267,6 @@ public class ObjectMapper {
         
         // recuperar la definición de la clase desde el caché
         ClassDef classdef = classCache.get(toHydrate);
-        entityClass = classdef.entityName;
         
         
         // ********************************************************************************************
@@ -326,52 +325,16 @@ public class ObjectMapper {
         // procesar todos los linkslist
         // ********************************************************************************************
         LOGGER.log(Level.FINER, "preparando las colecciones...");
-        for (Map.Entry<String, Class<?>> entry : classdef.linkLists.entrySet()) {
-            try {
-                // FIXME: se debería considerar agregar una annotation EAGER!
-                String field = entry.getKey();
-                Class<?> fc = entry.getValue();
-                LOGGER.log(Level.FINER, "Field: {0}   Class: {1}", new String[]{field, fc.getName()});
-                Field fLink = classdef.fieldsObject.get(field);
-                
-                String graphRelationName = entityClass + "_" + field;
-                ODirection RelationDirection = ODirection.OUT;
-                
-                LOGGER.log(Level.FINEST, "graphRelationName: {0}",graphRelationName);
-                // si hay Vértices conectados o si el constructor del objeto ha inicializado los vectores, convertirlos
-                if ((v.getEdges(RelationDirection, graphRelationName).iterator().hasNext() ) || (fLink.get(proxy) != null)) {
-                    this.collectionToLazy(proxy, field, fc, v, t);
-                }
-            } catch (IllegalArgumentException ex) {
-                Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
+        hydrateLinkCollections(t, classdef, proxy, v, false);
+        
         
         // ********************************************************************************************
         // hidratar las colecciones indirectas
         // procesar todos los indirectLinkslist
         // ********************************************************************************************
         LOGGER.log(Level.FINER, "hidratar las colecciones indirectas...");
-        for (Map.Entry<String, Class<?>> entry : classdef.indirectLinkLists.entrySet()) {
-            try {
-                // FIXME: se debería considerar agregar una annotation EAGER!
-                String field = entry.getKey();
-                Class<?> fc = entry.getValue();
-                LOGGER.log(Level.FINER, "Field: {0}   Class: {1}", new String[]{field, fc.getName()});
-                Field fLink = classdef.fieldsObject.get(field);
-                fLink.setAccessible(true);
-
-                ODirection RelationDirection = ODirection.IN;
-                Indirect in = fLink.getAnnotation(Indirect.class);
-                String graphRelationName = in.linkName();
-                // si hay Vértices conectados o si el constructor del objeto ha inicializado los vectores, convertirlos
-                if ((v.getEdges(RelationDirection, graphRelationName).iterator().hasNext()) || (fLink.get(proxy) != null)) {
-                    this.collectionToLazy(proxy, field, fc, v, t);
-                }
-            } catch (IllegalArgumentException ex) {
-                Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        }
+        hydrateLinkCollections(t, classdef, proxy, v, true);
+        
         
         LOGGER.log(Level.FINER, "******************* FIN HYDRATE *******************");
         t.closeInternalTx();
@@ -450,6 +413,44 @@ public class ObjectMapper {
             }
         }
     }
+    
+    
+    private void hydrateLinkCollections(Transaction t, ClassDef classdef, IObjectProxy proxy, OVertex v, boolean indirect) {
+        Map<String, Class<?>> links;
+        ODirection relationDirection;
+        if (indirect) {
+            links = classdef.indirectLinkLists;
+            relationDirection = ODirection.IN;
+        } else {
+            links = classdef.linkLists;
+            relationDirection = ODirection.OUT;
+            
+        }
+        Field fLink;
+        for (Map.Entry<String, Class<?>> entry : links.entrySet()) {
+            try {
+                String field = entry.getKey();
+                Class<?> fc = entry.getValue();
+                LOGGER.log(Level.FINER, "Field: {0}   Class: {1}", new String[]{field, fc.getName()});
+                fLink = classdef.fieldsObject.get(field);
+                
+                String graphRelationName;
+                if (indirect) {
+                    Indirect in = fLink.getAnnotation(Indirect.class);
+                    graphRelationName = in.linkName();
+                } else {
+                    graphRelationName = classdef.entityName + "_" + field;
+                }
+
+                // si hay Vértices conectados o si el constructor del objeto ha inicializado los vectores, convertirlos
+                if ((v.getEdges(relationDirection, graphRelationName).iterator().hasNext()) || (fLink.get(proxy) != null)) {
+                    this.collectionToLazy(proxy, field, fc, v, t);
+                }
+            } catch (IllegalArgumentException | IllegalAccessException ex) {
+                Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+    }
 
     
     public void collectionToLazy(Object o, String field, OVertex v, Transaction t) {
@@ -486,7 +487,7 @@ public class ObjectMapper {
      * @param t Vínculo a la transacción actual
      *
      */
-    public void collectionToLazy(Object o, String field, Class<?> fc, OVertex v, Transaction t) {
+    private void collectionToLazy(Object o, String field, Class<?> fc, OVertex v, Transaction t) {
         LOGGER.log(Level.FINER, "***************************************************************");
         LOGGER.log(Level.FINER, "convertir colection a Lazy: " + field + " class: " + fc.getName());
         LOGGER.log(Level.FINER, "***************************************************************");
@@ -640,20 +641,20 @@ public class ObjectMapper {
     }
 
     
-    private Object getFieldValue(Object o, Field field) {
+    public Object getFieldValue(Object o, Field field) {
         try {
             return field.get(o);
         } catch (IllegalArgumentException | IllegalAccessException ex) {
-            Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
+            LOGGER.log(Level.SEVERE, "Error getting value for " + field, ex);
             return null;
         }
     }
     
-    private void setFieldValue(Object o, Field field, Object value) {
+    public void setFieldValue(Object o, Field field, Object value) {
         try {
             field.set(o, value);
         } catch (IllegalArgumentException | IllegalAccessException ex) {
-            Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
+            LOGGER.log(Level.SEVERE, "Error setting value for " + field, ex);
         }
     }
     
@@ -662,7 +663,7 @@ public class ObjectMapper {
             Field f = this.classCache.get(o.getClass()).fieldsObject.get(field);
             f.set(o, value);
         } catch (IllegalArgumentException | IllegalAccessException ex) {
-            Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
+            LOGGER.log(Level.SEVERE, "Error setting value for " + field, ex);
         }
     }
 
