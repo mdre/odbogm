@@ -16,8 +16,8 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
-import test.Config;
 import test.SSimpleVertex;
+import test.TestConfig;
 
 /**
  *
@@ -29,7 +29,7 @@ public class SecurityObjectsTest {
 
     @Before
     public void setUp() {
-        sm = new SessionManager(Config.TESTDB, "admin", "nimda")
+        sm = new SessionManager(TestConfig.TESTDB, "admin", "nimda")
                     //.setClassLevelLog(TransparentDirtyDetectorInstrumentator.class, Level.INFO)
                     //.setClassLevelLog(InstrumentableClassDetector.class, Level.INFO)
                     //.setClassLevelLog(ClassCache.class, Level.FINER)

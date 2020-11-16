@@ -38,19 +38,21 @@ public class Auditor implements IAuditor {
         this.transaction = t;
         this.auditUser = user;
         
-        // verificar que la clase de auditoría exista
-        if (this.transaction.getDBClass(ODBAUDITLOGVERTEXCLASS) == null) {
-            ODatabaseSession odb = this.transaction.getSessionManager().getDBTx();
-            OClass olog = odb.createClass(ODBAUDITLOGVERTEXCLASS,"V");
-            olog.createProperty("rid", OType.STRING);
-            olog.createProperty("timestamp", OType.DATETIME);
-            olog.createProperty("transactionID", OType.STRING);
-            olog.createProperty("opInTx", OType.INTEGER);
-            olog.createProperty("user", OType.STRING);
-            olog.createProperty("action", OType.INTEGER);
-            olog.createProperty("label", OType.STRING);
-            olog.createProperty("log", OType.STRING);
-            odb.close();
+        //verify and create the audit class in schema if necessary:
+        if (this.transaction.getSessionManager().getConfig().isAuditorCreatesAuditSchema()) {
+            if (this.transaction.getDBClass(ODBAUDITLOGVERTEXCLASS) == null) {
+                ODatabaseSession odb = this.transaction.getSessionManager().getDBTx();
+                OClass olog = odb.createClass(ODBAUDITLOGVERTEXCLASS, "V");
+                olog.createProperty("rid", OType.STRING);
+                olog.createProperty("timestamp", OType.DATETIME);
+                olog.createProperty("transactionID", OType.STRING);
+                olog.createProperty("opInTx", OType.INTEGER);
+                olog.createProperty("user", OType.STRING);
+                olog.createProperty("action", OType.INTEGER);
+                olog.createProperty("label", OType.STRING);
+                olog.createProperty("log", OType.STRING);
+                odb.close();
+            }
         }
     }
     
@@ -118,6 +120,17 @@ public class Auditor implements IAuditor {
         //current.activateOnCurrentThread();
         this.logdata.clear();
     }
+    
+    
+    @Override
+    public void rollback() {
+        //discard the entries for stores and deletes
+        new ArrayList<>(logdata).forEach(l -> {
+            if (l.label.startsWith("STORE") || l.label.startsWith("DELETE")) {
+                this.logdata.remove(l);
+            }
+        });
+    }
 }
 
 class LogData {
@@ -136,7 +149,7 @@ class LogData {
         if (data == null) {
             this.data = "";
         } else {
-            //keep the element if it's new, so we can save the final rid and not the temporary:
+            //keep the element if it's new, so we can save the final rid and not the temporary in the "log" field:
             if (data instanceof OElement && ((OElement)data).getIdentity().isNew()) {
                 this.odata = data;
             } else {

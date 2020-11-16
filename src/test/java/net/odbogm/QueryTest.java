@@ -12,10 +12,10 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import org.junit.Before;
 import org.junit.Test;
-import test.Config;
 import test.Foo;
 import test.SimpleVertex;
 import test.SimpleVertexEx;
+import test.TestConfig;
 
 /**
  *
@@ -28,7 +28,7 @@ public class QueryTest {
 
     @Before
     public void setUp() {
-        sm = new SessionManager(Config.TESTDB, "admin", "nimda")
+        sm = new SessionManager(TestConfig.TESTDB, "admin", "nimda")
                 // .setClassLevelLog(ObjectProxy.class, Level.FINEST)
 //                .setClassLevelLog(ClassCache.class, Level.FINER)
                 .setClassLevelLog(Transaction.class, Level.FINEST)

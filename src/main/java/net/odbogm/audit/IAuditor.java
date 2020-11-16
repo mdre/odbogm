@@ -8,8 +8,10 @@ import net.odbogm.proxy.IObjectProxy;
  */
 public interface IAuditor {
     
-    public void auditLog(IObjectProxy o, int at, String label, Object data);
+    void auditLog(IObjectProxy o, int at, String label, Object data);
 
-    public void commit();
+    void commit();
+    
+    void rollback();
     
 }
