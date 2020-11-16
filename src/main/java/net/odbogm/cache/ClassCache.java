@@ -12,6 +12,7 @@ import net.odbogm.LogginProperties;
 import net.odbogm.ObjectMapper;
 import net.odbogm.Primitives;
 import static net.odbogm.Primitives.PRIMITIVE_MAP;
+import net.odbogm.annotations.Eager;
 import net.odbogm.annotations.Embedded;
 import net.odbogm.annotations.Entity;
 import net.odbogm.annotations.Ignore;
@@ -100,6 +101,7 @@ public class ClassCache {
             this.cacheClass(c.getSuperclass(), cached);
             
             cached.entityName = getEntityName(c);
+            cached.isEager = c.isAnnotationPresent(Eager.class);
             
             Field[] fields = c.getDeclaredFields();
             for (Field f : fields) {
@@ -136,6 +138,11 @@ public class ClassCache {
                             }
                             cached.versionField = f;
                             continue;
+                        }
+                        
+                        //eager field?
+                        if (f.isAnnotationPresent(Eager.class)) {
+                            cached.isEager = true;
                         }
                         
                         cached.fieldsObject.put(f.getName(), f);

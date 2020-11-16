@@ -59,15 +59,13 @@ public class VertexUtils {
      */
     public static boolean isConectedTo(OVertex v1, OVertex v2, String edgeLabel) {
         boolean connected = false;
-        LOGGER.log(Level.FINER, "Verificando edges entre "+v1.getIdentity()+" y "+v2.getIdentity()+ " a través de la realción "+edgeLabel);
-        if ((v1 != null)&&(v2 != null)) {
-            Iterable<OEdge> result = v1.getEdges(ODirection.OUT, edgeLabel==null?"E":edgeLabel);
-            for (OEdge oe : result) {
-                if (oe.getTo().getIdentity().toString().equals(v2.getIdentity().toString())) {
-                    LOGGER.log(Level.FINER, "Conectados por el edge: "+oe.getIdentity());
-                    connected = true;
-                    break;
-                }
+        LOGGER.log(Level.FINER, "Verificando edges entre {0} y {1} a través de la realción {2}", new Object[]{v1.getIdentity(), v2.getIdentity(), edgeLabel});
+        Iterable<OEdge> result = v1.getEdges(ODirection.OUT, edgeLabel==null?"E":edgeLabel);
+        for (OEdge oe : result) {
+            if (oe.getTo().getIdentity().toString().equals(v2.getIdentity().toString())) {
+                LOGGER.log(Level.FINER, "Conectados por el edge: {0}", oe.getIdentity());
+                connected = true;
+                break;
             }
         }
         return connected;

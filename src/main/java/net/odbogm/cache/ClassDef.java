@@ -25,6 +25,11 @@ public class ClassDef {
     public String entityName;
     
     /**
+     * If the class or some attribute must be eagerly loaded.
+     */
+    public boolean isEager;
+    
+    /**
      * Field to be used to inject the RID if the appropriate annotation exists.
      */
     public Field ridField;

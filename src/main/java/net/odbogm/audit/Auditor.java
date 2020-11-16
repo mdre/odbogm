@@ -124,9 +124,9 @@ public class Auditor implements IAuditor {
     
     @Override
     public void rollback() {
-        //discard the entries for stores and deletes
+        //discard the entries that aren't reads
         new ArrayList<>(logdata).forEach(l -> {
-            if (l.label.startsWith("STORE") || l.label.startsWith("DELETE")) {
+            if (l.auditType != Audit.AuditType.READ) {
                 this.logdata.remove(l);
             }
         });

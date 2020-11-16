@@ -3201,6 +3201,29 @@ public class SessionManagerTest {
     }
     
     /*
+     * Tests that vertex version are injected correctly in a new linked object
+     * not stored explicitly.
+     */
+    @Test
+    public void versionFieldInLinked() throws Exception {
+        SimpleVertexEx v = sm.store(new SimpleVertexEx());
+        v.lSV = new ArrayList<>();
+        v.setSvinner(new SimpleVertex());
+        
+        sm.commit();
+        SimpleVertex inner = v.getSvinner();
+        int version = ((IObjectProxy)inner).___getVertex().getProperty("@version");
+        assertEquals(version, inner.getVersion());
+        
+        v.lSV.add(new SimpleVertex());
+        
+        sm.commit();
+        inner = v.lSV.iterator().next();
+        version = ((IObjectProxy)inner).___getVertex().getProperty("@version");
+        assertEquals(version, inner.getVersion());
+    }
+    
+    /*
      * Tests that edge version are injected correctly in the object.
      */
     @Test

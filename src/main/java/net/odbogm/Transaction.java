@@ -160,8 +160,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         LOGGER.log(Level.FINEST, "transacLevel: {0} - newRids: {1}",new Object[]{orientTransacLevel,newrids.size()});
         if (orientTransacLevel <= 0 && newrids.isEmpty()) {
             LOGGER.log(Level.FINEST, "termnando la transacción\n");
-            //orientdbTransact.shutdown(true, false);
-            orientdbTransact.close();
+            orientdbTransact.close(); //close, no commit
             orientdbTransact = null;
             orientTransacLevel = 0;
         }
@@ -451,6 +450,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         }
         
         this.nestedTransactionLevel = 0;
+        this.orientTransacLevel = 0;
         LOGGER.log(Level.FINER, "FIN ROLLBACK.");
         closeInternalTx();
     }
@@ -691,6 +691,11 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
             // guardar el objeto en el cache. Se usa el RID como clave
             addToCache(v.getIdentity().toString(), proxy);
+            
+            //if we must update version field, enqueue in transaction
+            if (oClassDef.versionField != null) {
+                this.processAfterDbCommit((IObjectProxy)proxy);
+            }
             
             // grabar! MMAPI no lo hace solo como tinker
             v.save();
