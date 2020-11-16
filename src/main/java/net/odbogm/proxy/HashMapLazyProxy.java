@@ -222,7 +222,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
      * produce que se invoque a clear y luego se recarguen todos los objetos.
      */
     @Override
-    public void updateIndirect() {
+    public void forceLoad() {
         super.clear();
         this.lazyLoad();
     }

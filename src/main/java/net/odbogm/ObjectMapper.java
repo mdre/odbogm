@@ -20,7 +20,6 @@ import net.odbogm.annotations.Indirect;
 import net.odbogm.cache.ClassCache;
 import net.odbogm.cache.ClassDef;
 import net.odbogm.exceptions.CollectionNotSupported;
-import net.odbogm.exceptions.DuplicateClassDefinition;
 import net.odbogm.proxy.ArrayListEmbeddedProxy;
 import net.odbogm.proxy.HashMapEmbeddedProxy;
 import net.odbogm.proxy.ILazyCollectionCalls;
@@ -228,7 +227,7 @@ public class ObjectMapper {
      * @throws IllegalAccessException cuando no se puede acceder
      * @throws NoSuchFieldException no existe el campo.
      */
-    public <T> T hydrate(Class<T> c, OVertex v, Transaction t) throws DuplicateClassDefinition, InstantiationException, IllegalAccessException, NoSuchFieldException, CollectionNotSupported {
+    public <T> T hydrate(Class<T> c, OVertex v, Transaction t) throws InstantiationException, IllegalAccessException, NoSuchFieldException, CollectionNotSupported {
         t.initInternalTx();
         LOGGER.log(Level.FINER, "class: {0}  vertex: {1}", new Object[]{c, v});
         
@@ -284,6 +283,9 @@ public class ObjectMapper {
             }
         }
         
+        //version field
+        proxy.___uptadeVersion();
+        
         // insertar el objeto en el transactionLoopCache
         t.transactionLoopCache.put(v.getIdentity().toString(), proxy);
         
@@ -331,16 +333,14 @@ public class ObjectMapper {
                 Class<?> fc = entry.getValue();
                 LOGGER.log(Level.FINER, "Field: {0}   Class: {1}", new String[]{field, fc.getName()});
                 Field fLink = classdef.fieldsObject.get(field);
-                fLink.setAccessible(true);
                 
                 String graphRelationName = entityClass + "_" + field;
                 ODirection RelationDirection = ODirection.OUT;
                 
                 LOGGER.log(Level.FINEST, "graphRelationName: {0}",graphRelationName);
                 // si hay Vértices conectados o si el constructor del objeto ha inicializado los vectores, convertirlos
-                //if ((v.countEdges(RelationDirection, graphRelationName) > 0) || (fLink.get(proxy) != null)) {
                 if ((v.getEdges(RelationDirection, graphRelationName).iterator().hasNext() ) || (fLink.get(proxy) != null)) {
-                    this.colecctionToLazy(proxy, field, fc, v, t);
+                    this.collectionToLazy(proxy, field, fc, v, t);
                 }
             } catch (IllegalArgumentException ex) {
                 Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
@@ -366,7 +366,7 @@ public class ObjectMapper {
                 String graphRelationName = in.linkName();
                 // si hay Vértices conectados o si el constructor del objeto ha inicializado los vectores, convertirlos
                 if ((v.getEdges(RelationDirection, graphRelationName).iterator().hasNext()) || (fLink.get(proxy) != null)) {
-                    this.colecctionToLazy(proxy, field, fc, v, t);
+                    this.collectionToLazy(proxy, field, fc, v, t);
                 }
             } catch (IllegalArgumentException ex) {
                 Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
@@ -452,7 +452,7 @@ public class ObjectMapper {
     }
 
     
-    public void colecctionToLazy(Object o, String field, OVertex v, Transaction t) {
+    public void collectionToLazy(Object o, String field, OVertex v, Transaction t) {
         LOGGER.log(Level.FINER, "convertir colection a Lazy: {0}", field);
         ClassDef classdef;
         if (o instanceof IObjectProxy) {
@@ -462,7 +462,7 @@ public class ObjectMapper {
         }
 
         Class<?> fc = classdef.linkLists.get(field);
-        colecctionToLazy(o, field, fc, v, t);
+        collectionToLazy(o, field, fc, v, t);
     }
     
     
@@ -486,7 +486,7 @@ public class ObjectMapper {
      * @param t Vínculo a la transacción actual
      *
      */
-    public void colecctionToLazy(Object o, String field, Class<?> fc, OVertex v, Transaction t) {
+    public void collectionToLazy(Object o, String field, Class<?> fc, OVertex v, Transaction t) {
         LOGGER.log(Level.FINER, "***************************************************************");
         LOGGER.log(Level.FINER, "convertir colection a Lazy: " + field + " class: " + fc.getName());
         LOGGER.log(Level.FINER, "***************************************************************");

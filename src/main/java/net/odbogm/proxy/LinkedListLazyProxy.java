@@ -184,7 +184,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
      * produce que se invoque a clear y luego se recarguen todos los objetos.
      */
     @Override
-    public void updateIndirect() {
+    public void forceLoad() {
         super.clear();
         this.lazyLoad();
     }

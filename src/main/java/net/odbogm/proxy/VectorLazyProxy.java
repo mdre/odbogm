@@ -176,7 +176,7 @@ public class VectorLazyProxy extends Vector implements ILazyCollectionCalls {
      * produce que se invoque a clear y luego se recarguen todos los objetos.
      */
     @Override
-    public void updateIndirect() {
+    public void forceLoad() {
         super.clear();
         this.lazyLoad();
     }

@@ -1,9 +1,9 @@
 package net.odbogm;
 
+import static org.junit.Assert.*;
 import com.orientechnologies.orient.core.db.ODatabaseSession;
 import com.orientechnologies.orient.core.id.ORecordId;
 import com.orientechnologies.orient.core.record.ODirection;
-import static org.junit.Assert.*;
 import com.orientechnologies.orient.core.record.OEdge;
 import com.orientechnologies.orient.core.record.OVertex;
 import java.lang.reflect.Field;
@@ -3137,6 +3137,10 @@ public class SessionManagerTest {
         sm.commit();
         version = ((IObjectProxy)v).___getVertex().getProperty("@version");
         assertEquals(version, v.getVersion());
+        
+        sm.getCurrentTransaction().clearCache();
+        v = sm.get(SimpleVertex.class, v.getRid());
+        assertEquals(version, v.getVersion());
     }
     
     /*
@@ -3166,6 +3170,62 @@ public class SessionManagerTest {
         sm.commit();
         version = ((IObjectProxy)edge).___getEdge().getProperty("@version");
         assertEquals(version, edge.getVersion());
+    }
+    
+    /*
+     * Tests the use of @DontLoadLinks annotation.
+     */
+    @Test
+    public void dontLoadLinks() throws Exception {
+        SimpleVertexEx v = sm.store(new SimpleVertexEx());
+        SimpleVertexEx v2 = sm.store(new SimpleVertexEx());
+        v.setLooptest(v2);
+        v = commitClearAndGet(v);
+        
+        //the call to a method with the annotation must not fire a link loading
+        assertNull(v.getLooptestLinkNotLoaded());
+        
+        //the call to another method does fire a link loading
+        assertNotNull(v.getLooptest());
+        
+        //link already loaded
+        assertNotNull(v.getLooptestLinkNotLoaded());
+        
+        //with indirects:
+        v2 = v.getLooptest();
+        assertNull(v2.getIndirectLoopTestDontLoad());
+        assertNotNull(v2.getIndirectLoopTest());
+        assertNotNull(v2.getIndirectLoopTestDontLoad());
+    }
+    
+    /*
+     * Tests the SM option to configure if calls to equals and hashCode methods
+     * must fire the load of lazy links or not.
+     */
+    @Test
+    public void equalsAndHashCodeFireLoadLazyLinks() throws Exception {
+        SimpleVertexEx v = sm.store(new SimpleVertexEx());
+        SimpleVertexEx v2 = sm.store(new SimpleVertexEx());
+        v.setLooptest(v2);
+        v = commitClearAndGet(v);
+        
+        //if option is deactivated, the call to equals or hashCode must not fire a link loading
+        sm.setEqualsAndHashCodeTriggerLoadLazyLinks(false);
+        v.equals(v);
+        v.hashCode();
+        assertNull(v.getLooptestLinkNotLoaded());
+        
+        //if option is activated, the call to equals or hashCode does fire a link loading
+        sm.setEqualsAndHashCodeTriggerLoadLazyLinks(true);
+        
+        v.equals(v);
+        assertNotNull(v.getLooptestLinkNotLoaded());
+        
+        sm.getCurrentTransaction().clearCache();
+        v = (SimpleVertexEx)sm.get(sm.getRID(v));
+        assertNull(v.getLooptestLinkNotLoaded());
+        v.hashCode();
+        assertNotNull(v.getLooptestLinkNotLoaded());
     }
     
 }

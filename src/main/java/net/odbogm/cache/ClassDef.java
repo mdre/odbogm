@@ -86,7 +86,7 @@ public class ClassDef {
      * attribute name → sequence name).
      */
     public HashMap<String, String> sequenceFields = new HashMap<>();
-    
+
 
     @Override
     public String toString() {

@@ -692,7 +692,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
                 }
                 // convertir la colección a Lazy para futuras referencias.
-                this.objectMapper.colecctionToLazy(proxy, field, v, this);
+                this.objectMapper.collectionToLazy(proxy, field, v, this);
             }
 
             // guardar el objeto en el cache. Se usa el RID como clave
@@ -1408,6 +1408,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                 // hidratar un objeto
                 try {
                     o = objectMapper.hydrate(type, v, this);
+                    
+                    //@TODO: if can't create proxy throw exception and stop
 
                 } catch (InstantiationException | IllegalAccessException | NoSuchFieldException ex) {
                     Logger.getLogger(SessionManager.class.getName()).log(Level.SEVERE, null, ex);
