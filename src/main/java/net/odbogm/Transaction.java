@@ -822,12 +822,13 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                     LOGGER.log(Level.FINER, "procesando campo: " + field);
 
 //                    Collection oCol = (Collection) f.get(((IObjectProxy) toRemove).___getBaseObject());
-                    Collection oCol = (Collection) f.get(toRemove);
+                    Object oCol = f.get(toRemove);
 
                     // si hay una colección y corresponde hacer la cascada.
                     if ((oCol != null) && (f.isAnnotationPresent(CascadeDelete.class))) {
                         if (oCol instanceof List) {
-                            for (Object object : oCol) {
+                            List oListCol = (List) oCol;
+                            for (Object object : oListCol) {
                                 this.deleteTree(object);
                             }
 
@@ -847,8 +848,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                     } else if ((oCol != null) && (f.isAnnotationPresent(RemoveOrphan.class))) {
 
                         if (oCol instanceof List) {
-                            for (Object object : oCol) {
-
+                            List oListCol = (List) oCol;
+                            for (Object object : oListCol) {
                                 try {
                                     this.deleteTree(object);
                                 } catch (ReferentialIntegrityViolation riv) {
@@ -856,7 +857,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                                     throw new ReferentialIntegrityViolation(
                                             "RemoveOrphan: " + riv.getMessage(), this);
                                 }
-
                             }
 
                         } else if (oCol instanceof Map) {
@@ -998,12 +998,13 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                     LOGGER.log(Level.FINER, "procesando campo: " + field);
 
 //                    Collection oCol = (Collection) f.get(((IObjectProxy) toRemove).___getBaseObject());
-                    Collection oCol = (Collection) f.get(toRemove);
+                    Object oCol = f.get(toRemove);
 
                     // si hay una colección y corresponde hacer la cascada.
                     if ((oCol != null) && (f.isAnnotationPresent(CascadeDelete.class))) {
                         if (oCol instanceof List) {
-                            for (Object object : oCol) {
+                            List oListCol = (List) oCol;
+                            for (Object object : oListCol) {
                                 this.internalDelete(object);
                             }
 
@@ -1023,8 +1024,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                     } else if ((oCol != null) && (f.isAnnotationPresent(RemoveOrphan.class))) {
 
                         if (oCol instanceof List) {
-                            for (Object object : oCol) {
-
+                            List oListCol = (List) oCol;
+                            for (Object object : oListCol) {
                                 try {
                                     this.internalDelete(object);
                                 } catch (ReferentialIntegrityViolation riv) {
@@ -1032,7 +1033,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                                     throw new ReferentialIntegrityViolation(
                                             "RemoveOrphan: " + riv.getMessage(), this);
                                 }
-
                             }
 
                         } else if (oCol instanceof Map) {
