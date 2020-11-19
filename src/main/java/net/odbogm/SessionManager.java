@@ -330,6 +330,12 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
     }
     
     
+    @Override
+    public synchronized <T> T fetch(Class<T> type, String rid) {
+        return this.publicTransaction.fetch(type, rid);
+    }
+    
+    
     /**
      * Realiza un query direto a la base de datos y devuelve el resultado directamente sin procesarlo.
      *

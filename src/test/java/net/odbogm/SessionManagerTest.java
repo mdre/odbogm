@@ -3188,6 +3188,27 @@ public class SessionManagerTest {
     }
     
     /*
+     * Tests the fetch method.
+     */
+    @Test
+    public void fetchFullLoad() throws Exception {
+        SimpleVertexEx v = sm.store(new SimpleVertexEx());
+        SimpleVertexEx v2 = sm.store(new SimpleVertexEx());
+        v.setLooptest(v2);
+        v.setEagerTest(v2);
+        sm.commit();
+        String rid = sm.getRID(v);
+        sm.getCurrentTransaction().clearCache();
+        v = sm.fetch(SimpleVertexEx.class, rid);
+        
+        //all links must be loaded
+        assertNotNull(v.getLooptestLinkNotLoaded());
+        assertNotNull(v.getEagerTest());
+        assertNotNull(v.getLooptestLinkNotLoaded());
+        assertNotNull(v.getSvex());
+    }
+    
+    /*
      * Tests the SM option to configure if calls to equals and hashCode methods
      * on deleted objects must throw an exception or not.
      */

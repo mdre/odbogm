@@ -179,6 +179,11 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                     this.___eagerLoad();
                 }
                 break;
+            case "___fullLoad":
+                if (this.___objectReady) {
+                    this.___fullLoad();
+                }
+                break;
             case "___isDirty":
                 if (this.___objectReady) {
                     res = this.___isDirty();
@@ -578,9 +583,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             
             if (this.___baseClass.isAnnotationPresent(Eager.class)) {
                 //eager load of whole class
-                this.___loadLazyLinks();
-                this.eagerLoadLinkLists(classdef, classdef.linkLists, false); //force load of link lists
-                this.eagerLoadLinkLists(classdef, classdef.indirectLinkLists, false); //force load of indirect link lists
+                this.fullLoad();
             } else {
                 OrientVertex ov = (OrientVertex) this.___baseElement;
                 this.loadLinks(ov, classdef, classdef.links, true, false); //eager load of links
@@ -590,6 +593,23 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             }
             this.___transaction.closeInternalTx();
         }
+    }
+    
+    
+    /**
+     * Loads all the vertex links.
+     */
+    @Override
+    public void ___fullLoad() {
+        this.fullLoad();
+    }
+    
+    
+    private void fullLoad() {
+        ClassDef classdef = getClassDef();
+        this.___loadLazyLinks();
+        this.eagerLoadLinkLists(classdef, classdef.linkLists, false); //force load of link lists
+        this.eagerLoadLinkLists(classdef, classdef.indirectLinkLists, false); //force load of indirect link lists
     }
     
     

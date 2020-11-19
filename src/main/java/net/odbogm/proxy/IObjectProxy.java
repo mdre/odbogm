@@ -27,7 +27,7 @@ public interface IObjectProxy {
     public boolean ___isValid();
     
     public void ___setDirty();
-    public  boolean ___isDirty() ;
+    public boolean ___isDirty() ;
     public void ___removeDirtyMark();
     
     public void ___commit();
@@ -35,5 +35,6 @@ public interface IObjectProxy {
     public void ___rollback();
     public void ___loadLazyLinks();
     public void ___eagerLoad();
+    public void ___fullLoad();
     
 }

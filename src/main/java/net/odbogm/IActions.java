@@ -1,6 +1,5 @@
 package net.odbogm;
 
-import com.tinkerpop.blueprints.impls.orient.OrientEdge;
 import java.util.HashMap;
 import java.util.List;
 import net.odbogm.exceptions.IncorrectRIDField;
@@ -43,6 +42,8 @@ public interface IActions {
         Object get(String rid) throws UnknownRID;
 
         <T> T get(Class<T> type, String rid) throws UnknownRID, VertexJavaClassNotFound;
+        
+        <T> T fetch(Class<T> type, String rid);
         
     }
 
