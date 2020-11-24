@@ -1359,6 +1359,26 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     @Override
     public synchronized <T> T get(Class<T> type, String rid) throws UnknownRID {
+        return get(type, rid, false);
+    }
+    
+    
+    /**
+     * Like get, but fetches fully all the links of the vertex, including collections.
+     * 
+     * @param <T>
+     * @param type
+     * @param rid
+     * @return
+     * @throws UnknownRID 
+     */
+    @Override
+    public synchronized <T> T fetch(Class<T> type, String rid) {
+        return get(type, rid, true);
+    }
+    
+    
+    private synchronized <T> T get(Class<T> type, String rid, boolean fullLoad) throws UnknownRID {
         if (rid == null) {
             throw new UnknownRID(this);
         }
@@ -1428,8 +1448,12 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                     new Object[]{rid, System.identityHashCode(o)});
             addToCache(rid, o);
             
-            //trigger eager load of configured links
-            ((IObjectProxy) o).___eagerLoad();
+            if (fullLoad) {
+                ((IObjectProxy) o).___fullLoad();
+            } else {
+                //trigger eager load of configured links
+                ((IObjectProxy) o).___eagerLoad();
+            }
         }
 
         // Aplicar los controles de seguridad.

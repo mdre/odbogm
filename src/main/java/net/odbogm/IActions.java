@@ -43,6 +43,8 @@ public interface IActions {
 
         <T> T get(Class<T> type, String rid) throws UnknownRID, VertexJavaClassNotFound;
         
+        <T> T fetch(Class<T> type, String rid);
+        
     }
 
     public interface IQuery {
