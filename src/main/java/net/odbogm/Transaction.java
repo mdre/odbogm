@@ -1650,22 +1650,20 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * @param <T> clase de referencia para crear la lista de resultados
      * @param clase clase de referencia
      * @param sql comando a ejecutar
-     * @param param parámetros extras para el query parametrizado.
+     * @param params parámetros extras para el query parametrizado.
      * @return una lista de la clase solicitada con los objetos lazy inicializados.
      */
     @Override
-    public <T> List<T> query(Class<T> clase, String sql, HashMap<String, Object> param) {
+    public <T> List<T> query(Class<T> clase, String sql, Map params) {
         initInternalTx();
 
         ArrayList<T> ret = new ArrayList<>();
 
         LOGGER.log(Level.FINER, sql);
-        OResultSet ors = this.orientdbTransact.command(sql,param);
-        ors.stream().forEach(v->{
-            ret.add(this.get(clase, v.getIdentity().get().toString()));
-        });
+        try (OResultSet ors = this.orientdbTransact.command(sql, params)) {
+            ors.stream().forEach(v -> ret.add(this.get(clase, v.getIdentity().get().toString())));
+        }
         closeInternalTx();
-        ors.close();
         return ret;
     }
 

@@ -1,7 +1,7 @@
 package net.odbogm;
 
-import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import net.odbogm.exceptions.IncorrectRIDField;
 import net.odbogm.exceptions.UnknownRID;
 import net.odbogm.exceptions.VertexJavaClassNotFound;
@@ -125,10 +125,10 @@ public interface IActions {
          * @param <T> clase de referencia para crear la lista de resultados
          * @param clase clase de referencia
          * @param sql comando a ejecutar
-         * @param param parámetros extras para el query parametrizado.
+         * @param params parámetros extras para el query parametrizado.
          * @return una lista de la clase solicitada con los objetos lazy inicializados.
          */
-        public <T> List<T> query(Class<T> clase, String sql, HashMap<String,Object> param);
+        public <T> List<T> query(Class<T> clase, String sql, Map params);
     }
 
 }

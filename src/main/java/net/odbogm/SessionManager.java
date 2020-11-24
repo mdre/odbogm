@@ -91,8 +91,8 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
         this.orientDB = new OrientDB(url,OrientDBConfig.defaultConfig());
         
         OrientDBConfigBuilder poolCfg = OrientDBConfig.builder();
-        poolCfg.addConfig(OGlobalConfiguration.DB_POOL_MIN, 5);
-        poolCfg.addConfig(OGlobalConfiguration.DB_POOL_MAX, 10);
+        poolCfg.addConfig(OGlobalConfiguration.DB_POOL_MIN, minPool);
+        poolCfg.addConfig(OGlobalConfiguration.DB_POOL_MAX, maxPool);
         //poolCfg.addConfig(OGlobalConfiguration.RID_BAG_EMBEDDED_TO_SBTREEBONSAI_THRESHOLD, -1);
         
         
