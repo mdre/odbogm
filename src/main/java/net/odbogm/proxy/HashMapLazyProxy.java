@@ -81,8 +81,9 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         this.lazyLoading = true;
 
         // recuperar todos los elementos desde el vértice y agregarlos a la colección
+        boolean indirect = this.direction == ODirection.IN;
         for (OEdge edge : relatedTo.getEdges(this.direction, field)) {
-            OVertex next = edge.getTo();
+            OVertex next = indirect ? edge.getFrom() : edge.getTo();
             LOGGER.log(Level.FINER, "loading edge: {0} to: {1}", new Object[]{edge.getIdentity().toString(),next.getIdentity()});
             // el Lazy simpre se hace recuperado los datos desde la base de datos.
             Object o = null;
