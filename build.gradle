@@ -8,7 +8,7 @@ plugins {
 }
 
 //OrientDB version to use:
-ext.orientDbVersion = '3.0.34'
+ext.orientDbVersion = '3.0.35'
 
 
 def info() {
