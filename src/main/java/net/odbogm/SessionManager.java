@@ -99,9 +99,7 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
         this.objectMapper = new ObjectMapper();
         this.setActivationStrategy(ActivationStrategy.CLASS_INSTRUMENTATION, loadAgent);
         
-        this.dbPool = new ODatabasePool(orientDB,url, user, passwd, poolCfg.build());
-        
-        
+        this.dbPool = new ODatabasePool(orientDB, url, user, passwd, poolCfg.build());
     }
 
     /**
@@ -288,12 +286,13 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
     }
 
     /**
-     * Finaliza la comunicación con la base. 
+     * Finaliza la comunicación con la base.
      * Todas las transacciones abiertas son ROLLBACK y finalizadas.
      */
     public void shutdown() {
         //this.publicTransaction.close();
         this.dbPool.close();
+        this.orientDB.close();
     }
 
     /**
