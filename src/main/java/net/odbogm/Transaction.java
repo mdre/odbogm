@@ -1528,28 +1528,30 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         return ret;
     }
 
-    /**
-     * Realiza un query direto a la base de datos y devuelve el resultado directamente sin procesarlo.
-     *
-     * @param sql sentencia a ejecutar
-     * @param param parámetros a utilizar en el query
-     * @return resutado de la ejecución de la sentencia SQL
-     */
+    
     @Override
-    public ODBResultSet query(String sql, Object... param) {
+    public ODBResultSet query(String sql, Object... params) {
         initInternalTx();
-        // usar una transacción interna para que el iterable pueda seguir funcionando
-        // por fuera del OGM
+        // usar una transacción interna para que el iterable pueda seguir funcionando por fuera del OGM
         ODatabaseSession localtx = this.sm.getDBTx();
         localtx.activateOnCurrentThread();
         flush();
 
-        //OCommandSQL osql = new OCommandSQL(sql);
-        //OResultSet ret = localtx.query(sql, param);
-        ODBResultSet ret = new ODBResultSet(localtx, localtx.query(sql,param));
+        ODBResultSet ret = new ODBResultSet(localtx, localtx.query(sql, params));
         closeInternalTx();
         return ret; 
     }
+    
+    public ODBResultSet query(String sql, Map params) {
+        initInternalTx();
+        ODatabaseSession localtx = this.sm.getDBTx();
+        localtx.activateOnCurrentThread();
+        flush();
+        ODBResultSet ret = new ODBResultSet(localtx, localtx.query(sql, params));
+        closeInternalTx();
+        return ret; 
+    }
+    
 
     /**
      * Ejecuta un comando que devuelve un número. El valor devuelto será el primero que se encuentre en la lista de resultado.

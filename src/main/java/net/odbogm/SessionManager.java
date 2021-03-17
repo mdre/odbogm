@@ -12,6 +12,7 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.agent.ITransparentDirtyDetector;
@@ -381,6 +382,11 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
     public OResultSet query(String sql, Object... param) {
         return this.publicTransaction.query(sql, param);
     }
+    
+    public OResultSet query(String sql, Map params) {
+        return this.publicTransaction.query(sql, params);
+    }
+    
     
     /**
      * Return all record of the reference class.
