@@ -1,7 +1,9 @@
 package net.odbogm;
 
 import com.orientechnologies.orient.core.record.OVertex;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Random;
 import java.util.logging.Level;
 import net.odbogm.utils.ODBResultSet;
 import org.junit.After;
@@ -119,7 +121,7 @@ public class QueryTest {
         System.out.println("");
         String rid = sm.getRID(foo);
         System.out.println("rid: "+rid);
-        try ( ODBResultSet list = sm.query("select expand(out('FooNode_lsve')) from (select from " + rid + ");")) {
+        try (ODBResultSet list = sm.query("select expand(out('FooNode_lsve')) from (select from " + rid + ");")) {
             if (!list.hasNext()) {
                 fail("Empty list!");
             } else {
@@ -179,6 +181,25 @@ public class QueryTest {
         List<Foo> lFoo = sm.query(Foo.class);
         long cantFoo = sm.query("select count(*) from FooNode", "");
         assertEquals(cantFoo, lFoo.size());
+    }
+    
+    
+    @Test
+    public void directQueryParams() throws Exception {
+        int aux = new Random().nextInt();
+        sm.store(new SimpleVertex()).setI(aux);
+        sm.commit();
+        sm.getCurrentTransaction().clearCache();
+        
+        try (var res = sm.query("select from SimpleVertex where i = :i", aux)) {
+            assertTrue(res.hasNext());
+        }
+        
+        var params = new HashMap<String, Object>();
+        params.put("i", aux);
+        try (var res = sm.query("select from SimpleVertex where i = :i", params)) {
+            assertTrue(res.hasNext());
+        }
     }
     
 }
