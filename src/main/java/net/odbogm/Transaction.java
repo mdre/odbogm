@@ -160,6 +160,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         LOGGER.log(Level.FINEST, "transacLevel: {0} - newRids: {1}",new Object[]{orientTransacLevel,newrids.size()});
         if (orientTransacLevel <= 0 && newrids.isEmpty()) {
             LOGGER.log(Level.FINEST, "termnando la transacción\n");
+            activateOnCurrentThread();
             orientdbTransact.close(); //close, no commit
             orientdbTransact = null;
             orientTransacLevel = 0;
@@ -170,6 +171,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         if (orientdbTransact != null) {
             orientTransacLevel = 0;
             if (newrids.isEmpty()) {
+                activateOnCurrentThread();
                 orientdbTransact.close();
                 orientdbTransact = null;
             }
@@ -1765,7 +1767,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     private void activateOnCurrentThread() {
         if (!orientdbTransact.isActiveOnCurrentThread()) {
             LOGGER.log(Level.FINEST, "Activando en el Thread actual...");
-            LOGGER.log(Level.FINEST, "current thread: " + Thread.currentThread().getName());
+            LOGGER.log(Level.FINEST, "current thread: {0}", Thread.currentThread().getName());
             orientdbTransact.activateOnCurrentThread();
         } else {
             LOGGER.log(Level.FINEST, "base activada previamente en el Thread actual");
