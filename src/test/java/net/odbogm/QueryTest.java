@@ -27,7 +27,7 @@ public class QueryTest {
 
     @Before
     public void setUp() {
-        sm = new SessionManager(TestConfig.TESTDB, "admin", "admin");
+        sm = new SessionManager(TestConfig.TESTDB, TestConfig.USER, TestConfig.PASS);
         sm.begin();
     }
 

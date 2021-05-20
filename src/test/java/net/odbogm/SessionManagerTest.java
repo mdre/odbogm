@@ -76,7 +76,7 @@ public class SessionManagerTest {
     @Before
     public void setUp() {
         System.out.println("Iniciando session manager...");
-        sm = new SessionManager(TestConfig.TESTDB, "admin", "admin"
+        sm = new SessionManager(TestConfig.TESTDB, TestConfig.USER, TestConfig.PASS
                 , 1, 10
                 )
 //                .setClassLevelLog(ObjectProxy.class, Level.FINEST)
@@ -893,6 +893,18 @@ public class SessionManagerTest {
         assertEquals(rid, rid2);
         
         assertEquals(0, this.sm.getDirtyCount());
+    }
+    
+    
+    @Test
+    public void rollbackDeleted() throws Exception {
+        SimpleVertex v = sm.store(new SimpleVertex());
+        sm.commit();
+        sm.delete(v);
+        sm.rollback();
+        System.out.println(v.getS());
+        sm.delete(v);
+        sm.commit();
     }
 
     
