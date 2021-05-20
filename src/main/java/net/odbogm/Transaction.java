@@ -434,11 +434,9 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         
         this.orientdbTransact.rollback();
         
-        // refrescar todos los objetos
-        for (Map.Entry<String, Object> entry : dirty.entrySet()) {
-            IObjectProxy value = (IObjectProxy) entry.getValue();
-            value.___rollback();
-        }
+        // rollback all objects
+        dirty.values().forEach(value -> ((IObjectProxy)value).___rollback());
+        dirtyDeleted.values().forEach(value -> ((IObjectProxy)value).___rollback());
 
         // clean the cache of new and modified objects
         this.dirty.clear();

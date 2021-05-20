@@ -30,7 +30,7 @@ public class QueryTest {
 
     @Before
     public void setUp() {
-        sm = new SessionManager(TestConfig.TESTDB, "admin", "nimda")
+        sm = new SessionManager(TestConfig.TESTDB, TestConfig.USER, TestConfig.PASS)
                 // .setClassLevelLog(ObjectProxy.class, Level.FINEST)
 //                .setClassLevelLog(ClassCache.class, Level.FINER)
                 .setClassLevelLog(Transaction.class, Level.FINEST)

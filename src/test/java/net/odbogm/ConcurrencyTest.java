@@ -37,7 +37,7 @@ public class ConcurrencyTest {
     @Before
     public void setUp() {
         System.out.println("Initializing session manager...");
-        sm = new SessionManager(TestConfig.TESTDB, "admin", "nimda", 1, poolSize)
+        sm = new SessionManager(TestConfig.TESTDB, TestConfig.USER, TestConfig.PASS, 1, poolSize)
                     .setClassLevelLog(Transaction.class, Level.INFO)
                 ;
         sm.begin();
