@@ -61,7 +61,10 @@ public class SimpleVertexEx extends SimpleVertex {
     
     public HashMap<String, SimpleVertexEx> hmSVE;
     
-    public HashMap<EdgeAttrib, SimpleVertexEx> ohmSVE;
+    public HashMap<EdgeAttrib, SimpleVertexEx> ohmSVE = new HashMap<>();
+    
+//    @RemoveOrphan
+    public HashMap<EdgeAttrib, SimpleVertexEx> hmRO = new HashMap<>();
     
     @Indirect(linkName = "SimpleVertexEx_looptest")
     private SimpleVertexEx indirectLoopTest;
@@ -139,7 +142,6 @@ public class SimpleVertexEx extends SimpleVertex {
     public void setOhmSVE(HashMap<EdgeAttrib, SimpleVertexEx> ohmSVE) {
         this.ohmSVE = ohmSVE;
     }
-    
     
     public void initInner() {
         this.svinner = new SimpleVertex();

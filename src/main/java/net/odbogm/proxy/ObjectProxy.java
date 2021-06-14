@@ -14,7 +14,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.LogginProperties;
@@ -1043,6 +1043,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                 final Map<Object, ObjectCollectionState> keysState = lazyMap.collectionState();
                                 final Map<Object, OEdge> keysToEdges = lazyMap.getKeyToEdge();
                                 final Map<Object, ObjectCollectionState> entitiesState = lazyMap.getEntitiesState();
+                                final Map<Object, Object> keyToDeleted = ((HashMapLazyProxy)lazyMap).getKeyToDeleted();
 
                                 // recorrer todas las claves del mapa
                                 for (Map.Entry<Object, ObjectCollectionState> entry1 : keysState.entrySet()) {
@@ -1077,31 +1078,40 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                                 this.___transaction.auditLog(this, AuditType.WRITE, "LINKLIST ADD: " + graphRelationName, oe);
                                             }
                                             
-                                            //update the map with the managed key
+                                            // update the map with the managed key
                                             lazyMap.updateKey(key, oe);
                                             break;
 
                                         case NOCHANGE:
-                                            // el link no se ha modificado. 
+                                            // the link hasn't been modified
                                             break;
 
                                         case REMOVED:
-                                            // quitar el Edge
+                                            // edge to be removed
                                             OEdge oeRemove = keysToEdges.get(key);
                                             if (oeRemove == null) {
                                                 throw new IllegalStateException("The edge object couldn't be found. "
                                                         + "Make sure its hashCode is change-proof.");
                                             }
                                             
-                                            // verificar si corresponde borrar el vértice en caso de estar marcado con @RemoveOrphan.
+                                            // verify if the vertex must be deleted in case of being marked with @RemoveOrphan:
                                             boolean removeOrphan = false;
-                                            if (f.isAnnotationPresent(RemoveOrphan.class)) {
-                                                if (entitiesState.get(linkedO) == ObjectCollectionState.REMOVED) {
-                                                    removeOrphan = true;
-                                                }
+//                                            IObjectProxy toDelete = null;
+//                                            Object deletedValue = keyToDeleted.get(key);
+//                                            if (f.isAnnotationPresent(RemoveOrphan.class)) {
+//                                                if (deletedValue != null && deletedValue instanceof IObjectProxy) {
+//                                                    toDelete = (IObjectProxy)deletedValue;
+//                                                    if (entitiesState.get(toDelete) == ObjectCollectionState.REMOVED) {
+//                                                        removeOrphan = true;
+//                                                    }
+//                                                }
+//                                            }
+                                            Object deletedValue = keyToDeleted.get(key);
+                                            IObjectProxy deletedop = deletedValue instanceof IObjectProxy ? (IObjectProxy)deletedValue : null;
+                                            if (deletedValue != null) {
+                                                entitiesState.remove(deletedValue);
                                             }
-                                            removeEdge(graphRelationName, oeRemove, removeOrphan ?
-                                                    (IObjectProxy)linkedO : null);
+                                            removeEdge(graphRelationName, oeRemove, removeOrphan ? deletedop : null);
                                             break;
                                     }
                                 }
@@ -1114,11 +1124,13 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                         IObjectProxy valueop = (IObjectProxy)value;
                                         boolean removeOrphan = f.isAnnotationPresent(RemoveOrphan.class);
                                         
-                                        valueop.___getVertex().getEdges(ODirection.IN, graphRelationName).forEach(edge -> {
-                                            if (Objects.equals(this.___baseElement, edge.getFrom())) {
-                                                removeEdge(graphRelationName, edge, removeOrphan ? valueop : null);
-                                            }
-                                        });
+                                        ((HashMapLazyProxy)lazyMap).getValueToEdge().getOrDefault(valueop, Set.of()).forEach(
+                                                edge -> removeEdge(graphRelationName, edge, removeOrphan ? valueop : null));
+//                                        valueop.___getVertex().getEdges(ODirection.IN, graphRelationName).forEach(edge -> {
+//                                            if (Objects.equals(this.___baseElement, edge.getFrom())) {
+//                                                removeEdge(graphRelationName, edge, removeOrphan ? valueop : null);
+//                                            }
+//                                        });
                                     }
                                 }
                                 

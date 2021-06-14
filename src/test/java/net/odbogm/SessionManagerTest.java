@@ -2,10 +2,8 @@ package net.odbogm;
 
 import static org.junit.Assert.*;
 import com.orientechnologies.orient.core.db.ODatabaseSession;
-import com.orientechnologies.orient.core.id.ORecordId;
 import com.orientechnologies.orient.core.record.ODirection;
 import com.orientechnologies.orient.core.record.OEdge;
-import com.orientechnologies.orient.core.record.OVertex;
 import java.lang.reflect.Field;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -33,7 +31,6 @@ import net.odbogm.exceptions.UnknownRID;
 import net.odbogm.proxy.ArrayListLazyProxy;
 import net.odbogm.proxy.IObjectProxy;
 import net.odbogm.security.*;
-import net.odbogm.utils.DateHelper;
 import org.apache.commons.lang.RandomStringUtils;
 import org.junit.After;
 import org.junit.Before;
@@ -674,7 +671,6 @@ public class SessionManagerTest {
         System.out.println("");
         //ahora v apunta a v3
         System.out.println("reasingar a v3");
-//        SimpleVertexEx v3 = sm.store(new SimpleVertexEx());
         SimpleVertexEx v3 = sm.store(new SimpleVertexEx());
         String v3uuid = v3.getUuid();
         v3.setS("bug");
@@ -786,113 +782,6 @@ public class SessionManagerTest {
         // validar que no se modifique la lista
         assertNull(stored.lSV);
 
-    }
-
-    @Test
-    public void testHashMap() {
-        System.out.println("\n\n\n");
-        System.out.println("***************************************************************");
-        System.out.println("Verificar el comportamiento de los HashMap simples");
-        System.out.println("***************************************************************");
-        SimpleVertexEx sve = new SimpleVertexEx();
-
-        System.out.println("guardado del objeto limpio.");
-        SimpleVertexEx stored = sm.store(sve);
-        sm.commit();
-
-        String rid = ((IObjectProxy) stored).___getRid();
-
-        System.out.println("primer commit finalizado. RID: " + rid + " ------------------------------------------------------------");
-
-        assertNull(stored.getHmSVE());
-
-        System.out.println("Agrego un HM nuevo");
-        HashMap<String, SimpleVertexEx> nhm = new HashMap<String, SimpleVertexEx>();
-        stored.setHmSVE(nhm);
-        nhm.put("key1", new SimpleVertexEx());
-        nhm.put("key2", new SimpleVertexEx());
-
-        System.out.println("\ninicio segundo commit ----------------------------------------------------------");
-        sm.commit();
-        System.out.println("segundo commit finalizado ----------------------------------------------------------\n");
-
-        SimpleVertexEx retrieved = sm.get(SimpleVertexEx.class, rid);
-        System.out.println("retrieved: " + retrieved + " : " + retrieved.getHmSVE());
-        System.out.println("stored: " + stored + " : " + stored.getHmSVE() + "\n\n");
-        int iretSize = retrieved.getHmSVE().size();
-        int istoredSize = stored.getHmSVE().size();
-        assertEquals(iretSize, istoredSize);
-
-        SimpleVertexEx hmsveGetted = retrieved.getHmSVE().get("key1");
-        System.out.println("key1: " + (hmsveGetted == null ? " NULL!" : "Ok."));
-        assertNotNull(hmsveGetted);
-
-        System.out.println("\nagregamos un nuevo objeto al hashmap ya inicializado");
-        stored.getHmSVE().put("key3", new SimpleVertexEx());
-        System.out.println("\ninicio tercer commit ----------------------------------------------------------");
-        sm.commit();
-        System.out.println("tercer commit ----------------------------------------------------------\n");
-
-        retrieved = sm.get(SimpleVertexEx.class, rid);
-
-        System.out.println("retrieved: " + retrieved + " : " + retrieved.getHmSVE());
-        System.out.println("stored: " + stored + " : " + stored.getHmSVE());
-
-        assertEquals(retrieved.getHmSVE().size(), stored.getHmSVE().size());
-
-    }
-
-    @Test
-    public void testComplexHashMap() {
-        System.out.println("\n\n\n");
-        System.out.println("***************************************************************");
-        System.out.println("Verificar el comportamiento de los HashMap con objetos como key");
-        System.out.println("***************************************************************");
-        SimpleVertexEx sve = new SimpleVertexEx();
-
-        System.out.println("guardado del objeto limpio.");
-        SimpleVertexEx stored = sm.store(sve);
-        sm.commit();
-
-        String rid = ((IObjectProxy) stored).___getRid();
-
-        System.out.println("primer commit finalizado. RID: " + rid + " ------------------------------------------------------------");
-
-        assertNull(stored.getOhmSVE());
-
-        System.out.println("Agrego un HM nuevo");
-        HashMap<EdgeAttrib, SimpleVertexEx> ohm = new HashMap<>();
-        stored.setOhmSVE(ohm);
-        ohm.put(new EdgeAttrib("nota 1", DateHelper.getCurrentDate()), new SimpleVertexEx());
-        ohm.put(new EdgeAttrib("nota 2", DateHelper.getCurrentDate()), new SimpleVertexEx());
-
-        System.out.println("\ninicio segundo commit ----------------------------------------------------------");
-        sm.commit();
-        System.out.println("segundo commit finalizado ----------------------------------------------------------\n");
-
-        SimpleVertexEx retrieved = sm.get(SimpleVertexEx.class, rid);
-        System.out.println("1 ----------");
-//        System.out.println("retrieved: " + retrieved + " : " + retrieved.getOhmSVE());
-        System.out.println("retrieved: " + retrieved + " : " + retrieved.getOhmSVE());
-        System.out.println("2 ----------");
-        System.out.println("stored: " + stored + " : " + stored.getOhmSVE() + "\n\n");
-        System.out.println("3 ----------");
-        int iretSize = retrieved.getOhmSVE().size();
-        int istoredSize = stored.getOhmSVE().size();
-        assertEquals(iretSize, istoredSize);
-
-        System.out.println("\nagregamos un nuevo objeto al hashmap ya inicializado");
-        stored.getOhmSVE().put(new EdgeAttrib("nota 3", DateHelper.getCurrentDate()), new SimpleVertexEx());
-        System.out.println("\ninicio tercer commit ----------------------------------------------------------");
-        sm.commit();
-        System.out.println("tercer commit ----------------------------------------------------------\n");
-
-        retrieved = sm.get(SimpleVertexEx.class, rid);
-
-        System.out.println("retrieved: " + retrieved + " : " + retrieved.getOhmSVE() + "  hc: " + retrieved.hashCode());
-        System.out.println("stored: " + stored + " : " + stored.getOhmSVE() + "  hc: " + stored.hashCode());
-
-        assertEquals(retrieved.getOhmSVE().size(), stored.getOhmSVE().size());
     }
 
     @Test
@@ -1157,31 +1046,6 @@ public class SessionManagerTest {
         
         //if bug is fixed, this assert must be satisfied:
         assertEquals("After rollback", stored.getS());
-    }
-
-    @Test
-    public void testRollbackMaps() {
-        System.out.println("\n\n\n");
-        System.out.println("***************************************************************");
-        System.out.println("Rollback Maps. Se restablecen los atributos que hereden de Collection.");
-        System.out.println("***************************************************************");
-        SimpleVertexEx sve = new SimpleVertexEx();
-        sve.hmSV = new HashMap<String, SimpleVertex>();
-        SimpleVertex sv = new SimpleVertex();
-        sve.hmSV.put("key1", sv);
-        sve.hmSV.put("key2", sv);
-        sve.hmSV.put("key3", new SimpleVertex());
-
-        System.out.println("guardando el objeto con 3 elementos en el HM.");
-        SimpleVertexEx stored = sm.store(sve);
-        sm.commit();
-
-        // modificar los campos.
-        stored.hmSV.put("key rollback", new SimpleVertex());
-
-        sm.rollback();
-
-        assertEquals(sve.hmSV.size(), stored.hmSV.size());
     }
 
     /**
@@ -2649,7 +2513,6 @@ public class SessionManagerTest {
         value.setS("value");
         
         SimpleVertexEx v = new SimpleVertexEx();
-        v.setOhmSVE(new HashMap<>());
         v.getOhmSVE().put(new EdgeAttrib("edge1", new Date()), value);
         v = sm.store(v);
         sm.commit();
@@ -2755,181 +2618,6 @@ public class SessionManagerTest {
     }
     
     /*
-     * Tests that maps are persisted as relations to vertices.
-     */
-    @Test
-    public void edgeAttributes() throws Exception {
-        SimpleVertexEx to = new SimpleVertexEx();
-        SimpleVertexEx v = new SimpleVertexEx();
-        v.setOhmSVE(new HashMap<>());
-        
-        EdgeAttrib e1 = new EdgeAttrib("relation 1", new Date());
-        EdgeAttrib e2 = new EdgeAttrib("relation 2", new Date());
-        v.ohmSVE.put(e1, to);
-        v.ohmSVE.put(e2, to);
-        
-        v = sm.store(v);
-        v = commitClearAndGet(v);
-        assertEquals(2, v.ohmSVE.size());
-        
-        //remove a relation
-        v.ohmSVE.remove(e1);
-        v = commitClearAndGet(v);
-        assertEquals(1, v.ohmSVE.size());
-        to = v.ohmSVE.get(e2);
-        assertNotNull(to);
-        assertNull(v.ohmSVE.get(e1));
-        
-        v.ohmSVE.remove(e2);
-        assertTrue(v.ohmSVE.isEmpty());
-        sm.rollback();
-        assertFalse(v.ohmSVE.isEmpty());
-        
-        //add more elements to the map
-        v.ohmSVE.clear();
-        EdgeAttrib e3 = new EdgeAttrib("new relation", new Date());
-        v.ohmSVE.put(e3, to);
-        v = commitClearAndGet(v);
-        assertEquals(1, v.ohmSVE.size());
-        assertEquals("new relation", v.ohmSVE.keySet().iterator().next().getNota());
-    }
-    
-    /*
-     * Bug fixed: in edge map, add an edge, commit, remove edge, commit, caused
-     * and exception. Also, a recently added key didn't detect changes to be
-     * persisted.
-     */
-    @Test
-    public void edgeAttributes2() throws Exception {
-        SimpleVertexEx to = sm.store(new SimpleVertexEx());
-        SimpleVertexEx v = sm.store(new SimpleVertexEx());
-        v.setOhmSVE(new HashMap<>());
-        
-        EdgeAttrib e1 = new EdgeAttrib();
-        EdgeAttrib e2 = new EdgeAttrib();
-        v.ohmSVE.put(e1, to);
-        v.ohmSVE.put(e2, to);
-        sm.commit();
-        System.out.println("Rid: " + sm.getRID(v));
-        assertEquals(2, v.getOhmSVE().size());
-        
-        v.ohmSVE.remove(e2);
-        //if bug is fixed, this must not throw exception:
-        sm.commit();
-        assertEquals(1, v.getOhmSVE().size());
-        
-        //edit a new edge
-        
-        e1 = v.getOhmSVE().keySet().iterator().next();
-        e1.setNota("a text");
-        
-        //the commit must persist the change
-        v = commitClearAndGet(v);
-        assertEquals(1, v.getOhmSVE().size());
-        e1 = v.getOhmSVE().keySet().iterator().next();
-        assertEquals("a text", e1.getNota());
-    }
-    
-    /*
-     * More tests with maps of edged.
-     */
-    @Test
-    public void edgeAttributes3() throws Exception {
-        SimpleVertexEx to1 = sm.store(new SimpleVertexEx());
-        to1.setS("to1");
-        SimpleVertexEx to2 = sm.store(new SimpleVertexEx());
-        to2.setS("to2");
-        SimpleVertexEx to3 = sm.store(new SimpleVertexEx());
-        to3.setS("to3");
-        SimpleVertexEx v = sm.store(new SimpleVertexEx());
-        v.setOhmSVE(new HashMap<>());
-        
-        EdgeAttrib e = new EdgeAttrib();
-        v.ohmSVE.put(e, to1);
-        sm.commit();
-        String rid = sm.getRID(v);
-        System.out.println("Rid: " + rid);
-        
-        v.ohmSVE.put(e, to2);
-        assertEquals(to2, v.getOhmSVE().get(e));
-        v.ohmSVE.put(e, to3);
-        assertEquals(to3, v.getOhmSVE().get(e));
-        
-        v = commitClearAndGet(v);
-        
-        SimpleVertexEx to = v.getOhmSVE().values().iterator().next();
-        assertEquals(to, to3);
-        assertEquals("to3", to.getS());
-        
-        v.ohmSVE.remove(e);
-        v.ohmSVE.put(e, to1);
-        assertEquals(to1, v.getOhmSVE().get(e));
-        
-        v = commitClearAndGet(v);
-        
-        to = v.getOhmSVE().values().iterator().next();
-        assertEquals(to, to1);
-        assertEquals("to1", to.getS());
-        
-        //same value
-        v.ohmSVE.put(e, to1);
-        assertEquals(to1, v.getOhmSVE().get(e));
-        v = commitClearAndGet(v);
-        to = v.getOhmSVE().values().iterator().next();
-        assertEquals(to, to1);
-        assertEquals("to1", to.getS());
-        
-        //same value, different key (two edges to same vertex)
-        EdgeAttrib e2 = new EdgeAttrib();
-        v.ohmSVE.put(e2, to1);
-        assertEquals(2, v.getOhmSVE().size());
-        
-        v = commitClearAndGet(v);
-        assertEquals(2, v.getOhmSVE().size());
-        
-        v.ohmSVE.remove(e);
-        assertEquals(1, v.getOhmSVE().size());
-        v = commitClearAndGet(v);
-        assertEquals(1, v.getOhmSVE().size());
-        assertEquals(e2, v.getOhmSVE().keySet().iterator().next());
-        
-        //verify the edges:
-        try (var g = sm.getDBTx()) {
-            OVertex vertex = g.getRecord(new ORecordId(rid));
-            int cant = 0;
-            var it = vertex.getEdges(ODirection.OUT, "SimpleVertexEx_ohmSVE").iterator();
-            while (it.hasNext()) {
-                cant++;
-                it.next();
-            }
-            assertEquals(1, cant);
-        }
-    }
-    
-    /*
-     * Testea que persista y cargue bien atributos de tipo enum en aristas.
-     */
-    @Test
-    public void enumEdgeAttribute() throws Exception {
-        SimpleVertexEx to = new SimpleVertexEx();
-        SimpleVertexEx v = new SimpleVertexEx();
-        v.setOhmSVE(new HashMap<>());
-        
-        EdgeAttrib e1 = new EdgeAttrib("relación 1", new Date());
-        e1.setEnumValue(EnumTest.TRES);
-        v.ohmSVE.put(e1, to);
-        
-        v = sm.store(v);
-        sm.commit();
-        String rid = sm.getRID(v);
-        sm.getCurrentTransaction().clearCache();
-        
-        v = sm.get(SimpleVertexEx.class, rid);
-        assertEquals(1, v.ohmSVE.size());
-        assertEquals(EnumTest.TRES, v.ohmSVE.keySet().iterator().next().getEnumValue());
-    }
-    
-    /*
      * Testea que persista y cargue bien nodos con otro nombre distinto a la clase Java.
      */
     @Test
@@ -2981,7 +2669,6 @@ public class SessionManagerTest {
     public void dirtyEdge() throws Exception {
         SimpleVertexEx value = new SimpleVertexEx();
         SimpleVertexEx v = new SimpleVertexEx();
-        v.setOhmSVE(new HashMap<>());
         v.getOhmSVE().put(new EdgeAttrib("edge1", new Date()), value);
         v = sm.store(v);
         
@@ -3084,7 +2771,7 @@ public class SessionManagerTest {
     }
     
     /*
-     * Tests the autopopuation of sequence fields in edges.
+     * Tests the autopopulation of sequence fields in edges.
      */
     @Test
     public void serialFieldInEdge() throws Exception {
@@ -3244,7 +2931,6 @@ public class SessionManagerTest {
         value.setS("value");
         
         SimpleVertexEx v = new SimpleVertexEx();
-        v.setOhmSVE(new HashMap<>());
         v.getOhmSVE().put(new EdgeAttrib("edge1", new Date()), value);
         v = sm.store(v);
         

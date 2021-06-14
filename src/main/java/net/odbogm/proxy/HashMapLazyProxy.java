@@ -6,6 +6,7 @@ import com.orientechnologies.orient.core.record.OVertex;
 import java.lang.ref.WeakReference;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -53,9 +54,11 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
      *
      * @param t Vínculo a la transacción actual
      * @param relatedTo: Vértice con el cual se relaciona la colección
+     * @param parent
      * @param field: atributo de relación
      * @param k: clase del key.
      * @param v: clase del value.
+     * @param d
      */
     @Override
     public void init(Transaction t, OVertex relatedTo, IObjectProxy parent, String field, Class<?> k, Class<?> v, ODirection d) {
@@ -72,6 +75,8 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
     private Map<Object, ObjectCollectionState> entitiesState = new ConcurrentHashMap<>();
     private Map<Object, ObjectCollectionState> keyState = new ConcurrentHashMap<>();
     private Map<Object, OEdge> keyToEdge = new ConcurrentHashMap<>();
+    private final Map<Object, Object> keyToDeleted = new ConcurrentHashMap<>();
+    private final Map<Object, Set<OEdge>> valueToEdge = new ConcurrentHashMap<>();
 
     private synchronized void lazyLoad() {
         this.transaction.initInternalTx();
@@ -86,8 +91,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
             OVertex next = indirect ? edge.getFrom() : edge.getTo();
             LOGGER.log(Level.FINER, "loading edge: {0} to: {1}", new Object[]{edge.getIdentity().toString(),next.getIdentity()});
             // el Lazy simpre se hace recuperado los datos desde la base de datos.
-            Object o = null;
-            o = transaction.get(valueClass, next.getIdentity().toString());
+            Object o = transaction.get(valueClass, next.getIdentity().toString());
             
             // para cada vértice conectado, es necesario mapear todos los Edges que los unen.
             Object k = edgeToObject(edge);
@@ -96,6 +100,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
             // registrar cambios en el padre porque se los datos son recuperados de la base
             super.put(k, o);
             this.keyState.put(k, ObjectCollectionState.REMOVED);
+            addValueToEdge(o, edge);
 
             // como puede estar varias veces un objecto agregado al map con distintos keys
             // primero verificamos su existencia para no duplicarlos.
@@ -108,6 +113,13 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         this.transaction.closeInternalTx();
         LOGGER.log(Level.FINEST, "final size: {0} ",super.size());
     }
+    
+    private void addValueToEdge(Object value, OEdge edge) {
+        if (!this.valueToEdge.containsKey(value)) {
+            this.valueToEdge.put(value, new HashSet());
+        }
+        this.valueToEdge.get(value).add(edge);
+    }
 
     /**
      * Vuelve establecer el punto de verificación.
@@ -116,6 +128,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
     public synchronized void clearState() {
         this.entitiesState.clear();
         this.keyState.clear();
+        this.keyToDeleted.clear();
         Map<Object, OEdge> newOE = new ConcurrentHashMap<>();
 
         for (Entry<Object, Object> entry : this.entrySet()) {
@@ -152,7 +165,9 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
             Object key = entry.getKey();
             Object value = entry.getValue();
 
-            // actualizar el estado de la clave
+            // update the state of the key:
+            
+            this.keyToDeleted.remove(key); // the key exists, remove it from deleted map
             if (this.keyState.get(key) == null) {
                 // se agregó un objeto
                 this.keyState.put(key, ObjectCollectionState.ADDED);
@@ -161,7 +176,8 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
                 this.keyState.replace(key, ObjectCollectionState.NOCHANGE);
             }
 
-            // actualizar el estado del valor
+            // update the state of the value:
+            
             if (this.entitiesState.get(value) == null) {
                 // se agregó un objeto
                 this.entitiesState.put(value, ObjectCollectionState.ADDED);
@@ -188,11 +204,19 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         return keyToEdge;
     }
 
+    public Map<Object, Object> getKeyToDeleted() {
+        return keyToDeleted;
+    }
+
+    public Map<Object, Set<OEdge>> getValueToEdge() {
+        return valueToEdge;
+    }
+
     private void setDirty() {
         if (this.direction == ODirection.OUT) {
             LOGGER.log(Level.FINER, "Colección marcada como Dirty. Avisar al padre.");
             this.dirty = true;
-            LOGGER.log(Level.FINER, "weak:" + this.parent.get());
+            LOGGER.log(Level.FINER, () -> "weak:" + this.parent.get());
             // si el padre no está marcado como garbage, notificarle el cambio de la colección.
             if (this.parent.get() != null) {
                 this.parent.get().___setDirty();
@@ -212,6 +236,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         this.entitiesState.clear();
         this.keyToEdge.clear();
         this.keyState.clear();
+        this.keyToDeleted.clear();
         this.dirty = false;
         this.lazyLoad = true;
     }
@@ -336,10 +361,14 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         if (lazyLoad) {
             this.lazyLoad();
         }
-        if (!this.lazyLoading) {
-            this.setDirty();
+        boolean res = super.remove(key, value);
+        if (res) {
+            if (!this.lazyLoading) {
+                this.setDirty();
+            }
+            this.keyToDeleted.put(key, value);
         }
-        return super.remove(key, value); //To change body of generated methods, choose Tools | Templates.
+        return res;
     }
 
     @Override
@@ -409,7 +438,11 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
             this.lazyLoad();
         }
         this.setDirty();
-        return super.remove(key); //To change body of generated methods, choose Tools | Templates.
+        Object previous = super.remove(key);
+        if (previous != null) {
+            this.keyToDeleted.put(key, previous);
+        }
+        return previous;
     }
 
     @Override
@@ -430,8 +463,6 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         Object previous = super.put(key, value);
         if (previous != null) {
             if (!Objects.equals(value, previous)) {
-                //there a was a change, we remove the key state to consider it added
-                this.keyState.remove(key);
                 //we consider the value as removed to remove the old edge
                 this.entitiesState.put(previous, ObjectCollectionState.REMOVED);
             }
@@ -511,6 +542,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         if (state != null) {
             this.keyState.put(key, state);
         }
+        addValueToEdge(value, edge);
     }
 
     private Object edgeToObject(OEdge edge) {

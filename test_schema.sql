@@ -583,7 +583,13 @@ let exist = select from (select expand(classes) from metadata:schema) where name
 if ($exist.size()=0) {
     create class SimpleVertexEx_ohmSVE extends EdgeAttrib;
 }
- 
+
+
+let exist = select from (select expand(classes) from metadata:schema) where name = 'SimpleVertexEx_hmRO';
+if ($exist.size()=0) {
+    create class SimpleVertexEx_hmRO extends EdgeAttrib;
+}
+
 
 let exist = select from (select expand(classes) from metadata:schema) where name = 'SVExChild';
 if ($exist.size() = 0) {
