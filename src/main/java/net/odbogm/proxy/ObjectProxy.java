@@ -426,6 +426,12 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         if (this.___loadLazyLinks) {
             this.___transaction.initInternalTx();
             
+            
+//            Logger.getLogger("mpa").log(Level.SEVERE,
+//                    () -> "LAZY LOADING DE " + this.___baseClass + " - TRANS: " +
+//                            System.identityHashCode(___transaction.getCurrentGraphDb()));
+
+            
             LOGGER.log(Level.FINER, "Base class: {0}", this.___baseClass.getSimpleName());
             LOGGER.log(Level.FINER, "iniciando loadLazyLinks...");
             boolean currentDirtyState = this.___isDirty();
@@ -597,10 +603,17 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             this.___transaction.initInternalTx();
             LOGGER.log(Level.FINER, "Eager loading of {0}", this.___baseElement);
             
+            
+//            String msg = this.___baseClass + " - TRANS: " +
+//                    System.identityHashCode(___transaction.getCurrentGraphDb());
+            
+
             if (this.___baseClass.isAnnotationPresent(Eager.class)) {
                 //eager load of whole class
+//                Logger.getLogger("mpa").log(Level.SEVERE, () -> "EAGER LOADING CLASE ENTERA DE " + msg);
                 this.fullLoad();
             } else {
+//                Logger.getLogger("mpa").log(Level.SEVERE, () -> "EAGER LOADING CAMPOS DE " + msg);
                 OVertex ov = (OVertex) this.___baseElement;
                 this.loadLinks(ov, classdef, classdef.links, true, false); //eager load of links
                 this.eagerLoadLinkLists(classdef, classdef.linkLists, true); //eager load of link lists
@@ -622,6 +635,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     
     
     private void fullLoad() {
+//        Logger.getLogger("mpa").log(Level.SEVERE, () -> "FULL LOADING CLASE ENTERA DE " + this.___baseClass);
         ClassDef classdef = getClassDef();
         this.___loadLazyLinks();
         this.eagerLoadLinkLists(classdef, classdef.linkLists, false); //force load of link lists
