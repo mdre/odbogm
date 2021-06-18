@@ -121,7 +121,13 @@ public class HashMapLazyProxyTest {
     
     @Test
     public void clear() throws Exception {
-        
+        SimpleVertexEx to = sm.store(new SimpleVertexEx());
+        EdgeAttrib e = new EdgeAttrib();
+        v.ohmSVE.put(e, to);
+        sm.commit();
+        v.ohmSVE.clear();
+        v = commitClearAndGet(v);
+        assertTrue(v.ohmSVE.isEmpty());
     }
     
     @Test
@@ -145,6 +151,12 @@ public class HashMapLazyProxyTest {
     public void multiEdge() throws Exception {
         //one value, two keys
         //remove one
+    }
+    
+    @Test
+    public void multiEdge2() throws Exception {
+        //one value, replace key (remove and add with other key): key must be deleted
+        //remove value (two keys must be deleted)
     }
     
     @Test

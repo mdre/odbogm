@@ -1109,7 +1109,11 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                             Object deletedValue = keyToDeleted.get(key);
                                             IObjectProxy deletedop = deletedValue instanceof IObjectProxy ? (IObjectProxy)deletedValue : null;
                                             if (deletedValue != null) {
-                                                entitiesState.remove(deletedValue);
+                                                //entitiesState.remove(deletedValue);
+                                                //@TODO: la línea de arriba elimina el state del value, pero NO es correcto.
+                                                //Puede estar deleted la key, pero seguir el value con otra key.
+                                                //La línea de abajo lo soluciona:
+                                                ((HashMapLazyProxy)lazyMap).removeValueToEdge(deletedValue, oeRemove);
                                             }
                                             removeEdge(graphRelationName, oeRemove, removeOrphan ? deletedop : null);
                                             break;

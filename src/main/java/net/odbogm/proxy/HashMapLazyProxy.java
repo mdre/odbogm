@@ -120,6 +120,33 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         }
         this.valueToEdge.get(value).add(edge);
     }
+    
+    public void removeValueToEdge(Object value, OEdge edge) {
+        if (this.valueToEdge.containsKey(value)) {
+            var s = this.valueToEdge.get(value);
+            
+//            por alguna razón loca lo siguiente NO ANDA!!!!!!
+//            System.out.println("Size: " + s.size());
+//            System.out.println("rid: " + edge.getIdentity().toString());
+//            var e1 = s.iterator().next();
+//            System.out.println("rid: " + e1.getIdentity().toString());
+//            System.out.println(e1.hashCode());
+//            var e2 = edge;
+//            System.out.println(e2.hashCode());
+//            System.out.println(e1.equals(e2));
+//                                                
+//            System.out.println("Contiene: " + s.contains(e1));
+//            System.out.println("Contiene: " + s.contains(e2));
+//            boolean ok = s.remove(edge);
+//            System.out.println("Eliminado: " + ok);
+//            System.out.println("Size: " + s.size());
+
+            //por lo tanto elimino así:
+            var s2 = new HashSet<OEdge>(s);
+            s.clear();
+            s2.stream().filter(e -> !e.getIdentity().equals(edge.getIdentity())).forEach(s::add);
+        }
+    }
 
     /**
      * Vuelve establecer el punto de verificación.
@@ -429,7 +456,8 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
             this.lazyLoad();
         }
         this.setDirty();
-        super.clear(); //To change body of generated methods, choose Tools | Templates.
+        this.keyToDeleted.putAll(this);
+        super.clear();
     }
 
     @Override
