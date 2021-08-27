@@ -1335,7 +1335,11 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                 LOGGER.log(Level.FINER, "Objeto Recupeardo del caché.");
                 // validar contra el usuario actualmente logueado si corresponde.
                 if ((this.sm.getLoggedInUser() != null) && (ret instanceof SObject)) {
+                    boolean dirtyPrevious = ((IObjectProxy) ret).___isDirty();
                     ((SObject) ret).validate(this.sm.getLoggedInUser());
+                    if (!dirtyPrevious) {
+                        removeDirty(ret); //setted dirty by validate if CLASS_INSTRUMENTATION
+                    }
                 }
             }
 
@@ -1463,6 +1467,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             LOGGER.log(Level.FINER, "SObject detectado. Aplicando seguridad de acuerdo al usuario logueado: {0}",
                     this.sm.getLoggedInUser().getName());
             ((SObject) o).validate(this.sm.getLoggedInUser());
+            removeDirty(o); //setted dirty by validate if CLASS_INSTRUMENTATION
         }
 
         LOGGER.log(Level.FINER, "Auditar?");
@@ -1488,6 +1493,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             //apply security controls
             if ((this.sm.getLoggedInUser() != null) && (o instanceof SObject)) {
                 ((SObject) o).validate(this.sm.getLoggedInUser());
+                removeDirty(o); //setted dirty by validate if CLASS_INSTRUMENTATION
             }
             
             //if we must update version field, enqueue in transaction
@@ -1784,6 +1790,12 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     public Transaction setCacheCleanInterval(int seconds) {
         this.objectCache.setTimeInterval(seconds);
         return this;
+    }
+    
+    private void removeDirty(Object dirty) {
+        String rid = ((IObjectProxy) dirty).___getRid();
+        this.dirty.remove(rid);
+        ((IObjectProxy) dirty).___removeDirtyMark();
     }
     
     

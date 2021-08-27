@@ -12,6 +12,7 @@ import net.odbogm.security.UserSID;
 import org.apache.commons.lang.RandomStringUtils;
 import org.junit.After;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import org.junit.Before;
@@ -354,6 +355,35 @@ public class SecurityObjectsTest {
         
         //this neither:
         assertThrows(CircularReferenceException.class, () -> g1.add(g1));
+    }
+    
+    @Test
+    public void getNotDirty() throws Exception {
+        String uuid = RandomStringUtils.randomAlphanumeric(10);
+        UserSID u = sm.store(new UserSID(uuid, uuid));
+        SSimpleVertex v = sm.store(new SSimpleVertex("not dirty"));
+        v.setAcl(u, new AccessRight(AccessRight.ACCESSCONTROL));
+        sm.commit();
+        
+        String ridU = sm.getRID(u);
+        String ridV = sm.getRID(v);
+        sm.getCurrentTransaction().clearCache();
+        
+        u = sm.get(UserSID.class, ridU);
+        sm.setLoggedInUser(u);
+        v = sm.get(SSimpleVertex.class, ridV);
+        assertFalse(((IObjectProxy)v).___isDirty());
+        assertTrue(sm.getCurrentTransaction().getDirty().isEmpty());
+        
+        //get from cache
+        v = sm.get(SSimpleVertex.class, ridV);
+        assertFalse(((IObjectProxy)v).___isDirty());
+        assertTrue(sm.getCurrentTransaction().getDirty().isEmpty());
+        
+        //get only rid
+        v = (SSimpleVertex)sm.get(ridV);
+        assertFalse(((IObjectProxy)v).___isDirty());
+        assertTrue(sm.getCurrentTransaction().getDirty().isEmpty());
     }
     
 }
