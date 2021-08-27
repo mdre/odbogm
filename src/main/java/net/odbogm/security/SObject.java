@@ -135,7 +135,8 @@ public abstract class SObject {
     }
     
     /**
-     * Validate all groups against the acls and return the final state of the object.
+     * Validate all groups against the object's acls and return the final state of the object.
+     * The state of the object is changed.
      *
      * @param sc SecurityCredential
      * @return the security state computed.
@@ -143,6 +144,17 @@ public abstract class SObject {
     public final int validate(ISecurityCredentials sc) {
         this.__state = validate(this.getAcls(), sc);
         return this.__state;
+    }
+    
+    /**
+     * Computes and returns the security state validating all groups against the object's acls.
+     * The state of the object is not changed.
+     * 
+     * @param sc
+     * @return 
+     */
+    protected final int computeSecurityState(ISecurityCredentials sc) {
+        return validate(this.getAcls(), sc);
     }
     
     /**
@@ -185,9 +197,9 @@ public abstract class SObject {
     }
     
     /**
-     * Devuelve el estado de seguridad actual del objeto.
+     * Returns the current security state of the object.
      *
-     * @return devuelve el SecurityState actual del objeto
+     * @return Current value.
      */
     public final int getSecurityState() {
         return this.__state;
