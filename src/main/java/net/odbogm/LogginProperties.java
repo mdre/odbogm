@@ -9,32 +9,32 @@ import java.util.logging.Logger;
  */
 public class LogginProperties {
     
-    public static Level AccessRight                 = Level.INFO;
-    public static Level ArrayListEmbeddedProxy      = Level.INFO;
-    public static Level ArrayListLazyProxy          = Level.INFO;
-    public static Level Auditor                     = Level.FINEST;
-    public static Level ClassCache                  = Level.INFO;
-    public static Level ClassDef                    = Level.INFO;
-    public static Level DbManager                   = Level.INFO;
-    public static Level HashMapEmbeddedProxy        = Level.INFO;
-    public static Level HashMapLazyProxy            = Level.INFO;
-    public static Level LinkedListLazyProxy         = Level.INFO;
-    public static Level ObjectMapper                = Level.INFO;
-    public static Level ObjectProxy                 = Level.FINEST;
-    public static Level ObjectProxyFactory          = Level.INFO;
-    public static Level ObjectStruct                = Level.INFO;
-    public static Level ReflectionUtils             = Level.INFO;
-    public static Level SessionManager              = Level.INFO;
-    public static Level SimpleCache                 = Level.INFO;
-    public static Level VectorLazyProxy             = Level.INFO;
-    public static Level VertexUtil                  = Level.INFO;
-    public static Level ThreadedGraphRecordFactory  = Level.INFO;
-    public static Level Transaction                 = Level.FINEST;
+    public static Level AccessRight                 = Level.WARNING;
+    public static Level ArrayListEmbeddedProxy      = Level.WARNING;
+    public static Level ArrayListLazyProxy          = Level.WARNING;
+    public static Level Auditor                     = Level.WARNING;
+    public static Level ClassCache                  = Level.WARNING;
+    public static Level ClassDef                    = Level.WARNING;
+    public static Level DbManager                   = Level.WARNING;
+    public static Level HashMapEmbeddedProxy        = Level.WARNING;
+    public static Level HashMapLazyProxy            = Level.WARNING;
+    public static Level LinkedListLazyProxy         = Level.WARNING;
+    public static Level ObjectMapper                = Level.WARNING;
+    public static Level ObjectProxy                 = Level.WARNING;
+    public static Level ObjectProxyFactory          = Level.WARNING;
+    public static Level ObjectStruct                = Level.WARNING;
+    public static Level ReflectionUtils             = Level.WARNING;
+    public static Level SessionManager              = Level.WARNING;
+    public static Level SimpleCache                 = Level.WARNING;
+    public static Level VectorLazyProxy             = Level.WARNING;
+    public static Level VertexUtil                  = Level.WARNING;
+    public static Level ThreadedGraphRecordFactory  = Level.WARNING;
+    public static Level Transaction                 = Level.WARNING;
     
-    public static Level SID                         = Level.INFO;
-    public static Level GroupSID                    = Level.INFO;
-    public static Level UserSID                     = Level.INFO;
-    public static Level SObject                     = Level.INFO;
+    public static Level SID                         = Level.WARNING;
+    public static Level GroupSID                    = Level.WARNING;
+    public static Level UserSID                     = Level.WARNING;
+    public static Level SObject                     = Level.WARNING;
     
     
     /**

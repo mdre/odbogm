@@ -54,7 +54,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         }
     }
 
-    // the real object      
+    // the real object (as a IObjectProxy, ie EnhancedByCGLib)
     private Object ___proxiedObject;
 
     private final Class<?> ___baseClass;
@@ -924,7 +924,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                 } else {
                                     // se ha asignado una colección original y se debe exportar todo
                                     this.___transaction.getObjectMapper().collectionToLazy(
-                                            this.___proxiedObject, field, ov, this.___transaction);
+                                            this.___proxiedObject, field, this.___transaction);
 
                                     //recuperar la nueva colección
                                     Collection inter = (Collection) f.get(this.___proxiedObject);
@@ -1013,8 +1013,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                     mapFieldValue = (Map) collectionFieldValue;
                                 } else {
                                     // se ha asignado una colección original y se debe exportar todo
-                                    // this.sm.getObjectMapper().colecctionToLazy(this.realObj, field, ov);
-                                    this.___transaction.getObjectMapper().collectionToLazy(this.___proxiedObject, field, ov, this.___transaction);
+                                    this.___transaction.getObjectMapper().collectionToLazy(this.___proxiedObject, field, this.___transaction);
                                     //recuperar la nueva colección
                                     // Collection inter = (Collection) f.get(this.realObj);
                                     Map inter = (Map) f.get(this.___proxiedObject);

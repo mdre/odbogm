@@ -3392,4 +3392,31 @@ public class SessionManagerTest {
         assertNotNull(v.hashCode());
     }
     
+    /*
+     * Tests if bug fixed: remove item from collection, rollback, the removed
+     * item must return to the collection.
+     */
+    @Test
+    public void rollbackCollectionRemove() throws Exception {
+        SimpleVertexEx v = new SimpleVertexEx();
+        v.lSV = new ArrayList<>();
+        v.hmSV = new HashMap<>();
+        v = sm.store(v);
+        sm.commit();
+        
+        SimpleVertex aux = sm.store(new SimpleVertex());
+        v.lSV.add(aux);
+        v.hmSV.put("key", aux);
+        sm.commit();
+        
+        System.out.println(sm.getRID(v));
+        v.lSV.remove(aux);
+        v.hmSV.remove("key");
+        sm.rollback();
+        assertFalse(v.lSV.isEmpty());
+        assertTrue(v.lSV.contains(aux));
+        assertFalse(v.hmSV.isEmpty());
+        assertEquals(aux, v.hmSV.get("key"));
+    }
+    
 }

@@ -686,7 +686,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
                 }
                 // convertir la colección a Lazy para futuras referencias.
-                this.objectMapper.collectionToLazy(proxy, field, v, this);
+                this.objectMapper.collectionToLazy(proxy, field, this);
             }
 
             // guardar el objeto en el cache. Se usa el RID como clave

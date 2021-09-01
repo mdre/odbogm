@@ -440,7 +440,7 @@ public class ObjectMapper {
 
                 // si hay Vértices conectados o si el constructor del objeto ha inicializado los vectores, convertirlos
                 if ((v.getEdges(relationDirection, graphRelationName).iterator().hasNext()) || (fLink.get(proxy) != null)) {
-                    this.collectionToLazy(proxy, field, fc, v, t);
+                    this.collectionToLazy(proxy, field, fc, t);
                 }
             } catch (IllegalArgumentException | IllegalAccessException ex) {
                 Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
@@ -449,7 +449,7 @@ public class ObjectMapper {
     }
 
     
-    public void collectionToLazy(Object o, String field, OVertex v, Transaction t) {
+    public void collectionToLazy(Object o, String field, Transaction t) {
         LOGGER.log(Level.FINER, "convertir colection a Lazy: {0}", field);
         ClassDef classdef;
         if (o instanceof IObjectProxy) {
@@ -459,7 +459,7 @@ public class ObjectMapper {
         }
 
         Class<?> fc = classdef.linkLists.get(field);
-        collectionToLazy(o, field, fc, v, t);
+        collectionToLazy(o, field, fc, t);
     }
     
     
@@ -479,16 +479,16 @@ public class ObjectMapper {
      * @param o objeto base sobre el que se trabaja
      * @param field campo a modificar
      * @param fc clase original del campo
-     * @param v vértice con el cual se conecta.
      * @param t Vínculo a la transacción actual
      *
      */
-    private void collectionToLazy(Object o, String field, Class<?> fc, OVertex v, Transaction t) {
+    private void collectionToLazy(Object o, String field, Class<?> fc, Transaction t) {
         LOGGER.log(Level.FINER, "***************************************************************");
         LOGGER.log(Level.FINER, "convertir colection a Lazy: " + field + " class: " + fc.getName());
         LOGGER.log(Level.FINER, "***************************************************************");
         try {
             Class<?> c;
+            //FIX: o IS ALWAYS A OBJECT PROXY, USE DIRECTLY INSTEAD OF Object
             if (o instanceof IObjectProxy) {
                 c = o.getClass().getSuperclass();
             } else {
@@ -517,7 +517,7 @@ public class ObjectMapper {
             if (col instanceof List) {
                 Class<?> listClass = getListType(fLink);
                 // inicializar la colección
-                ((ILazyCollectionCalls) col).init(t, v, (IObjectProxy) o,
+                ((ILazyCollectionCalls) col).init(t, (IObjectProxy) o,
                         graphRelationName, listClass, direction);
 
             } else if (col instanceof Map) {
@@ -525,7 +525,7 @@ public class ObjectMapper {
                 Class<?> keyClass = (Class<?>) listType.getActualTypeArguments()[0];
                 Class<?> valClass = (Class<?>) listType.getActualTypeArguments()[1];
                 // inicializar la colección
-                ((ILazyMapCalls) col).init(t, v, (IObjectProxy) o,
+                ((ILazyMapCalls) col).init(t, (IObjectProxy) o,
                         graphRelationName, keyClass, valClass, direction);
             } else {
                 throw new CollectionNotSupported();
