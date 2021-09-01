@@ -41,76 +41,49 @@ public class VectorLazyProxy extends Vector implements ILazyCollectionCalls {
     private boolean lazyLoading = false;
     
     private Transaction transaction;
-    private OVertex relatedTo;
     private String field;
     private Class<?> fieldClass;
     private ODirection direction;
     
     // referencia debil al objeto padre. Se usa para notificar al padre que la colección ha cambiado.
     private WeakReference<IObjectProxy> parent;
-    /**
-     * Crea un ArrayList lazy.
-     *
-     * @param t Vínculo a la transacción actual
-     * @param relatedTo: Vértice con el cual se relaciona la colección
-     * @param field: atributo de relación
-     * @param c: clase genérica de la colección.
-     */
+    
     @Override
-    public void init(Transaction t, OVertex relatedTo, IObjectProxy parent, String field, Class<?> c, ODirection d) {
-        try {
-            this.transaction = t;
-            this.relatedTo = relatedTo;
-            this.parent = new WeakReference<>(parent);
-            this.field = field;
-            this.fieldClass = c;
-            this.direction = d;
-            LOGGER.log(Level.FINER, "relatedTo: {0} - field: {1} - Class: {2}", new Object[]{relatedTo, field, c.getSimpleName()});
-            //LOGGER.log(Level.FINER, "relatedTo.getGraph : "+relatedTo.getGraph());
-        } catch (Exception ex) {
-            Logger.getLogger(VectorLazyProxy.class.getName()).log(Level.SEVERE, null, ex);
-        }
+    public void init(Transaction t, IObjectProxy parent, String field, Class<?> c, ODirection d) {
+        this.transaction = t;
+        this.parent = new WeakReference<>(parent);
+        this.field = field;
+        this.fieldClass = c;
+        this.direction = d;
+        LOGGER.log(Level.FINER, () -> String.format("relatedTo: %s - field: %s - Class: %s",
+            parent.___getVertex().toString(), field, c.getSimpleName()));
     }
 
     //********************* change control **************************************
-    private Map<Object, ObjectCollectionState> listState = new ConcurrentHashMap<>();
+    private final Map<Object, ObjectCollectionState> listState = new ConcurrentHashMap<>();
     
     private void lazyLoad() {
         this.transaction.initInternalTx();
-        
-//        LOGGER.log(Level.FINER, "getGraph: "+relatedTo.getGraph());
-//        if (relatedTo.getGraph()==null)
-//            this.transaction.getSessionManager().getGraphdb().attach(relatedTo);
-//        
-//        LOGGER.log(Level.FINER, "getRawGraph: "+relatedTo.getGraph().getRawGraph());
-//        
-//        relatedTo.getGraph().getRawGraph().activateOnCurrentThread();
-
-//        ODatabaseDocument database = (ODatabaseDocument) ODatabaseRecordThreadLocal.INSTANCE.get();
-//        database.activateOnCurrentThread();
-//        LOGGER.log(Level.FINER, "ODatabase: "+database+" activated");
-
-//        LOGGER.log(Level.INFO, "Lazy Load.....");
         this.lazyLoad = false;
         this.lazyLoading = true;
-        LOGGER.log(Level.FINER, "relatedTo: {0} - field: {1} - Class: {2}", new Object[]{relatedTo, field, fieldClass.getSimpleName()});
-        // recuperar todos los elementos desde el vértice y agregarlos a la colección
-        Iterable<OVertex> rt = relatedTo.getVertices(ODirection.OUT, field);
-//        for (Iterator<Vertex> iterator = relatedTo.getVertices(Direction.OUT, field).iterator(); iterator.hasNext();) {
-        for (Iterator<OVertex> iterator = rt.iterator(); iterator.hasNext();) {
-            OVertex next = (OVertex) iterator.next();
-//            LOGGER.log(Level.INFO, "loading: " + next.getId().toString());
-            Object o = null;
-            o = transaction.get(fieldClass, next.getIdentity().toString());
-            
-            this.add(o);
-            // se asume que todos fueron borrados
-            this.listState.put(o, ObjectCollectionState.REMOVED);
+        IObjectProxy theParent = this.parent.get();
+        if (theParent != null) {
+            LOGGER.log(Level.FINER, () -> String.format("relatedTo: %s - field: %s - Class: %s",
+                theParent.___getVertex().toString(), field, fieldClass.getSimpleName()));
+            // recuperar todos los elementos desde el vértice y agregarlos a la colección
+            Iterable<OVertex> rt = theParent.___getVertex().getVertices(direction, field);
+            for (OVertex next : rt) {
+                Object o = transaction.get(fieldClass, next.getIdentity().toString());
+                this.add(o);
+                // se asume que todos fueron borrados
+                this.listState.put(o, ObjectCollectionState.REMOVED);
+            }
         }
         this.lazyLoading = false;
         this.transaction.closeInternalTx();
     }
     
+    @Override
     public Map<Object, ObjectCollectionState> collectionState() {
         // si se ha hecho referencia al contenido de la colección, realizar la verificación
         if (!this.lazyLoad) {
@@ -575,13 +548,6 @@ public class VectorLazyProxy extends Vector implements ILazyCollectionCalls {
         if (lazyLoad)
             this.lazyLoad();
         return super.stream(); 
-    }
-
-    @Override
-    protected void finalize() throws Throwable {
-//        if (lazyLoad)
-//            this.lazyLoad();
-        super.finalize(); 
     }
     
 }

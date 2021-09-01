@@ -40,7 +40,6 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
     private boolean lazyLoading = false;
 
     private Transaction transaction;
-    private OVertex relatedTo;
     private String field;
     private Class<?> keyClass;
     private Class<?> valueClass;
@@ -53,17 +52,15 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
      * Crea un ArrayList lazy.
      *
      * @param t Vínculo a la transacción actual
-     * @param relatedTo: Vértice con el cual se relaciona la colección
-     * @param parent
+     * @param parent: Vértice con el cual se relaciona la colección
      * @param field: atributo de relación
      * @param k: clase del key.
      * @param v: clase del value.
      * @param d
      */
     @Override
-    public void init(Transaction t, OVertex relatedTo, IObjectProxy parent, String field, Class<?> k, Class<?> v, ODirection d) {
+    public void init(Transaction t, IObjectProxy parent, String field, Class<?> k, Class<?> v, ODirection d) {
         this.transaction = t;
-        this.relatedTo = relatedTo;
         this.parent = new WeakReference<>(parent);
         this.field = field;
         this.keyClass = k;
@@ -72,8 +69,8 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
     }
 
     //********************* change control **************************************
-    private Map<Object, ObjectCollectionState> entitiesState = new ConcurrentHashMap<>();
-    private Map<Object, ObjectCollectionState> keyState = new ConcurrentHashMap<>();
+    private final Map<Object, ObjectCollectionState> entitiesState = new ConcurrentHashMap<>();
+    private final Map<Object, ObjectCollectionState> keyState = new ConcurrentHashMap<>();
     private Map<Object, OEdge> keyToEdge = new ConcurrentHashMap<>();
     private final Map<Object, Object> keyToDeleted = new ConcurrentHashMap<>();
     private final Map<Object, Set<OEdge>> valueToEdge = new ConcurrentHashMap<>();
@@ -85,28 +82,31 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         this.lazyLoad = false;
         this.lazyLoading = true;
 
-        // recuperar todos los elementos desde el vértice y agregarlos a la colección
-        boolean indirect = this.direction == ODirection.IN;
-        for (OEdge edge : relatedTo.getEdges(this.direction, field)) {
-            OVertex next = indirect ? edge.getFrom() : edge.getTo();
-            LOGGER.log(Level.FINER, "loading edge: {0} to: {1}", new Object[]{edge.getIdentity().toString(),next.getIdentity()});
-            // el Lazy simpre se hace recuperado los datos desde la base de datos.
-            Object o = transaction.get(valueClass, next.getIdentity().toString());
-            
-            // para cada vértice conectado, es necesario mapear todos los Edges que los unen.
-            Object k = edgeToObject(edge);
-            
-            // llamar a super para que no se marque como dirty el objeto padre dado que el loadLazy no debería 
-            // registrar cambios en el padre porque se los datos son recuperados de la base
-            super.put(k, o);
-            this.keyState.put(k, ObjectCollectionState.REMOVED);
-            addValueToEdge(o, edge);
+        IObjectProxy theParent = this.parent.get();
+        if (theParent != null) {
+            // recuperar todos los elementos desde el vértice y agregarlos a la colección
+            boolean indirect = this.direction == ODirection.IN;
+            for (OEdge edge : theParent.___getVertex().getEdges(this.direction, field)) {
+                OVertex next = indirect ? edge.getFrom() : edge.getTo();
+                LOGGER.log(Level.FINER, "loading edge: {0} to: {1}", new Object[]{edge.getIdentity().toString(),next.getIdentity()});
+                // el Lazy simpre se hace recuperado los datos desde la base de datos.
+                Object o = transaction.get(valueClass, next.getIdentity().toString());
 
-            // como puede estar varias veces un objecto agregado al map con distintos keys
-            // primero verificamos su existencia para no duplicarlos.
-            if (this.entitiesState.get(o) == null) {
-                // se asume que todos fueron borrados
-                this.entitiesState.put(o, ObjectCollectionState.REMOVED);
+                // para cada vértice conectado, es necesario mapear todos los Edges que los unen.
+                Object k = edgeToObject(edge);
+
+                // llamar a super para que no se marque como dirty el objeto padre dado que el loadLazy no debería 
+                // registrar cambios en el padre porque se los datos son recuperados de la base
+                super.put(k, o);
+                this.keyState.put(k, ObjectCollectionState.REMOVED);
+                addValueToEdge(o, edge);
+
+                // como puede estar varias veces un objecto agregado al map con distintos keys
+                // primero verificamos su existencia para no duplicarlos.
+                if (this.entitiesState.get(o) == null) {
+                    // se asume que todos fueron borrados
+                    this.entitiesState.put(o, ObjectCollectionState.REMOVED);
+                }
             }
         }
         this.lazyLoading = false;
