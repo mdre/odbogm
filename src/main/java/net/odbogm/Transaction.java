@@ -1300,13 +1300,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                 
                 // actualizar los indirects
                 // ((IObjectProxy)ret).___updateIndirectLinks();
-                
-                // si fue recuperado del caché, determinar si se ha modificado.
-                // si no fue modificado, hacer un reload para actualizar con la última 
-                // versión de la base de datos.
-                if (!((IObjectProxy) ret).___isDirty()) {
-                    ((IObjectProxy) ret).___reload();
-                }
             }
 
             // si ret == null, recuperar el objeto desde la base, en caso contrario devolver el objeto desde el caché
@@ -1398,13 +1391,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
             // actualizar los indirects
             // ((IObjectProxy)o).___updateIndirectLinks();
-            
-            // si fue recuperado del caché, determinar si se ha modificado.
-            // si no fue modificado, hacer un reload para actualizar con la última 
-            // versión de la base de datos.
-            if (!((IObjectProxy) o).___isDirty()) {
-                ((IObjectProxy) o).___reload();
-            }
         }
 
         if (o == null) {
@@ -1797,12 +1783,5 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         this.dirty.remove(rid);
         ((IObjectProxy) dirty).___removeDirtyMark();
     }
-    
-    
-//    public void attach(final OElement element) {
-//        
-//        orientdbTransact.attach(element);
-//    }
-    
     
 }
