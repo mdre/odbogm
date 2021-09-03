@@ -2055,7 +2055,7 @@ public class SessionManagerTest {
         sioIndirectLinked = null;
 
         System.out.println("limpiar la memoria...");
-//        System.gc();
+        System.gc();
         System.out.println("oc: " + sm.getCurrentTransaction().getObjectCache());
         System.out.println("dc: " + sm.getCurrentTransaction().getDirtyCache());
 
