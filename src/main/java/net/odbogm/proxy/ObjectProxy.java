@@ -48,10 +48,12 @@ import net.odbogm.annotations.Eager;
 public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
     private final static Logger LOGGER = Logger.getLogger(ObjectProxy.class.getName());
+    public final static Logger MPA_LOGGER = Logger.getLogger("ogm-mpa");
     static {
         if (LOGGER.getLevel() == null) {
             LOGGER.setLevel(LogginProperties.ObjectProxy);
         }
+        MPA_LOGGER.setLevel(Level.OFF);
     }
 
     // the real object (as a IObjectProxy, ie EnhancedByCGLib)
@@ -427,9 +429,9 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             this.___transaction.initInternalTx();
             
             
-//            Logger.getLogger("mpa").log(Level.SEVERE,
-//                    () -> "LAZY LOADING DE " + this.___baseClass + " - TRANS: " +
-//                            System.identityHashCode(___transaction.getCurrentGraphDb()));
+            MPA_LOGGER.log(Level.SEVERE,
+                    () -> "LAZY LOADING DE " + this.___baseClass + " - TRANS: " +
+                            System.identityHashCode(___transaction.getCurrentGraphDb()));
 
             
             LOGGER.log(Level.FINER, "Base class: {0}", this.___baseClass.getSimpleName());
@@ -604,16 +606,16 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             LOGGER.log(Level.FINER, "Eager loading of {0}", this.___baseElement);
             
             
-//            String msg = this.___baseClass + " - TRANS: " +
-//                    System.identityHashCode(___transaction.getCurrentGraphDb());
+            String msg = this.___baseClass + " - TRANS: " +
+                    System.identityHashCode(___transaction.getCurrentGraphDb());
             
 
             if (this.___baseClass.isAnnotationPresent(Eager.class)) {
                 //eager load of whole class
-//                Logger.getLogger("mpa").log(Level.SEVERE, () -> "EAGER LOADING CLASE ENTERA DE " + msg);
+                MPA_LOGGER.log(Level.SEVERE, () -> "EAGER LOADING CLASE ENTERA DE " + msg);
                 this.fullLoad();
             } else {
-//                Logger.getLogger("mpa").log(Level.SEVERE, () -> "EAGER LOADING CAMPOS DE " + msg);
+                MPA_LOGGER.log(Level.SEVERE, () -> "EAGER LOADING CAMPOS DE " + msg);
                 OVertex ov = (OVertex) this.___baseElement;
                 this.loadLinks(ov, classdef, classdef.links, true, false); //eager load of links
                 this.eagerLoadLinkLists(classdef, classdef.linkLists, true); //eager load of link lists
@@ -635,7 +637,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     
     
     private void fullLoad() {
-//        Logger.getLogger("mpa").log(Level.SEVERE, () -> "FULL LOADING CLASE ENTERA DE " + this.___baseClass);
+        MPA_LOGGER.log(Level.SEVERE, () -> "FULL LOADING CLASE ENTERA DE " + this.___baseClass);
         ClassDef classdef = getClassDef();
         this.___loadLazyLinks();
         this.eagerLoadLinkLists(classdef, classdef.linkLists, false); //force load of link lists
