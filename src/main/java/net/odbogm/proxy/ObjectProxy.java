@@ -117,7 +117,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         if (method.getName().equals("___getEdge")) {
             return this.___getEdge();
         }
-        if (method.getName().equals("___geElement")) {
+        if (method.getName().equals("___getElement")) {
             return this.___getElement();
         }
 
