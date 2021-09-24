@@ -28,11 +28,11 @@ public final class GroupSID implements ISID {
     @Indexed(type = Indexed.IndexType.UNIQUE)
     private String uuid = "";
     
-    private List<ISID> participants = new ArrayList<>();;
+    private final List<ISID> participants = new ArrayList<>();;
     
-    // lista de grupo a los que fue agregado el presente
+    // list of groups to which it was added
     @Indirect(linkName = "GroupSID_participants")
-    private List<GroupSID> addedTo = new ArrayList<>();
+    private final List<GroupSID> addedTo = new ArrayList<>();
 
     public GroupSID() {
         super();
@@ -53,6 +53,7 @@ public final class GroupSID implements ISID {
         this.name = name;
     }
 
+    @Override
     public final String getUUID() {
         return uuid;
     }
@@ -101,21 +102,23 @@ public final class GroupSID implements ISID {
         }
     }
     
-    public final boolean remove(GroupSID user) {
-        return this.participants.remove(user);
+    public final boolean remove(GroupSID group) {
+        boolean ok = this.participants.remove(group);
+        if (ok) group.removeAddedTo(this);
+        return ok;
     }
     
     public final List<ISID> getParticipants() {
         return Collections.unmodifiableList(this.participants);
     }
     
-    final void addedTo(GroupSID gAddedTo) {
+    public final void addedTo(GroupSID gAddedTo) {
         if (!this.addedTo.contains(gAddedTo)) {
             this.addedTo.add(gAddedTo);
         }
     }
     
-    final void removeAddedTo(GroupSID gAddedTo) {
+    public final void removeAddedTo(GroupSID gAddedTo) {
         this.addedTo.remove(gAddedTo);
     }
     
