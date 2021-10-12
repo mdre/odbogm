@@ -442,6 +442,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         this.dirty.clear();
         this.storedObjects.clear();
         this.newrids.clear();
+        this.afterCommit.clear();
         // clean the cache of objects to delete
         this.dirtyDeleted.clear();
         // clean the invalid entries of auditor cache

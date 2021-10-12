@@ -1124,7 +1124,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             
             //if we must update version field, enqueue in transaction
             if (cDef.versionField != null) {
-                this.___transaction.processAfterDbCommit(this);
+                this.___transaction.processAfterDbCommit((IObjectProxy)this.___proxiedObject);
             }
             
             // grabar los cambios
