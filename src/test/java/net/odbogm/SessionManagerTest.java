@@ -2502,9 +2502,12 @@ public class SessionManagerTest {
         v.setOhmSVE(new HashMap<>());
         v.getOhmSVE().put(new EdgeAttrib("edge1", new Date()), value);
         v = sm.store(v);
+        EdgeAttrib edge = v.getOhmSVE().keySet().iterator().next();
+        assertNotNull(edge.getRid());
+        assertTrue(edge.getRid().startsWith("#-")); // temp rid
         sm.commit();
         
-        EdgeAttrib edge = v.getOhmSVE().keySet().iterator().next();
+        edge = v.getOhmSVE().keySet().iterator().next();
         assertNotNull(edge.getRid());
         assertEquals(sm.getRID(edge), edge.getRid());
     }
