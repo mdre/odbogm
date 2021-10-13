@@ -1487,6 +1487,12 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             if (this.objectMapper.getClassDef(type).versionField != null) {
                 processAfterDbCommit((IObjectProxy)o);
             }
+            
+            if (e.getIdentity().isNew()) {
+                String newRid = e.getIdentity().toString();
+                this.newrids.add(newRid);
+                addToCache(newRid, o);
+            }
 
         } catch (InstantiationException | IllegalAccessException | NoSuchFieldException ex) {
             Logger.getLogger(SessionManager.class.getName()).log(Level.SEVERE, null, ex);
