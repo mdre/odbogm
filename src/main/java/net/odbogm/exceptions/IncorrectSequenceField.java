@@ -5,7 +5,7 @@ package net.odbogm.exceptions;
  * 
  * @author jbertinetti
  */
-public class IncorrectSequenceField extends RuntimeException {
+public class IncorrectSequenceField extends OdbogmException {
     
     public IncorrectSequenceField() {
         super("A field annotated with @Sequence must be of type Long.");

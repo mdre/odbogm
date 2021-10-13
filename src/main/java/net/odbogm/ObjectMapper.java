@@ -528,7 +528,7 @@ public class ObjectMapper {
                 ((ILazyMapCalls) col).init(t, (IObjectProxy) o,
                         graphRelationName, keyClass, valClass, direction);
             } else {
-                throw new CollectionNotSupported();
+                throw new CollectionNotSupported(col.getClass().getName(), t);
             }
 
             fLink.set(o, col);

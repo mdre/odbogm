@@ -1,7 +1,9 @@
 package net.odbogm;
 
+import com.orientechnologies.orient.core.db.ODatabasePool;
 import static org.junit.Assert.*;
 import com.orientechnologies.orient.core.db.ODatabaseSession;
+import com.orientechnologies.orient.core.exception.ODatabaseException;
 import com.orientechnologies.orient.core.id.ORecordId;
 import com.orientechnologies.orient.core.record.ODirection;
 import com.orientechnologies.orient.core.record.OEdge;
@@ -35,6 +37,7 @@ import net.odbogm.proxy.IObjectProxy;
 import net.odbogm.security.*;
 import net.odbogm.utils.DateHelper;
 import org.apache.commons.lang.RandomStringUtils;
+import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Ignore;
@@ -63,16 +66,9 @@ import test.TestConfig;
  */
 public class SessionManagerTest {
 
-    private final Field orientdbTransactField;
-
     private SessionManager sm;
 
 
-    public SessionManagerTest() throws Exception {
-        orientdbTransactField = Transaction.class.getDeclaredField("orientdbTransact");
-        orientdbTransactField.setAccessible(true);
-    }
-    
     @Before
     public void setUp() {
         System.out.println("Iniciando session manager...");
@@ -1434,7 +1430,7 @@ public class SessionManagerTest {
         System.out.println("Desde T2: " + expResultT2.getS());
         
         //verificar que no quedó transacción abierta
-        assertNull(orientdbTransactField.get(t2));
+        assertNull(t2.getCurrentGraphDb());
     }
 
     /**
@@ -2383,38 +2379,123 @@ public class SessionManagerTest {
     @Test
     public void closeTransactions() throws Exception {
         Transaction t = sm.getCurrentTransaction();
-        assertNull(orientdbTransactField.get(t));
+        assertNull(t.getCurrentGraphDb());
+        
+        //store and commit:
         
         SimpleVertexEx s1 = new SimpleVertexEx();
         s1 = t.store(s1);
         //mientras no comitee, el store mantiene la transacción
-        assertNotNull(orientdbTransactField.get(t));
+        assertNotNull(t.getCurrentGraphDb());
         //luego sí debe cerrarla
         t.commit();
-        assertNull(orientdbTransactField.get(t));
+        assertNull(t.getCurrentGraphDb());
         
-        s1.setS("modificado");
+        //get:
+        
+        String rid = sm.getRID(s1);
+        t.get(rid);
+        assertNull(t.getCurrentGraphDb());
+        t.get(SimpleVertexEx.class, rid);
+        assertNull(t.getCurrentGraphDb());
+        t.fetch(SimpleVertexEx.class, rid);
+        assertNull(t.getCurrentGraphDb());
+        
+        //commit:
+        
+        s1.setS("modified");
         t.commit();
-        assertNull(orientdbTransactField.get(t));
+        assertNull(t.getCurrentGraphDb());
+        
+        //refresh:
         
         t.refreshObject(s1);
-        assertNull(orientdbTransactField.get(t));
+        assertNull(t.getCurrentGraphDb());
+        
+        //rollback:
+        
+        s1.setS("rollback");
+        t.rollback();
+        assertNull(t.getCurrentGraphDb());
+        
+        //delete:
         
         t.delete(s1);
-        assertNull(orientdbTransactField.get(t));
+        assertNull(t.getCurrentGraphDb());
         t.commit();
-        assertNull(orientdbTransactField.get(t));
+        assertNull(t.getCurrentGraphDb());
+        
+        //queries:
+        
+        t.query(SimpleVertex.class);
+        assertNull(t.getCurrentGraphDb());
+        t.query("select from SimpleVertex");
+        assertNull(t.getCurrentGraphDb());
+        t.query(SimpleVertex.class, "where aprop = true");
+        assertNull(t.getCurrentGraphDb());
+        t.query("select from V where aprop = ?", true);
+        assertNull(t.getCurrentGraphDb());
+        t.query("select count(*) from V", "");
+        assertNull(t.getCurrentGraphDb());
+        t.query(SimpleVertex.class, "select from V where aprop = true", new HashMap<>());
+        assertNull(t.getCurrentGraphDb());
+        t.query(SimpleVertex.class, "select from V where aprop = ?", true);
+        assertNull(t.getCurrentGraphDb());
     }
     
     
+    /*
+     * All operations that open a new database transaction must always close it
+     * on any thrown exception.
+     */
     @Test
     public void finalizeTransactionsWithException() throws Exception {
         Transaction t = sm.getCurrentTransaction();
-        try {
-            t.get("unknown");
-        } catch (UnknownRID ex) {
-        }
-        assertNull(orientdbTransactField.get(t));
+        SimpleVertex sv = t.store(new SimpleVertex());
+        t.commit();
+        String rid = sm.getRID(sv);
+        
+        ODatabaseSession db = EasyMock.createNiceMock(ODatabaseSession.class);
+        db.begin();
+        EasyMock.expectLastCall().andThrow(new ODatabaseException("Error")).anyTimes();
+        EasyMock.replay(db);
+        ODatabasePool pool = EasyMock.createNiceMock(ODatabasePool.class);
+        EasyMock.expect(pool.acquire()).andReturn(db).anyTimes();
+        Field poolField = SessionManager.class.getDeclaredField("dbPool");
+        poolField.setAccessible(true);
+        poolField.set(sm, pool);
+        EasyMock.replay(pool);
+        
+        //get:
+        
+        assertThrows(OdbogmException.class, () -> t.get(rid));
+        assertNull(t.getCurrentGraphDb());
+        
+        assertThrows(OdbogmException.class, () -> t.get(SimpleVertex.class, rid));
+        assertNull(t.getCurrentGraphDb());
+        
+        assertThrows(OdbogmException.class, () -> t.fetch(SimpleVertex.class, rid));
+        assertNull(t.getCurrentGraphDb());
+        
+        //commit:
+        
+        assertThrows(OdbogmException.class, () -> t.commit());
+        assertNull(t.getCurrentGraphDb());
+        
+        //refresh:
+        
+        assertThrows(OdbogmException.class, () -> t.refreshObject(sv));
+        assertNull(t.getCurrentGraphDb());
+        
+        //rollback:
+        
+        assertThrows(OdbogmException.class, () -> t.rollback());
+        assertNull(t.getCurrentGraphDb());
+        
+        //delete:
+        
+        assertThrows(OdbogmException.class, () -> t.delete(sv));
+        assertNull(t.getCurrentGraphDb());
     }
     
     
@@ -2564,7 +2645,6 @@ public class SessionManagerTest {
         assertEquals(0, sm.getDirtyCount());
         assertEquals(0, sm.getTransaction().getDirtyDeletedCount());
     }
-    
     
     @Test
     public void retryCommitNotRetryable() throws Exception {

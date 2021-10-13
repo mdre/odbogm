@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
+import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.annotations.Audit;
@@ -35,8 +36,6 @@ import net.odbogm.cache.SimpleCache;
 import net.odbogm.exceptions.ClassToVertexNotFound;
 import net.odbogm.exceptions.CollectionNotSupported;
 import net.odbogm.exceptions.ConcurrentModification;
-import net.odbogm.exceptions.IncorrectRIDField;
-import net.odbogm.exceptions.NoOpenTx;
 import net.odbogm.exceptions.NoUserLoggedIn;
 import net.odbogm.exceptions.OdbogmException;
 import net.odbogm.exceptions.ReferentialIntegrityViolation;
@@ -204,10 +203,10 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             String rid = ((IObjectProxy) o).___getRid();
             LOGGER.log(Level.FINER, "Marcando como dirty: {0} - {1}",
                     new Object[]{o.getClass().getSimpleName(), o.toString()});
-            LOGGER.log(Level.FINEST, ThreadHelper.getCurrentStackTrace());
+            LOGGER.log(Level.FINEST, () -> ThreadHelper.getCurrentStackTrace());
             this.dirty.put(rid, o);
         } else {
-            throw new UnmanagedObject();
+            throw new UnmanagedObject(this);
         }
     }
 
@@ -268,9 +267,11 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * @param o objeto recuperado de la base a ser actualizado.
      */
     public synchronized void refreshObject(Object o) {
-        initInternalTx();
-        ((IObjectProxy)o).___reload();
-        closeInternalTx();
+        wrap(() -> {
+            initInternalTx();
+            ((IObjectProxy)o).___reload();
+            closeInternalTx();
+        });
     }
 
     /**
@@ -296,19 +297,13 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * @throws ConcurrentModification Si un elemento fue modificado por una transacción anterior.
      * @throws OdbogmException Si ocurre alguna otra excepción de la base de datos.
      */
-    public synchronized void commit() throws ConcurrentModification, OdbogmException {
-        try {
-            LOGGER.log(Level.FINEST, "dirties: {0}",this.dirty);
-            LOGGER.log(Level.FINEST, "news: {0}",this.newrids);
-            doCommit();
-        } catch (OException ex) {
-            throw new OdbogmException(ex, this);
-        }
+    public synchronized void commit() throws OdbogmException {
+        LOGGER.log(Level.FINEST, "dirties: {0}",this.dirty);
+        LOGGER.log(Level.FINEST, "news: {0}",this.newrids);
+        wrap(() -> doCommit());
     }
     
-    
-    private void doCommit() throws ConcurrentModification, OdbogmException {
-        LOGGER.log(Level.FINER, "COMMIT");
+    private void doCommit() {
         initInternalTx();
         
         if (this.nestedTransactionLevel <= 0) {
@@ -426,6 +421,10 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * realiza un rollback sobre la transacción activa.
      */
     public synchronized void rollback() {
+        wrap(() -> doRollback());
+    }
+    
+    private synchronized void doRollback() {
         initInternalTx();
         LOGGER.log(Level.FINER, "Rollback ------------------------");
         LOGGER.log(Level.FINER, "Dirty objects: {0}", dirty.size());
@@ -473,7 +472,11 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * @param o objeto de referencia a almacenar.
      */
     @Override
-    public synchronized <T> T store(T o) throws IncorrectRIDField, NoOpenTx, ClassToVertexNotFound {
+    public synchronized <T> T store(T o) {
+        return wrap(() -> doStore(o));
+    }
+    
+    private  <T> T doStore(T o) {
         LOGGER.log(Level.FINER, "*****************************************************************************");
         LOGGER.log(Level.FINER, "STORE: {0}",o);
         LOGGER.log(Level.FINER, "*****************************************************************************");
@@ -507,8 +510,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             // verificar que la clase existe
             if (getDBClass(classname) == null) {
                 // arrojar una excepción en caso contrario.
-                closeInternalTx();
-                throw new ClassToVertexNotFound("No se ha encontrado la definición de la clase " + classname + " en la base!");
+                throw new ClassToVertexNotFound("No se ha encontrado la definición de la clase " +
+                        classname + " en la base!", this);
             }
             
             // Obtener un map del objeto.
@@ -726,7 +729,11 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * 
      * @param toRemove referencia al objeto a remover
      */
-     public void delete(Object toRemove) throws ReferentialIntegrityViolation, UnknownObject {
+     public void delete(Object toRemove) {
+         wrap(() -> doDelete(toRemove));
+     }
+     
+     private void doDelete(Object toRemove) {
         LOGGER.log(Level.FINER, "Remove: {0}", toRemove.getClass().getName());
         // si no hereda de IObjectProxy, el objeto no pertenece a la base y no se debe hacer nada.
         if (toRemove instanceof IObjectProxy) {
@@ -894,8 +901,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                             LOGGER.log(Level.FINER, "********************************************");
                             LOGGER.log(Level.FINER, "field: {0}", field);
                             LOGGER.log(Level.FINER, "********************************************");
-                            closeInternalTx();
-                            throw new CollectionNotSupported(oCol.getClass().getSimpleName());
+                            throw new CollectionNotSupported(oCol.getClass().getName(), this);
                         }
                         f.setAccessible(acc);
                     } else if ((oCol != null) && (f.isAnnotationPresent(RemoveOrphan.class))) {
@@ -930,8 +936,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                             LOGGER.log(Level.FINER, "********************************************");
                             LOGGER.log(Level.FINER, "field: {0}", field);
                             LOGGER.log(Level.FINER, "********************************************");
-                            closeInternalTx();
-                            throw new CollectionNotSupported(oCol.getClass().getSimpleName());
+                            throw new CollectionNotSupported(oCol.getClass().getName(), this);
                         }
                         f.setAccessible(acc);
                     }
@@ -956,7 +961,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             
             LOGGER.log(Level.FINER, "rid: "+ridToRemove+" removed succefully");
         } else {
-            closeInternalTx();
             throw new UnknownObject(this);
         }
         
@@ -1101,8 +1105,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                             LOGGER.log(Level.FINER, "********************************************");
                             LOGGER.log(Level.FINER, "field: {0}", field);
                             LOGGER.log(Level.FINER, "********************************************");
-                            closeInternalTx();
-                            throw new CollectionNotSupported(oCol.getClass().getSimpleName());
+                            throw new CollectionNotSupported(oCol.getClass().getName(), this);
                         }
                         f.setAccessible(acc);
                     } else if ((oCol != null) && (f.isAnnotationPresent(RemoveOrphan.class))) {
@@ -1137,8 +1140,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                             LOGGER.log(Level.FINER, "********************************************");
                             LOGGER.log(Level.FINER, "field: {0}", field);
                             LOGGER.log(Level.FINER, "********************************************");
-                            closeInternalTx();
-                            throw new CollectionNotSupported(oCol.getClass().getSimpleName());
+                            throw new CollectionNotSupported(oCol.getClass().getName(), this);
                         }
                         f.setAccessible(acc);
                     }
@@ -1289,8 +1291,13 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     @Override
     public Object get(String rid) throws UnknownRID, VertexJavaClassNotFound {
+        return wrap(() -> doGet(rid));
+    }
+    
+    
+    private Object doGet(String rid) {
         if (rid == null) {
-            throw new UnknownRID("The rid must not be null",this);
+            throw new UnknownRID("The RID must not be null.", this);
         }
         
         initInternalTx();
@@ -1320,11 +1327,13 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                 String javaClass = v.getSchemaType().get().getCustom("javaClass");
                 if (javaClass == null) {
                     closeInternalTx();
-                    throw new VertexJavaClassNotFound("La clase del Vértice no tiene la propiedad javaClass");
+                    throw new VertexJavaClassNotFound(this);
                 }
                 javaClass = javaClass.replaceAll("[\'\"]", "");
                 Class<?> c = Class.forName(javaClass);
+                
                 ret = this.get(c, rid);
+                
             } else {
                 LOGGER.log(Level.FINER, "Objeto Recupeardo del caché.");
                 // validar contra el usuario actualmente logueado si corresponde.
@@ -1357,7 +1366,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     @Override
     public synchronized <T> T get(Class<T> type, String rid) throws UnknownRID {
-        return get(type, rid, false);
+        return wrap(() -> get(type, rid, false));
     }
     
     
@@ -1372,11 +1381,11 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     @Override
     public synchronized <T> T fetch(Class<T> type, String rid) {
-        return get(type, rid, true);
+        return wrap(() -> get(type, rid, true));
     }
     
     
-    private synchronized <T> T get(Class<T> type, String rid, boolean fullLoad) throws UnknownRID {
+    private synchronized <T> T get(Class<T> type, String rid, boolean fullLoad) {
         if (rid == null) {
             throw new UnknownRID(this);
         }
@@ -1792,6 +1801,25 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         String rid = ((IObjectProxy) dirty).___getRid();
         this.dirty.remove(rid);
         ((IObjectProxy) dirty).___removeDirtyMark();
+    }
+    
+    /*
+     * Wraps the execution of a method catching all OExceptions and rethrowing it as OdbogmExceptions,
+     * so that transaction can be correctly finalized.
+     */
+    private <T> T wrap(Supplier<T> f) {
+        try {
+            return f.get();
+        } catch (OException ex) {
+            throw new OdbogmException(ex, this);
+        }
+    }
+    private void wrap(Runnable f) {
+        try {
+            f.run();
+        } catch (OException ex) {
+            throw new OdbogmException(ex, this);
+        }
     }
     
 }

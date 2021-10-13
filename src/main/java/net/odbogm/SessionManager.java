@@ -18,10 +18,7 @@ import java.util.logging.Logger;
 import net.odbogm.agent.ITransparentDirtyDetector;
 import net.odbogm.agent.TransparentDirtyDetectorAgent;
 import net.odbogm.audit.Auditor;
-import net.odbogm.exceptions.ClassToVertexNotFound;
 import net.odbogm.exceptions.ConcurrentModification;
-import net.odbogm.exceptions.IncorrectRIDField;
-import net.odbogm.exceptions.NoOpenTx;
 import net.odbogm.exceptions.NoUserLoggedIn;
 import net.odbogm.exceptions.OdbogmException;
 import net.odbogm.exceptions.ReferentialIntegrityViolation;
@@ -195,7 +192,7 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
      * @param o objeto de referencia a almacenar.
      */
     @Override
-    public synchronized <T> T store(T o) throws IncorrectRIDField, NoOpenTx, ClassToVertexNotFound {
+    public synchronized <T> T store(T o) {
         return this.publicTransaction.store(o);
     }
 

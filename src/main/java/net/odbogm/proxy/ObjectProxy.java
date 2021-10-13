@@ -1,6 +1,5 @@
 package net.odbogm.proxy;
 
-import com.orientechnologies.common.exception.OException;
 import com.orientechnologies.orient.core.db.record.ORecordElement;
 import com.orientechnologies.orient.core.exception.OConcurrentModificationException;
 import com.orientechnologies.orient.core.record.ODirection;
@@ -32,7 +31,6 @@ import net.odbogm.exceptions.ConcurrentModification;
 import net.odbogm.exceptions.DuplicateLink;
 import net.odbogm.exceptions.InvalidObjectReference;
 import net.odbogm.exceptions.ObjectMarkedAsDeleted;
-import net.odbogm.exceptions.OdbogmException;
 import net.odbogm.utils.ReflectionUtils;
 import net.odbogm.utils.ThreadHelper;
 import net.odbogm.utils.VertexUtils;
@@ -129,7 +127,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
         if (!this.___isValidObject) {
             LOGGER.log(Level.FINER, "El objeto está marcado como inválido!!!");
-            throw new InvalidObjectReference();
+            throw new InvalidObjectReference(this.___transaction);
         }
 
         if (method.getName().equals("___rollback")) {
@@ -154,7 +152,9 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                         return methodProxy.invokeSuper(o, args);
                     }
                 default:
-                    throw new ObjectMarkedAsDeleted("The object " + this.___baseElement.getIdentity().toString() + " was deleted from the database. Trying to call to " + method.getName());
+                    throw new ObjectMarkedAsDeleted("The object " + this.___baseElement.getIdentity().toString() + 
+                            " was deleted from the database. Trying to call to " + method.getName(),
+                            this.___transaction);
             }
         }
         
@@ -516,7 +516,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
                         ___transaction.decreseTransactionCache();
                     } else if (false) {
-                        throw new DuplicateLink();
+                        throw new DuplicateLink(this.___transaction);
                     }
                     LOGGER.log(Level.FINER, "FIN hydrate innerO: {0}^^^^^^^^^^^^^^^^^^^^^^^^^^^^^", vertice.getIdentity());
                 }
@@ -687,18 +687,6 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
     @Override
     public synchronized void ___commit() {
-        //ante ciertas condiciones los métodos de Orient pueden lanzar una excepción
-        //que hay que atraparlas en algún momento
-        try {
-            doCommit();
-            
-        } catch (OException ex) {
-            throw new OdbogmException(ex, ___transaction);
-        }
-    }
-    
-    
-    private void doCommit() throws ConcurrentModification {
         LOGGER.log(Level.FINER, "Iniciando ___commit() ....");
         LOGGER.log(Level.FINER, "valid: {0}", this.___isValidObject);
         LOGGER.log(Level.FINER, "dirty: {0}", this.___dirty);
@@ -1112,7 +1100,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                 LOGGER.log(Level.FINER, "********************************************");
                                 LOGGER.log(Level.FINER, "field: {0}", field);
                                 LOGGER.log(Level.FINER, "********************************************");
-                                throw new CollectionNotSupported(collectionFieldValue.getClass().getSimpleName());
+                                throw new CollectionNotSupported(collectionFieldValue.getClass().getName(), this.___transaction);
                             }
                         }
                     } catch (IllegalArgumentException | IllegalAccessException ex) {
