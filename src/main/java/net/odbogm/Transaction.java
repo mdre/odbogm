@@ -1352,8 +1352,11 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         if ((this.sm.getLoggedInUser() != null) && (o instanceof SObject)) {
             LOGGER.log(Level.FINER, "SObject detectado. Aplicando seguridad de acuerdo al usuario logueado: {0}",
                     this.sm.getLoggedInUser().getName());
+            boolean dirtyPrevious = ((IObjectProxy) o).___isDirty();
             ((SObject) o).validate(this.sm.getLoggedInUser());
-            removeDirty(o); //setted dirty by validate if CLASS_INSTRUMENTATION
+            if (!dirtyPrevious) {
+                removeDirty(o); //setted dirty by validate if CLASS_INSTRUMENTATION
+            }
         }
 
         LOGGER.log(Level.FINER, "Auditar?");
