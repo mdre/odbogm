@@ -1,6 +1,5 @@
 package net.odbogm.proxy;
 
-import com.orientechnologies.common.exception.OException;
 import com.orientechnologies.orient.core.db.record.ORecordElement;
 import com.orientechnologies.orient.core.exception.OConcurrentModificationException;
 import com.orientechnologies.orient.core.record.ODirection;
@@ -14,6 +13,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -32,7 +32,6 @@ import net.odbogm.exceptions.ConcurrentModification;
 import net.odbogm.exceptions.DuplicateLink;
 import net.odbogm.exceptions.InvalidObjectReference;
 import net.odbogm.exceptions.ObjectMarkedAsDeleted;
-import net.odbogm.exceptions.OdbogmException;
 import net.odbogm.utils.ReflectionUtils;
 import net.odbogm.utils.ThreadHelper;
 import net.odbogm.utils.VertexUtils;
@@ -131,7 +130,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
         if (!this.___isValidObject) {
             LOGGER.log(Level.FINER, "El objeto está marcado como inválido!!!");
-            throw new InvalidObjectReference();
+            throw new InvalidObjectReference(this.___transaction);
         }
 
         if (method.getName().equals("___rollback")) {
@@ -156,7 +155,9 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                         return methodProxy.invokeSuper(o, args);
                     }
                 default:
-                    throw new ObjectMarkedAsDeleted("The object " + this.___baseElement.getIdentity().toString() + " was deleted from the database. Trying to call to " + method.getName());
+                    throw new ObjectMarkedAsDeleted("The object " + this.___baseElement.getIdentity().toString() + 
+                            " was deleted from the database. Trying to call to " + method.getName(),
+                            this.___transaction);
             }
         }
         
@@ -225,8 +226,23 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                     this.___reload();
                 }
                 break;
+            case "___commitSuccessful":
+                if (this.___objectReady) {
+                    this.___commitSuccessful();
+                }
+                break;
             case "___setDeletedMark":
                 this.___setDeletedMark();
+                break;
+            case "___updateElement":
+                this.___updateElement();
+                break;
+            
+            case "___setEdge":
+                this.___setEdge((OEdge)args[0]);
+                break;
+            case "___setVertex":
+                this.___setVertex((OVertex)args[0]);
                 break;
 
             case "___ogm___setDirty":
@@ -421,6 +437,18 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
 
     /**
+     * Creates a new temporary valid vertex and associates it with the proxy.
+     */
+    @Override
+    public void ___updateElement() {
+        if (this.___baseElement.getInternalStatus() == ORecordElement.STATUS.NOT_LOADED) {
+            this.___baseElement = this.___transaction.getCurrentGraphDb().newVertex(
+                    getClassDef().entityName);
+        }
+    }
+    
+    
+    /**
      * Load all links of object.
      */
     @Override
@@ -524,7 +552,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
                         ___transaction.decreseTransactionCache();
                     } else if (false) {
-                        throw new DuplicateLink();
+                        throw new DuplicateLink(this.___transaction);
                     }
                     LOGGER.log(Level.FINER, "FIN hydrate innerO: {0}^^^^^^^^^^^^^^^^^^^^^^^^^^^^^", vertice.getIdentity());
                 }
@@ -703,18 +731,6 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
     @Override
     public synchronized void ___commit() {
-        //ante ciertas condiciones los métodos de Orient pueden lanzar una excepción
-        //que hay que atraparlas en algún momento
-        try {
-            doCommit();
-            
-        } catch (OException ex) {
-            throw new OdbogmException(ex, ___transaction);
-        }
-    }
-    
-    
-    private void doCommit() throws ConcurrentModification {
         LOGGER.log(Level.FINER, "Iniciando ___commit() ....");
         LOGGER.log(Level.FINER, "valid: {0}", this.___isValidObject);
         LOGGER.log(Level.FINER, "dirty: {0}", this.___dirty);
@@ -726,15 +742,8 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         if (this.___dirty || this.___baseElement.getIdentity().isNew()) {
             this.___transaction.initInternalTx();
             LOGGER.log(Level.FINER, "database after open: {0}", this.___baseElement.getDatabase());
-            // verifciar que si el objeto es nuevo esté correctamente confirgurado.
-            // puede cambiar en el caso de que un commit falle y lo deja inconsistente.
-            if (this.___baseElement.getIdentity().isNew()) {
-                LOGGER.log(Level.FINEST, "*********************************");
-                LOGGER.log(Level.FINEST, "Forzar el status a LOADED y Dirty");
-                LOGGER.log(Level.FINEST, "*********************************");
-                this.___baseElement.setInternalStatus(ORecordElement.STATUS.LOADED);
-                this.___baseElement.setDirty();
-            } else {
+            
+            if (!this.___baseElement.getIdentity().isNew()) {
                 //FIXME: workaround para la grabación inconsistente de los edges en los vertex.
                 OElement oeTmp = this.___transaction.getCurrentGraphDb().load(this.___baseElement.getIdentity());
                 
@@ -755,7 +764,6 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                 }
             }
             
-            
             // asegurarse que está atachado
 //            if (this.___baseElement.getDatabase() == null) {
 //                LOGGER.log(Level.FINER, "El objeto no está atachado!");
@@ -770,8 +778,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             Map<String, Object> omap = oStruct.fields;
 
             // bajar todo al vértice
-            
-            VertexUtils.fillElement(this.___baseElement,omap);
+            VertexUtils.fillElement(this.___baseElement, omap);
             
             oStruct.removedProperties.forEach(prop -> this.___baseElement.removeProperty(prop));
 
@@ -846,18 +853,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                 
                                 
                                 LOGGER.log(Level.FINER, "Agregar un link entre dos objetos existentes.");
-                                //OEdge oe = this.___transaction.getSessionManager().getGraphdb().addEdge("class:" + graphRelationName, ov, ((IObjectProxy) innerO).___getVertex(), graphRelationName);
                                 OEdge oe = ov.addEdge(((IObjectProxy) innerO).___getVertex(), graphRelationName);
-                                
-//                                // FIXME: eliminar este bloque
-//                                LOGGER.log(Level.FINEST, "\npost agregar el vertex");
-//                                LOGGER.log(Level.FINEST, "edges: "+ov.getEdges(ODirection.OUT, graphRelationName));
-//                                toRemove = ov.getEdges(ODirection.OUT, graphRelationName).iterator();
-//                                while (toRemove.hasNext()) {
-//                                        OEdge removeEdge = toRemove.next();
-//                                        LOGGER.log(Level.FINEST, "edge: "+removeEdge);
-//                                }
-//                                //-------------------------------
                                 
                                 if (this.___transaction.isAuditing()) {
                                     this.___transaction.auditLog(this, AuditType.WRITE, "ADD LINK: " + graphRelationName, oe);
@@ -1017,9 +1013,6 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                     }
                                 }
 
-                                // resetear el estado
-                                lazyCollectionCalls.clearState();
-
                             } else if (collectionFieldValue instanceof Map) {
 
                                 Map mapFieldValue;
@@ -1041,7 +1034,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
                                 // refrescar los estados
                                 ILazyMapCalls lazyMap = (ILazyMapCalls) mapFieldValue;
-                                final Map<Object, ObjectCollectionState> keysState = lazyMap.collectionState();
+                                final Map<Object, ObjectCollectionState> keysState = lazyMap.getKeyState();
                                 final Map<Object, OEdge> keysToEdges = lazyMap.getKeyToEdge();
                                 final Map<Object, ObjectCollectionState> entitiesState = lazyMap.getEntitiesState();
                                 final Map<Object, Object> keyToDeleted = ((HashMapLazyProxy)lazyMap).getKeyToDeleted();
@@ -1068,19 +1061,33 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                     // verificar el estado del objeto en la colección.
                                     switch (keyState) {
                                         case ADDED:
-                                            // crear un link entre los dos objetos.
                                             LOGGER.log(Level.FINER, "-----> agregando un LinkList al Map!");
-                                            OEdge oe = ((OVertex) this.___baseElement).addEdge(((IObjectProxy) linkedO).___getVertex(), graphRelationName);
-                                            // actualizar el edge con los datos de la key.
-                                            this.___transaction.getObjectMapper().fillSequenceFields(key, this.___transaction, null);
-                                            VertexUtils.fillElement(oe,this.___transaction.getObjectMapper().simpleMap(key));
+                                            OVertex to = ((IObjectProxy) linkedO).___getVertex();
+                                            OEdge edge = null;
+                                            boolean newEdge = true;
+                                            
+                                            // if key already a IObjectProxy, check the status of the edge to recreate it if invalid (previous failed commit)
+                                            if (key instanceof IObjectProxy) {
+                                                edge = ((IObjectProxy)key).___getEdge();
+                                                if (edge.getInternalStatus() == ORecordElement.STATUS.LOADED && Objects.equals(to, edge.getTo())) {
+                                                    newEdge = false; // valid edge
+                                                }
+                                            }
+                                            
+                                            if (newEdge) {
+                                                // crear un link entre los dos objetos.
+                                                edge = ((OVertex) this.___baseElement).addEdge(to, graphRelationName);
+                                                // actualizar el edge con los datos de la key.
+                                                this.___transaction.getObjectMapper().fillSequenceFields(key, this.___transaction, null);
+                                                VertexUtils.fillElement(edge, this.___transaction.getObjectMapper().simpleMap(key));
+                                            }
 
                                             if (this.___transaction.isAuditing()) {
-                                                this.___transaction.auditLog(this, AuditType.WRITE, "LINKLIST ADD: " + graphRelationName, oe);
+                                                this.___transaction.auditLog(this, AuditType.WRITE, "LINKLIST ADD: " + graphRelationName, edge);
                                             }
                                             
                                             // update the map with the managed key
-                                            lazyMap.updateKey(key, oe);
+                                            lazyMap.updateKey(key, edge);
                                             break;
 
                                         case NOCHANGE:
@@ -1139,12 +1146,11 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                     }
                                 }
                                 
-                                ((ILazyMapCalls) mapFieldValue).clearState();
                             } else {
                                 LOGGER.log(Level.FINER, "********************************************");
                                 LOGGER.log(Level.FINER, "field: {0}", field);
                                 LOGGER.log(Level.FINER, "********************************************");
-                                throw new CollectionNotSupported(collectionFieldValue.getClass().getSimpleName());
+                                throw new CollectionNotSupported(collectionFieldValue.getClass().getName(), this.___transaction);
                             }
                         }
                     } catch (IllegalArgumentException | IllegalAccessException ex) {
@@ -1156,7 +1162,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             
             //if we must update version field, enqueue in transaction
             if (cDef.versionField != null) {
-                this.___transaction.processAfterDbCommit(this);
+                this.___transaction.processAfterDbCommit((IObjectProxy)this.___proxiedObject);
             }
             
             // grabar los cambios
@@ -1350,6 +1356,24 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             }
         }
         
+        this.___removeDirtyMark();
+        this.___transaction.closeInternalTx();
+    }
+    
+    
+    /**
+     * Reset dirty status of object and collections after a successful commit.
+     */
+    @Override
+    public synchronized void ___commitSuccessful() {
+        this.___transaction.initInternalTx();
+        ObjectMapper objectMapper = objectMapper();
+        ClassDef classdef = getClassDef();
+        classdef.linkLists.keySet().stream().
+                map(fieldName -> classdef.fieldsObject.get(fieldName)).
+                map(field -> objectMapper.getFieldValue(this.___proxiedObject, field)).
+                filter(coll -> (coll != null && coll instanceof ILazyCalls)).
+                forEach(coll -> ((ILazyCalls)coll).clearState());
         this.___removeDirtyMark();
         this.___transaction.closeInternalTx();
     }

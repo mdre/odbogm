@@ -10,7 +10,7 @@ import net.odbogm.Transaction;
 public class ReferentialIntegrityViolation extends OdbogmException {
     
     public ReferentialIntegrityViolation(OVertex referencedVertex, Transaction transaction) {
-        super(String.format("El vértice %s aún tiene referencias entrantes.",
+        super(String.format("The vertex %s still has incoming references.",
                 referencedVertex.getIdentity()), transaction);
     }
 

@@ -16,4 +16,8 @@ public class ConcurrentModification extends OdbogmException {
         super(cause, transaction);
     }
     
+    public String getRid() {
+        return ((OConcurrentModificationException)getCause()).getRid().toString();
+    }
+    
 }

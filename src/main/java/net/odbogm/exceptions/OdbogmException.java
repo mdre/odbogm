@@ -10,6 +10,14 @@ import net.odbogm.Transaction;
 public class OdbogmException extends RuntimeException {
     
     private boolean canRetry = false;
+
+    
+    protected OdbogmException() {
+    }
+    
+    public OdbogmException(String message) {
+        super(message);
+    }
     
     public OdbogmException(Transaction transaction) {
         shutdownTransaction(transaction);

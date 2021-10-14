@@ -2,8 +2,11 @@ package net.odbogm;
 
 import com.orientechnologies.orient.core.db.ODatabaseSession;
 import com.orientechnologies.orient.core.sql.OCommandSQL;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import net.odbogm.exceptions.CircularReferenceException;
 import net.odbogm.exceptions.UnknownRID;
+import net.odbogm.proxy.ArrayListLazyProxy;
 import net.odbogm.proxy.IObjectProxy;
 import net.odbogm.security.AccessRight;
 import net.odbogm.security.GroupSID;
@@ -18,6 +21,9 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Before;
 import org.junit.Test;
 import test.SSimpleVertex;
+import test.Secure;
+import test.SimpleVertex;
+import test.SubSecure;
 import test.TestConfig;
 
 /**
@@ -44,7 +50,7 @@ public class SecurityObjectsTest {
     }
     
     /**
-     * Test security of SObjects
+     * Test security of SObjects.
      */
     @Test
     public void testSObjects() {
@@ -355,6 +361,43 @@ public class SecurityObjectsTest {
         
         //this neither:
         assertThrows(CircularReferenceException.class, () -> g1.add(g1));
+    }
+    
+    /*
+     * Bug fixed: In certain conditions, rolling back caused the next modifications
+     * to be ignored in commit.
+     */
+    @Test
+    public void testRollbackCollectionsInSObject() {
+        Logger.getLogger(ArrayListLazyProxy.class.getName()).setLevel(Level.FINEST);
+        
+        sm.setLoggedInUser(new UserSID("User", "uuid"));
+        
+        SubSecure ss = new SubSecure();
+        ss.aList.add(new SimpleVertex());
+        Secure sec = new Secure("Secure vertex");
+        sec.subs.add(ss);
+
+        Secure stored = sm.store(sec);
+        sm.commit();
+
+        //modify the fields
+        stored.setS("Before rollback");
+        stored.subs.iterator().next().aList.add(new SimpleVertex());
+        stored.subs.add(new SubSecure());
+        sm.rollback();
+
+        //asserts:
+        assertEquals(sec.subs.size(), stored.subs.size());
+        assertEquals("Secure vertex", stored.getS());
+        
+        stored.setS("After rollback");
+        sm.commit();
+        sm.getCurrentTransaction().clearCache();
+        stored = sm.get(Secure.class, sm.getRID(stored));
+        
+        //if bug is fixed, this assert must be satisfied:
+        assertEquals("After rollback", stored.getS());
     }
     
     @Test

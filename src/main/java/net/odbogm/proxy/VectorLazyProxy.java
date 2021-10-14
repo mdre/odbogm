@@ -86,21 +86,22 @@ public class VectorLazyProxy extends Vector implements ILazyCollectionCalls {
     @Override
     public Map<Object, ObjectCollectionState> collectionState() {
         // si se ha hecho referencia al contenido de la colección, realizar la verificación
+        var aux = new ConcurrentHashMap<>(this.listState);
         if (!this.lazyLoad) {
             for (Object o : this) {
                 // actualizar el estado
                 if (this.listState.get(o) == null) {
                     // se agregó un objeto
-                    this.listState.put(o, ObjectCollectionState.ADDED);
+                    aux.put(o, ObjectCollectionState.ADDED);
                 } else {
                     // el objeto existe. Removerlo para que solo queden los que se agregaron o eliminaron 
-                    this.listState.remove(o);
+                    aux.remove(o);
                     // el objeto existe. Marcarlo como sin cambio para la colección
 //                    this.listState.replace(o, ObjectCollectionState.NOCHANGE);
                 }
             }
         }
-        return this.listState;
+        return aux;
     }
     
     /**
