@@ -538,7 +538,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
             LOGGER.log(Level.INFO, "primitive edge key: {0}",k);
         } else {
             //if keyClass is not a native type, we must hydrate an object
-            LOGGER.log(Level.FINER, "clase como key");            
+            LOGGER.log(Level.FINER, "clase como key");
             k = transaction.getEdgeAsObject(keyClass, edge);
         }
         this.keyToEdge.put(k, edge);

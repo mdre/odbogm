@@ -567,7 +567,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             LOGGER.log(Level.FINER, "Procesando los Links");
             for (Map.Entry<String, Object> link : oStruct.links.entrySet()) {
                 String field = link.getKey();
-                String graphRelationName = classname + "_" + field;
                 LOGGER.log(Level.FINER, "Link: {0}", field);
 
                 // verificar si no formaba parte de los objetos que se están comiteando
@@ -587,12 +586,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                 } else {
                     this.objectMapper.setFieldValue(proxy, field, innerO);
                 }
-
-                // crear un link entre los dos objetos.
-//                OEdge oe = this.orientdbTransact.newEdge(v, ((IObjectProxy) innerO).___getVertex(), graphRelationName);
-//                if (this.isAuditing()) {
-//                    this.auditLog((IObjectProxy) proxy, Audit.AuditType.WRITE, "STORE: " + graphRelationName, oe);
-//                }
             }
 
             /* 
