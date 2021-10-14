@@ -20,6 +20,7 @@ public interface IObjectProxy {
     public void ___setVertex(OVertex v);
     public void ___injectRid();
     public void ___uptadeVersion();
+    public void ___updateElement();
     
     public OEdge ___getEdge();
     public void ___setEdge(OEdge v);
@@ -39,5 +40,6 @@ public interface IObjectProxy {
     public void ___loadLazyLinks();
     public void ___eagerLoad();
     public void ___fullLoad();
+    public void ___commitSuccessful();
     
 }

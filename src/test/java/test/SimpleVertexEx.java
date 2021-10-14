@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.logging.Logger;
 import net.odbogm.annotations.Audit;
@@ -85,8 +86,16 @@ public class SimpleVertexEx extends SimpleVertex {
     }
 
     public SimpleVertexEx() {
-        super();
-        this.svex = "default";
+        this(null, "default");
+    }
+
+    public SimpleVertexEx(String s) {
+        this(s, "default");
+    }
+    
+    public SimpleVertexEx(String s, String svex) {
+        super(s);
+        this.svex = svex;
         this.svuuid = UUID.randomUUID().toString();
     }
         
@@ -237,6 +246,28 @@ public class SimpleVertexEx extends SimpleVertex {
 
     public void setUuid(String uuid) {
         this.svuuid = uuid;
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 7;
+        hash = 31 * hash + Objects.hashCode(this.svuuid);
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (!SimpleVertexEx.class.isInstance(obj)) {
+            return false;
+        }
+        final SimpleVertexEx other = (SimpleVertexEx) obj;
+        return Objects.equals(this.svuuid, other.svuuid);
     }
     
 }

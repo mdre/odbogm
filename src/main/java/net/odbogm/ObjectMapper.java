@@ -6,6 +6,7 @@ import com.orientechnologies.orient.core.record.OEdge;
 import com.orientechnologies.orient.core.record.OElement;
 import com.orientechnologies.orient.core.record.OVertex;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.ParameterizedType;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -449,7 +450,7 @@ public class ObjectMapper {
     }
 
     
-    public void collectionToLazy(Object o, String field, Transaction t) {
+    public Object collectionToLazy(Object o, String field, Transaction t) {
         LOGGER.log(Level.FINER, "convertir colection a Lazy: {0}", field);
         ClassDef classdef;
         if (o instanceof IObjectProxy) {
@@ -459,7 +460,7 @@ public class ObjectMapper {
         }
 
         Class<?> fc = classdef.linkLists.get(field);
-        collectionToLazy(o, field, fc, t);
+        return collectionToLazy(o, field, fc, t);
     }
     
     
@@ -475,14 +476,14 @@ public class ObjectMapper {
     /**
      * Convierte una colección común en una Lazy para futuras operaciones.
      *
-     *
      * @param o objeto base sobre el que se trabaja
      * @param field campo a modificar
      * @param fc clase original del campo
      * @param t Vínculo a la transacción actual
+     * @return The lazy collection.
      *
      */
-    private void collectionToLazy(Object o, String field, Class<?> fc, Transaction t) {
+    private Object collectionToLazy(Object o, String field, Class<?> fc, Transaction t) {
         LOGGER.log(Level.FINER, "***************************************************************");
         LOGGER.log(Level.FINER, "convertir colection a Lazy: " + field + " class: " + fc.getName());
         LOGGER.log(Level.FINER, "***************************************************************");
@@ -512,8 +513,9 @@ public class ObjectMapper {
 
             Class<?> lazyClass = Primitives.LAZY_COLLECTION.get(fc);
             LOGGER.log(Level.FINER, "lazyClass: {0}", lazyClass.getName());
-            Object col = lazyClass.newInstance();
-            // dependiendo de si la clase hereda de Map o List, inicalizar
+            Object col = lazyClass.getDeclaredConstructor().newInstance();
+            
+            // dependiendo de si la clase hereda de Map o List, inicializar
             if (col instanceof List) {
                 Class<?> listClass = getListType(fLink);
                 // inicializar la colección
@@ -532,9 +534,12 @@ public class ObjectMapper {
             }
 
             fLink.set(o, col);
+            return col;
 
-        } catch (SecurityException | IllegalArgumentException | IllegalAccessException | InstantiationException ex) {
-            Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (NoSuchMethodException | SecurityException | IllegalArgumentException |
+                IllegalAccessException | InstantiationException | InvocationTargetException ex) {
+            Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, "Error in collection to lazy.", ex);
+            return null;
         }
     }
 

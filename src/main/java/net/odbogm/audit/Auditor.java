@@ -1,6 +1,7 @@
 package net.odbogm.audit;
 
 import com.orientechnologies.orient.core.db.ODatabaseSession;
+import com.orientechnologies.orient.core.db.record.ORecordElement;
 import com.orientechnologies.orient.core.metadata.schema.OClass;
 import com.orientechnologies.orient.core.metadata.schema.OType;
 import com.orientechnologies.orient.core.record.OElement;
@@ -41,17 +42,17 @@ public class Auditor implements IAuditor {
         //verify and create the audit class in schema if necessary:
         if (this.transaction.getSessionManager().getConfig().isAuditorCreatesAuditSchema()) {
             if (this.transaction.getDBClass(ODBAUDITLOGVERTEXCLASS) == null) {
-                ODatabaseSession odb = this.transaction.getSessionManager().getDBTx();
-                OClass olog = odb.createClass(ODBAUDITLOGVERTEXCLASS, "V");
-                olog.createProperty("rid", OType.STRING);
-                olog.createProperty("timestamp", OType.DATETIME);
-                olog.createProperty("transactionID", OType.STRING);
-                olog.createProperty("opInTx", OType.INTEGER);
-                olog.createProperty("user", OType.STRING);
-                olog.createProperty("action", OType.INTEGER);
-                olog.createProperty("label", OType.STRING);
-                olog.createProperty("log", OType.STRING);
-                odb.close();
+                try (ODatabaseSession odb = this.transaction.getSessionManager().getDBTx()) {
+                    OClass olog = odb.createClass(ODBAUDITLOGVERTEXCLASS, "V");
+                    olog.createProperty("rid", OType.STRING);
+                    olog.createProperty("timestamp", OType.DATETIME);
+                    olog.createProperty("transactionID", OType.STRING);
+                    olog.createProperty("opInTx", OType.INTEGER);
+                    olog.createProperty("user", OType.STRING);
+                    olog.createProperty("action", OType.INTEGER);
+                    olog.createProperty("label", OType.STRING);
+                    olog.createProperty("log", OType.STRING);
+                }
             }
         }
     }
@@ -88,10 +89,13 @@ public class Auditor implements IAuditor {
         String ovLogID = UUID.randomUUID().toString();
         ODatabaseSession odb = this.transaction.getCurrentGraphDb();
         
-        //ODatabaseSession odb = this.transaction.getSessionManager().getDBTx();
         int opInTx = 0; //operation number in transaction
         
         for (LogData logData : logdata) {
+            // if associated element is invalid, then it's a failed commit; don't save
+            if (logData.odata != null && ((OElement)logData.odata).getInternalStatus() == ORecordElement.STATUS.NOT_LOADED) {
+                continue;
+            }
             opInTx++;
             LOGGER.log(Level.FINER, "valid: {0} : deleted: {1}  : o.getRid: {2}   : log.rid: {3}", 
                                         new Object[]{logData.o.___isValid(),
@@ -114,10 +118,6 @@ public class Auditor implements IAuditor {
             ologData.save();
         }
         
-        //odb.commit();
-        //odb.close();
-        
-        //current.activateOnCurrentThread();
         this.logdata.clear();
     }
     

@@ -11,7 +11,7 @@ import net.odbogm.Transaction;
  */
 public interface ILazyMapCalls extends ILazyCalls {
     public void init(Transaction t, IObjectProxy parent, String field, Class<?> keyClass, Class<?> valueClass, ODirection d);
-    public Map<Object,ObjectCollectionState> collectionState();
+    public void initStored();
     public Map<Object, ObjectCollectionState> getEntitiesState();
     public Map<Object, ObjectCollectionState> getKeyState();
     public Map<Object, OEdge> getKeyToEdge();
