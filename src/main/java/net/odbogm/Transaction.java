@@ -356,6 +356,13 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             // comitear los vértices
             LOGGER.log(Level.FINER, "llamando al commit de la base"); //---------------------------------------
             try {
+//                var tt = orientdbTransact.getTransaction();
+//                var rr = tt.getRecordOperations();
+//                for (var r : rr) {
+//                    System.out.println("Type: " + ORecordOperation.getName(r.getType()) + ", record: " +
+//                            ((OElement)r.getRecord()).getSchemaType().get() + r.getRecord().getIdentity());
+//                }
+                
                 this.orientdbTransact.commit();
             } catch (OConcurrentModificationException ex) {
                 closeInternalTx();
