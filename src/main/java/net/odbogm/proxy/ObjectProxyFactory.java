@@ -49,6 +49,9 @@ public class ObjectProxyFactory {
         T proxifiedObj = (T) e.create();
 
         po.___setProxiedObject(proxifiedObj);
+        
+        // clean possible dirtiness (because of actions in default constructor)
+        po.___removeDirtyMark();
 
         // the object is ready to be used - return it
         return proxifiedObj;

@@ -12,6 +12,7 @@ public class SVExChild extends SimpleVertexEx {
     
     public SVExChild() {
         ohmSVE = new HashMap<>();
+        initHashMapString();
     }
 
 }
