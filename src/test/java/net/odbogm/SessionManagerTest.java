@@ -3269,4 +3269,23 @@ public class SessionManagerTest {
         assertEquals(aux, v.hmSV.get("key"));
     }
     
+    @Test
+    public void getNotDirty() throws Exception {
+        SVExChild v1 = sm.store(new SVExChild()); // starts dirty (by agent) because of collection usage
+        System.out.println(((ITransparentDirtyDetector)v1).___ogm___isDirty());
+        v1 = commitClearAndGet(v1);
+        System.out.println(((ITransparentDirtyDetector)v1).___ogm___isDirty());
+        v1.hashCode();
+        assertFalse(((IObjectProxy)v1).___isDirty());
+        assertFalse(sm.getCurrentTransaction().getDirtyCache().values().contains(v1));
+        
+        SimpleVertexEx v2 = sm.store(new SimpleVertexEx()); // set in constructor
+        System.out.println(((ITransparentDirtyDetector)v2).___ogm___isDirty());
+        v2 = commitClearAndGet(v2);
+        System.out.println(((ITransparentDirtyDetector)v2).___ogm___isDirty());
+        v2.hashCode();
+        assertFalse(((IObjectProxy)v2).___isDirty());
+        assertFalse(sm.getCurrentTransaction().getDirtyCache().values().contains(v2));
+    }
+    
 }
