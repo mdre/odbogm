@@ -1372,7 +1372,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         classdef.linkLists.keySet().stream().
                 map(fieldName -> classdef.fieldsObject.get(fieldName)).
                 map(field -> objectMapper.getFieldValue(this.___proxiedObject, field)).
-                filter(coll -> (coll != null && coll instanceof ILazyCalls)).
+                filter(coll -> (coll != null && coll instanceof ILazyCalls && ((ILazyCalls)coll).isDirty())).
                 forEach(coll -> ((ILazyCalls)coll).clearState());
         this.___removeDirtyMark();
         this.___transaction.closeInternalTx();
