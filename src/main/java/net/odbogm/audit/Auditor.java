@@ -143,7 +143,7 @@ class LogData {
 
     public LogData(IObjectProxy o, int auditType, String label, Object data) {
         this.o = o;
-        this.rid = o.___getVertex().getIdentity().toString();
+        this.rid = o.___getElement().getIdentity().toString();
         this.auditType = auditType;
         this.label = label;
         if (data == null) {

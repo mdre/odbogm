@@ -1637,6 +1637,29 @@ public class SessionManagerTest {
     }
     
     /*
+     * Bug fixed: audit on an edge object caused a NPE.
+     */
+    @Test
+    public void testAuditEdge() throws Exception {
+        sm.setAuditOnUser("test-user");
+        assertTrue(sm.isAuditing());
+        
+        SimpleVertexEx v = sm.store(new SimpleVertexEx());
+        v.setOhmSVE(new HashMap<>());
+        v.ohmSVE.put(new EdgeAttrib(), new SimpleVertexEx());
+        sm.commit();
+        
+        EdgeAttrib edge = v.ohmSVE.keySet().iterator().next();
+        edge.setNota("changed note");
+        sm.commit(); //if bug fixed, this must not throw exception
+        
+        String rid = sm.getRID(edge);
+        String query = String.format("select count(*) from ODBAuditLog where rid = '%s'", rid);
+        long logs = sm.query(query, "");
+        assertTrue(logs > 0);
+    }
+    
+    /*
      * Tests that audits correctly when there is a rollback involved.
      */
     @Test
