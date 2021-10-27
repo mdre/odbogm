@@ -5,6 +5,7 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import net.odbogm.annotations.Audit;
 import net.odbogm.annotations.Entity;
 import net.odbogm.annotations.RID;
 import net.odbogm.annotations.Sequence;
@@ -14,6 +15,7 @@ import net.odbogm.annotations.Version;
  *
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
+@Audit
 @Entity(isEdgeClass = true)
 public class EdgeAttrib {
     private final static Logger LOGGER = Logger.getLogger(EdgeAttrib.class .getName());
