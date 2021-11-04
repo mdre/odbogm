@@ -19,8 +19,10 @@ public class Enums {
     
     public List<EnumTest> enums = new ArrayList<>();
     
+    @Deprecated //not implemented yet
     public Map<EnumTest, String> enumToString = new HashMap<>();
     
+    @Deprecated //not implemented yet
     public Map<String, EnumTest> stringToEnum = new HashMap<>();
     
     public List<EnumTest> notInitializedEnums;

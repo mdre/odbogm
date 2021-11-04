@@ -3311,4 +3311,29 @@ public class SessionManagerTest {
         assertFalse(sm.getCurrentTransaction().getDirtyCache().values().contains(v2));
     }
     
+    @Test
+    public void noEnumValue() throws Exception {
+        Enums e = sm.store(new Enums());
+        sm.commit();
+        String rid = sm.getRID(e);
+        sm.getDBTx().execute("sql", "update " + rid + " set theEnum = 'NONEXISTENT', "
+                + "enums = ['UNO', 'NONEXISTENT'], enumToString = {'UNO': 'aaa', 'NOT1': 'bbb'}, "
+                + "stringToEnum = {'ccc': 'DOS', 'ddd': 'NOT2'}");
+        
+        sm.getCurrentTransaction().clearCache();
+        e = sm.get(Enums.class, rid);
+        assertNull(e.getTheEnum());
+        assertEquals(1, e.enums.size());
+        assertEquals(EnumTest.UNO, e.enums.iterator().next());
+        //maps of enums not implemented yet:
+        assertEquals(0, e.enumToString.size());
+        assertEquals(0, e.stringToEnum.size());
+        //assertEquals(1, e.enumToString.size());
+        //assertTrue(e.enumToString.containsKey(EnumTest.UNO));
+        //assertEquals("aaa", e.enumToString.get(EnumTest.UNO));
+        //assertEquals(1, e.stringToEnum.size());
+        //assertTrue(e.stringToEnum.containsKey("ccc"));
+        //assertEquals(EnumTest.DOS, e.stringToEnum.get("ccc"));
+    }
+    
 }

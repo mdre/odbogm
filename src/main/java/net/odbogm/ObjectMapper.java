@@ -392,7 +392,11 @@ public class ObjectMapper {
                     if (vertexValue.get(i) instanceof String) {
                         //only convert to enum if the value in the list is a String
                         String sVal = (String)vertexValue.get(i);
-                        enumList.add(Enum.valueOf(listClass.asSubclass(Enum.class), sVal));
+                        try {
+                            enumList.add(Enum.valueOf(listClass.asSubclass(Enum.class), sVal));
+                        } catch (IllegalArgumentException ex) {
+                            LOGGER.log(Level.SEVERE, "Error adding enum value to collection.", ex);
+                        }
                     }
                 }
                 setFieldValue(proxy, prop, new ArrayListEmbeddedProxy(proxy, enumList));
