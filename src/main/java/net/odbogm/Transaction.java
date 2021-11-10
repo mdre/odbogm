@@ -1757,7 +1757,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     /**
      * Asegurarse que la base esté activa en el thread en el que se encuentra la transacción
      */
-    private void activateOnCurrentThread() {
+    public void activateOnCurrentThread() {
         if (!orientdbTransact.isActiveOnCurrentThread()) {
             LOGGER.log(Level.FINEST, "Activando en el Thread actual...");
             LOGGER.log(Level.FINEST, "current thread: {0}", Thread.currentThread().getName());

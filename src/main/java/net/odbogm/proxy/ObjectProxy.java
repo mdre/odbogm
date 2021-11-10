@@ -516,9 +516,12 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                 LOGGER.log(Level.FINER, "Field: {0}.{1}   Class: {2}  RelationName: {3}",
                         new String[]{this.___baseClass.getSimpleName(), field,
                             fc.getSimpleName(), graphRelationName});
-
-                // recuperar de la base el vértice correspondiente
+                
                 boolean duplicatedLinkGuard = false;
+                /* (sometimes when getting the associated object 'innerO' if it lazy loads 
+                 * then the db can be deactivated from current thread... we ensure is active) */
+                this.___transaction.activateOnCurrentThread();
+                // retrieve vertex from database 
                 for (OVertex vertice : ov.getVertices(direction, graphRelationName)) {
                     LOGGER.log(Level.FINER, "hydrate innerO: {0}", vertice.getIdentity());
 
