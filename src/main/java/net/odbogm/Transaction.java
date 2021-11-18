@@ -9,12 +9,11 @@ import com.orientechnologies.orient.core.metadata.schema.OClass;
 import com.orientechnologies.orient.core.record.ODirection;
 import com.orientechnologies.orient.core.record.OEdge;
 import com.orientechnologies.orient.core.record.OVertex;
-import com.orientechnologies.orient.core.record.impl.ODocument;
 import com.orientechnologies.orient.core.sql.executor.OResult;
 import com.orientechnologies.orient.core.sql.executor.OResultSet;
-import com.orientechnologies.orient.core.sql.query.OSQLSynchQuery;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -48,6 +47,7 @@ import net.odbogm.proxy.ILazyMapCalls;
 import net.odbogm.proxy.IObjectProxy;
 import net.odbogm.proxy.ObjectProxyFactory;
 import net.odbogm.security.SObject;
+import net.odbogm.security.UserSID;
 import net.odbogm.utils.ODBResultSet;
 import net.odbogm.utils.ReflectionUtils;
 import net.odbogm.utils.ThreadHelper;
@@ -490,7 +490,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             if ((this.sm.getLoggedInUser() != null) && (proxy instanceof SObject)) {
                 LOGGER.log(Level.FINER, "SObject detectado. Aplicando seguridad de acuerdo al usuario logueado: {0}",
                         this.sm.getLoggedInUser().getName());
-                ((SObject) proxy).validate(this.sm.getLoggedInUser());
+                ((SObject) proxy).validate(getLoggedInUserInCurrentTransaction());
             }
 
             return proxy;
@@ -699,7 +699,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         // Aplicar los controles de seguridad.
         if ((this.sm.getLoggedInUser() != null) && (proxy instanceof SObject)) {
             LOGGER.log(Level.FINER, "SObject detectado. Aplicando seguridad de acuerdo al usuario logueado: {0}", this.sm.getLoggedInUser().getName());
-            ((SObject) proxy).validate(this.sm.getLoggedInUser());
+            ((SObject) proxy).validate(getLoggedInUserInCurrentTransaction());
         }
         closeInternalTx();
         return proxy;
@@ -1323,7 +1323,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                 // validar contra el usuario actualmente logueado si corresponde.
                 if ((this.sm.getLoggedInUser() != null) && (ret instanceof SObject)) {
                     boolean dirtyPrevious = ((IObjectProxy) ret).___isDirty();
-                    ((SObject) ret).validate(this.sm.getLoggedInUser());
+                    ((SObject) ret).validate(getLoggedInUserInCurrentTransaction());
                     if (!dirtyPrevious) {
                         removeDirty(ret); //setted dirty by validate if CLASS_INSTRUMENTATION
                     }
@@ -1447,7 +1447,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             LOGGER.log(Level.FINER, "SObject detectado. Aplicando seguridad de acuerdo al usuario logueado: {0}",
                     this.sm.getLoggedInUser().getName());
             boolean dirtyPrevious = ((IObjectProxy) o).___isDirty();
-            ((SObject) o).validate(this.sm.getLoggedInUser());
+            ((SObject) o).validate(getLoggedInUserInCurrentTransaction());
             if (!dirtyPrevious) {
                 removeDirty(o); //setted dirty by validate if CLASS_INSTRUMENTATION
             }
@@ -1465,6 +1465,11 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         closeInternalTx();
         return o;
     }
+    
+    private UserSID getLoggedInUserInCurrentTransaction() {
+        String rid = this.sm.getRID(this.sm.getLoggedInUser());
+        return rid != null ? get(UserSID.class, rid) : this.sm.getLoggedInUser();
+    }
 
     
     public <T> T getEdgeAsObject(Class<T> type, OEdge e) {
@@ -1475,7 +1480,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
             //apply security controls
             if ((this.sm.getLoggedInUser() != null) && (o instanceof SObject)) {
-                ((SObject) o).validate(this.sm.getLoggedInUser());
+                ((SObject) o).validate(getLoggedInUserInCurrentTransaction());
                 removeDirty(o); //setted dirty by validate if CLASS_INSTRUMENTATION
             }
             
@@ -1634,22 +1639,19 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * @param <T> clase de referencia para crear la lista de resultados
      * @param clase clase de referencia
      * @param sql comando a ejecutar
-     * @param param parámetros extras para el query parametrizado.
+     * @param params parámetros extras para el query parametrizado.
      * @return una lista de la clase solicitada con los objetos lazy inicializados.
      */
     @Override
-    public <T> List<T> query(Class<T> clase, String sql, Object... param) {
+    public <T> List<T> query(Class<T> clase, String sql, Object... params) {
         initInternalTx();
 
-        OSQLSynchQuery<ODocument> query = new OSQLSynchQuery<>(sql);
         ArrayList<T> ret = new ArrayList<>();
-        
-        LOGGER.log(Level.FINER, sql + " param: " + param);
-        OResultSet ors = this.orientdbTransact.command(sql,param);
-        ors.stream().forEach(v->{
-            ret.add(this.get(clase, v.getIdentity().get().toString()));
-        });
-        ors.close();
+
+        LOGGER.log(Level.FINER, () -> sql + " param: " + Arrays.toString(params));
+        try (OResultSet ors = this.orientdbTransact.command(sql, params)) {
+            ors.stream().forEach(v -> ret.add(this.get(clase, v.getIdentity().get().toString())));
+        }
         closeInternalTx();
         return ret;
     }
