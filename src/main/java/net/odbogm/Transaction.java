@@ -391,7 +391,10 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                     addToCache(newRid, o);
                     LOGGER.log(Level.FINEST, "{0} --> {1}",new String[]{tempRid,newRid});
                     //actualizar rid inyectado si corresponde
-                    ((IObjectProxy)o).___injectRid();
+                    IObjectProxy p = (IObjectProxy)o;
+                    if (!p.___isDeleted() && p.___isValid()) {
+                        ((IObjectProxy)o).___injectRid();
+                    }
                 }
             }
             newrids.clear();
