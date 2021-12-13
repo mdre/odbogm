@@ -312,7 +312,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             LOGGER.log(Level.FINER, "Objetos marcados como DirtyDeleted: {0}", dirtyDeleted.size());
             
             // restore invalid temporary vertices of previous failed commit if any
-            this.storedObjects.values().forEach(o -> ((IObjectProxy)o).___updateElement());
+            this.storedObjects.values().stream().map(o -> (IObjectProxy)o).
+                    filter(o -> !o.___isDeleted()).forEach(o -> o.___updateElement());
             
             // process all the dirty objects:
             // (commit on proxy can add new dirty objects (new stored), we make sure to process them all)

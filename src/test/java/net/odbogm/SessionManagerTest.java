@@ -3611,4 +3611,13 @@ public class SessionManagerTest {
         //assertEquals(EnumTest.DOS, e.stringToEnum.get("ccc"));
     }
     
+    @Test
+    public void deleteStored() throws Exception {
+        SimpleVertex v = sm.store(new SimpleVertex());
+        sm.delete(v);
+        sm.commit();
+        assertTrue(((IObjectProxy)v).___isDeleted());
+        assertTrue(((IObjectProxy)v).___getRid().contains("-"));
+    }
+    
 }
