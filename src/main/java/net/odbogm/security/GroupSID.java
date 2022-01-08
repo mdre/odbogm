@@ -124,11 +124,31 @@ public final class GroupSID implements ISID {
     
     // devuelve las credenciales de todos los grupos a los que fue agregado este grupo.
     final List<String> getIndirectCredentialsGroups() {
-        ArrayList<String> indirect = new ArrayList<>();
+        List<String> indirect = getIndirectCredentialsGroups(new ArrayList<>());
+//        for (GroupSID gsid : this.addedTo) {
+//            indirect.add(gsid.getUUID());
+//            indirect.addAll(gsid.getIndirectCredentialsGroups());
+//        }
+        return indirect;
+    } 
+    
+    /**
+     * To detect loops in IndirectCredentials we use a fordward aproach to preserve
+     * what was already check.
+     * 
+     * @param indirect
+     * @return 
+     */
+    private final List<String> getIndirectCredentialsGroups(List<String> indirect) {
+        //ArrayList<String> indirect = new ArrayList<>();
+     
         for (GroupSID gsid : this.addedTo) {
-            indirect.add(gsid.getUUID());
-            indirect.addAll(gsid.getIndirectCredentialsGroups());
+            if (!indirect.contains(gsid.getUUID())) {
+                indirect.add(gsid.getUUID());
+                indirect.addAll(gsid.getIndirectCredentialsGroups(indirect));
+            }
         }
         return indirect;
-    }
+    } 
+    
 }

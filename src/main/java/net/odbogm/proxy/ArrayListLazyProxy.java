@@ -83,6 +83,9 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
         
         // recuperar todos los elementos desde el vértice y agregarlos a la colección
         IObjectProxy theParent = this.parent.get();
+        
+        String auditLogLabel = theParent.___getAuditLogLabel();
+        
         if (theParent != null) {
             LOGGER.log(Level.FINER, () -> String.format("relatedTo: %s - field: %s - Class: %s",
                 theParent.___getVertex().toString(), field, fieldClass.getSimpleName()));
@@ -92,6 +95,11 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
                 this.add(o);
                 // se asume que todos fueron borrados
                 this.listState.put(o, ObjectCollectionState.REMOVED);
+                
+                // replicate the AuditLogLabel to inner objects
+                if (auditLogLabel != null && o instanceof IObjectProxy) {
+                    ((IObjectProxy)o).___setAuditLogLabel(auditLogLabel);
+                }
             }
         }
         this.lazyLoading = false;

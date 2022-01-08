@@ -1761,6 +1761,19 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     }
 
     /**
+     * establecer la etiqueta que se usará para el log del objeto y sus hijos.
+     * @param o es un objeto de la base 
+     * @param label es la etiqueta a anteponer en los logs
+     */
+    public void setAuditLogLabel(Object o,String label) {
+        if (o instanceof IObjectProxy) {
+            ((IObjectProxy)o).___setAuditLogLabel(label);
+        } else {
+            throw new UnmanagedObject(this);
+        }
+    }
+    
+    /**
      * Asegurarse que la base esté activa en el thread en el que se encuentra la transacción
      */
     public void activateOnCurrentThread() {

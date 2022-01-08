@@ -16,7 +16,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
-import java.util.logging.Level;
 import net.odbogm.agent.ITransparentDirtyDetector;
 import net.odbogm.annotations.Entity;
 import net.odbogm.annotations.RID;
@@ -73,7 +72,7 @@ public class SessionManagerTest {
         sm = new SessionManager(TestConfig.TESTDB, TestConfig.USER, TestConfig.PASS, 1, 10)
 //                .setClassLevelLog(ObjectProxy.class, Level.FINEST)
 //                .setClassLevelLog(ClassCache.class, Level.FINER)
-                .setClassLevelLog(Transaction.class, Level.FINEST)
+//                .setClassLevelLog(Transaction.class, Level.FINEST)
 //                .setClassLevelLog(ObjectProxy.class, Level.FINER)
 //                .setClassLevelLog(SimpleCache.class, Level.FINER)
 //                .setClassLevelLog(ArrayListLazyProxy.class, Level.FINER)
@@ -1635,6 +1634,25 @@ public class SessionManagerTest {
         sm.setAuditOnUser(null);
         assertFalse(sm.isAuditing());
     }
+    
+    @Test
+    public void testAuditLogLabel() throws Exception {
+        sm.setAuditOnUser("AuditLogLabel ");
+        
+        SimpleVertexEx sv = sm.store(new SimpleVertexEx());
+        sm.commit();
+        String rid = sm.getRID(sv);
+        System.out.println("RID: " + rid);
+        
+        // agregar un LogLabel al objeto.
+        sm.getCurrentTransaction().setAuditLogLabel(sv, "AuditLog RID: "+rid);
+        sv.initArrayList();
+        sv.getAlSV().get(0).setS("test AuditLogLabel from rid: "+rid);
+        sm.commit();
+        
+        
+    }
+    
     
     /*
      * Bug fixed: audit on an edge object caused a NPE.

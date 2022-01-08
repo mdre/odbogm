@@ -73,11 +73,19 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
                 theParent.___getVertex().toString(), field, fieldClass.getSimpleName()));
             // recuperar todos los elementos desde el vértice y agregarlos a la colección
             Iterable<OVertex> rt = theParent.___getVertex().getVertices(this.direction, field);
+            
+            String auditLogLabel = theParent.___getAuditLogLabel();
+            
             for (OVertex next : rt) {
                 Object o = transaction.get(fieldClass, next.getIdentity().toString());
                 this.add(o);
                 // se asume que todos fueron borrados
                 this.listState.put(o, ObjectCollectionState.REMOVED);
+                
+                // replicate the AuditLogLabel to inner objects
+                if (auditLogLabel != null && o instanceof IObjectProxy) {
+                    ((IObjectProxy)o).___setAuditLogLabel(auditLogLabel);
+                }
             }
         }
         this.lazyLoading = false;

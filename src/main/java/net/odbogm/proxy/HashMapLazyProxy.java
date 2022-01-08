@@ -80,6 +80,9 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         this.lazyLoading = true;
 
         IObjectProxy theParent = this.parent.get();
+        
+        String auditLogLabel = theParent.___getAuditLogLabel();
+        
         if (theParent != null) {
             // recuperar todos los elementos desde el vértice y agregarlos a la colección
             boolean indirect = this.direction == ODirection.IN;
@@ -88,7 +91,12 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
                 LOGGER.log(Level.FINER, "loading edge: {0} to: {1}", new Object[]{edge.getIdentity().toString(),next.getIdentity()});
                 // el Lazy simpre se hace recuperado los datos desde la base de datos.
                 Object o = transaction.get(valueClass, next.getIdentity().toString());
-
+                
+                // replicate the AuditLogLabel to inner objects
+                if (auditLogLabel != null && o instanceof IObjectProxy) {
+                    ((IObjectProxy)o).___setAuditLogLabel(auditLogLabel);
+                }
+                
                 // para cada vértice conectado, es necesario mapear todos los Edges que los unen.
                 Object k = edgeToObject(edge);
 

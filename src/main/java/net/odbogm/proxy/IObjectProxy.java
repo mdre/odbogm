@@ -42,4 +42,6 @@ public interface IObjectProxy {
     public void ___fullLoad();
     public void ___commitSuccessful();
     
+    public void ___setAuditLogLabel(String label);
+    public String ___getAuditLogLabel();
 }
