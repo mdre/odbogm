@@ -1650,7 +1650,11 @@ public class SessionManagerTest {
         sv.getAlSV().get(0).setS("test AuditLogLabel from rid: "+rid);
         sm.commit();
         
-        
+        // verificar que existan los logs en la base
+        String query = "select count(*) from ODBAuditLog where label like 'AuditLog RID: "+rid+"%'";
+        System.out.println(query);
+        long logs = sm.query(query, "");
+        assertEquals(4, logs); //
     }
     
     
