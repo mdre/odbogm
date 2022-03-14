@@ -10,6 +10,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.Set;
 import java.util.Spliterator;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
@@ -83,15 +84,28 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
                 this.listState.put(o, ObjectCollectionState.REMOVED);
                 
                 // replicate the AuditLogLabel to inner objects
-                if (auditLogLabel != null && o instanceof IObjectProxy) {
-                    ((IObjectProxy)o).___setAuditLogLabel(auditLogLabel);
-                }
+                ((IObjectProxy)o).___setAuditLogLabel(auditLogLabel);
             }
         }
         this.lazyLoading = false;
         this.transaction.closeInternalTx();
     }
 
+    @Override
+    public synchronized void updateAuditLogLabel(Set seen) {
+        if (!this.lazyLoad) {
+            IObjectProxy theParent = this.parent.get();
+            if (theParent != null) {
+                String auditLogLabel = theParent.___getAuditLogLabel();
+                for (Object o : this) {
+                    if (o instanceof IObjectProxy) {
+                        ((IObjectProxy)o).___replicateAuditLogLabel(auditLogLabel, seen);
+                    }
+                }
+            }
+        }
+    }
+    
     @Override
     public Map<Object, ObjectCollectionState> collectionState() {
         // si se ha hecho referencia al contenido de la colección, realizar la verificación

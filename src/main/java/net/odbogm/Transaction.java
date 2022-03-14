@@ -1744,7 +1744,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     public synchronized void auditLog(IObjectProxy o, int at, String label, Object data) {
         if (this.isAuditing()) {
-            auditor.auditLog(o, at, label, data);
+            this.auditor.auditLog(o, at, (o.___getAuditLogLabel() != null ? o.___getAuditLogLabel() + " : " : "") + label, data);
         }
     }
 
@@ -1765,7 +1765,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * @param o es un objeto de la base 
      * @param label es la etiqueta a anteponer en los logs
      */
-    public void setAuditLogLabel(Object o,String label) {
+    public void setAuditLogLabel(Object o, String label) {
         if (o instanceof IObjectProxy) {
             ((IObjectProxy)o).___setAuditLogLabel(label);
         } else {

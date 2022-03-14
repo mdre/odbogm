@@ -1652,12 +1652,70 @@ public class SessionManagerTest {
         
         // verificar que existan los logs en la base
         String query = "select count(*) from ODBAuditLog where label like 'AuditLog RID: "+rid+"%'";
-        System.out.println(query);
         long logs = sm.query(query, "");
-        assertEquals(4, logs); //
+        assertEquals(4, logs); // 1 update + 3 linklist_add
     }
     
-    
+    @Test
+    public void testAuditLogLabel2() throws Exception {
+        sm.setAuditOnUser("AuditLogLabel ");
+        
+        SimpleVertexEx sv = sm.store(new SimpleVertexEx("main"));
+        sm.commit();
+        String rid = sm.getRID(sv);
+        System.out.println("RID: " + rid);
+        
+        String label = "AuditLog RID: " + rid;
+        sm.getCurrentTransaction().setAuditLogLabel(sv, label);
+        sv.setAlSVE(new ArrayList());
+        sv.getAlSVE().add(new SimpleVertexEx());
+        sm.commit();
+        String query = "select count(*) from ODBAuditLog where label like '%s%%'";
+        long logs = sm.query(String.format(query, label), "");
+        assertEquals(2L, logs); // 1 update + 1 linklist_add
+        
+        // inner object:
+        
+        sm.getCurrentTransaction().clearCache();
+        sv = sm.get(SimpleVertexEx.class, rid);
+        sm.getCurrentTransaction().setAuditLogLabel(sv, label);
+        SimpleVertexEx inner = sv.getAlSVE().iterator().next();
+        inner.setS("modified inner");
+        sm.commit();
+        String query2 = query + " and rid = '%s'";
+        logs = sm.query(String.format(query2, label, sm.getRID(inner)), "");
+        assertEquals(1L, logs);
+        
+        // change label:
+        
+        sv.setEagerTest(new SimpleVertexEx());
+        sv = commitClearAndGet(sv);
+        sm.getCurrentTransaction().setAuditLogLabel(sv, label);
+        sv.getEagerTest().setS("modified eager");
+        sm.commit();
+        logs = sm.query(String.format(query2, label, sm.getRID(sv.getEagerTest())), "");
+        assertEquals(1L, logs);
+        
+        SimpleVertexEx sv2 = sm.store(new SimpleVertexEx("loop"));
+        sv.setLooptest(sv2);
+        sv2.setLooptest(sv);
+        sv = commitClearAndGet(sv);
+        sm.getCurrentTransaction().setAuditLogLabel(sv, label);
+        sv.getLooptest().setS("modified loop");
+        sm.commit();
+        logs = sm.query(String.format(query2, label, sm.getRID(sv.getLooptest())), "");
+        assertEquals(2L, logs);
+        
+        label = "New label " + rid;
+        sv.setS("main modified with new label");
+        sv.getLooptest().setS("loop modified with new label");
+        sv.getAlSVE().iterator().next().setS("inner modified with new label");
+        sm.getCurrentTransaction().setAuditLogLabel(sv, label);
+        sm.commit();
+        logs = sm.query(String.format(query, label), "");
+        assertEquals(3L, logs);
+    }
+
     /*
      * Bug fixed: audit on an edge object caused a NPE.
      */

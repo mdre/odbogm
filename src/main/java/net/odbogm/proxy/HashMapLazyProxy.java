@@ -80,10 +80,10 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         this.lazyLoading = true;
 
         IObjectProxy theParent = this.parent.get();
-        
-        String auditLogLabel = theParent.___getAuditLogLabel();
-        
         if (theParent != null) {
+        
+            String auditLogLabel = theParent.___getAuditLogLabel();
+        
             // recuperar todos los elementos desde el vértice y agregarlos a la colección
             boolean indirect = this.direction == ODirection.IN;
             for (OEdge edge : theParent.___getVertex().getEdges(this.direction, field)) {
@@ -93,12 +93,13 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
                 Object o = transaction.get(valueClass, next.getIdentity().toString());
                 
                 // replicate the AuditLogLabel to inner objects
-                if (auditLogLabel != null && o instanceof IObjectProxy) {
-                    ((IObjectProxy)o).___setAuditLogLabel(auditLogLabel);
-                }
+                ((IObjectProxy)o).___setAuditLogLabel(auditLogLabel);
                 
                 // para cada vértice conectado, es necesario mapear todos los Edges que los unen.
                 Object k = edgeToObject(edge);
+                if (k instanceof IObjectProxy) {
+                    ((IObjectProxy)k).___setAuditLogLabel(auditLogLabel);
+                }
 
                 // llamar a super para que no se marque como dirty el objeto padre dado que el loadLazy no debería 
                 // registrar cambios en el padre porque se los datos son recuperados de la base
@@ -120,6 +121,24 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         this.lazyLoading = false;
         this.transaction.closeInternalTx();
         LOGGER.log(Level.FINEST, "final size: {0} ",super.size());
+    }
+    
+    @Override
+    public synchronized void updateAuditLogLabel(Set seen) {
+        if (!this.lazyLoad) {
+            IObjectProxy theParent = this.parent.get();
+            if (theParent != null) {
+                String auditLogLabel = theParent.___getAuditLogLabel();
+                for (Entry e : this.entrySet()) {
+                    if (e.getKey() instanceof IObjectProxy) {
+                        ((IObjectProxy)e.getKey()).___replicateAuditLogLabel(auditLogLabel, seen);
+                    }
+                    if (e.getValue()instanceof IObjectProxy) {
+                        ((IObjectProxy)e.getValue()).___replicateAuditLogLabel(auditLogLabel, seen);
+                    }
+                }
+            }
+        }
     }
 
     /**
