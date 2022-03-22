@@ -2,8 +2,10 @@ package net.odbogm.security;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.logging.Logger;
 import net.odbogm.LogginProperties;
 import net.odbogm.annotations.Entity;
@@ -124,13 +126,9 @@ public final class GroupSID implements ISID {
     
     // devuelve las credenciales de todos los grupos a los que fue agregado este grupo.
     final List<String> getIndirectCredentialsGroups() {
-        List<String> indirect = getIndirectCredentialsGroups(new ArrayList<>());
-//        for (GroupSID gsid : this.addedTo) {
-//            indirect.add(gsid.getUUID());
-//            indirect.addAll(gsid.getIndirectCredentialsGroups());
-//        }
-        return indirect;
-    } 
+        Set<String> indirect = getIndirectCredentialsGroups(new HashSet<>());
+        return new ArrayList<>(indirect);
+    }
     
     /**
      * To detect loops in IndirectCredentials we use a fordward aproach to preserve
@@ -139,9 +137,7 @@ public final class GroupSID implements ISID {
      * @param indirect
      * @return 
      */
-    private final List<String> getIndirectCredentialsGroups(List<String> indirect) {
-        //ArrayList<String> indirect = new ArrayList<>();
-     
+    private Set<String> getIndirectCredentialsGroups(Set<String> indirect) {
         for (GroupSID gsid : this.addedTo) {
             if (!indirect.contains(gsid.getUUID())) {
                 indirect.add(gsid.getUUID());
@@ -149,6 +145,6 @@ public final class GroupSID implements ISID {
             }
         }
         return indirect;
-    } 
+    }
     
 }
