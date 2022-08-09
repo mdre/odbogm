@@ -3,10 +3,10 @@ package test;
 import java.util.Date;
 import java.util.Objects;
 import java.util.UUID;
-import net.odbogm.annotations.Ignore;
 import java.util.logging.Logger;
 import net.odbogm.annotations.Audit;
 import net.odbogm.annotations.Entity;
+import net.odbogm.annotations.Ignore;
 import net.odbogm.annotations.RID;
 import net.odbogm.annotations.Sequence;
 import net.odbogm.annotations.Version;
@@ -23,13 +23,18 @@ public class SimpleVertex {
 
     @RID private String rid;
     @Version private int version = -1;
+    @Sequence(sequenceName = "test_sequence") private final Long serial = null;
+
     private String uuid;
     private String s;
     public int i;
     private float f;
     private boolean b;
     private Date fecha;
-    @Sequence(sequenceName = "test_sequence") private final Long serial = null;
+        
+    private Integer oI;
+    private Float oF;
+    private Boolean oB;
     
     public Date getFecha() {
         return fecha;
@@ -67,9 +72,6 @@ public class SimpleVertex {
         return serial;
     }
     
-    private Integer oI;
-    private Float oF;
-    private Boolean oB;
     
     public SimpleVertex(String s, int i, float f, boolean b, Integer oI, Float oF, Boolean oB) {
         this.s = s;

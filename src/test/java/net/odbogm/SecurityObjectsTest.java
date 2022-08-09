@@ -344,6 +344,7 @@ public class SecurityObjectsTest {
     
     @Test
     public void avoidGroupsLoop() throws Exception {
+        //FIXME: test fix 1
         System.out.println("\n\n\n\n\n\n\n\n\n");
         System.out.println("************************************************************");
         System.out.println("avoidGroupsLoop");
@@ -355,10 +356,15 @@ public class SecurityObjectsTest {
         
         //this must not happen:
         //g1 -> g2 -> g3 -> g1
+        System.out.println("\n\nAgregar otros grupos Ok");
         g1.add(g2);
         g2.add(g3);
+        
+        System.out.println("\n\nagregar una referencia circular.");
+        //g3.add(g1);
         assertThrows(CircularReferenceException.class, () -> g3.add(g1));
         
+        System.out.println("\n\nagregar una autoreferencia.");
         //this neither:
         assertThrows(CircularReferenceException.class, () -> g1.add(g1));
     }

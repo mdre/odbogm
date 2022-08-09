@@ -84,7 +84,9 @@ public final class GroupSID implements ISID {
     
     public final void add(GroupSID gsid) {
         // verificar que el SID no exista
-        if (isAncestor(gsid)) throw new CircularReferenceException();
+        if (isAncestor(gsid)) {
+            throw new CircularReferenceException();
+        }
         if (!this.participants.contains(gsid)) {
             this.participants.add(gsid);
             gsid.addedTo(this);

@@ -7,6 +7,7 @@ import com.orientechnologies.orient.core.record.OEdge;
 import com.orientechnologies.orient.core.record.OElement;
 import com.orientechnologies.orient.core.record.OVertex;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.HashMap;
@@ -16,6 +17,13 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import net.bytebuddy.implementation.bind.annotation.AllArguments;
+import net.bytebuddy.implementation.bind.annotation.Empty;
+import net.bytebuddy.implementation.bind.annotation.IgnoreForBinding;
+import net.bytebuddy.implementation.bind.annotation.Origin;
+import net.bytebuddy.implementation.bind.annotation.RuntimeType;
+import net.bytebuddy.implementation.bind.annotation.SuperMethod;
+import net.bytebuddy.implementation.bind.annotation.This;
 import net.odbogm.LogginProperties;
 import net.odbogm.ObjectMapper;
 import net.odbogm.ObjectStruct;
@@ -36,14 +44,12 @@ import net.odbogm.exceptions.ObjectMarkedAsDeleted;
 import net.odbogm.utils.ReflectionUtils;
 import net.odbogm.utils.ThreadHelper;
 import net.odbogm.utils.VertexUtils;
-import net.sf.cglib.proxy.MethodInterceptor;
-import net.sf.cglib.proxy.MethodProxy;
 
 /**
  *
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
-public class ObjectProxy implements IObjectProxy, MethodInterceptor {
+public class ObjectProxy implements IObjectProxy {
 
     private final static Logger LOGGER = Logger.getLogger(ObjectProxy.class.getName());
     static {
@@ -89,17 +95,33 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         this.___transaction = t;
     }
     
+    // ByteBuddy inteceptor
+    // this method will be called each time      
+    // when the object proxy calls any of its methods
+//    @RuntimeType
+//    public Object intercept(@SuperCall Callable<?> zuper, @Origin Method method) throws Exception {
+//
+//        // response object
+//        Object res = null;
     
-    // GCLib interceptor 
-    @Override
-    public Object intercept(Object o,
-            Method method,
-            Object[] args,
-            MethodProxy methodProxy) throws Throwable {
+    // ByteBuddy interceptor 
+    @RuntimeType
+    public Object intercept(@This Object self, 
+                            @Origin Method method, 
+                            @AllArguments Object[] args, 
+                            @SuperMethod(nullIfImpossible = true) Method superMethod,
+                            @Empty Object defaultValue
+                            ) throws Throwable {
         // response object
         Object res = null;
-
+        //this.___proxiedObject = self;
         // el estado del objeto se debe poder consultar siempre
+        //=====================================================
+        LOGGER.log(Level.FINEST, "=====================================================");
+        LOGGER.log(Level.FINEST, this.___baseElement.getRecord().getIdentity()+ " > method: "+method.getName()+"  superMethod: "+(superMethod!=null?superMethod.getName():"NULL"));
+        LOGGER.log(Level.FINEST, "=====================================================");
+        
+        String debugLabel = this.___baseElement.getRecord().getIdentity()+ " > method: "+method.getName();
         
         if (method.getName().equals("___isValid")) {
             return this.___isValid();
@@ -151,7 +173,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                 case "hashCode":
                     if (!this.___transaction.getSessionManager().getConfig().
                             isEqualsAndHashCodeOnDeletedThrowsException()) {
-                        return methodProxy.invokeSuper(o, args);
+                        return superMethod.invoke(self, args);
                     }
                 default:
                     throw new ObjectMarkedAsDeleted("The object " + this.___baseElement.getIdentity().toString() + 
@@ -253,10 +275,10 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                 
             
             case "___ogm___setDirty":
-                res = methodProxy.invokeSuper(o, args);
+                res = superMethod.invoke(self, args);
                 break;
             case "___ogm___isDirty":
-                res = methodProxy.invokeSuper(o, args);
+                res = superMethod.invoke(self, args);
                 break;
 
             default:
@@ -283,9 +305,12 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                         this.___loadLazyLinks();
                     }
                 }
-
-                LOGGER.log(Level.FINEST, "Invoking: {0}", method.getName());
-                res = methodProxy.invokeSuper(o, args);
+                
+                try {
+                    res = superMethod.invoke(self, args);
+                } catch (InvocationTargetException ex) {
+                        throw ex.getCause();
+                }
 
                 // verificar si hay diferencias entre los objetos dependiendo de la estrategia seleccionada.
                 if (this.___objectReady) {
@@ -293,9 +318,9 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                         case CLASS_INSTRUMENTATION:
                             // si se está usando la instrumentación de clase, directamente verificar en el objeto
                             // cual es su estado.
-                            LOGGER.log(Level.FINEST, "o: {0} ITrans: {1}", new Object[]{o.getClass().getName(), o instanceof ITransparentDirtyDetector});
-                            if (((ITransparentDirtyDetector) o).___ogm___isDirty()) {
-                                LOGGER.log(Level.FINEST, "objeto {0} marcado como dirty por ASM. Agregarlo a la lista de pendientes.", o.getClass().getName());
+                            LOGGER.log(Level.FINEST, "o: {0} ITrans: {1}", new Object[]{self.getClass().getName(), self instanceof ITransparentDirtyDetector});
+                            if (((ITransparentDirtyDetector) self).___ogm___isDirty()) {
+                                LOGGER.log(Level.FINEST, "objeto {0} marcado como dirty por ASM. Agregarlo a la lista de pendientes.", self.getClass().getName());
                                 this.___setDirty();
                             }
                     }
@@ -303,6 +328,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                 break;
         }
         // return the result
+        LOGGER.log(Level.FINEST, "<<<<<<<<<<<<<<<<<<<<< INTERCEPT END: "+debugLabel);
         return res;
     }
 
@@ -312,10 +338,12 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
      * 
      * @param label  a utilizar en los logs por el Auditor
      */
+    @IgnoreForBinding
     public void ___setAuditLogLabel(String label) {
         this.___auditLogLabel = label;
     }
     
+    @IgnoreForBinding
     public String ___getAuditLogLabel() {
         return this.___auditLogLabel;
     }
@@ -326,23 +354,25 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
      *
      * @param po objeto de referencia
      */
+    @IgnoreForBinding
     public void ___setProxiedObject(Object po) {
         this.___proxiedObject = po;
         this.___injectRid();
         this.___objectReady = true;
     }
     
-    
+    @IgnoreForBinding
     @Override
     public void ___injectRid() {
         //inject RID if the field is defined
         ClassDef classdef = getClassDef();
         if (classdef.ridField != null) {
+            LOGGER.log(Level.FINEST, classdef.ridField+" = "+___baseElement.getIdentity().toString());
             objectMapper().setFieldValue(___proxiedObject, classdef.ridField, ___baseElement.getIdentity().toString());
         }
     }
     
-    
+    @IgnoreForBinding
     @Override
     public void ___uptadeVersion() {
         ClassDef classdef = getClassDef();
@@ -357,6 +387,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
      *
      * @return referencia al OElement
      */
+    @IgnoreForBinding
     @Override
     public OElement ___getElement() {
         return this.___baseElement;
@@ -368,6 +399,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
      *
      * @return referencia al OVertex
      */
+    @IgnoreForBinding
     @Override
     public OVertex ___getVertex() {
         if (this.___baseElement.isVertex()) {
@@ -383,6 +415,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
      *
      * @return RID of element.
      */
+    @IgnoreForBinding
     @Override
     public String ___getRid() {
         if (this.___baseElement != null) {
@@ -399,6 +432,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
      *
      * @param v vétice de referencia
      */
+    @IgnoreForBinding
     @Override
     public void ___setVertex(OVertex v) {
         this.___baseElement = v;
@@ -411,6 +445,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
      *
      * @return la referencia al OVertex
      */
+    @IgnoreForBinding
     @Override
     public OEdge ___getEdge() {
         if (this.___baseElement.isEdge()) {
@@ -427,30 +462,31 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
      *
      * @param e Edge de referencia
      */
+    @IgnoreForBinding
     @Override
     public void ___setEdge(OEdge e) {
         this.___baseElement = e;
     }
 
-
+    @IgnoreForBinding
     @Override
     public Object ___getProxiedObject() {
         return this.___proxiedObject;
     }
 
-
+    @IgnoreForBinding
     @Override
     public Class<?> ___getBaseClass() {
         return this.___baseClass;
     }
 
-
+    @IgnoreForBinding
     @Override
     public void ___setDeletedMark() {
         this.___deletedMark = true;
     }
 
-
+    @IgnoreForBinding
     @Override
     public boolean ___isDeleted() {
         return this.___deletedMark;
@@ -460,6 +496,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     /**
      * Creates a new temporary valid vertex and associates it with the proxy.
      */
+    @IgnoreForBinding
     @Override
     public void ___updateElement() {
         if (this.___baseElement.getInternalStatus() == ORecordElement.STATUS.NOT_LOADED) {
@@ -472,6 +509,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     /**
      * Load all links of object.
      */
+    @IgnoreForBinding
     @Override
     public synchronized void ___loadLazyLinks() {
         if (this.___loadLazyLinks) {
@@ -496,7 +534,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         }
     }
     
-    
+    @IgnoreForBinding
     private void updateLinks() {
         ClassDef classdef = getClassDef();
         OVertex ov = (OVertex) this.___baseElement;
@@ -513,6 +551,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
      * @param onlyEager If true, only fields marked as Eager, else all fields.
      * @param indirect If must load indirect links instead of direct.
      */
+    @IgnoreForBinding
     private void loadLinks(OVertex ov, ClassDef classdef, HashMap<String, Class<?>> linksFields, boolean onlyEager, boolean indirect) {
         for (Map.Entry<String, Class<?>> entry : linksFields.entrySet()) {
             try {
@@ -585,7 +624,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         }
     }
 
-
+    @IgnoreForBinding
     private void updateIndirectLinks() {
         boolean preservDirtyState = this.___dirty;
 
@@ -649,6 +688,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     /**
      * Loads the vertex links marked as eager load.
      */
+    @IgnoreForBinding
     @Override
     public void ___eagerLoad() {
         ClassDef classdef = getClassDef();
@@ -674,12 +714,13 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     /**
      * Loads all the vertex links.
      */
+    @IgnoreForBinding
     @Override
     public void ___fullLoad() {
         this.fullLoad();
     }
     
-    
+    @IgnoreForBinding
     private void fullLoad() {
         ClassDef classdef = getClassDef();
         this.___loadLazyLinks();
@@ -691,6 +732,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     /**
      * Forces the load of collections of links.
      */
+    @IgnoreForBinding
     private void eagerLoadLinkLists(ClassDef classdef, HashMap<String, Class<?>> linksFields, boolean onlyEager) {
         linksFields.keySet().forEach(field -> {
             Field f = classdef.fieldsObject.get(field);
@@ -701,13 +743,13 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         });
     }
 
-
+    @IgnoreForBinding
     @Override
     public boolean ___isValid() {
         return ___isValidObject;
     }
 
-
+    @IgnoreForBinding
     @Override
     public boolean ___isDirty() {
         return ___dirty;
@@ -718,6 +760,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
      * Marca el objeto como dirty para que sea considerado en el próximo commit
      *
      */
+    @IgnoreForBinding
     @Override
     public void ___setDirty() {
         if (!this.___dirty) {
@@ -730,7 +773,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         }
     }
 
-
+    @IgnoreForBinding
     @Override
     public void ___removeDirtyMark() {
         this.___dirty = false;
@@ -743,7 +786,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         }
     }
 
-
+    @IgnoreForBinding
     @Override
     public synchronized void ___commit() {
         LOGGER.log(Level.FINER, "Iniciando ___commit() ....");
@@ -1172,6 +1215,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         LOGGER.log(Level.FINER, "fin commit ----");
     }
     
+    @IgnoreForBinding
     private void removeEdge(String graphRelationName, OEdge edge, IObjectProxy vertexToRemove) {
         if (this.___transaction.isAuditing()) {
             this.___transaction.auditLog(this, AuditType.WRITE, (this.___auditLogLabel!=null?this.___auditLogLabel+" : ":"")+"LINKLIST REMOVE: " + graphRelationName, edge);
@@ -1193,6 +1237,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     /**
      * Refresca el objeto base recuperándolo nuevamente desde la base de datos.
      */
+    @IgnoreForBinding
     @Override
     public void ___reload() {
         this.___transaction.initInternalTx();
@@ -1210,6 +1255,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
      * @param edgeToRemove
      * @param field
      */
+    @IgnoreForBinding
     private synchronized void removeEdge(OEdge edgeToRemove, String field) {
         try {
             ClassDef classdef = this.___transaction.getObjectMapper().getClassDef(___baseClass);
@@ -1251,6 +1297,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     /**
      * Revierte el objeto al estado que tiene el Vertex original.
      */
+    @IgnoreForBinding
     @Override
     public synchronized void ___rollback() {
         LOGGER.log(Level.FINER, "\n\n******************* ROLLBACK *******************\n\n");
@@ -1363,6 +1410,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     /**
      * Reset dirty status of object and collections after a successful commit.
      */
+    @IgnoreForBinding
     @Override
     public synchronized void ___commitSuccessful() {
         this.___transaction.initInternalTx();
@@ -1377,11 +1425,12 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         this.___transaction.closeInternalTx();
     }
 
-    
+    @IgnoreForBinding
     private ClassDef getClassDef() {
         return this.___transaction.getObjectMapper().getClassDef(this.___baseClass);
     }
     
+    @IgnoreForBinding
     private ObjectMapper objectMapper() {
         return this.___transaction.getObjectMapper();
     }

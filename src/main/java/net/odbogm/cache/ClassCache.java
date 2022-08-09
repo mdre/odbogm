@@ -56,8 +56,9 @@ public class ClassCache {
         Class<?> toProcess = c;
         // buscar la primera clase que no sea un proxy de CGLIB
         // para esto, el nombre de la clase no debe tener la cadena $$EnhancerByCGLIB$$
-        if (c.getName().contains("$$EnhancerByCGLIB$$")) {
+        if (c.getName().contains("$ByteBuddy$")) {
             toProcess = c.getSuperclass();
+            LOGGER.log(Level.FINER, "Clase proxy detectada! continuar con: {0}", toProcess.getName());
         }
         
         ClassDef cached = classCache.get(toProcess);
@@ -106,6 +107,7 @@ public class ClassCache {
             Field[] fields = c.getDeclaredFields();
             for (Field f : fields) {
                 try {
+                    LOGGER.log(Level.FINEST, "Analizando campo: "+f.getName());
                     //determinar si se debe o no procesar el campo.
                     //No se aceptan los transient y static final.
                     if (!(f.isAnnotationPresent(Ignore.class)

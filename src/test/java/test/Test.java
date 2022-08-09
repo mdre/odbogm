@@ -5,10 +5,8 @@
  */
 package test;
 
-import net.odbogm.exceptions.IncorrectRIDField;
-import net.odbogm.SessionManager;
-import net.odbogm.proxy.IObjectProxy;
 import com.orientechnologies.orient.core.exception.OConcurrentModificationException;
+import com.orientechnologies.orient.core.record.OVertex;
 import com.tinkerpop.blueprints.impls.orient.OrientGraph;
 import com.tinkerpop.blueprints.impls.orient.OrientGraphFactory;
 import java.io.BufferedReader;
@@ -23,9 +21,11 @@ import java.util.Scanner;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.DbManager;
-import net.odbogm.Transaction;
+import net.odbogm.SessionManager;
+import net.odbogm.exceptions.IncorrectRIDField;
 import net.odbogm.exceptions.ReferentialIntegrityViolation;
 import net.odbogm.exceptions.UnknownRID;
+import net.odbogm.proxy.IObjectProxy;
 import net.odbogm.security.AccessRight;
 import net.odbogm.security.GroupSID;
 import net.odbogm.security.UserSID;
@@ -72,6 +72,7 @@ public class Test {
 //        testComplexHashMap();
 //        testSimpleQuery();
 //        testCmd();
+        testEdges();
         sm.shutdown();
     }
 
@@ -91,6 +92,11 @@ public class Test {
 //        sm.setAuditOnUser("userAuditado");
     }
 
+    public void testEdges(){
+        OVertex stored = (OVertex)sm.get("#618:22");
+        System.out.println("RID: "+stored.getIdentity());
+    }
+    
     public void testSessionManager() {
 //        IObjectProxy iop;
 
@@ -120,6 +126,8 @@ public class Test {
         Object o = sm.query("select from SimpleVertex");
         System.out.println("o: "+o.getClass());
     }
+    
+  
     
     public void testSimpleQuery() {
         System.out.println("\n\n\n");

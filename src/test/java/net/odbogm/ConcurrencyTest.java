@@ -142,6 +142,7 @@ public class ConcurrencyTest {
      */
     @Test
     public void sbtreeBonsaiRidbag() throws Exception {
+        //FIXME: test fix
         int val = OGlobalConfiguration.RID_BAG_EMBEDDED_TO_SBTREEBONSAI_THRESHOLD.getValue();
         assertEquals(-1, val);
         

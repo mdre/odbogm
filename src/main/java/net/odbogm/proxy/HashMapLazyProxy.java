@@ -74,29 +74,29 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
 
     private synchronized void lazyLoad() {
         this.transaction.initInternalTx();
-        
+
         LOGGER.log(Level.FINEST, "Lazy Load.....");
         this.lazyLoad = false;
         this.lazyLoading = true;
 
         IObjectProxy theParent = this.parent.get();
-        
+
         String auditLogLabel = theParent.___getAuditLogLabel();
-        
+
         if (theParent != null) {
             // recuperar todos los elementos desde el vértice y agregarlos a la colección
             boolean indirect = this.direction == ODirection.IN;
             for (OEdge edge : theParent.___getVertex().getEdges(this.direction, field)) {
                 OVertex next = indirect ? edge.getFrom() : edge.getTo();
-                LOGGER.log(Level.FINER, "loading edge: {0} to: {1}", new Object[]{edge.getIdentity().toString(),next.getIdentity()});
+                LOGGER.log(Level.FINER, "loading edge: {0} to: {1}", new Object[]{edge.getIdentity().toString(), next.getIdentity()});
                 // el Lazy simpre se hace recuperado los datos desde la base de datos.
                 Object o = transaction.get(valueClass, next.getIdentity().toString());
-                
+
                 // replicate the AuditLogLabel to inner objects
                 if (auditLogLabel != null && o instanceof IObjectProxy) {
-                    ((IObjectProxy)o).___setAuditLogLabel(auditLogLabel);
+                    ((IObjectProxy) o).___setAuditLogLabel(auditLogLabel);
                 }
-                
+
                 // para cada vértice conectado, es necesario mapear todos los Edges que los unen.
                 Object k = edgeToObject(edge);
 
@@ -119,7 +119,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         }
         this.lazyLoading = false;
         this.transaction.closeInternalTx();
-        LOGGER.log(Level.FINEST, "final size: {0} ",super.size());
+        LOGGER.log(Level.FINEST, "final size: {0} ", super.size());
     }
 
     /**
@@ -132,7 +132,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
             this.setDirty();
         }
     }
-    
+
     /**
      * Vuelve establecer el punto de verificación.
      */
@@ -148,7 +148,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
 
             this.keyState.put(k, ObjectCollectionState.REMOVED);
 
-            // verificar si existe una relación con en Edge
+            // verificar si existe una relación con el Edge
             if (this.keyToEdge.get(k) != null) {
                 newOE.put(k, this.keyToEdge.get(k));
             }
@@ -235,9 +235,8 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         this.lazyLoad = true;
     }
 
-    
     /**
-     * Método interno usado por 
+     * Método interno usado por
      * fuerza la recarga de todos los elementos del vector. La llamada a este método
      * produce que se invoque a clear y luego se recarguen todos los objetos.
      */
@@ -246,8 +245,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         super.clear();
         this.lazyLoad();
     }
-    
-    
+
     //====================================================================================
     /**
      * Crea un map utilizando los atributos del Edge como key. Si se utiliza un objeto para representar los atributos, se debe declarar en el
@@ -522,7 +520,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
     public void updateKey(Object originalKey, OEdge edge) {
         if (originalKey instanceof IObjectProxy) {
             // if already a IObjectProxy update the associated edge
-            ((IObjectProxy)originalKey).___setEdge(edge);
+            ((IObjectProxy) originalKey).___setEdge(edge);
         } else {
             Object key = this.edgeToObject(edge);
             Object value = this.get(originalKey);
@@ -543,7 +541,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
                 new Object[]{this.keyClass, edge.getIdentity().toString()});
         if (Primitives.PRIMITIVE_MAP.containsKey(this.keyClass)) {
             k = edge.getProperty("key");
-            LOGGER.log(Level.INFO, "primitive edge key: {0}",k);
+            LOGGER.log(Level.INFO, "primitive edge key: {0}", k);
         } else {
             //if keyClass is not a native type, we must hydrate an object
             LOGGER.log(Level.FINER, "clase como key");
@@ -552,5 +550,5 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         this.keyToEdge.put(k, edge);
         return k;
     }
-    
+
 }

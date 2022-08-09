@@ -136,6 +136,7 @@ public class SessionManagerTest {
         
         //still not in database
         String rid = ((IObjectProxy) result).___getRid();
+        
         var exist = this.sm.getTransaction().query("select count(*) from V where @rid = " + rid, "");
         assertEquals(0, exist);
 
@@ -1948,6 +1949,7 @@ public class SessionManagerTest {
 
     @Test
     public void testIndirect() {
+        //FIXME: test fix
         System.out.println("\n\n\n");
         System.out.println("***************************************************************");
         System.out.println("Probar las conecciones Indirectas.");
@@ -3005,6 +3007,7 @@ public class SessionManagerTest {
      */
     @Test
     public void edgeAttributes3() throws Exception {
+        //FIXME: resolviendo este test
         SimpleVertexEx to1 = sm.store(new SimpleVertexEx());
         to1.setS("to1");
         SimpleVertexEx to2 = sm.store(new SimpleVertexEx());
@@ -3059,6 +3062,7 @@ public class SessionManagerTest {
         
         v.ohmSVE.remove(e);
         assertEquals(1, v.getOhmSVE().size());
+        System.out.println("\n\n\n FALLA ********************************************");
         v = commitClearAndGet(v);
         assertEquals(1, v.getOhmSVE().size());
         assertEquals(e2, v.getOhmSVE().keySet().iterator().next());
@@ -3552,6 +3556,7 @@ public class SessionManagerTest {
      */
     @Test
     public void equalsAndHashcodeOnDeleted() throws Exception {
+        //FIXME: test fix
         SimpleVertex v = sm.store(new SimpleVertex());
         sm.delete(v);
         assertThrows(ObjectMarkedAsDeleted.class, () -> v.equals(v));
@@ -3591,10 +3596,18 @@ public class SessionManagerTest {
     
     @Test
     public void getNotDirty() throws Exception {
+        System.out.println("Crear el objeto");
         SVExChild v1 = sm.store(new SVExChild()); // starts dirty (by agent) because of collection usage
-        System.out.println(((ITransparentDirtyDetector)v1).___ogm___isDirty());
+        System.out.println("Dirty: "+((ITransparentDirtyDetector)v1).___ogm___isDirty());
+        System.out.println("");
+        System.out.println("");
+        System.out.println("commit....");
         v1 = commitClearAndGet(v1);
-        System.out.println(((ITransparentDirtyDetector)v1).___ogm___isDirty());
+        System.out.println("Fin commit");
+        System.out.println("");
+        System.out.println("");
+        System.out.println("Dirty: " +((ITransparentDirtyDetector)v1).___ogm___isDirty());
+        System.out.println("llamar a hashCode....");
         v1.hashCode();
         assertFalse(((IObjectProxy)v1).___isDirty());
         assertFalse(sm.getCurrentTransaction().getDirtyCache().values().contains(v1));

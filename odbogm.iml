@@ -14,104 +14,104 @@
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-graphdb/3.1.2/f6756006f83b217dae8687c6ccd7f376d2d0d029/orientdb-graphdb-3.1.2.jar!/"/>
+          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-graphdb/3.2.0/75f5e482bf489f343945e128c9f71404b3bb67ee/orientdb-graphdb-3.2.0.jar!/"/>
         </CLASSES>
         <JAVADOC>
-          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-graphdb/3.1.2/cdea06275cfaf5ebe0aadd9366d30f29d8350f/orientdb-graphdb-3.1.2-javadoc.jar!/"/>
+          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-graphdb/3.2.0/1616d6a74e2722fae74da1e01975e3b3d4da8b69/orientdb-graphdb-3.2.0-javadoc.jar!/"/>
         </JAVADOC>
         <SOURCES>
-          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-graphdb/3.1.2/4f8fbb0ed7ddb0f294cc13462182d4c3e852e795/orientdb-graphdb-3.1.2-sources.jar!/"/>
+          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-graphdb/3.2.0/3025aef21a2cf52f7889f750a136dc2bbe631663/orientdb-graphdb-3.2.0-sources.jar!/"/>
         </SOURCES>
       </library>
     </orderEntry>
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-graphdb/3.1.2/cdea06275cfaf5ebe0aadd9366d30f29d8350f/orientdb-graphdb-3.1.2-javadoc.jar!/"/>
+          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-graphdb/3.2.0/1616d6a74e2722fae74da1e01975e3b3d4da8b69/orientdb-graphdb-3.2.0-javadoc.jar!/"/>
         </CLASSES>
         <JAVADOC>
-          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-graphdb/3.1.2/cdea06275cfaf5ebe0aadd9366d30f29d8350f/orientdb-graphdb-3.1.2-javadoc.jar!/"/>
+          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-graphdb/3.2.0/1616d6a74e2722fae74da1e01975e3b3d4da8b69/orientdb-graphdb-3.2.0-javadoc.jar!/"/>
         </JAVADOC>
         <SOURCES>
-          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-graphdb/3.1.2/4f8fbb0ed7ddb0f294cc13462182d4c3e852e795/orientdb-graphdb-3.1.2-sources.jar!/"/>
+          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-graphdb/3.2.0/3025aef21a2cf52f7889f750a136dc2bbe631663/orientdb-graphdb-3.2.0-sources.jar!/"/>
         </SOURCES>
       </library>
     </orderEntry>
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-server/3.1.2/ad90f26e6f2fcdd0ca85ba27e0e30445091f851/orientdb-server-3.1.2.jar!/"/>
+          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-server/3.2.0/4c6dae2d501ecab342b9da32323a7af44a17a9c/orientdb-server-3.2.0.jar!/"/>
         </CLASSES>
         <JAVADOC>
-          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-server/3.1.2/370658ddf96cb49b71e770278e55ea217170c451/orientdb-server-3.1.2-javadoc.jar!/"/>
+          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-server/3.2.0/d904e433660e53c81ea2743ed4ce8a17febb9fcf/orientdb-server-3.2.0-javadoc.jar!/"/>
         </JAVADOC>
         <SOURCES>
-          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-server/3.1.2/4a9552e7b5d1a463c941faddafa05ac89bcb30b3/orientdb-server-3.1.2-sources.jar!/"/>
+          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-server/3.2.0/fee2d90668b43f6ad3623fb27f81370e0c38c20e/orientdb-server-3.2.0-sources.jar!/"/>
         </SOURCES>
       </library>
     </orderEntry>
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-tools/3.1.2/d97befbe8946ee2ab8a4555f632fe3d5268e782a/orientdb-tools-3.1.2.jar!/"/>
+          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-tools/3.2.0/f99dface421959b8cf35644a147a600b3e1455c/orientdb-tools-3.2.0.jar!/"/>
         </CLASSES>
         <JAVADOC>
-          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-tools/3.1.2/d903036220fe223f29c800839055e77c291d7826/orientdb-tools-3.1.2-javadoc.jar!/"/>
+          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-tools/3.2.0/7348163055b7655b2ff41f05d403ddf3bf0d9c7/orientdb-tools-3.2.0-javadoc.jar!/"/>
         </JAVADOC>
         <SOURCES>
-          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-tools/3.1.2/2434c5884235249fc7a09e09efec1594b0fb65b3/orientdb-tools-3.1.2-sources.jar!/"/>
+          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-tools/3.2.0/db63464978e64c50e98729600ce80282a7ab4afc/orientdb-tools-3.2.0-sources.jar!/"/>
         </SOURCES>
       </library>
     </orderEntry>
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-client/3.1.2/85d6c2e25216285eca6f544ac3da142c8eb59635/orientdb-client-3.1.2.jar!/"/>
+          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-client/3.2.0/b21c65e66c71ea952e9bdb2d23479780c4d5d86a/orientdb-client-3.2.0.jar!/"/>
         </CLASSES>
         <JAVADOC>
-          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-client/3.1.2/fafff25b4e9525b53809ff2fab16eb43b2eac623/orientdb-client-3.1.2-javadoc.jar!/"/>
+          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-client/3.2.0/1c7a8c8595c63074f029a5a2b83069e8fb7aef3e/orientdb-client-3.2.0-javadoc.jar!/"/>
         </JAVADOC>
         <SOURCES>
-          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-client/3.1.2/2be2bf26f3649b7c3f9e1d57c075ccf6ed9f1d23/orientdb-client-3.1.2-sources.jar!/"/>
+          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-client/3.2.0/78a2b65c076c9035e688892e63a29a2657487541/orientdb-client-3.2.0-sources.jar!/"/>
         </SOURCES>
       </library>
     </orderEntry>
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-core/3.1.2/b56474a21501209b4dca2196ec8c3c204b2e1a43/orientdb-core-3.1.2.jar!/"/>
+          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-core/3.2.0/604b6af8deca30f258183b7addd18f455b7fcc88/orientdb-core-3.2.0.jar!/"/>
         </CLASSES>
         <JAVADOC>
-          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-core/3.1.2/ee3dbd535313fa9f2bf58dc3c1d130404e820ed3/orientdb-core-3.1.2-javadoc.jar!/"/>
+          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-core/3.2.0/7901b496855a08e98e15ce65c8e219e5fead725e/orientdb-core-3.2.0-javadoc.jar!/"/>
         </JAVADOC>
         <SOURCES>
-          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-core/3.1.2/eff9207575ca777113684a9a1c7a4c4946077b74/orientdb-core-3.1.2-sources.jar!/"/>
+          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-core/3.2.0/1a2ee3a6a1837ce65d68b58df81e0fd0d1bf0fcb/orientdb-core-3.2.0-sources.jar!/"/>
         </SOURCES>
       </library>
     </orderEntry>
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-core/3.1.2/ee3dbd535313fa9f2bf58dc3c1d130404e820ed3/orientdb-core-3.1.2-javadoc.jar!/"/>
+          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-core/3.2.0/7901b496855a08e98e15ce65c8e219e5fead725e/orientdb-core-3.2.0-javadoc.jar!/"/>
         </CLASSES>
         <JAVADOC>
-          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-core/3.1.2/ee3dbd535313fa9f2bf58dc3c1d130404e820ed3/orientdb-core-3.1.2-javadoc.jar!/"/>
+          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-core/3.2.0/7901b496855a08e98e15ce65c8e219e5fead725e/orientdb-core-3.2.0-javadoc.jar!/"/>
         </JAVADOC>
         <SOURCES>
-          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-core/3.1.2/eff9207575ca777113684a9a1c7a4c4946077b74/orientdb-core-3.1.2-sources.jar!/"/>
+          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.orientechnologies/orientdb-core/3.2.0/1a2ee3a6a1837ce65d68b58df81e0fd0d1bf0fcb/orientdb-core-3.2.0-sources.jar!/"/>
         </SOURCES>
       </library>
     </orderEntry>
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/cglib/cglib/3.3.0/c956b9f9708af5901e9cf05701e9b2b1c25027cc/cglib-3.3.0.jar!/"/>
+          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/net.bytebuddy/byte-buddy/1.12.7/e2a08a3fae74979ee76a8dd67cfd37958874e0fb/byte-buddy-1.12.7.jar!/"/>
         </CLASSES>
         <JAVADOC>
-          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/cglib/cglib/3.3.0/40bd1964631339dae3d53246554bb9c2ebb81a43/cglib-3.3.0-javadoc.jar!/"/>
+          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/net.bytebuddy/byte-buddy/1.12.7/d1353d1d91b5e65a32f23565b5a63cd6eef74a87/byte-buddy-1.12.7-javadoc.jar!/"/>
         </JAVADOC>
         <SOURCES>
-          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/cglib/cglib/3.3.0/b9b848fda50c0ca9b80d5422f021d0755044d2d6/cglib-3.3.0-sources.jar!/"/>
+          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/net.bytebuddy/byte-buddy/1.12.7/eb2779a06cd2c78443960bdb530190e894e39af3/byte-buddy-1.12.7-sources.jar!/"/>
         </SOURCES>
       </library>
     </orderEntry>
@@ -142,6 +142,15 @@
     <orderEntry type="module-library">
       <library>
         <CLASSES>
+          <root url="jar:///home/mdre/.m2/repository/commons-collections/commons-collections/3.2.2/commons-collections-3.2.2.jar!/"/>
+        </CLASSES>
+        <JAVADOC/>
+        <SOURCES/>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library>
+        <CLASSES>
           <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/org.codehaus.groovy/groovy-jsr223/2.5.8/ddb7e0c896e0effe953de81842091ccfd1f2a154/groovy-jsr223-2.5.8.jar!/"/>
         </CLASSES>
         <JAVADOC>
@@ -162,6 +171,45 @@
         </JAVADOC>
         <SOURCES>
           <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/org.codehaus.groovy/groovy/2.5.8/5e4bc314f6cb4026a2da716e3168b1a618800b06/groovy-2.5.8-sources.jar!/"/>
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library>
+        <CLASSES>
+          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.core/jackson-annotations/2.12.1/aa079f822ddce5548018286d19ccb15c2fc202d7/jackson-annotations-2.12.1.jar!/"/>
+        </CLASSES>
+        <JAVADOC>
+          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.core/jackson-annotations/2.12.1/96095170273006c54f1d2c49cc0f263b2e3eee56/jackson-annotations-2.12.1-javadoc.jar!/"/>
+        </JAVADOC>
+        <SOURCES>
+          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.core/jackson-annotations/2.12.1/4f134564ef9bb2cdadfb48b0e7df9d4a5baa7495/jackson-annotations-2.12.1-sources.jar!/"/>
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library>
+        <CLASSES>
+          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.core/jackson-core/2.12.1/7c5493930e439be6fcec80a9afd6516b8e5e8760/jackson-core-2.12.1.jar!/"/>
+        </CLASSES>
+        <JAVADOC>
+          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.core/jackson-core/2.12.1/797b9c5669533de9349b1db76a275d63a544d9b0/jackson-core-2.12.1-javadoc.jar!/"/>
+        </JAVADOC>
+        <SOURCES>
+          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.core/jackson-core/2.12.1/9a7de2c68e9e884cba7df9671e77042d925f9436/jackson-core-2.12.1-sources.jar!/"/>
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library>
+        <CLASSES>
+          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.core/jackson-databind/2.12.1/8a97e00e429c42f74757b0a8cd1d39dddd41524f/jackson-databind-2.12.1.jar!/"/>
+        </CLASSES>
+        <JAVADOC>
+          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.core/jackson-databind/2.12.1/53a4607c613e5bb51c027d5ad840c824ee1b7401/jackson-databind-2.12.1-javadoc.jar!/"/>
+        </JAVADOC>
+        <SOURCES>
+          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.core/jackson-databind/2.12.1/3871bc14a6eada48e906117fe6330c8e3958d8ad/jackson-databind-2.12.1-sources.jar!/"/>
         </SOURCES>
       </library>
     </orderEntry>
@@ -237,6 +285,32 @@
         </JAVADOC>
         <SOURCES>
           <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/javax.activation/javax.activation-api/1.2.0/1b4c6e77d35adab19794746d8ea753df30d77dca/javax.activation-api-1.2.0-sources.jar!/"/>
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library>
+        <CLASSES>
+          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/org.eclipse.collections/eclipse-collections/10.4.0/1483b96b273dc1ed02895e1f6b46ddd4380acc04/eclipse-collections-10.4.0.jar!/"/>
+        </CLASSES>
+        <JAVADOC>
+          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/org.eclipse.collections/eclipse-collections/10.4.0/45840043b6d83b4a17efa5ba6ad2b30adc8d8382/eclipse-collections-10.4.0-javadoc.jar!/"/>
+        </JAVADOC>
+        <SOURCES>
+          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/org.eclipse.collections/eclipse-collections/10.4.0/967af72efd3f59287358e0804960e5db4dc66a7f/eclipse-collections-10.4.0-sources.jar!/"/>
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library>
+        <CLASSES>
+          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/org.eclipse.collections/eclipse-collections-api/10.4.0/b795322bd382540d38b7efa00c29b61b84c1d235/eclipse-collections-api-10.4.0.jar!/"/>
+        </CLASSES>
+        <JAVADOC>
+          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/org.eclipse.collections/eclipse-collections-api/10.4.0/f6eb2d0ecc54b8a4198ea7de2bc62c6c3d4cdf1c/eclipse-collections-api-10.4.0-javadoc.jar!/"/>
+        </JAVADOC>
+        <SOURCES>
+          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/org.eclipse.collections/eclipse-collections-api/10.4.0/f3d4739491e13e7e51f770b0a7cc8a0af5c5b77a/eclipse-collections-api-10.4.0-sources.jar!/"/>
         </SOURCES>
       </library>
     </orderEntry>
@@ -343,15 +417,6 @@
     <orderEntry type="module-library">
       <library>
         <CLASSES>
-          <root url="jar:///home/mdre/.m2/repository/com/fasterxml/jackson/core/jackson-databind/2.2.3/jackson-databind-2.2.3.jar!/"/>
-        </CLASSES>
-        <JAVADOC/>
-        <SOURCES/>
-      </library>
-    </orderEntry>
-    <orderEntry type="module-library">
-      <library>
-        <CLASSES>
           <root url="jar:///home/mdre/.m2/repository/com/carrotsearch/hppc/0.6.0/hppc-0.6.0.jar!/"/>
         </CLASSES>
         <JAVADOC/>
@@ -384,24 +449,6 @@
       <library>
         <CLASSES>
           <root url="jar:///home/mdre/.m2/repository/stax/stax-api/1.0.1/stax-api-1.0.1.jar!/"/>
-        </CLASSES>
-        <JAVADOC/>
-        <SOURCES/>
-      </library>
-    </orderEntry>
-    <orderEntry type="module-library">
-      <library>
-        <CLASSES>
-          <root url="jar:///home/mdre/.m2/repository/com/fasterxml/jackson/core/jackson-annotations/2.2.3/jackson-annotations-2.2.3.jar!/"/>
-        </CLASSES>
-        <JAVADOC/>
-        <SOURCES/>
-      </library>
-    </orderEntry>
-    <orderEntry type="module-library">
-      <library>
-        <CLASSES>
-          <root url="jar:///home/mdre/.m2/repository/com/fasterxml/jackson/core/jackson-core/2.2.3/jackson-core-2.2.3.jar!/"/>
         </CLASSES>
         <JAVADOC/>
         <SOURCES/>
@@ -481,14 +528,10 @@
     <orderEntry type="module-library" scope="TEST">
       <library>
         <CLASSES>
-          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/junit/junit/4.13/e49ccba652b735c93bd6e6f59760d8254cf597dd/junit-4.13.jar!/"/>
+          <root url="jar:///home/mdre/.m2/repository/junit/junit/4.13.1/junit-4.13.1.jar!/"/>
         </CLASSES>
-        <JAVADOC>
-          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/junit/junit/4.13/17ed6c7dd587f52c9e7894964eff6a880f0658a/junit-4.13-javadoc.jar!/"/>
-        </JAVADOC>
-        <SOURCES>
-          <root url="jar:///home/mdre/.gradle/caches/modules-2/files-2.1/junit/junit/4.13/d10a9c3acc6c07a5700e37697b5a6b4dcfb8abf9/junit-4.13-sources.jar!/"/>
-        </SOURCES>
+        <JAVADOC/>
+        <SOURCES/>
       </library>
     </orderEntry>
     <orderEntry type="module-library" scope="TEST">
