@@ -1,7 +1,6 @@
 package net.odbogm.proxy;
 
 import com.orientechnologies.orient.core.record.OElement;
-import static java.lang.ClassLoader.getSystemClassLoader;
 import java.lang.reflect.InvocationTargetException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -59,7 +58,7 @@ public class ObjectProxyFactory {
         LOGGER.log(Level.FINEST, "create proxy for class: "+c+(c!=null?c.getName().toString():"NULL CLASS!!!!"));
         T po = null;
         try {
-            Class<?> type = cache.findOrInsert(getSystemClassLoader(), c, () -> {
+            Class<?> type = cache.findOrInsert(c.getClassLoader(), c, () -> {
                                 return
                                     new ByteBuddy(ClassFileVersion.ofThisVm())
                                         .subclass(c)
@@ -76,7 +75,7 @@ public class ObjectProxyFactory {
                                                         .filter(ElementMatchers.named("intercept"))
                                                         .toField("___ogm___interceptor"))   // MethodDelegation.to(bbi)
                                         .make()
-                                        .load(getSystemClassLoader(), ClassLoadingStrategy.Default.WRAPPER)
+                                        .load(c.getClassLoader(), ClassLoadingStrategy.Default.WRAPPER)
                                         .getLoaded();
             });
             
