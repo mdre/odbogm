@@ -16,6 +16,9 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.stream.Collectors;
 import net.odbogm.agent.ITransparentDirtyDetector;
 import net.odbogm.annotations.Entity;
 import net.odbogm.annotations.RID;
@@ -65,6 +68,12 @@ public class SessionManagerTest {
 
     private SessionManager sm;
 
+    private final static Logger LOGGER = Logger.getLogger(SessionManagerTest.class .getName());
+    static {
+        if (LOGGER.getLevel() == null) {
+            LOGGER.setLevel(Level.INFO);
+        }
+    }
 
     @Before
     public void setUp() {
@@ -3653,6 +3662,28 @@ public class SessionManagerTest {
         sm.commit();
         assertTrue(((IObjectProxy)v).___isDeleted());
         assertTrue(((IObjectProxy)v).___getRid().contains("-"));
+    }
+    
+    
+    @Test
+    public void noSuperMehod() throws Exception {
+        var res = sm.query(SimpleVertexEx.class, "where out('SimpleVertexEx_alSV').size() != 0 limit 1");
+        LOGGER.log(Level.ALL, "\n\n\n\n\n\n");
+        SimpleVertexEx sve = res.get(0);
+        
+        SimpleVertex sv1 = sve.getAlSV().get(0);
+        SimpleVertex sv2 = sve.getAlSV().get(1);
+        SimpleVertex sv3 = sve.getAlSV().get(2);
+        
+        System.out.println("sv1: "+sv1.getRid());
+        System.out.println("sv2: "+sv2.getRid());
+        System.out.println("sv3: "+sv3.getRid());
+        System.out.println(""+sv1.compareTo(sv2));
+        System.out.println(""+sv2.compareTo(sv3));
+        
+        //var falla = res.iterator().next().getAlSV().stream().sorted().collect(Collectors.toList());
+        var falla = sve.getAlSV().stream().sorted().collect(Collectors.toList());
+        
     }
     
 }

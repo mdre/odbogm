@@ -27,7 +27,7 @@ import net.odbogm.utils.ThreadHelper;
  *
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
-public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCalls {
+public class ArrayListLazyProxy<E> extends ArrayList<E> implements ILazyCollectionCalls {
 
     private static final long serialVersionUID = -3396834078126983330L;
 
@@ -91,7 +91,7 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
                 theParent.___getVertex().toString(), field, fieldClass.getSimpleName()));
             Iterable<OVertex> rt = theParent.___getVertex().getVertices(this.direction, field);
             for (OVertex next : rt) {
-                Object o = transaction.get(fieldClass, next.getIdentity().toString());
+                E o = (E)transaction.get(fieldClass, next.getIdentity().toString());
                 this.add(o);
                 // se asume que todos fueron borrados
                 this.listState.put(o, ObjectCollectionState.REMOVED);
@@ -394,7 +394,7 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
     }
 
     @Override
-    public Object remove(int index) {
+    public E remove(int index) {
         if (lazyLoad) {
             this.lazyLoad();
         }
@@ -403,7 +403,7 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
     }
 
     @Override
-    public void add(int index, Object element) {
+    public void add(int index, E element) {
         if (lazyLoad) {
             this.lazyLoad();
         }
@@ -412,7 +412,7 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
     }
 
     @Override
-    public boolean add(Object e) {
+    public boolean add(E e) {
         if (lazyLoad) {
             this.lazyLoad();
         }
@@ -424,7 +424,7 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
     }
 
     @Override
-    public Object set(int index, Object element) {
+    public E set(int index, E element) {
         if (lazyLoad) {
             this.lazyLoad();
         }
@@ -433,7 +433,7 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
     }
 
     @Override
-    public Object get(int index) {
+    public E get(int index) {
         if (lazyLoad) {
             this.lazyLoad();
         }

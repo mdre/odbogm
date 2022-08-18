@@ -112,13 +112,16 @@ public class ObjectProxy implements IObjectProxy {
                             @SuperMethod(nullIfImpossible = true) Method superMethod,
                             @Empty Object defaultValue
                             ) throws Throwable {
+        
+//         
+        
         // response object
         Object res = null;
         //this.___proxiedObject = self;
         // el estado del objeto se debe poder consultar siempre
         //=====================================================
         LOGGER.log(Level.FINEST, "=====================================================");
-        LOGGER.log(Level.FINEST, this.___baseElement.getRecord().getIdentity()+ " > method: "+method.getName()+"  superMethod: "+(superMethod!=null?superMethod.getName():"NULL"));
+        LOGGER.log(Level.FINEST, self.getClass().getName() + " : "+ this.___baseElement.getRecord().getIdentity()+ " > method: "+method.getName()+"  superMethod: "+(superMethod!=null?superMethod.getName():"NULL"));
         LOGGER.log(Level.FINEST, "=====================================================");
         
         String debugLabel = this.___baseElement.getRecord().getIdentity()+ " > method: "+method.getName();
@@ -306,6 +309,10 @@ public class ObjectProxy implements IObjectProxy {
                     }
                 }
                 
+                if (superMethod == null) {
+                    System.out.println("superMethod == NULL !!!!");
+                    return defaultValue;
+                }
                 try {
                     res = superMethod.invoke(self, args);
                 } catch (InvocationTargetException ex) {
