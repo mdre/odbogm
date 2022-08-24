@@ -960,10 +960,6 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                 new Object[]{field, this.___proxiedObject.getClass()});
 
                         f = cDef.fieldsObject.get(field);
-
-                        // preparar el nombre de la relación
-                        final String graphRelationName = cDef.entityName + "_" + field;
-
                         Object collectionFieldValue = f.get(this.___proxiedObject);
 
                         // verificar si existe algún cambio en la colecciones
@@ -1003,6 +999,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
                                 List listFieldValue = (List) collectionFieldValue;
                                 Map<Object, ObjectCollectionState> colState = lazyCollectionCalls.collectionState();
+                                final String graphRelationName = lazyCollectionCalls.getRelationName();
 
                                 // procesar los elementos presentes en la colección
                                 for (int i = 0; i < listFieldValue.size(); i++) {
@@ -1089,6 +1086,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                 final Map<Object, ObjectCollectionState> keysState = lazyMap.getKeyState();
                                 final Map<Object, OEdge> keysToEdges = lazyMap.getKeyToEdge();
                                 final Map<Object, ObjectCollectionState> entitiesState = lazyMap.getEntitiesState();
+                                final String graphRelationName = lazyMap.getRelationName();
 
                                 // recorrer todas las claves del mapa
                                 for (Map.Entry<Object, ObjectCollectionState> entry1 : keysState.entrySet()) {

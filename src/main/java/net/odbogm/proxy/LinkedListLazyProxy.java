@@ -90,6 +90,11 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
         this.lazyLoading = false;
         this.transaction.closeInternalTx();
     }
+    
+    @Override
+    public String getRelationName() {
+        return this.field;
+    }
 
     @Override
     public synchronized void updateAuditLogLabel(Set seen) {

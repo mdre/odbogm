@@ -124,6 +124,11 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
     }
     
     @Override
+    public String getRelationName() {
+        return this.field;
+    }
+    
+    @Override
     public synchronized void updateAuditLogLabel(Set seen) {
         if (!this.lazyLoad) {
             IObjectProxy theParent = this.parent.get();

@@ -43,9 +43,11 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
 
     private boolean lazyLoad = true;
     private boolean lazyLoading = false;
+    private boolean onlyAdd = false;
+    private String onlyAddReferenceAttribute;
 
     private Transaction transaction;
-    private String field;
+    private String relation;
     private Class<?> fieldClass;
     private ODirection direction;
 
@@ -67,7 +69,7 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
         }
         this.transaction = t;
         this.parent = new WeakReference<>(parent);
-        this.field = field;
+        this.relation = field;
         this.fieldClass = c;
         this.direction = d;
         LOGGER.log(Level.FINER, () -> String.format("relatedTo: %s - field: %s - Class: %s",
@@ -84,13 +86,13 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
         
         // recuperar todos los elementos desde el vértice y agregarlos a la colección
         IObjectProxy theParent = this.parent.get();
-        if (theParent != null) {
+        if (theParent != null && !onlyAdd) {
             LOGGER.log(Level.FINER, () -> String.format("relatedTo: %s - field: %s - Class: %s",
-                theParent.___getVertex().toString(), field, fieldClass.getSimpleName()));
+                theParent.___getVertex().toString(), relation, fieldClass.getSimpleName()));
         
             String auditLogLabel = theParent.___getAuditLogLabel();
         
-            Iterable<OVertex> rt = theParent.___getVertex().getVertices(this.direction, field);
+            Iterable<OVertex> rt = theParent.___getVertex().getVertices(this.direction, relation);
             for (OVertex next : rt) {
                 Object o = transaction.get(fieldClass, next.getIdentity().toString());
                 this.add(o);
@@ -104,6 +106,19 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
         this.lazyLoading = false;
         this.transaction.closeInternalTx();
     }
+    
+    
+    @Override
+    public String getRelationName() {
+        return this.relation;
+    }
+
+    
+    public void setOnlyAdd(String onlyAddReferenceAttribute) {
+        this.onlyAdd = true;
+        this.onlyAddReferenceAttribute = onlyAddReferenceAttribute;
+    }
+    
     
     @Override
     public synchronized void updateAuditLogLabel(Set seen) {
@@ -146,6 +161,25 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
      */
     @Override
     public synchronized void clearState() {
+        if (onlyAdd && onlyAddReferenceAttribute != null) {
+            super.clear();
+            try {
+                IObjectProxy theParent = this.parent.get();
+                if (theParent != null) {
+                    var referenceAttribute = this.transaction.getObjectMapper().getClassDef(theParent).fieldsObject.get(this.onlyAddReferenceAttribute);
+                    if (referenceAttribute != null) {
+                        var referenceAttributeList = referenceAttribute.get(theParent);
+                        if (referenceAttributeList instanceof ArrayListLazyProxy) {
+                            //rollback to reset state and force reload of items
+                            ((ArrayListLazyProxy)referenceAttributeList).rollback();
+                        }
+                    }
+                }
+            } catch (IllegalArgumentException | IllegalAccessException ex) {
+                LOGGER.log(Level.WARNING, "Error setting onlyAdd reference collection attribute to lazy load.", ex);
+            }
+        }
+        
         this.dirty = false;
 
         this.listState.clear();

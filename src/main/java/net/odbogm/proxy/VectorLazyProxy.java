@@ -91,6 +91,11 @@ public class VectorLazyProxy extends Vector implements ILazyCollectionCalls {
     }
     
     @Override
+    public String getRelationName() {
+        return this.field;
+    }
+    
+    @Override
     public synchronized void updateAuditLogLabel(Set seen) {
         if (!this.lazyLoad) {
             IObjectProxy theParent = this.parent.get();

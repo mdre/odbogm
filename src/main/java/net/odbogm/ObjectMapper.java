@@ -18,10 +18,12 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import net.odbogm.annotations.Indirect;
+import net.odbogm.annotations.OnlyAdd;
 import net.odbogm.cache.ClassCache;
 import net.odbogm.cache.ClassDef;
 import net.odbogm.exceptions.CollectionNotSupported;
 import net.odbogm.proxy.ArrayListEmbeddedProxy;
+import net.odbogm.proxy.ArrayListLazyProxy;
 import net.odbogm.proxy.HashMapEmbeddedProxy;
 import net.odbogm.proxy.ILazyCollectionCalls;
 import net.odbogm.proxy.ILazyMapCalls;
@@ -507,7 +509,10 @@ public class ObjectMapper {
             // Determinar la dirección
             ODirection direction = ODirection.OUT;
 
-            if (fLink.isAnnotationPresent(Indirect.class)) {
+            OnlyAdd onlyAdd = fLink.getAnnotation(OnlyAdd.class);
+            if (onlyAdd != null && onlyAdd.attribute() != null && !onlyAdd.attribute().isBlank()) {
+                graphRelationName = classdef.entityName + "_" + onlyAdd.attribute();
+            } else if (fLink.isAnnotationPresent(Indirect.class)) {
                 // si es un indirect se debe reemplazar el nombre de la relación por 
                 // el propuesto por la anotation
                 Indirect in = fLink.getAnnotation(Indirect.class);
@@ -525,6 +530,9 @@ public class ObjectMapper {
                 // inicializar la colección
                 ((ILazyCollectionCalls) col).init(t, (IObjectProxy) o,
                         graphRelationName, listClass, direction);
+                if (onlyAdd != null && col instanceof ArrayListLazyProxy) {
+                    ((ArrayListLazyProxy)col).setOnlyAdd(onlyAdd.attribute());
+                }
 
             } else if (col instanceof Map) {
                 ParameterizedType listType = (ParameterizedType) fLink.getGenericType();

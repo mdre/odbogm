@@ -449,7 +449,13 @@ let exist = select from (select expand(classes) from metadata:schema) where name
 if ($exist.size()=0) {
     create class FooNode_lsve extends E;
 }
- 
+
+
+let exist = select from (select expand(classes) from metadata:schema) where name = 'FooNode_onlyAdd';
+if ($exist.size()=0) {
+    create class FooNode_onlyAdd extends E;
+}
+
 
 let exist = select from (select expand(classes) from metadata:schema) where name = 'Enums';
 if ($exist.size() = 0) {

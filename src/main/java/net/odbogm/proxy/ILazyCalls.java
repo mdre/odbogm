@@ -12,4 +12,5 @@ public interface ILazyCalls {
     void rollback();
     void forceLoad();
     void updateAuditLogLabel(Set seen);
+    String getRelationName();
 }

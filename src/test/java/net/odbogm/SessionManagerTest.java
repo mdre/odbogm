@@ -3700,4 +3700,40 @@ public class SessionManagerTest {
         assertTrue(((IObjectProxy)v).___getRid().contains("-"));
     }
     
+    @Test
+    public void onlyAdd() throws Exception {
+        Foo v = new Foo();
+        SimpleVertexEx v1 = new SimpleVertexEx();
+        SimpleVertexEx v2 = new SimpleVertexEx();
+        SimpleVertexEx v3 = new SimpleVertexEx();
+        v.getLsve().addAll(List.of(v1, v2, v3));
+        v = sm.store(v);
+        v = commitClearAndGet(v);
+        String rid = sm.getRID(v);
+        
+        assertEquals(3, v.getLsve().size());
+        assertEquals(0, v.getLsveOnlyAdd().size());
+        assertEquals(0, v.getOnlyAdd().size());
+        
+        SimpleVertexEx v4 = new SimpleVertexEx();
+        v.getLsveOnlyAdd().add(v4);
+        sm.commit();
+        assertEquals(4, v.getLsve().size());
+        assertEquals(0, v.getLsveOnlyAdd().size());
+        assertEquals(0, v.getOnlyAdd().size());
+        
+        SimpleVertexEx v5 = new SimpleVertexEx();
+        v.getOnlyAdd().add(v5);
+        sm.commit();
+        assertEquals(4, v.getLsve().size());
+        assertEquals(0, v.getLsveOnlyAdd().size());
+        assertEquals(0, v.getOnlyAdd().size());
+        var c = this.sm.getTransaction().query("select out('FooNode_onlyAdd').size() as c from " + rid);
+        assertEquals(1, (int)c.next().getProperty("c"));
+        
+        sm.getTransaction().clearCache();
+        v = sm.get(Foo.class, rid);
+        assertEquals(4, v.getLsve().size());
+    }
+    
 }
