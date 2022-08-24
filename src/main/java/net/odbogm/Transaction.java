@@ -1521,7 +1521,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         // por fuera del OGM
         ODatabaseSession localtx = this.orientdbTransact;
         localtx.activateOnCurrentThread();
-        flush();
 
         //OCommandSQL osql = new OCommandSQL(sql);
         //ODBOrientDynaElementIterable ret = new ODBOrientDynaElementIterable(localtx,localtx.command(osql).execute());
@@ -1539,7 +1538,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         // usar una transacción interna para que el iterable pueda seguir funcionando por fuera del OGM
         ODatabaseSession localtx = this.sm.getDBTx();
         localtx.activateOnCurrentThread();
-        flush();
 
         ODBResultSet ret = new ODBResultSet(localtx, localtx.query(sql, params));
         closeInternalTx();
@@ -1550,7 +1548,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         initInternalTx();
         ODatabaseSession localtx = this.sm.getDBTx();
         localtx.activateOnCurrentThread();
-        flush();
         ODBResultSet ret = new ODBResultSet(localtx, localtx.query(sql, params));
         closeInternalTx();
         return ret; 
@@ -1569,7 +1566,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     @Override
     public long query(String sql, String retVal) {
         initInternalTx();
-        this.flush();
         
         //OCommandSQL osql = new OCommandSQL(sql);
         OResultSet ors = this.orientdbTransact.query(sql);
@@ -1594,7 +1590,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     @Override
     public <T> List<T> query(Class<T> clazz) {
         initInternalTx();
-        this.flush();
 
         long init = System.currentTimeMillis();
 
@@ -1622,7 +1617,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     @Override
     public <T> List<T> query(Class<T> clase, String body) {
         initInternalTx();
-        this.flush();
 
         ArrayList<T> ret = new ArrayList<>();
 
