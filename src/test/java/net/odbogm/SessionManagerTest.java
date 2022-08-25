@@ -1637,7 +1637,7 @@ public class SessionManagerTest {
     
     @Test
     public void testAuditLogLabel() throws Exception {
-        sm.setAuditOnUser("AuditLogLabel ");
+        sm.setAuditOnUser("AuditLogLabel");
         
         SimpleVertexEx sv = sm.store(new SimpleVertexEx());
         sm.commit();
@@ -1658,7 +1658,7 @@ public class SessionManagerTest {
     
     @Test
     public void testAuditLogLabel2() throws Exception {
-        sm.setAuditOnUser("AuditLogLabel ");
+        sm.setAuditOnUser("AuditLogLabel");
         
         SimpleVertexEx sv = sm.store(new SimpleVertexEx("main"));
         sm.commit();
