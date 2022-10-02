@@ -17,7 +17,7 @@ import net.odbogm.annotations.Version;
  */
 @Entity
 @Audit(log = Audit.AuditType.DELETE)
-public class SimpleVertex implements Comparable<SimpleVertex>{
+public class SimpleVertex implements Comparable<SimpleVertex> {
     @Ignore
     private final static Logger LOGGER = Logger.getLogger(SimpleVertex.class .getName());
 
@@ -179,6 +179,7 @@ public class SimpleVertex implements Comparable<SimpleVertex>{
 
     @Override
     public int compareTo(SimpleVertex t) {
+        System.out.println("\n\n\nCOMPARE TO\n\n\n"+t.getClass().getName());
         return this.uuid.compareTo(t.getUUID());
     }
     

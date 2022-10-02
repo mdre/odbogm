@@ -9,6 +9,7 @@ import com.orientechnologies.orient.core.record.OVertex;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -18,7 +19,6 @@ import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.bytebuddy.implementation.bind.annotation.AllArguments;
-import net.bytebuddy.implementation.bind.annotation.Empty;
 import net.bytebuddy.implementation.bind.annotation.IgnoreForBinding;
 import net.bytebuddy.implementation.bind.annotation.Origin;
 import net.bytebuddy.implementation.bind.annotation.RuntimeType;
@@ -57,7 +57,7 @@ public class ObjectProxy implements IObjectProxy {
             LOGGER.setLevel(LogginProperties.ObjectProxy);
         }
     }
-
+    
     // the real object (as a IObjectProxy, ie EnhancedByCGLib)
     private Object ___proxiedObject;
 
@@ -109,8 +109,8 @@ public class ObjectProxy implements IObjectProxy {
     public Object intercept(@This Object self, 
                             @Origin Method method, 
                             @AllArguments Object[] args, 
-                            @SuperMethod(nullIfImpossible = true) Method superMethod,
-                            @Empty Object defaultValue
+                            
+                            @SuperMethod(nullIfImpossible = true) Method superMethod
                             ) throws Throwable {
         
 //         
@@ -120,8 +120,12 @@ public class ObjectProxy implements IObjectProxy {
         //this.___proxiedObject = self;
         // el estado del objeto se debe poder consultar siempre
         //=====================================================
-        LOGGER.log(Level.FINEST, "=====================================================");
+        LOGGER.log(Level.FINEST, ">=====================================================");
         LOGGER.log(Level.FINEST, self.getClass().getName() + " : "+ this.___baseElement.getRecord().getIdentity()+ " > method: "+method.getName()+"  superMethod: "+(superMethod!=null?superMethod.getName():"NULL"));
+        LOGGER.log(Level.FINEST, "--->"+args.length);
+        LOGGER.log(Level.FINEST, "param: " + (args==null?"NULL":Arrays.toString(args)));
+        LOGGER.log(Level.FINEST, "<<<<<param");
+        
         LOGGER.log(Level.FINEST, "=====================================================");
         
         String debugLabel = this.___baseElement.getRecord().getIdentity()+ " > method: "+method.getName();
@@ -174,6 +178,7 @@ public class ObjectProxy implements IObjectProxy {
             switch (method.getName()) {
                 case "equals":
                 case "hashCode":
+                case "toString":
                     if (!this.___transaction.getSessionManager().getConfig().
                             isEqualsAndHashCodeOnDeletedThrowsException()) {
                         return superMethod.invoke(self, args);
@@ -309,16 +314,26 @@ public class ObjectProxy implements IObjectProxy {
                     }
                 }
                 
-                if (superMethod == null) {
-                    System.out.println("superMethod == NULL !!!!");
-                    return defaultValue;
-                }
                 try {
-                    res = superMethod.invoke(self, args);
+                    if (superMethod == null) {
+                        String bbMName = Arrays.asList(self.getClass().getDeclaredMethods()).stream().filter(m->m.getName().startsWith(method.getName()+"$ac")).findFirst().get().getName();
+                        LOGGER.log(Level.FINEST, "SuperMethod NULL!!! ---> redefine superMethod> "+bbMName);
+                        
+                        Class[] p = new Class[args.length];
+                        for (int i = 0; i < args.length; i++) {
+                            p[i] = args[i].getClass().getName().contains("$ByteBuddy")?args[i].getClass().getSuperclass():args[i].getClass();
+                        }
+                        
+                        LOGGER.log(Level.FINEST, "Method parameterTypes: " + Arrays.asList(method.getParameterTypes()));
+                        LOGGER.log(Level.FINEST, "Args parameterTypes: " + Arrays.asList(p));
+                        Method m = self.getClass().getMethod(bbMName, p);
+                        res = m.invoke(self, args);
+                    } else {
+                            res = superMethod.invoke(self, args);
+                    }
                 } catch (InvocationTargetException ex) {
                         throw ex.getCause();
                 }
-
                 // verificar si hay diferencias entre los objetos dependiendo de la estrategia seleccionada.
                 if (this.___objectReady) {
                     switch (this.___transaction.getSessionManager().getActivationStrategy()) {

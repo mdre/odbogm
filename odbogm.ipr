@@ -48,7 +48,7 @@
   </component>
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/odbogm.iml" filepath="$PROJECT_DIR$/odbogm.iml"/>
+      <module filepath="$PROJECT_DIR$/odbogm.iml" fileurl="file://$PROJECT_DIR$/odbogm.iml"/>
     </modules>
   </component>
   <component name="ProjectRootManager" version="2" languageLevel="JDK_11" assert-keyword="true" jdk-15="true" project-jdk-type="JavaSDK" assert-jdk-15="true" project-jdk-name="11">

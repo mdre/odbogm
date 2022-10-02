@@ -11,7 +11,7 @@ public class LogginProperties {
     
     public static Level AccessRight                 = Level.WARNING;
     public static Level ArrayListEmbeddedProxy      = Level.WARNING;
-    public static Level ArrayListLazyProxy          = Level.FINEST;
+    public static Level ArrayListLazyProxy          = Level.WARNING;
     public static Level Auditor                     = Level.WARNING;
     public static Level ClassCache                  = Level.WARNING;
     public static Level ClassDef                    = Level.WARNING;
@@ -20,7 +20,7 @@ public class LogginProperties {
     public static Level HashMapLazyProxy            = Level.WARNING;
     public static Level LinkedListLazyProxy         = Level.WARNING;
     public static Level ObjectMapper                = Level.WARNING;
-    public static Level ObjectProxy                 = Level.FINEST;
+    public static Level ObjectProxy                 = Level.WARNING;
     public static Level ObjectProxyFactory          = Level.WARNING;
     public static Level ObjectStruct                = Level.WARNING;
     public static Level ReflectionUtils             = Level.WARNING;
@@ -29,7 +29,7 @@ public class LogginProperties {
     public static Level VectorLazyProxy             = Level.WARNING;
     public static Level VertexUtil                  = Level.WARNING;
     public static Level ThreadedGraphRecordFactory  = Level.WARNING;
-    public static Level Transaction                 = Level.FINEST;
+    public static Level Transaction                 = Level.WARNING;
     
     public static Level SID                         = Level.WARNING;
     public static Level GroupSID                    = Level.WARNING;

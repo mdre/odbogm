@@ -51,13 +51,13 @@ public class ObjectProxyFactory {
      * @param <T>
      * @param c
      * @param ov
-     * @param sm
-     * @return 
+     * @return T instance
      */
     public static <T> T bbcreate(Class<T> c, OElement ov, Transaction transaction ) {
         LOGGER.log(Level.FINEST, "create proxy for class: "+c+(c!=null?c.getName().toString():"NULL CLASS!!!!"));
         T po = null;
         try {
+            
             Class<?> type = cache.findOrInsert(c.getClassLoader(), c, () -> {
                                 return
                                     new ByteBuddy(ClassFileVersion.ofThisVm())
@@ -69,11 +69,23 @@ public class ObjectProxyFactory {
                                             .intercept(FieldAccessor.ofField("___ogm___interceptor").setsArgumentAt(0)
                                                         .andThen(MethodCall.invoke(c.getDeclaredConstructor()))
                                             )
-                                        .method(ElementMatchers.any()) // isDeclaredBy(ITest.class)
+                                        .method(
+                                                ElementMatchers.any()
+//                                                ElementMatchers.isDeclaredBy(c)
+//                                                        .or(ElementMatchers.isDeclaredBy(IObjectProxy.class)
+//                                                        .or(ElementMatchers.any()))
+                                            ) // isDeclaredBy(ITest.class)
+                                            
                                             .intercept(MethodDelegation   // This.class,Origin.class,AllArguments.class,SuperMethod.class)
-                                                        .withDefaultConfiguration() //.withBinders(TargetMethodAnnotationDrivenBinder.ParameterBinder.DEFAULTS)
+                                                        .withDefaultConfiguration()//.withBinders(TargetMethodAnnotationDrivenBinder.ParameterBinder.DEFAULTS)
+                                                        
                                                         .filter(ElementMatchers.named("intercept"))
                                                         .toField("___ogm___interceptor"))   // MethodDelegation.to(bbi)
+//                                        .method(ElementMatchers.isDeclaredBy(c)) // isDeclaredBy(ITest.class)
+//                                            .intercept(MethodDelegation   // This.class,Origin.class,AllArguments.class,SuperMethod.class)
+//                                                        .withDefaultConfiguration() //.withBinders(TargetMethodAnnotationDrivenBinder.ParameterBinder.DEFAULTS)
+//                                                        .filter(ElementMatchers.named("intercept"))
+//                                                        .toField("___ogm___interceptor"))   // MethodDelegation.to(bbi)
                                         .make()
                                         .load(c.getClassLoader(), ClassLoadingStrategy.Default.WRAPPER)
                                         .getLoaded();

@@ -26,6 +26,7 @@ import net.odbogm.utils.ThreadHelper;
 /**
  *
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
+ * @param <E> class type
  */
 public class ArrayListLazyProxy<E> extends ArrayList<E> implements ILazyCollectionCalls {
 
@@ -219,7 +220,7 @@ public class ArrayListLazyProxy<E> extends ArrayList<E> implements ILazyCollecti
     }
 
     @Override
-    public boolean containsAll(Collection c) {
+    public boolean containsAll(Collection<?> c) {
         if (lazyLoad) {
             this.lazyLoad();
         }
@@ -227,7 +228,7 @@ public class ArrayListLazyProxy<E> extends ArrayList<E> implements ILazyCollecti
     }
 
     @Override
-    public Stream parallelStream() {
+    public Stream<E> parallelStream() {
         if (lazyLoad) {
             this.lazyLoad();
         }
@@ -235,7 +236,7 @@ public class ArrayListLazyProxy<E> extends ArrayList<E> implements ILazyCollecti
     }
 
     @Override
-    public Stream stream() {
+    public Stream<E> stream() {
         if (lazyLoad) {
             this.lazyLoad();
         }
@@ -243,7 +244,7 @@ public class ArrayListLazyProxy<E> extends ArrayList<E> implements ILazyCollecti
     }
     
     @Override
-    public void sort(Comparator c) {
+    public void sort(Comparator<? super E> c) {
         if (lazyLoad) {
             this.lazyLoad();
         }
@@ -251,7 +252,7 @@ public class ArrayListLazyProxy<E> extends ArrayList<E> implements ILazyCollecti
     }
 
     @Override
-    public void replaceAll(UnaryOperator operator) {
+    public void replaceAll(UnaryOperator<E> operator) {
         if (lazyLoad) {
             this.lazyLoad();
         }
@@ -260,7 +261,7 @@ public class ArrayListLazyProxy<E> extends ArrayList<E> implements ILazyCollecti
     }
 
     @Override
-    public boolean removeIf(Predicate filter) {
+    public boolean removeIf(Predicate<? super E> filter) {
         if (lazyLoad) {
             this.lazyLoad();
         }
@@ -272,7 +273,7 @@ public class ArrayListLazyProxy<E> extends ArrayList<E> implements ILazyCollecti
     }
 
     @Override
-    public Spliterator spliterator() {
+    public Spliterator<E> spliterator() {
         if (lazyLoad) {
             this.lazyLoad();
         }
@@ -280,7 +281,7 @@ public class ArrayListLazyProxy<E> extends ArrayList<E> implements ILazyCollecti
     }
 
     @Override
-    public void forEach(Consumer action) {
+    public void forEach(Consumer<? super E> action) {
         if (lazyLoad) {
             this.lazyLoad();
         }
@@ -288,7 +289,7 @@ public class ArrayListLazyProxy<E> extends ArrayList<E> implements ILazyCollecti
     }
 
     @Override
-    public List subList(int fromIndex, int toIndex) {
+    public List<E> subList(int fromIndex, int toIndex) {
         if (lazyLoad) {
             this.lazyLoad();
         }
@@ -296,7 +297,7 @@ public class ArrayListLazyProxy<E> extends ArrayList<E> implements ILazyCollecti
     }
 
     @Override
-    public Iterator iterator() {
+    public Iterator<E> iterator() {
         if (lazyLoad) {
             this.lazyLoad();
         }
@@ -304,7 +305,7 @@ public class ArrayListLazyProxy<E> extends ArrayList<E> implements ILazyCollecti
     }
 
     @Override
-    public ListIterator listIterator() {
+    public ListIterator<E> listIterator() {
         if (lazyLoad) {
             this.lazyLoad();
         }
@@ -312,7 +313,7 @@ public class ArrayListLazyProxy<E> extends ArrayList<E> implements ILazyCollecti
     }
 
     @Override
-    public ListIterator listIterator(int index) {
+    public ListIterator<E> listIterator(int index) {
         if (lazyLoad) {
             this.lazyLoad();
         }
@@ -320,7 +321,7 @@ public class ArrayListLazyProxy<E> extends ArrayList<E> implements ILazyCollecti
     }
 
     @Override
-    public boolean retainAll(Collection c) {
+    public boolean retainAll(Collection<?> c) {
         if (lazyLoad) {
             this.lazyLoad();
         }
@@ -332,7 +333,7 @@ public class ArrayListLazyProxy<E> extends ArrayList<E> implements ILazyCollecti
     }
 
     @Override
-    public boolean removeAll(Collection c) {
+    public boolean removeAll(Collection<?> c) {
         if (lazyLoad) {
             this.lazyLoad();
         }
@@ -353,7 +354,7 @@ public class ArrayListLazyProxy<E> extends ArrayList<E> implements ILazyCollecti
     }
 
     @Override
-    public boolean addAll(int index, Collection c) {
+    public boolean addAll(int index, Collection<? extends E> c) {
         if (lazyLoad) {
             this.lazyLoad();
         }
@@ -362,7 +363,7 @@ public class ArrayListLazyProxy<E> extends ArrayList<E> implements ILazyCollecti
     }
 
     @Override
-    public boolean addAll(Collection c) {
+    public boolean addAll(Collection<? extends E> c) {
         if (lazyLoad) {
             this.lazyLoad();
         }
@@ -441,7 +442,7 @@ public class ArrayListLazyProxy<E> extends ArrayList<E> implements ILazyCollecti
     }
 
     @Override
-    public Object[] toArray(Object[] a) {
+    public  <T extends Object> T[] toArray(T[] a) {
         if (lazyLoad) {
             this.lazyLoad();
         }

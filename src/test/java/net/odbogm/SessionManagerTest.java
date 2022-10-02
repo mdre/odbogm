@@ -9,9 +9,11 @@ import com.orientechnologies.orient.core.record.OEdge;
 import com.orientechnologies.orient.core.record.OVertex;
 import com.orientechnologies.orient.core.storage.ORecordDuplicatedException;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -35,6 +37,7 @@ import net.odbogm.exceptions.OdbogmException;
 import net.odbogm.exceptions.ReferentialIntegrityViolation;
 import net.odbogm.exceptions.UnknownRID;
 import net.odbogm.proxy.IObjectProxy;
+import net.odbogm.proxy.ObjectProxy;
 import net.odbogm.security.*;
 import net.odbogm.utils.DateHelper;
 import org.apache.commons.lang.RandomStringUtils;
@@ -71,7 +74,7 @@ public class SessionManagerTest {
     private final static Logger LOGGER = Logger.getLogger(SessionManagerTest.class .getName());
     static {
         if (LOGGER.getLevel() == null) {
-            LOGGER.setLevel(Level.INFO);
+            LOGGER.setLevel(Level.FINEST);
         }
     }
 
@@ -79,10 +82,9 @@ public class SessionManagerTest {
     public void setUp() {
         System.out.println("Iniciando session manager...");
         sm = new SessionManager(TestConfig.TESTDB, TestConfig.USER, TestConfig.PASS, 1, 10)
-//                .setClassLevelLog(ObjectProxy.class, Level.FINEST)
+                .setClassLevelLog(ObjectProxy.class, Level.FINEST)
 //                .setClassLevelLog(ClassCache.class, Level.FINER)
 //                .setClassLevelLog(Transaction.class, Level.FINEST)
-//                .setClassLevelLog(ObjectProxy.class, Level.FINER)
 //                .setClassLevelLog(SimpleCache.class, Level.FINER)
 //                .setClassLevelLog(ArrayListLazyProxy.class, Level.FINER)
 //                .setClassLevelLog(ObjectMapper.class, Level.FINEST)
@@ -973,7 +975,7 @@ public class SessionManagerTest {
         stored.setS("rollbak");
         stored.setoI(45);
         stored.setoF(4.5f);
-
+        
         assertTrue(((IObjectProxy)stored).___isDirty());
         sm.rollback();
         assertFalse(((IObjectProxy)stored).___isDirty());
@@ -3667,6 +3669,15 @@ public class SessionManagerTest {
     
     @Test
     public void noSuperMehod() throws Exception {
+        Class csv = SimpleVertex.class;
+        
+        //=====================================================
+        System.out.println("//=====================================================");
+        for (Method declaredMethod : csv.getDeclaredMethods()) {
+            System.out.println(": "+declaredMethod.getName()+" "+Arrays.toString(declaredMethod.getParameters()));
+        }
+        System.out.println("//=====================================================");
+        
         var res = sm.query(SimpleVertexEx.class, "where out('SimpleVertexEx_alSV').size() != 0 limit 1");
         LOGGER.log(Level.ALL, "\n\n\n\n\n\n");
         SimpleVertexEx sve = res.get(0);
@@ -3675,15 +3686,39 @@ public class SessionManagerTest {
         SimpleVertex sv2 = sve.getAlSV().get(1);
         SimpleVertex sv3 = sve.getAlSV().get(2);
         
+        System.out.println("//=====================================================");
+        for (Method declaredMethod : sv1.getClass().getDeclaredMethods()) {
+            System.out.println(": "+declaredMethod.getName()+" "+Arrays.toString(declaredMethod.getParameters()));
+        }
+        System.out.println("//=====================================================");
+        System.out.println("");
+        System.out.println("");
+        System.out.println("");
+        System.out.println("");
+        System.out.println("");
+        System.out.println("");
+        System.out.println("");
+        System.out.println("");
         System.out.println("sv1: "+sv1.getRid());
         System.out.println("sv2: "+sv2.getRid());
         System.out.println("sv3: "+sv3.getRid());
+        System.out.println("//=====================================================");
         System.out.println(""+sv1.compareTo(sv2));
         System.out.println(""+sv2.compareTo(sv3));
-        
+        System.out.println("//=====================================================");
         //var falla = res.iterator().next().getAlSV().stream().sorted().collect(Collectors.toList());
+        System.out.println("");
+        System.out.println("");
+        System.out.println("");
+        System.out.println("");
+        System.out.println("");
+        System.out.println("");
+        System.out.println("");
+        System.out.println("Stream:");
         var falla = sve.getAlSV().stream().sorted().collect(Collectors.toList());
         
+        
+        System.out.println(falla);
     }
     
 }
