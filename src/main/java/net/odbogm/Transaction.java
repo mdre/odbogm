@@ -111,7 +111,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     Transaction(SessionManager sm) {
         this.sm = sm;
-        LOGGER.log(Level.FINER, "current thread: {0}", Thread.currentThread().getName());
+        LOGGER.log(Level.FINER, () -> "current thread: " + Thread.currentThread().getName());
         this.objectMapper = this.sm.getObjectMapper();
     }
 
@@ -121,7 +121,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     public synchronized void initInternalTx() {
         if (this.orientdbTransact == null) {
             LOGGER.log(Level.FINEST, "\nAbriendo una transacción...");
-            LOGGER.log(Level.FINEST, "\ntransacLevel: {0}  (siempre debería ser 0)",orientTransacLevel);
+            LOGGER.log(Level.FINEST, "\ntransacLevel: {0} (siempre debería ser 0)", orientTransacLevel);
             //inicializar la transacción
             orientdbTransact = this.sm.getDBTx();
             orientdbTransact.begin();
@@ -201,8 +201,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     public synchronized void setAsDirty(Object o) throws UnmanagedObject {
         if (o instanceof IObjectProxy) {
             String rid = ((IObjectProxy) o).___getRid();
-            LOGGER.log(Level.FINER, "Marcando como dirty: {0} - {1}",
-                    new Object[]{o.getClass().getSimpleName(), o.toString()});
+            LOGGER.log(Level.FINER, () -> "Marcando como dirty: " + o.getClass().getSimpleName() + " - " + o.toString());
             LOGGER.log(Level.FINEST, () -> ThreadHelper.getCurrentStackTrace());
             this.dirty.put(rid, o);
         } else {
@@ -298,8 +297,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * @throws OdbogmException Si ocurre alguna otra excepción de la base de datos.
      */
     public synchronized void commit() throws OdbogmException {
-        LOGGER.log(Level.FINEST, "dirties: {0}",this.dirty);
-        LOGGER.log(Level.FINEST, "news: {0}",this.newrids);
+        LOGGER.log(Level.FINEST, () -> "dirties: " + this.dirty);
+        LOGGER.log(Level.FINEST, () -> "news: " + this.newrids);
         wrap(() -> doCommit());
     }
     
@@ -426,10 +425,10 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     
     private synchronized void doRollback() {
         initInternalTx();
-        LOGGER.log(Level.FINER, "Rollback ------------------------");
-        LOGGER.log(Level.FINER, "Dirty objects: {0}", dirty.size());
-        LOGGER.log(Level.FINER, "Dirty deleted objects: {0}", dirtyDeleted.size());
-        LOGGER.log(Level.FINER, "New objects: {0}", this.newrids.size());
+        LOGGER.log(Level.FINER, () -> "Rollback ------------------------");
+        LOGGER.log(Level.FINER, () -> "Dirty objects: " + dirty.size());
+        LOGGER.log(Level.FINER, () -> "Dirty deleted objects: " + dirtyDeleted.size());
+        LOGGER.log(Level.FINER, () -> "New objects: " + this.newrids.size());
         
         this.orientdbTransact.rollback();
         
@@ -477,9 +476,9 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     }
     
     private  <T> T doStore(T o) {
-        LOGGER.log(Level.FINER, "*****************************************************************************");
-        LOGGER.log(Level.FINER, "STORE: {0}",o);
-        LOGGER.log(Level.FINER, "*****************************************************************************");
+        LOGGER.log(Level.FINER, () -> "*****************************************************************************");
+        LOGGER.log(Level.FINER, () -> "STORE: " + o);
+        LOGGER.log(Level.FINER, () -> "*****************************************************************************");
         
         LOGGER.log(Level.FINEST, "dirty: size: {0}",new Object[]{this.dirty.mappingCount()});
         
@@ -518,7 +517,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             ObjectStruct oStruct = this.objectMapper.objectStruct(o);
             Map<String, Object> omap = oStruct.fields;
 
-            LOGGER.log(Level.FINER, "object data: {0}", omap);
+            LOGGER.log(Level.FINER, () -> "object data: " + omap);
             OVertex v = this.orientdbTransact.newVertex(classname);
             LOGGER.log(Level.FINEST, "virtual RID pre-save: {0}",v.getIdentity().toString());
             // forzar el fijado del rid temporal
@@ -662,7 +661,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                             }
                             
                             // crear un link entre los dos objetos.
-                            LOGGER.log(Level.FINER, "-----> agregando el edges de {0} para {1} key: {2}", new Object[]{v.getIdentity().toString(), ioproxied.___getVertex().toString(), imk});
+                            LOGGER.log(Level.FINER, () -> String.format("-----> agregando el edge de %s para %s key: %s",
+                                    v.getIdentity().toString(), ioproxied.___getVertex().toString(), imk));
                             OEdge oe = v.addEdge(ioproxied.___getVertex(), graphRelationName);
                             // agragar la key como atributo.
                             if (Primitives.PRIMITIVE_MAP.get(imk.getClass()) != null) {
@@ -702,7 +702,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
         // Aplicar los controles de seguridad.
         if ((this.sm.getLoggedInUser() != null) && (proxy instanceof SObject)) {
-            LOGGER.log(Level.FINER, "SObject detectado. Aplicando seguridad de acuerdo al usuario logueado: {0}", this.sm.getLoggedInUser().getName());
+            LOGGER.log(Level.FINER, () -> "SObject detectado. Aplicando seguridad de acuerdo al usuario logueado: " + this.sm.getLoggedInUser().getName());
             ((SObject) proxy).validate(getLoggedInUserInCurrentTransaction());
         }
         closeInternalTx();
@@ -866,7 +866,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                     boolean acc = f.isAccessible();
                     f.setAccessible(true);
 
-                    LOGGER.log(Level.FINER, "procesando campo: " + field);
+                    LOGGER.log(Level.FINER, () -> "procesando campo: " + field);
 
 //                    Collection oCol = (Collection) f.get(((IObjectProxy) toRemove).___getBaseObject());
                     Object oCol = f.get(toRemove);
@@ -947,7 +947,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             // invalidar el objeto
             ((IObjectProxy) toRemove).___setDeletedMark();
             
-            LOGGER.log(Level.FINER, "rid: "+ridToRemove+" removed succefully");
+            LOGGER.log(Level.FINER, () -> "rid: "+ridToRemove+" removed succefully");
         } else {
             throw new UnknownObject(this);
         }
@@ -1197,7 +1197,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     public void addToTransactionCache(String rid, Object o) {
         getTransactionCount++;
         if (this.transactionLoopCache.get(rid) == null) {
-            LOGGER.log(Level.FINER, "Forzando el agregado al TransactionLoopCache de " + rid + "  hc:" + System.identityHashCode(o));
+            LOGGER.log(Level.FINER, () -> "Forzando el agregado al TransactionLoopCache de " + rid + "  hc:" + System.identityHashCode(o));
             this.transactionLoopCache.put(rid, o);
         }
     }
@@ -1596,11 +1596,11 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         ArrayList<T> ret = new ArrayList<>();
 
         OResultSet vertices = this.orientdbTransact.query("select from ?",ClassCache.getEntityName(clazz));
-        LOGGER.log(Level.FINER, "Enlapsed ODB response: " + (System.currentTimeMillis() - init));
+        LOGGER.log(Level.FINER, () -> "Enlapsed ODB response: " + (System.currentTimeMillis() - init));
         vertices.stream().forEach(vertexOfClass->{
             ret.add(this.get(clazz, vertexOfClass.getIdentity().get().toString()));
         }); 
-        LOGGER.log(Level.FINER, "Enlapsed time query to List: " + (System.currentTimeMillis() - init));
+        LOGGER.log(Level.FINER, () -> "Enlapsed time query to List: " + (System.currentTimeMillis() - init));
         vertices.close();
         closeInternalTx();
         return ret;
@@ -1772,11 +1772,11 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     public void activateOnCurrentThread() {
         if (!orientdbTransact.isActiveOnCurrentThread()) {
-            LOGGER.log(Level.FINEST, "Activando en el Thread actual...");
-            LOGGER.log(Level.FINEST, "current thread: {0}", Thread.currentThread().getName());
+            LOGGER.log(Level.FINEST, () -> "Activando en el Thread actual...");
+            LOGGER.log(Level.FINEST, () -> "current thread: " + Thread.currentThread().getName());
             orientdbTransact.activateOnCurrentThread();
         } else {
-            LOGGER.log(Level.FINEST, "base activada previamente en el Thread actual");
+            LOGGER.log(Level.FINEST, () -> "base activada previamente en el Thread actual");
         }
     }
 

@@ -120,7 +120,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
         }
         this.lazyLoading = false;
         this.transaction.closeInternalTx();
-        LOGGER.log(Level.FINEST, "final size: {0} ",super.size());
+        LOGGER.log(Level.FINEST, () -> "final size: " + super.size());
     }
     
     @Override
@@ -567,7 +567,7 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
                 new Object[]{this.keyClass, edge.getIdentity().toString()});
         if (Primitives.PRIMITIVE_MAP.containsKey(this.keyClass)) {
             k = edge.getProperty("key");
-            LOGGER.log(Level.INFO, "primitive edge key: {0}",k);
+            LOGGER.log(Level.INFO, "primitive edge key: {0}", k);
         } else {
             //if keyClass is not a native type, we must hydrate an object
             LOGGER.log(Level.FINER, "clase como key");

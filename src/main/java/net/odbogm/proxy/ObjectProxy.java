@@ -760,10 +760,10 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
         if (!this.___dirty) {
             this.___dirty = true;
             // agregarlo a la lista de dirty para procesarlo luego
-            LOGGER.log(Level.FINER, "Dirty: " + this.___proxiedObject);
+            LOGGER.log(Level.FINER, () -> "Dirty: " + this.___proxiedObject);
             this.___transaction.setAsDirty(this.___proxiedObject);
             LOGGER.log(Level.FINER, "Objeto marcado como dirty! <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<");
-            LOGGER.log(Level.FINEST, ThreadHelper.getCurrentStackTrace());
+            LOGGER.log(Level.FINEST, () -> ThreadHelper.getCurrentStackTrace());
         }
     }
 
@@ -783,17 +783,17 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
     @Override
     public synchronized void ___commit() {
-        LOGGER.log(Level.FINER, "Iniciando ___commit() ....");
-        LOGGER.log(Level.FINER, "valid: {0}", this.___isValidObject);
-        LOGGER.log(Level.FINER, "dirty: {0}", this.___dirty);
-        LOGGER.log(Level.FINER, "new: {0}", this.___baseElement.getIdentity().isNew());
-        LOGGER.log(Level.FINER, "rid: {0}", this.___baseElement.getIdentity());
-        LOGGER.log(Level.FINER, "database: {0}", this.___baseElement.getDatabase());
+        LOGGER.log(Level.FINER, () -> "Iniciando ___commit() ....");
+        LOGGER.log(Level.FINER, () -> "valid: " + this.___isValidObject);
+        LOGGER.log(Level.FINER, () -> "dirty: " + this.___dirty);
+        LOGGER.log(Level.FINER, () -> "new: " + this.___baseElement.getIdentity().isNew());
+        LOGGER.log(Level.FINER, () -> "rid: " + this.___baseElement.getIdentity());
+        LOGGER.log(Level.FINER, () -> "database: " + this.___baseElement.getDatabase());
 
         
         if (this.___dirty || this.___baseElement.getIdentity().isNew()) {
             this.___transaction.initInternalTx();
-            LOGGER.log(Level.FINER, "database after open: {0}", this.___baseElement.getDatabase());
+            LOGGER.log(Level.FINER, () -> "database after open: " + this.___baseElement.getDatabase());
             
             if (!this.___baseElement.getIdentity().isNew()) {
                 //FIXME: workaround para la grabación inconsistente de los edges en los vertex.
@@ -891,7 +891,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                     while (toRemove.hasNext()) {
                                         OEdge removeEdge = toRemove.next();
                                         //removeEdge = (OEdge) edge;
-                                        LOGGER.log(Level.FINER, "Eliminar relación previa a " + removeEdge.getTo());
+                                        LOGGER.log(Level.FINER, () -> "Eliminar relación previa a " + removeEdge.getTo());
 
                                         if (this.___transaction.isAuditing()) {
                                             this.___transaction.auditLog(this, AuditType.WRITE, "REMOVE LINK: " + graphRelationName, removeEdge);
@@ -901,7 +901,8 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                         
                                     }
                                 }
-                                LOGGER.log(Level.FINEST, "vertex out({0}: {1}",new Object[]{graphRelationName,ov.getEdges(ODirection.OUT, graphRelationName)});
+                                LOGGER.log(Level.FINEST, () -> String.format("vertex out(%s: %s)",
+                                        graphRelationName, ov.getEdges(ODirection.OUT, graphRelationName)));
                                 
                                 
                                 LOGGER.log(Level.FINER, "Agregar un link entre dos objetos existentes.");
@@ -922,7 +923,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                 while (ov.getEdges(ODirection.OUT, graphRelationName).iterator().hasNext()) {
                                     OEdge removeEdge = ov.getEdges(ODirection.OUT, graphRelationName).iterator().next();
                                     
-                                    LOGGER.log(Level.FINER, "Eliminar relación previa a " + removeEdge.getTo());
+                                    LOGGER.log(Level.FINER, () -> "Eliminar relación previa a " + removeEdge.getTo());
                                     if (this.___transaction.isAuditing()) {
                                         this.___transaction.auditLog(this, AuditType.WRITE, "REMOVE LINK: " + graphRelationName, removeEdge);
                                     }
@@ -1093,7 +1094,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                                     Object key = entry1.getKey();
                                     ObjectCollectionState keyState = entry1.getValue();
 
-                                    LOGGER.log(Level.FINER, "imk: {0} state: {1}", new Object[]{key, keyState});
+                                    LOGGER.log(Level.FINER, () -> String.format("imk: %s state: %s", key, keyState));
                                     // para cada entrada, verificar la existencia del objeto y crear un Edge.
                                     Object linkedO = mapFieldValue.get(key);
 
@@ -1289,7 +1290,7 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
     @Override
     public synchronized void ___rollback() {
         LOGGER.log(Level.FINER, "\n\n******************* ROLLBACK *******************\n\n");
-        LOGGER.log(Level.FINER, ThreadHelper.getCurrentStackTrace());
+        LOGGER.log(Level.FINER, () -> ThreadHelper.getCurrentStackTrace());
 
         this.___transaction.initInternalTx();
 

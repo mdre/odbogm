@@ -201,12 +201,11 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
         if (this.direction == ODirection.OUT) {
             LOGGER.log(Level.FINER, "Colección marcada como Dirty. Avisar al padre.");
             this.dirty = true;
-            LOGGER.log(Level.FINER, "weak:" + this.parent.get());
+            LOGGER.log(Level.FINER, () -> "weak:" + this.parent.get());
             // si el padre no está marcado como garbage, notificarle el cambio de la colección.
             if (this.parent.get() != null) {
                 this.parent.get().___setDirty();
-
-                LOGGER.log(Level.FINER, ThreadHelper.getCurrentStackTrace());
+                LOGGER.log(Level.FINER, () -> ThreadHelper.getCurrentStackTrace());
             }
         }
     }
@@ -465,7 +464,7 @@ public class ArrayListLazyProxy extends ArrayList implements ILazyCollectionCall
             this.lazyLoad();
         }
         if (!this.lazyLoading) {
-            LOGGER.log(Level.FINER, "DIRTY: Elemento nuevo agregado: " + e.toString());
+            LOGGER.log(Level.FINER, () -> "DIRTY: Elemento nuevo agregado: " + e.toString());
             this.setDirty();
         }
         return super.add(e);
