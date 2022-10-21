@@ -14,7 +14,9 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import net.odbogm.agent.ITransparentDirtyDetector;
 import net.odbogm.annotations.Entity;
@@ -3750,6 +3752,53 @@ public class SessionManagerTest {
         assertNull(((IObjectProxy)v).___getAuditLogLabel());
         //real object method must throw:
         assertThrows(ObjectMarkedAsDeleted.class, v::getS);
+    }
+
+//    @Test
+//    public void deleteReferenced() throws Exception {
+//        SimpleVertexEx aux = sm.store(new SimpleVertexEx());
+//        SimpleVertexEx sv1 = sm.store(new SimpleVertexEx());
+//        SimpleVertexEx sv2 = sm.store(new SimpleVertexEx());
+//        sv1.setLooptest(aux);
+//        sv2.setLooptest(aux);
+//        sm.commit();
+//        //aux is deleted and two indirects are deleted too, should work fine
+//        sm.delete(aux);
+//        sm.delete(sv1);
+//        sm.delete(sv2);
+//        sm.commit();
+//    }
+
+    @Test
+    public void cascadeDeleteRepeated() throws Exception {
+        SimpleVertexEx sv = sm.store(new SimpleVertexEx());
+        SimpleVertex aux = new SimpleVertex();
+        sv.alSV = new ArrayList<>();
+        sv.alSV.add(aux);
+        sv.alSV.add(aux);
+        sm.commit();
+        //cascade delete of collection with duplicated item must work
+        sm.delete(sv);
+        sm.commit();
+    }
+
+    @Test
+    public void cascadeDelete() throws Exception {
+        SimpleVertexEx sv = sm.store(new SimpleVertexEx());
+        //cascade delete collections:
+        sv.initArrayList();
+        sv.initHashMap();
+        sm.commit();
+        
+        Set<String> rids = new HashSet<>();
+        rids.add(sm.getRID(sv));
+        sv.getAlSV().forEach(v -> rids.add(sm.getRID(v)));
+        sv.getHmSV().values().forEach(v -> rids.add(sm.getRID(v)));
+        
+        sm.delete(sv);
+        sm.commit();
+        var res = sm.query("select from " + rids.toString());
+        assertFalse(res.hasNext());
     }
     
 }

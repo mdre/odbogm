@@ -17,6 +17,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -332,12 +333,13 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             }
             
             // process all objects to be deleted:
+            IdentityHashMap alreadyRemoved = new IdentityHashMap<>();
             for (Map.Entry<String, Object> e : dirtyDeleted.entrySet()) {
                 String rid = e.getKey();
                 IObjectProxy o = (IObjectProxy) e.getValue();
                 if (o.___isDeleted() && o.___isValid()) {
                     LOGGER.log(Level.FINER, "Commiting delete: {0}", rid);
-                    this.internalDelete(e.getValue());
+                    this.internalDelete(e.getValue(), alreadyRemoved);
                 }
             }
             
@@ -791,17 +793,17 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                     String field = entry.getKey();
 
                     f = classDef.fieldsObject.get(field);
-                    f.setAccessible(true);
-
                     LOGGER.log(Level.FINER, "procesando campo: {0}", field);
 
                     // si hay una colección y corresponde hacer la cascada.
                     if (f.isAnnotationPresent(CascadeDelete.class) || f.isAnnotationPresent(RemoveOrphan.class)) {
                         LOGGER.log(Level.FINER, "CascadeDelete|RemoveOrphan presente. Activando el objeto...");
                         // activar el campo.
-                        Collection oCol = (Collection) f.get(toRemove);
-                        if (oCol != null) {
-                            String garbage = oCol.toString();
+                        Object val = f.get(toRemove);
+                        if (val instanceof Collection) {
+                            ((Collection)val).isEmpty();
+                        } else if (val instanceof Map) {
+                            ((Map)val).isEmpty();
                         }
                     }
                 } catch (IllegalArgumentException | IllegalAccessException ex) {
@@ -965,11 +967,15 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * @throws ReferentialIntegrityViolation
      * @throws UnknownObject 
      */
-    private void internalDelete(Object toRemove) throws ReferentialIntegrityViolation, UnknownObject {
+    private void internalDelete(Object toRemove, IdentityHashMap alreadyRemoved) throws ReferentialIntegrityViolation, UnknownObject {
+//        if (alreadyRemoved.contains(toRemove)) return;
+        if (alreadyRemoved.containsKey(toRemove)) return;
+        
+        alreadyRemoved.put(toRemove, null);
         initInternalTx();
         
         LOGGER.log(Level.FINER, "Remove: {0}", toRemove.getClass().getName());
-
+        
         // si no hereda de IObjectProxy, el objeto no pertenece a la base y no se debe hacer nada.
         if (toRemove instanceof IObjectProxy) {
             // verificar que la integridad referencial no se viole.
@@ -1008,9 +1014,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             ovToRemove.delete();
             //LOGGER.log(Level.FINEST, "post-remove:  --(in: " + ovToRemove.countEdges(Direction.IN) + ")-->( "+logRidToRemove+" )--(out: "+ ovToRemove.countEdges(Direction.OUT)+"  )---->   ");            
 
-            //Lista de vértices a remover
-            List<OVertex> vertexToRemove = new ArrayList<>();
-
             // procesar los links
             LOGGER.log(Level.FINEST, "procesar los links de {0}...",logRidToRemove);
             for (Map.Entry<String, Class<?>> entry : classDef.links.entrySet()) {
@@ -1028,14 +1031,14 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                         LOGGER.log(Level.FINEST, "links: cascade delete detected");
                         Object value = f.get(toRemove);
                         if (value != null) {
-                            this.internalDelete(value);
+                            this.internalDelete(value, alreadyRemoved);
                         }
                     } else if (f.isAnnotationPresent(RemoveOrphan.class)) {
                         // si se apunta a un objeto, removerlo
                         Object value = f.get(toRemove);
                         if (value != null) {
                             try {
-                                this.internalDelete(value);
+                                this.internalDelete(value, alreadyRemoved);
                             } catch (ReferentialIntegrityViolation riv) {
                                 LOGGER.log(Level.FINER, "RemoveOrphan: El objeto aún tiene vínculos.");
                                 closeInternalTx();
@@ -1079,14 +1082,14 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                                 LOGGER.log(Level.FINEST, "-----> invocar a InternaDelete desde {0}",logRidToRemove);
                                 OVertex ovSendToRemove = ((IObjectProxy) object).___getVertex();
                                 //LOGGER.log(Level.FINEST, "-----> {0} in: {1}", new Object[]{ovSendToRemove.getIdentity().toString(), ovSendToRemove.countEdges(Direction.IN)});
-                                this.internalDelete(object);
+                                this.internalDelete(object, alreadyRemoved);
                                 LOGGER.log(Level.FINEST, "<----- volviendo a InternaDelete de {0}",logRidToRemove);
                             }
 
                         } else if (oCol instanceof Map) {
                             HashMap oMapCol = (HashMap) oCol;
                             oMapCol.forEach((k, v) -> {
-                                this.internalDelete(v);
+                                this.internalDelete(v, alreadyRemoved);
                             });
 
                         } else {
@@ -1102,7 +1105,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                             List oListCol = (List) oCol;
                             for (Object object : oListCol) {
                                 try {
-                                    this.internalDelete(object);
+                                    this.internalDelete(object, alreadyRemoved);
                                 } catch (ReferentialIntegrityViolation riv) {
                                     LOGGER.log(Level.FINER, "RemoveOrphan: El objeto aún tiene vínculos.");
                                     closeInternalTx();
@@ -1115,7 +1118,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                             HashMap oMapCol = (HashMap) oCol;
                             oMapCol.forEach((k, v) -> {
                                 try {
-                                    this.internalDelete(v);
+                                    this.internalDelete(v, alreadyRemoved);
                                 } catch (ReferentialIntegrityViolation riv) {
                                     LOGGER.log(Level.FINER, "RemoveOrphan: El objeto aún tiene vínculos.");
                                     closeInternalTx();
