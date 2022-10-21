@@ -146,22 +146,6 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             this.___loadLazyLinks = false;
         }
         
-        //if object was deleted:
-        if (this.___deletedMark) {
-            switch (method.getName()) {
-                case "equals":
-                case "hashCode":
-                    if (!this.___transaction.getSessionManager().getConfig().
-                            isEqualsAndHashCodeOnDeletedThrowsException()) {
-                        return methodProxy.invokeSuper(o, args);
-                    }
-                default:
-                    throw new ObjectMarkedAsDeleted("The object " + this.___baseElement.getIdentity().toString() + 
-                            " was deleted from the database. Trying to call to " + method.getName(),
-                            this.___transaction);
-            }
-        }
-        
         // modificar el llamado
         switch (method.getName()) {
             case "___uptadeVersion":
@@ -266,7 +250,23 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
 
             default:
                 // invoke the method on the real object with the given params:
-
+                
+                //if object was deleted:
+                if (this.___deletedMark) {
+                    switch (method.getName()) {
+                        case "equals":
+                        case "hashCode":
+                            if (!this.___transaction.getSessionManager().getConfig().
+                                    isEqualsAndHashCodeOnDeletedThrowsException()) {
+                                return methodProxy.invokeSuper(o, args);
+                            }
+                        default:
+                            throw new ObjectMarkedAsDeleted("The object " + this.___baseElement.getIdentity().toString() + 
+                                    " was deleted from the database. Trying to call to " + method.getName(),
+                                    this.___transaction);
+                    }
+                }
+                
                 if (method.getName().equals("toString")) {
                     try {
                         //if object doesn't have toString defined, we implement one on the fly

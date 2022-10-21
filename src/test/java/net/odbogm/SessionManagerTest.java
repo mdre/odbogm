@@ -3736,4 +3736,20 @@ public class SessionManagerTest {
         assertEquals(4, v.getLsve().size());
     }
     
+    /*
+     * Tests that internal ogm proxy methods on deleted objects do not throw
+     * exceptions.
+     */
+    @Test
+    public void ogmMethodOnDeleted() throws Exception {
+        SimpleVertex v = sm.store(new SimpleVertex());
+        sm.commit();
+        sm.delete(v);
+        assertTrue(((IObjectProxy)v).___isDeleted());
+        assertFalse(((IObjectProxy)v).___isDirty());
+        assertNull(((IObjectProxy)v).___getAuditLogLabel());
+        //real object method must throw:
+        assertThrows(ObjectMarkedAsDeleted.class, v::getS);
+    }
+    
 }
