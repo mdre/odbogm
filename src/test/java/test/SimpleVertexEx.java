@@ -17,6 +17,7 @@ import net.odbogm.annotations.RemoveOrphan;
 import net.odbogm.annotations.DontLoadLinks;
 import net.odbogm.annotations.Eager;
 import net.odbogm.annotations.Indirect;
+import net.odbogm.annotations.Link;
 
 /**
  *
@@ -40,6 +41,9 @@ public class SimpleVertexEx extends SimpleVertex {
 
     @RemoveOrphan
     public SimpleVertex svinner; 
+    
+    @Link
+    public SimpleVertex linked;
     
     public List<String> lString;
     
@@ -246,6 +250,14 @@ public class SimpleVertexEx extends SimpleVertex {
 
     public void setUuid(String uuid) {
         this.svuuid = uuid;
+    }
+
+    public SimpleVertex getLinked() {
+        return linked;
+    }
+
+    public void setLinked(SimpleVertex linked) {
+        this.linked = linked;
     }
 
     @Override

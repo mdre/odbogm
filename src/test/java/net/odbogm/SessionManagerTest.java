@@ -3754,7 +3754,7 @@ public class SessionManagerTest {
         assertThrows(ObjectMarkedAsDeleted.class, v::getS);
     }
 
-//    @Test
+//    @Test //fix must be implemented
 //    public void deleteReferenced() throws Exception {
 //        SimpleVertexEx aux = sm.store(new SimpleVertexEx());
 //        SimpleVertexEx sv1 = sm.store(new SimpleVertexEx());
@@ -3800,5 +3800,31 @@ public class SessionManagerTest {
         var res = sm.query("select from " + rids.toString());
         assertFalse(res.hasNext());
     }
-    
+
+    @Test
+    public void linked() throws Exception {
+        sm.setAuditOnUser("test");
+        SimpleVertexEx sv = sm.store(new SimpleVertexEx());
+        sv.setLinked(new SimpleVertex());
+        sv.getLinked().setS("embedded link");
+        sv = commitClearAndGet(sv);
+        SimpleVertex linked = sv.getLinked();
+        assertNotNull(linked);
+        assertEquals("embedded link", linked.getS());
+        //null value:
+        sv.setLinked(null);
+        sv = commitClearAndGet(sv);
+        assertNull(sv.getLinked());
+    }
+
+    @Test
+    public void linked2() throws Exception {
+        SimpleVertexEx sv = new SimpleVertexEx();
+        sv.setLinked(new SimpleVertex());
+        sv = sm.store(sv);
+        assertTrue(sv.getLinked() instanceof IObjectProxy);
+        sv = commitClearAndGet(sv);
+        assertNotNull(sv.getLinked());
+    }
+
 }

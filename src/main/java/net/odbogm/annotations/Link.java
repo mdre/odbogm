@@ -1,9 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
 package net.odbogm.annotations;
 
 import java.lang.annotation.ElementType;
@@ -12,12 +6,14 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Establece una vinculación entre dos objetos
+ * Relation to another object embedded in vertex (attribute of type LINK).
+ * 
+ * For now, @RemoveOrphan or @CascadeDelete can't be used with this.
+ * 
  * @author Marcelo D. Ré {@literal <marcelo.re@gmail.com>}
  */
-
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.FIELD})
 public @interface Link {
-    String name() default "";
+
 }

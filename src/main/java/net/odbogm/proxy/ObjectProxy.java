@@ -28,6 +28,7 @@ import net.odbogm.annotations.Audit.AuditType;
 import net.odbogm.annotations.DontLoadLinks;
 import net.odbogm.annotations.Eager;
 import net.odbogm.annotations.Indirect;
+import net.odbogm.annotations.Link;
 import net.odbogm.annotations.RemoveOrphan;
 import net.odbogm.cache.ClassDef;
 import net.odbogm.exceptions.CollectionNotSupported;
@@ -561,61 +562,77 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                     continue; //only eager, discard field. Go to next
                 }
                 
-                String graphRelationName;
-                ODirection direction;
+                Object innerO = null;
                 
-                if (indirect) {
-                    //the name configured in annotation must be used
-                    Indirect in = fLink.getAnnotation(Indirect.class);
-                    graphRelationName = in.linkName();
-                    direction = ODirection.IN;
-                    LOGGER.log(Level.FINER, "Se ha detectado un indirect. Linkname = {0}", new Object[]{in.linkName()});
-                } else {
-                    graphRelationName = classdef.entityName + "_" + field;
-                    direction = ODirection.OUT;
-                }
-                LOGGER.log(Level.FINER, "Field: {0}.{1}   Class: {2}  RelationName: {3}",
-                        new String[]{this.___baseClass.getSimpleName(), field,
-                            fc.getSimpleName(), graphRelationName});
-                
-                boolean duplicatedLinkGuard = false;
-                /* (sometimes when getting the associated object 'innerO' if it lazy loads 
-                 * then the db can be deactivated from current thread... we ensure is active) */
-                this.___transaction.activateOnCurrentThread();
-                // retrieve vertex from database 
-                for (OVertex vertice : ov.getVertices(direction, graphRelationName)) {
-                    LOGGER.log(Level.FINER, "hydrate innerO: {0}", vertice.getIdentity());
-
-                    if (!duplicatedLinkGuard) {
-                        /*
-                         * FIXME: esto genera una dependencia cruzada.
-                         * Habría que revisar
-                         * como solucionarlo. Esta llamada se hace para
-                         * que quede el objeto
-                         * mapeado
-                         */
-                        this.___transaction.addToTransactionCache(this.___getRid(), ___proxiedObject);
-
-                        // si es una interface llamar a get solo con el RID.
-                        Object innerO = fc.isInterface() ? this.___transaction.get(vertice.getIdentity().toString()) :
-                                this.___transaction.get(fc, vertice.getIdentity().toString());
-                        
-                        LOGGER.log(Level.FINER, "Inner object {0}: {1}  FC: {2}   innerO.class: {3} hashCode: {4}", new Object[]{
-                            field, vertice, fc.getSimpleName(), innerO.getClass().getSimpleName(), System.identityHashCode(innerO)});
-                        fLink.set(this.___proxiedObject, fc.cast(innerO));
-                        duplicatedLinkGuard = true;
-
-                        // replicate the AuditLogLabel to inner objects
-                        if (this.___auditLogLabel != null && innerO instanceof IObjectProxy) {
-                            ((IObjectProxy)innerO).___setAuditLogLabel(this.___auditLogLabel);
-                        }
-                        
-                        ___transaction.decreseTransactionCache();
-                    } else if (false) {
-                        throw new DuplicateLink(this.___transaction);
+                if (fLink.isAnnotationPresent(Link.class)) {
+                    //this.___transaction.addToTransactionCache(this.___getRid(), ___proxiedObject);
+                    OVertex linked = ov.getProperty(field);
+                    if (linked != null) {
+                        innerO = fc.isInterface() ? this.___transaction.get(linked.getIdentity().toString()) :
+                                    this.___transaction.get(fc, linked.getIdentity().toString());
                     }
-                    LOGGER.log(Level.FINER, "FIN hydrate innerO: {0}^^^^^^^^^^^^^^^^^^^^^^^^^^^^^", vertice.getIdentity());
+                    
+                } else {
+                
+                    String graphRelationName;
+                    ODirection direction;
+
+                    if (indirect) {
+                        //the name configured in annotation must be used
+                        Indirect in = fLink.getAnnotation(Indirect.class);
+                        graphRelationName = in.linkName();
+                        direction = ODirection.IN;
+                        LOGGER.log(Level.FINER, "Se ha detectado un indirect. Linkname = {0}", new Object[]{in.linkName()});
+                    } else {
+                        graphRelationName = classdef.entityName + "_" + field;
+                        direction = ODirection.OUT;
+                    }
+                    LOGGER.log(Level.FINER, "Field: {0}.{1}   Class: {2}  RelationName: {3}",
+                            new String[]{this.___baseClass.getSimpleName(), field,
+                                fc.getSimpleName(), graphRelationName});
+
+                    boolean duplicatedLinkGuard = false;
+                    /* (sometimes when getting the associated object 'innerO' if it lazy loads 
+                     * then the db can be deactivated from current thread... we ensure is active) */
+                    this.___transaction.activateOnCurrentThread();
+                    // retrieve vertex from database 
+                    for (OVertex vertice : ov.getVertices(direction, graphRelationName)) {
+                        LOGGER.log(Level.FINER, "hydrate innerO: {0}", vertice.getIdentity());
+
+                        if (!duplicatedLinkGuard) {
+                            /*
+                             * FIXME: esto genera una dependencia cruzada.
+                             * Habría que revisar
+                             * como solucionarlo. Esta llamada se hace para
+                             * que quede el objeto
+                             * mapeado
+                             */
+                            this.___transaction.addToTransactionCache(this.___getRid(), ___proxiedObject);
+
+                            // si es una interface llamar a get solo con el RID.
+                            innerO = fc.isInterface() ? this.___transaction.get(vertice.getIdentity().toString()) :
+                                    this.___transaction.get(fc, vertice.getIdentity().toString());
+
+                            LOGGER.log(Level.FINER, "Inner object {0}: {1}  FC: {2}   innerO.class: {3} hashCode: {4}", new Object[]{
+                                field, vertice, fc.getSimpleName(), innerO.getClass().getSimpleName(), System.identityHashCode(innerO)});
+                            
+                            duplicatedLinkGuard = true;
+                            ___transaction.decreseTransactionCache();
+                        } else if (false) {
+                            throw new DuplicateLink(this.___transaction);
+                        }
+                        LOGGER.log(Level.FINER, "FIN hydrate innerO: {0}^^^^^^^^^^^^^^^^^^^^^^^^^^^^^", vertice.getIdentity());
+                    }
                 }
+                
+                if (innerO != null) {
+                    fLink.set(this.___proxiedObject, fc.cast(innerO));
+                    // replicate the AuditLogLabel to inner objects
+                    if (this.___auditLogLabel != null && innerO instanceof IObjectProxy) {
+                        ((IObjectProxy)innerO).___setAuditLogLabel(this.___auditLogLabel);
+                    }
+                }
+                
             } catch (SecurityException | IllegalArgumentException | IllegalAccessException ex) {
                 Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
             }
@@ -850,101 +867,130 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                  */
                 for (Map.Entry<String, Class<?>> link : cDef.links.entrySet()) {
                     String field = link.getKey();
-                    String graphRelationName = cDef.entityName + "_" + field;
-                    // determinar el estado del campo
-                    if (oStruct.links.get(field) == null) {
-                        // si está en null, es posible que se haya eliminado el objeto
-                        // por lo cual se debería eliminar el vértice correspondiente
-                        // si es que existe
-                        if (ov.getEdges(ODirection.OUT, graphRelationName).iterator().hasNext()) {
-                            // se ha eliminado el objeto y debe ser removido el Vértice o el Edge correspondiente
-                            LOGGER.log(Level.FINEST, "se ha eliminado el objeto y debe ser removido el Vértice o el Edge correspondiente");
-                            OEdge removeEdge = null;
-                            for (OEdge edge : ov.getEdges(ODirection.OUT, graphRelationName)) {
-                                removeEdge = (OEdge) edge;
-                                if (this.___transaction.isAuditing()) {
-                                    this.___transaction.auditLog(this, AuditType.WRITE, "REMOVE LINK: " + graphRelationName, removeEdge);
+                    Object innerO = oStruct.links.get(field);
+                    
+                    if (cDef.fieldsObject.get(field).isAnnotationPresent(Link.class)) {
+                        
+                        //embedded link:
+                        
+                        if (innerO == null) {
+                            if (this.___transaction.isAuditing()) {
+                                //audit link removal if it existed before
+                                OVertex prev = this.___baseElement.getProperty(field);
+                                if (prev != null) {
+                                    this.___transaction.auditLog(this, AuditType.WRITE, "REMOVE EMBEDDED LINK", prev);
                                 }
-                                this.removeEdge(removeEdge, field);
+                            }
+                            this.___baseElement.removeProperty(field);
+                        } else {
+                            if (!(innerO instanceof IObjectProxy)) {
+                                innerO = this.___transaction.store(innerO);
+                                this.___transaction.getObjectMapper().setFieldValue(this.___proxiedObject, field, innerO);
+                            }
+                            OVertex linked = ((IObjectProxy)innerO).___getVertex();
+                            ov.setProperty(field, linked);
+                            if (this.___transaction.isAuditing()) {
+                                this.___transaction.auditLog(this, AuditType.WRITE, "ADD EMBEDDED LINK", linked);
                             }
                         }
                     } else {
-                        Object innerO = oStruct.links.get(field);
-                        // verificar si ya está en el contexto. Si fue creado en forma 
-                        // separada y asociado con el objeto principal, se puede dar el caso
-                        // de que el objeto principal tiene RID y el agregado no.
-                        if (innerO instanceof IObjectProxy) {
-                            LOGGER.log(Level.FINEST, "Se encontró una relación a un objeto ADMINISTRADO");
-                            // el objeto existía.
-                            // se debe verificar si el eje entre los dos objetos ya existía.
-                            if (!VertexUtils.isConectedTo(ov, ((IObjectProxy) innerO).___getVertex(), graphRelationName)) {
-                                // No existe un eje. Se debe crear
-                                LOGGER.log(Level.FINER, "Los objetos no están conectados. ({0} |--|{1}",
-                                        new Object[]{ov.getIdentity(), ((IObjectProxy) innerO).___getVertex().getIdentity()});
-
-                                // primero verificar si no existía una relación previa con otro objeto para removerla.
-                                Iterator<OEdge> toRemove = ov.getEdges(ODirection.OUT, graphRelationName).iterator();
-                                if (toRemove.hasNext()) {
-                                    LOGGER.log(Level.FINER, "Existía una relación previa. Se debe eliminar.");
-                                    // existé una relación. Elimnarla antes de proceder a establecer la nueva.
-                                    //OEdge removeEdge = null;
-                                    while (toRemove.hasNext()) {
-                                        OEdge removeEdge = toRemove.next();
-                                        //removeEdge = (OEdge) edge;
-                                        LOGGER.log(Level.FINER, () -> "Eliminar relación previa a " + removeEdge.getTo());
-
-                                        if (this.___transaction.isAuditing()) {
-                                            this.___transaction.auditLog(this, AuditType.WRITE, "REMOVE LINK: " + graphRelationName, removeEdge);
-                                        }
-                                        
-                                        this.removeEdge(removeEdge, field);
-                                        
-                                    }
-                                }
-                                LOGGER.log(Level.FINEST, () -> String.format("vertex out(%s: %s)",
-                                        graphRelationName, ov.getEdges(ODirection.OUT, graphRelationName)));
-                                
-                                
-                                LOGGER.log(Level.FINER, "Agregar un link entre dos objetos existentes.");
-                                OEdge oe = ov.addEdge(((IObjectProxy) innerO).___getVertex(), graphRelationName);
-                                
-                                if (this.___transaction.isAuditing()) {
-                                    this.___transaction.auditLog(this, AuditType.WRITE, "ADD LINK: " + graphRelationName, oe);
-                                }
-                            }
-                        } else {
-                            // el objeto es nuevo
-                            LOGGER.log(Level.FINEST, "Se encontró una relación a un objeto NUEVO");
-                            // primero verificar si no existía una relación previa con otro objeto para removerla.
+                        
+                        //edge link:
+                    
+                        String graphRelationName = cDef.entityName + "_" + field;
+                        // determinar el estado del campo
+                        if (innerO == null) {
+                            // si está en null, es posible que se haya eliminado el objeto
+                            // por lo cual se debería eliminar el vértice correspondiente
+                            // si es que existe
                             if (ov.getEdges(ODirection.OUT, graphRelationName).iterator().hasNext()) {
-                                LOGGER.log(Level.FINER, "Existía una relación previa. Se debe eliminar.");
-                                // existé una relación. Elimnarla antes de proceder a establecer la nueva.
-                                //OEdge removeEdge = null;
-                                while (ov.getEdges(ODirection.OUT, graphRelationName).iterator().hasNext()) {
-                                    OEdge removeEdge = ov.getEdges(ODirection.OUT, graphRelationName).iterator().next();
-                                    
-                                    LOGGER.log(Level.FINER, () -> "Eliminar relación previa a " + removeEdge.getTo());
+                                // se ha eliminado el objeto y debe ser removido el Vértice o el Edge correspondiente
+                                LOGGER.log(Level.FINEST, "se ha eliminado el objeto y debe ser removido el Vértice o el Edge correspondiente");
+                                OEdge removeEdge;
+                                for (OEdge edge : ov.getEdges(ODirection.OUT, graphRelationName)) {
+                                    removeEdge = (OEdge) edge;
                                     if (this.___transaction.isAuditing()) {
                                         this.___transaction.auditLog(this, AuditType.WRITE, "REMOVE LINK: " + graphRelationName, removeEdge);
                                     }
                                     this.removeEdge(removeEdge, field);
                                 }
                             }
+                        } else {
+                            // verificar si ya está en el contexto. Si fue creado en forma 
+                            // separada y asociado con el objeto principal, se puede dar el caso
+                            // de que el objeto principal tiene RID y el agregado no.
+                            if (innerO instanceof IObjectProxy) {
+                                LOGGER.log(Level.FINEST, "Se encontró una relación a un objeto ADMINISTRADO");
+                                // el objeto existía.
+                                // se debe verificar si el eje entre los dos objetos ya existía.
+                                if (!VertexUtils.isConectedTo(ov, ((IObjectProxy) innerO).___getVertex(), graphRelationName)) {
+                                    // No existe un eje. Se debe crear
+                                    LOGGER.log(Level.FINER, "Los objetos no están conectados. ({0} |--|{1}",
+                                            new Object[]{ov.getIdentity(), ((IObjectProxy) innerO).___getVertex().getIdentity()});
 
-                            // crear la nueva relación
-                            LOGGER.log(Level.FINER, "innerO nuevo. Crear un vértice y un link");
-                            innerO = this.___transaction.store(innerO);
-                            this.___transaction.getObjectMapper().setFieldValue(this.___proxiedObject, field, innerO);
+                                    // primero verificar si no existía una relación previa con otro objeto para removerla.
+                                    Iterator<OEdge> toRemove = ov.getEdges(ODirection.OUT, graphRelationName).iterator();
+                                    if (toRemove.hasNext()) {
+                                        LOGGER.log(Level.FINER, "Existía una relación previa. Se debe eliminar.");
+                                        // existé una relación. Elimnarla antes de proceder a establecer la nueva.
+                                        //OEdge removeEdge = null;
+                                        while (toRemove.hasNext()) {
+                                            OEdge removeEdge = toRemove.next();
+                                            //removeEdge = (OEdge) edge;
+                                            LOGGER.log(Level.FINER, () -> "Eliminar relación previa a " + removeEdge.getTo());
 
-                            // si está activa la instrumentación de clases, desmarcar el objeto como dirty
-                            if (innerO instanceof ITransparentDirtyDetector) {
-                                ((ITransparentDirtyDetector) innerO).___ogm___setDirty(false);
-                            }
+                                            if (this.___transaction.isAuditing()) {
+                                                this.___transaction.auditLog(this, AuditType.WRITE, "REMOVE LINK: " + graphRelationName, removeEdge);
+                                            }
 
-                            //OEdge oe = this.___transaction.getCurrentGraphDb().addEdge("class:" + graphRelationName, ov, ((IObjectProxy) innerO).___getVertex(), graphRelationName);
-                            OEdge oe = ov.addEdge(((IObjectProxy) innerO).___getVertex(), graphRelationName);
-                            if (this.___transaction.isAuditing()) {
-                                this.___transaction.auditLog(this, AuditType.WRITE, "ADD LINK: " + graphRelationName, oe);
+                                            this.removeEdge(removeEdge, field);
+
+                                        }
+                                    }
+                                    LOGGER.log(Level.FINEST, () -> String.format("vertex out(%s: %s)",
+                                            graphRelationName, ov.getEdges(ODirection.OUT, graphRelationName)));
+
+
+                                    LOGGER.log(Level.FINER, "Agregar un link entre dos objetos existentes.");
+                                    OEdge oe = ov.addEdge(((IObjectProxy) innerO).___getVertex(), graphRelationName);
+
+                                    if (this.___transaction.isAuditing()) {
+                                        this.___transaction.auditLog(this, AuditType.WRITE, "ADD LINK: " + graphRelationName, oe);
+                                    }
+                                }
+                            } else {
+                                // el objeto es nuevo
+                                LOGGER.log(Level.FINEST, "Se encontró una relación a un objeto NUEVO");
+                                // primero verificar si no existía una relación previa con otro objeto para removerla.
+                                if (ov.getEdges(ODirection.OUT, graphRelationName).iterator().hasNext()) {
+                                    LOGGER.log(Level.FINER, "Existía una relación previa. Se debe eliminar.");
+                                    // existé una relación. Elimnarla antes de proceder a establecer la nueva.
+                                    //OEdge removeEdge = null;
+                                    while (ov.getEdges(ODirection.OUT, graphRelationName).iterator().hasNext()) {
+                                        OEdge removeEdge = ov.getEdges(ODirection.OUT, graphRelationName).iterator().next();
+
+                                        LOGGER.log(Level.FINER, () -> "Eliminar relación previa a " + removeEdge.getTo());
+                                        if (this.___transaction.isAuditing()) {
+                                            this.___transaction.auditLog(this, AuditType.WRITE, "REMOVE LINK: " + graphRelationName, removeEdge);
+                                        }
+                                        this.removeEdge(removeEdge, field);
+                                    }
+                                }
+
+                                // crear la nueva relación
+                                LOGGER.log(Level.FINER, "innerO nuevo. Crear un vértice y un link");
+                                innerO = this.___transaction.store(innerO);
+                                this.___transaction.getObjectMapper().setFieldValue(this.___proxiedObject, field, innerO);
+
+                                // si está activa la instrumentación de clases, desmarcar el objeto como dirty
+                                if (innerO instanceof ITransparentDirtyDetector) {
+                                    ((ITransparentDirtyDetector) innerO).___ogm___setDirty(false);
+                                }
+
+                                OEdge oe = ov.addEdge(((IObjectProxy) innerO).___getVertex(), graphRelationName);
+                                if (this.___transaction.isAuditing()) {
+                                    this.___transaction.auditLog(this, AuditType.WRITE, "ADD LINK: " + graphRelationName, oe);
+                                }
                             }
                         }
                     }

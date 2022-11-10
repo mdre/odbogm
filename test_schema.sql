@@ -505,8 +505,12 @@ let exist = select from (select expand(properties)  from (select expand(classes)
 if ($exist.size()=0) {
     create property SimpleVertexEx.svex STRING;
 }
- 
 alter property SimpleVertexEx.svex mandatory TRUE;
+
+let exist = select from (select expand(properties)  from (select expand(classes)  from metadata:schema)  where name = 'SimpleVertexEx') where name = 'linked';
+if ($exist.size()=0) {
+    create property SimpleVertexEx.linked LINK;
+}
 
 let exist = select from (select expand(classes) from metadata:schema) where name = 'SimpleVertexEx_looptest';
 if ($exist.size()=0) {
