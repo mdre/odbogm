@@ -565,11 +565,10 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                 Object innerO = null;
                 
                 if (fLink.isAnnotationPresent(Link.class)) {
-                    //this.___transaction.addToTransactionCache(this.___getRid(), ___proxiedObject);
                     OVertex linked = ov.getProperty(field);
                     if (linked != null) {
                         innerO = fc.isInterface() ? this.___transaction.get(linked.getIdentity().toString()) :
-                                    this.___transaction.get(fc, linked.getIdentity().toString());
+                                this.___transaction.get(fc, linked.getIdentity().toString());
                     }
                     
                 } else {

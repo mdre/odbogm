@@ -3808,6 +3808,7 @@ public class SessionManagerTest {
         sv.setLinked(new SimpleVertex());
         sv.getLinked().setS("embedded link");
         sv = commitClearAndGet(sv);
+        assertNull(sv.getLinkedDontLoad());
         SimpleVertex linked = sv.getLinked();
         assertNotNull(linked);
         assertEquals("embedded link", linked.getS());
@@ -3825,6 +3826,16 @@ public class SessionManagerTest {
         assertTrue(sv.getLinked() instanceof IObjectProxy);
         sv = commitClearAndGet(sv);
         assertNotNull(sv.getLinked());
+    }
+
+    @Test
+    public void eagerLinked() throws Exception {
+        SimpleVertexEx sv = sm.store(new SimpleVertexEx());
+        sv.setLinked(new SimpleVertex());
+        sv.setLinkedEager(new SimpleVertex());
+        sv = commitClearAndGet(sv);
+        assertNotNull(sv.getLinkedEager());
+        assertNull(sv.getLinkedDontLoad());
     }
 
 }

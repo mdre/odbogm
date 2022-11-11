@@ -45,6 +45,10 @@ public class SimpleVertexEx extends SimpleVertex {
     @Link
     public SimpleVertex linked;
     
+    @Link
+    @Eager
+    public SimpleVertex linkedEager;
+    
     public List<String> lString;
     
     public ArrayList<String> alString;
@@ -256,8 +260,22 @@ public class SimpleVertexEx extends SimpleVertex {
         return linked;
     }
 
+    @DontLoadLinks
+    public SimpleVertex getLinkedDontLoad() {
+        return linked;
+    }
+
     public void setLinked(SimpleVertex linked) {
         this.linked = linked;
+    }
+
+    @DontLoadLinks
+    public SimpleVertex getLinkedEager() {
+        return linkedEager;
+    }
+
+    public void setLinkedEager(SimpleVertex linkedEager) {
+        this.linkedEager = linkedEager;
     }
 
     @Override

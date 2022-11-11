@@ -512,6 +512,11 @@ if ($exist.size()=0) {
     create property SimpleVertexEx.linked LINK;
 }
 
+let exist = select from (select expand(properties)  from (select expand(classes)  from metadata:schema)  where name = 'SimpleVertexEx') where name = 'linkedEager';
+if ($exist.size()=0) {
+    create property SimpleVertexEx.linkedEager LINK;
+}
+
 let exist = select from (select expand(classes) from metadata:schema) where name = 'SimpleVertexEx_looptest';
 if ($exist.size()=0) {
     create class SimpleVertexEx_looptest extends E;
