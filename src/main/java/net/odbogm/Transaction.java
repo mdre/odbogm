@@ -275,6 +275,19 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     }
 
     /**
+     * Reloads vertex from database and updates the object basic attributes in place.
+     * 
+     * @param o 
+     */
+    public void reloadObject(Object o) {
+        wrap(() -> {
+            initInternalTx();
+            ((IObjectProxy)o).___reload2();
+            closeInternalTx();
+        });
+    }
+
+    /**
      * Devuelve un objeto de comunicación con la base.
      *
      * @return retorna la referencia directa al driver del la base.

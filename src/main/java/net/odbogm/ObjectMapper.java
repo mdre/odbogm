@@ -217,7 +217,24 @@ public class ObjectMapper {
             return true;
         }
     }
-    
+
+    /**
+     * Fills the basic attributes of a proxy with the values from a Vertex.
+     * 
+     * @param proxy
+     * @param v
+     * @param t
+     */
+    public void hydrateBasic(IObjectProxy proxy, OVertex v, Transaction t) {
+        ClassDef classdef = classCache.get(proxy.___getBaseClass());
+        for (var entry : classdef.fields.entrySet()) {
+            String prop = entry.getKey();
+            if (!classdef.embeddedFields.containsKey(prop)) {
+                setFieldValue(proxy, prop, v.getProperty(prop));
+            }
+        }
+    }
+
     /**
      * Crea y llena un objeto con los valores correspondintes obtenidos del Vértice asignado.
      *

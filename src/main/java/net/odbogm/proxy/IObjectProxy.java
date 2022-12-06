@@ -37,6 +37,7 @@ public interface IObjectProxy {
     
     public void ___commit();
     public void ___reload();
+    public void ___reload2();
     public void ___rollback();
     public void ___loadLazyLinks();
     public void ___eagerLoad();

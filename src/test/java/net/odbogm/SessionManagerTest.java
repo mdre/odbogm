@@ -3838,4 +3838,19 @@ public class SessionManagerTest {
         assertNull(sv.getLinkedDontLoad());
     }
 
+    @Test
+    public void reloadObject() throws Exception {
+        SimpleVertex sv = sm.store(new SimpleVertex());
+        assertEquals("string", sv.getS());
+        sm.commit();
+        String rid = sm.getRID(sv);
+        int version = sv.getVersion();
+        sm.getDBTx().execute("sql", "update " + rid + " set s = 'reload me'");
+        
+        assertEquals("string", sv.getS());
+        sm.getCurrentTransaction().reloadObject(sv);
+        assertEquals("reload me", sv.getS());
+        assertEquals(version+1, sv.getVersion());
+    }
+
 }

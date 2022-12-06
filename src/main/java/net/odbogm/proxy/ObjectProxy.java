@@ -217,6 +217,11 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                     this.___commitSuccessful();
                 }
                 break;
+            case "___reload2":
+                if (this.___objectReady) {
+                    this.___reload2();
+                }
+                break;
             case "___setDeletedMark":
                 this.___setDeletedMark();
                 break;
@@ -1269,19 +1274,31 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
             }
         }
     }
-    
+
 
     /**
-     * Refresca el objeto base recuperándolo nuevamente desde la base de datos.
+     * Refreshes the associated element from database.
      */
     @Override
     public void ___reload() {
-        this.___transaction.initInternalTx();
-
         this.___baseElement.reload();
         this.___uptadeVersion();
+    }
 
-        this.___transaction.closeInternalTx();
+
+    /**
+     * Refreshes the associated vertex from database and refreshes basic entity attributes.
+     */
+    @Override
+    public void ___reload2() {
+        if (this.___baseElement.isVertex()) {
+            // reload data from vertex
+            this.___baseElement.reload();
+            // re-hydrate entity object
+            objectMapper().hydrateBasic((IObjectProxy)this.___proxiedObject,
+                    (OVertex)this.___baseElement, this.___transaction);
+            ___uptadeVersion();
+        }
     }
 
 
