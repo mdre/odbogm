@@ -29,6 +29,8 @@ import net.odbogm.proxy.ILazyCollectionCalls;
 import net.odbogm.proxy.ILazyMapCalls;
 import net.odbogm.proxy.IObjectProxy;
 import net.odbogm.proxy.ObjectProxyFactory;
+import net.odbogm.proxy.SecurityCredentialsListProxy;
+import net.odbogm.security.UserSID;
 
 /**
  *
@@ -233,6 +235,7 @@ public class ObjectMapper {
                 setFieldValue(proxy, prop, v.getProperty(prop));
             }
         }
+        hydrateSecurityCredentials(classdef, t, proxy);
     }
 
     /**
@@ -253,7 +256,6 @@ public class ObjectMapper {
         
         Class<?> toHydrate = c;
         String entityClass = ClassCache.getEntityName(toHydrate);
-//        String vertexClass = (v.getType().getName().equals("V") ? entityClass : v.getType().getName());
         String vertexClass = (v.getSchemaType().isPresent() & v.getSchemaType().get().getName().equals("V") ? 
                                 entityClass : 
                                 v.getSchemaType().get().getName());
@@ -313,7 +315,8 @@ public class ObjectMapper {
         // process embedded collections
         // ********************************************************************************************
         hydrateEmbeddedCollections(classdef, proxy, v);
-
+        hydrateSecurityCredentials(classdef, t, proxy);
+        
         
         // ********************************************************************************************
         // procesar los enum
@@ -388,7 +391,16 @@ public class ObjectMapper {
             }
         }
     }
-    
+
+    private void hydrateSecurityCredentials(ClassDef classdef, Transaction t, IObjectProxy proxy) {
+        if (classdef.entityName.equals(UserSID.class.getSimpleName()) &&
+                t.getSessionManager().getConfig().isFastLoadSecurityCredentials()) {
+            ILazyCollectionCalls lazyCol = new SecurityCredentialsListProxy();
+            lazyCol.init(t, proxy, "securityCredentials", null, null);
+            setFieldValue(proxy, classdef.fieldsObject.get("securityCredentials"), lazyCol);
+        }
+    }
+
     /**
      * Given a vertex from the base (or edge), hydrate the enums collections of the given
      * proxy accordingly to the values of the vertex.
@@ -521,7 +533,7 @@ public class ObjectMapper {
             
             ClassDef classdef = classCache.get(c);
             Field fLink = classdef.fieldsObject.get(field);
-
+            
             String graphRelationName = classdef.entityName + "_" + field;
             // Determinar la dirección
             ODirection direction = ODirection.OUT;

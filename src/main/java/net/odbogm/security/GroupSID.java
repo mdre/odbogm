@@ -125,7 +125,7 @@ public final class GroupSID implements ISID {
     }
     
     // devuelve las credenciales de todos los grupos a los que fue agregado este grupo.
-    final List<String> getIndirectCredentialsGroups() {
+    public final List<String> getIndirectCredentialsGroups() {
         Set<String> indirect = getIndirectCredentialsGroups(new HashSet<>());
         return new ArrayList<>(indirect);
     }

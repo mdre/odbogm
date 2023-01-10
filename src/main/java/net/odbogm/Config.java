@@ -5,23 +5,26 @@ package net.odbogm;
  * @author jbertinetti
  */
 public class Config {
-    
+
     public static class OdbogmGlobalConfig {
-        
+
         public static boolean EQUALS_AND_HASHCODE_TRIGGER_LOAD_LAZY_LINKS = true;
         public static boolean EQUALS_AND_HASHCODE_ON_DELETED_THROWS_EXCEPTION = true;
         public static boolean AUDITOR_CREATES_AUDIT_SCHEMA = true;
-        
+        public static boolean FASTLOAD_SECURITY_CREDENTIALS = true;
+
     }
-    
-    
+
+
     private boolean equalsAndHashCodeTriggerLoadLazyLinks = OdbogmGlobalConfig.EQUALS_AND_HASHCODE_TRIGGER_LOAD_LAZY_LINKS;
-    
+
     private boolean equalsAndHashCodeOnDeletedThrowsException = OdbogmGlobalConfig.EQUALS_AND_HASHCODE_ON_DELETED_THROWS_EXCEPTION;
 
     private boolean auditorCreatesAuditSchema = OdbogmGlobalConfig.AUDITOR_CREATES_AUDIT_SCHEMA;
 
-    
+    private boolean fastLoadSecurityCredentials = OdbogmGlobalConfig.FASTLOAD_SECURITY_CREDENTIALS;
+
+
     public Config() {
     }
 
@@ -48,5 +51,13 @@ public class Config {
     public void setAuditorCreatesAuditSchema(boolean auditorCreatesAuditSchema) {
         this.auditorCreatesAuditSchema = auditorCreatesAuditSchema;
     }
-    
+
+    public boolean isFastLoadSecurityCredentials() {
+        return fastLoadSecurityCredentials;
+    }
+
+    public void setFastLoadSecurityCredentials(boolean fastLoadSecurityCredentials) {
+        this.fastLoadSecurityCredentials = fastLoadSecurityCredentials;
+    }
+
 }

@@ -2,12 +2,15 @@ package net.odbogm;
 
 import com.orientechnologies.orient.core.db.ODatabaseSession;
 import com.orientechnologies.orient.core.sql.OCommandSQL;
+import java.lang.reflect.Field;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.exceptions.CircularReferenceException;
 import net.odbogm.exceptions.UnknownRID;
 import net.odbogm.proxy.ArrayListLazyProxy;
 import net.odbogm.proxy.IObjectProxy;
+import net.odbogm.proxy.SecurityCredentialsListProxy;
 import net.odbogm.security.AccessRight;
 import net.odbogm.security.GroupSID;
 import net.odbogm.security.SObject;
@@ -16,6 +19,8 @@ import org.apache.commons.lang.RandomStringUtils;
 import org.junit.After;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import org.junit.Before;
@@ -428,5 +433,63 @@ public class SecurityObjectsTest {
         assertFalse(((IObjectProxy)v).___isDirty());
         assertTrue(sm.getCurrentTransaction().getDirty().isEmpty());
     }
-    
+
+    @Test
+    public void showSecurityCredentialsFastLoad() throws Exception {
+        sm.getConfig().setFastLoadSecurityCredentials(true);
+        var sec = showSecurityCredentials();
+        assertNotNull(sec);
+        assertTrue(sec instanceof SecurityCredentialsListProxy);
+    }
+
+    @Test
+    public void showSecurityCredentialsNoFastLoad() throws Exception {
+        sm.getConfig().setFastLoadSecurityCredentials(false);
+        var sec = showSecurityCredentials();
+        assertNull(sec);
+    }
+
+    private Object showSecurityCredentials() throws Exception {
+        try (var db = sm.getDBTx()) {
+            db.execute("sql", "delete vertex GroupSID; delete vertex UserSID;");
+        }
+        UserSID u1 = sm.store(new UserSID("u1", "u1"));
+        GroupSID g1 = sm.store(new GroupSID("g1", "g1"));
+        GroupSID g2 = sm.store(new GroupSID("g2", "g2"));
+        GroupSID g3 = sm.store(new GroupSID("g3", "g3"));
+        GroupSID g4 = sm.store(new GroupSID("g4", "g4"));
+        g1.add(u1);
+        g2.add(g1);
+        g3.add(g2);
+        g4.add(g1);
+        g4.add(g2);
+        assertNotNull(u1.showSecurityCredentials());
+        sm.commit();
+        
+        String rid = sm.getRID(u1);
+        sm.getCurrentTransaction().clearCache();
+        UserSID reloadedU = sm.get(UserSID.class, rid);
+        
+        List<String> sc = reloadedU.showSecurityCredentials();
+        assertEquals(5, sc.size());
+        assertTrue(sc.contains("u1"));
+        assertTrue(sc.contains("g1"));
+        assertTrue(sc.contains("g2"));
+        assertTrue(sc.contains("g3"));
+        assertTrue(sc.contains("g4"));
+        
+        GroupSID g5 = sm.store(new GroupSID("g5", "g5"));
+        g4 = sm.get(GroupSID.class, sm.getRID(g4));
+        g5.add(g4);
+        sm.commit();
+        sm.getCurrentTransaction().reloadObject(reloadedU);
+        sc = reloadedU.showSecurityCredentials();
+        assertEquals(6, sc.size());
+        assertTrue(sc.contains("g5"));
+        
+        Field f = UserSID.class.getDeclaredField("securityCredentials");
+        f.setAccessible(true);
+        return f.get(reloadedU);
+    }
+
 }
