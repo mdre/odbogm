@@ -92,6 +92,7 @@ public final class UserSID implements ISID, ISecurityCredentials {
     @DontLoadLinks
     public List<String> showSecurityCredentials() {
         if (this.securityCredentials != null) {
+            this.securityCredentials.size(); // triggers load
             return Collections.unmodifiableList(this.securityCredentials);
         } else {
             return getSecurityCredentials();

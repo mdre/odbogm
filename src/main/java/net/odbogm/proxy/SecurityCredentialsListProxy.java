@@ -23,6 +23,7 @@ public class SecurityCredentialsListProxy extends ArrayList<String> implements I
     private Transaction transaction;
     private String relation;
     private WeakReference<IObjectProxy> parent;
+    private boolean loaded = false;
 
 
     public SecurityCredentialsListProxy() {
@@ -33,21 +34,31 @@ public class SecurityCredentialsListProxy extends ArrayList<String> implements I
         this.transaction = tx;
         this.relation = field;
         this.parent = new WeakReference<>(parent);
-        refill();
     }
 
-    private void refill() {
-        //load elements eagerly in one shot
-        var theParent = this.parent.get();
-        if (theParent != null) {
-            LOGGER.finest("Filling SecurityCredentialsListProxy...");
-            super.clear();
-            try (var res = this.transaction.getCurrentGraphDb().query(String.format(
-                    "match {rid: %s, as: u}<-GroupSID_participants-{as: g, while: (true)} return distinct g.uuid",
-                    theParent.___getRid()))) {
-                res.stream().map(r -> r.getProperty("g.uuid").toString()).forEach(super::add);
+    private synchronized void refill() {
+        //load elements in one shot
+        if (!this.loaded) {
+            var theParent = this.parent.get();
+            if (theParent != null) {
+                LOGGER.finest("Filling SecurityCredentialsListProxy...");
+                super.clear();
+                this.transaction.initInternalTx();
+                try (var res = this.transaction.getCurrentGraphDb().query(String.format(
+                        "match {rid: %s, as: u}<-GroupSID_participants-{as: g, while: (true)} return distinct g.uuid",
+                        theParent.___getRid()))) {
+                    res.stream().map(r -> r.getProperty("g.uuid").toString()).forEach(super::add);
+                }
+                this.transaction.closeInternalTx();
             }
+            this.loaded = true;
         }
+    }
+
+    @Override
+    public int size() {
+        refill();
+        return super.size();
     }
 
     @Override
