@@ -1,10 +1,12 @@
+// DSL Gradle 7.0
 plugins {
     id 'java-library'
-    id 'maven'
+    id 'maven-publish'
     id 'signing'
-    id 'net.researchgate.release' version '2.6.0'
-    id 'nu.studer.credentials' version '1.0.7'
-    id 'io.codearte.nexus-staging' version '0.11.0'
+
+    id 'nu.studer.credentials' version '2.1'
+
+    id("io.github.gradle-nexus.publish-plugin") version "1.1.0"
 }
 
 //OrientDB version to use:
@@ -38,11 +40,8 @@ compileJava {
 }
 
 // Para hace el deploy en Sonatype
-// 1. Hacer el commit a github desde NB
-// 2. Ejecutar: gradle release
-// 3. ir a: https://oss.sonatype.org/#stagingRepositories
-//    buscar el repositorio y hacer clic en "Close"
-// 4. Una vez cerrado hacer click en "Release"
+// 1. Hacer el commit a github 
+// 2. Ejecutar: gradle publishToSonatype closeAndReleaseSonatypeStagingRepository sabn
 
 
 //Para guardar el usuario y contraseña en forma segura hacer:
@@ -88,20 +87,12 @@ task autoBuildNumber {
 
 
 // agregar la dependencia solo si no se trata de un release
-if (! project.gradle.startParameter.taskNames.join(",").toLowerCase().contains("release") ) {
-    build.dependsOn autoBuildNumber
+if (! (project.gradle.startParameter.taskNames.join(",").toLowerCase().contains("release")
+       || project.gradle.startParameter.taskNames.join(",").toLowerCase().contains("sabn")) 
+   ) {
+    build.configure{dependsOn autoBuildNumber} 
 }
 
-build.doLast {
-    info()
-}
-
-// seteo carpeta de fuentes para sonar
-//sonarqube {
-//    properties {
-//        property "sonar.sources", "src/main"
-//    }
-//}
 
 // desactivo la generación de javadoc en los proyectos que tengan la tarea
 javadoc.enabled = true
@@ -122,7 +113,7 @@ repositories {
 
 dependencies {
     //implementation "cglib:cglib:3.3.0"
-    implementation "net.bytebuddy:byte-buddy:1.12.17"
+    api "com.github.mdre:EasyProxy:0.+"
     implementation "com.github.mdre:odbogm-agent:1.1.+"
     
     api "com.orientechnologies:orientdb-graphdb:${orientDbVersion}"
@@ -170,6 +161,11 @@ test {
     }
 }
 
+java {
+    withJavadocJar()
+    withSourcesJar()
+}
+
 //jar {
 //    manifest {
 //        attributes(
@@ -200,21 +196,28 @@ task fatJar(type: Jar) {
 }
 
 
-// de acuerdo a la guía de 
-// http://central.sonatype.org/pages/gradle.html
-task javadocJar(type: Jar) {
-    classifier = 'javadoc'
-    from javadoc
+// // de acuerdo a la guía de 
+// // http://central.sonatype.org/pages/gradle.html
+// task javadocJar(type: Jar) {
+//     classifier = 'javadoc'
+//     from javadoc
+// }
+
+javadoc {
+    if(JavaVersion.current().isJava9Compatible()) {
+        options.addBooleanOption('html5', true)
+    }
 }
 
-task sourcesJar(type: Jar) {
-    classifier = 'sources'
-    from sourceSets.main.allSource
-}
 
-artifacts {
-    archives javadocJar, sourcesJar
-}
+// task sourcesJar(type: Jar) {
+//     classifier = 'sources'
+//     from sourceSets.main.allSource
+// }
+
+// artifacts {
+//     archives javadocJar, sourcesJar
+// }
 
 signing {
     if (project.gradle.startParameter.taskNames.join(",").toLowerCase().contains("release")) {
@@ -231,59 +234,58 @@ signing {
 }
 
 
-
-
-
-nexusStaging {
-    packageGroup = "com.github.mdre" //optional if packageGroup == project.getGroup()
-    //    stagingProfileId = "yourStagingProfileId" //when not defined will be got from server using "packageGroup"
+nexusPublishing {
+    repositories {
+        //sonatype()
+        sonatype {
+            username = sonatypeUser
+            password = sonatypePassword
+        }
+    }
 }
 
-//sube a nexus
-uploadArchives {
-    repositories {
-        mavenDeployer {
-            beforeDeployment {
-                MavenDeployment deployment -> signing.signPom(deployment) 
+
+
+// para publicar en sonatype:
+// gradle publishToSonatype closeAndReleaseSonatypeStagingRepository sabn
+publishing {
+    publications {
+        maven(MavenPublication) {
+            //artifactId = 'my-library'
+            from components.java
+            versionMapping {
+                usage('java-api') {
+                    fromResolutionOf('runtimeClasspath')
+                }
+                usage('java-runtime') {
+                    fromResolutionResult()
+                }
             }
-            
-            repository(url: "$sonatypeURLRelease") {
-                authentication(userName: credentials.sonatypeUser, password: credentials.sonatypePassword)
-            }
-            
-            snapshotRepository(url: "$sonatypeURLSnapshot") {
-                authentication(userName: credentials.sonatypeUser, password: credentials.sonatypePassword)
-            }
-            
-            pom.groupId = 'com.github.mdre'
-            pom.artifactId = 'odbogm'
-            
-            
-            pom.project {
-                name 'Object to OrientDB Graph Mapper'
-                packaging 'jar'
+            pom {
+                name = "$artifactId"
+                packaging = 'jar'
                 // optionally artifactId can be defined here 
-                description 'ODBOGM let you store/retrieve objects in a OrientDB graph structure in a clear and simple way.'
-                url 'https://github.com/mdre/odbogm'
+                description  = "$description"
+                url = 'https://github.com/mdre/odbogm'
 
                 scm {
-                    connection 'scm:git:git://github.com/mdre/odbogm.git'
-                    developerConnection 'scm:git:ssh://github.com/mdre/odbogm.git'
-                    url 'https://github.com/mdre/odbogm'
+                    connection = 'scm:git:git://github.com/mdre/odbogm.git'
+                    developerConnection = 'scm:git:ssh://github.com/mdre/odbogm.git'
+                    url = 'https://github.com/mdre/odbogm'
                 }
 
                 licenses {
                     license {
-                        name 'The Apache License, Version 2.0'
-                        url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                        name = 'The Apache License, Version 2.0'
+                        url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
                     }
                 }
 
                 developers {
                     developer {
-                        id 'mdre'
-                        name 'Marcelo D. RE'
-                        email 'marcelo.re@gmail.com'
+                        id = 'mdre'
+                        name = 'Marcelo D. RE'
+                        email = 'marcelo.re@gmail.com'
                     }
                 }
             }
@@ -292,7 +294,14 @@ uploadArchives {
     }
 }
 
-createReleaseTag.dependsOn ':uploadArchives'
+
+signing {
+    sign publishing.publications.maven
+}
+
+
+
+
 
 // NetBeans will automatically add "run" and "debug" tasks relying on the
 // "mainClass" property. You may however define the property prior executing
@@ -325,3 +334,15 @@ task debug(dependsOn: 'classes',type:JavaExec) {
         debug true
     }
 }
+
+// ************************************************************************************
+// Imprimir el listado de dependencias
+// ************************************************************************************
+task printDep (){
+    println("Dependencies: ")
+    configurations.compileClasspath.resolvedConfiguration.firstLevelModuleDependencies.each { dep ->
+        println dep
+    }
+}
+
+

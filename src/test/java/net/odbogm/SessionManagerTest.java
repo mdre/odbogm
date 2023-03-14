@@ -3671,12 +3671,17 @@ public class SessionManagerTest {
     public void noSuperMehod() throws Exception {
         Class csv = SimpleVertex.class;
         
-        //=====================================================
         System.out.println("//=====================================================");
         for (Method declaredMethod : csv.getDeclaredMethods()) {
-            System.out.println(": "+declaredMethod.getName()+" "+Arrays.toString(declaredMethod.getParameters()));
+            System.out.println(": "+declaredMethod.getName()+" : "+declaredMethod.isSynthetic()+" : "+Arrays.toString(declaredMethod.getParameters()));
         }
         System.out.println("//=====================================================");
+        SimpleVertex svSynthetic = sm.get(SimpleVertex.class,"#412:0");
+        for (Method declaredMethod : svSynthetic.getClass().getDeclaredMethods()) {
+            System.out.println(": "+declaredMethod.getName()+" : "+declaredMethod.isSynthetic()+" : "+Arrays.toString(declaredMethod.getParameters()));
+        }
+        System.out.println("//=====================================================");
+        
         
         var res = sm.query(SimpleVertexEx.class, "where out('SimpleVertexEx_alSV').size() != 0 limit 1");
         LOGGER.log(Level.ALL, "\n\n\n\n\n\n");
@@ -3688,7 +3693,7 @@ public class SessionManagerTest {
         
         System.out.println("//=====================================================");
         for (Method declaredMethod : sv1.getClass().getDeclaredMethods()) {
-            System.out.println(": "+declaredMethod.getName()+" "+Arrays.toString(declaredMethod.getParameters()));
+            System.out.println(": "+declaredMethod.getName()+" : "+declaredMethod.isSynthetic()+" : "+Arrays.toString(declaredMethod.getParameters()));
         }
         System.out.println("//=====================================================");
         System.out.println("");
@@ -3719,6 +3724,22 @@ public class SessionManagerTest {
         
         
         System.out.println(falla);
+    }
+    
+    @Test
+    public void testSynthetic() {
+        Class csv = SimpleVertex.class;
+        
+        System.out.println("//=====================================================");
+        for (Method declaredMethod : csv.getDeclaredMethods()) {
+            System.out.println(": "+declaredMethod.getName()+" : "+declaredMethod.isSynthetic()+" : "+Arrays.toString(declaredMethod.getParameters()));
+        }
+        System.out.println("//=====================================================");
+        SimpleVertex svSynthetic = sm.get(SimpleVertex.class,"#412:0");
+        for (Method declaredMethod : svSynthetic.getClass().getDeclaredMethods()) {
+            System.out.println(": "+declaredMethod.getName()+" : "+declaredMethod.isSynthetic()+" : "+Arrays.toString(declaredMethod.getParameters()));
+        }
+        System.out.println("//=====================================================");
     }
     
 }

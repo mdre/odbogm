@@ -20,7 +20,7 @@ public class LogginProperties {
     public static Level HashMapLazyProxy            = Level.WARNING;
     public static Level LinkedListLazyProxy         = Level.WARNING;
     public static Level ObjectMapper                = Level.WARNING;
-    public static Level ObjectProxy                 = Level.WARNING;
+    public static Level ObjectProxy                 = Level.FINEST;
     public static Level ObjectProxyFactory          = Level.WARNING;
     public static Level ObjectStruct                = Level.WARNING;
     public static Level ReflectionUtils             = Level.WARNING;
