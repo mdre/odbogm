@@ -9,7 +9,6 @@ import com.orientechnologies.orient.core.record.OElement;
 import com.orientechnologies.orient.core.record.OVertex;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -107,7 +106,7 @@ public class ObjectProxy implements IObjectProxy, IEasyProxyInterceptor {
         LOGGER.log(Level.FINEST, ">=====================================================");
         LOGGER.log(Level.FINEST, target.getClass().getName() + " : "+ this.___baseElement.getRecord().getIdentity()+ " > method: "+method.getName()+"  superMethod: "+(superMethod!=null?superMethod.getName():"NULL"));
         LOGGER.log(Level.FINEST, "--->"+args.length);
-        LOGGER.log(Level.FINEST, "param: " + (args==null?"NULL":Arrays.toString(args)));
+        //LOGGER.log(Level.FINEST, "param: " + (args==null?"NULL":Arrays.toString(args)));
         LOGGER.log(Level.FINEST, "<<<<<param");
         
         LOGGER.log(Level.FINEST, "=====================================================");
@@ -278,12 +277,14 @@ public class ObjectProxy implements IObjectProxy, IEasyProxyInterceptor {
 
                 
                 if (this.___loadLazyLinks) {
+                    LOGGER.log(Level.FINEST, "___loadLazyLinks method."+method.getName()+" : transaction..isEqualsAndHashCodeTriggerLoadLazyLinks: "+this.___transaction.getSessionManager().getConfig().isEqualsAndHashCodeTriggerLoadLazyLinks());
                     boolean methodTriggersLoadLazyLink = true;
                     if (method.getName().equals("equals") || method.getName().equals("hashCode")) {
-                        methodTriggersLoadLazyLink &= this.___transaction.getSessionManager().
-                        getConfig().isEqualsAndHashCodeTriggerLoadLazyLinks();
+                        methodTriggersLoadLazyLink &= this.___transaction.getSessionManager().getConfig().isEqualsAndHashCodeTriggerLoadLazyLinks();
                     }
+                    LOGGER.log(Level.FINEST, "isAnnotationPresent(DontLoadLinks.class): "+method.isAnnotationPresent(DontLoadLinks.class));
                     methodTriggersLoadLazyLink &= !method.isAnnotationPresent(DontLoadLinks.class);
+                    LOGGER.log(Level.FINEST, "methodTriggersLoadLazyLink: "+methodTriggersLoadLazyLink);
                     if (this.___objectReady && methodTriggersLoadLazyLink) {
                         this.___loadLazyLinks();
                     }
@@ -303,8 +304,8 @@ public class ObjectProxy implements IObjectProxy, IEasyProxyInterceptor {
                     LOGGER.log(Level.FINEST, "-----------------------------------------------------");
                     LOGGER.log(Level.FINEST, "Invoke object method: ");
                     LOGGER.log(Level.FINEST, target.getClass().getName() + " : "+ this.___baseElement.getRecord().getIdentity()+ " > method: "+method.getName()+"  superMethod: "+(superMethod!=null?superMethod.getName():"NULL"));
-                    LOGGER.log(Level.FINEST, "--->"+args.length);
-                    LOGGER.log(Level.FINEST, "param: " + (args==null?"NULL":Arrays.toString(args)));
+                    //LOGGER.log(Level.FINEST, "--->"+args.length);
+                    // ojo que provoca que se lance el loadlazy LOGGER.log(Level.FINEST, "param: " + (args==null?"NULL":Arrays.toString(args)));
                     LOGGER.log(Level.FINEST, "-----------------------------------------------------");
                     res = superMethod.invoke(target, args);
                 }

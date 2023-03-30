@@ -31,6 +31,8 @@ out/
 
 ### VS Code ###
 .vscode/
+.history/
+.settings/
 
 # The following files are generated/updated by vaadin-gradle-plugin
 node_modules/

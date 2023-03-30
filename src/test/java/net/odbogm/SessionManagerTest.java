@@ -37,7 +37,6 @@ import net.odbogm.exceptions.OdbogmException;
 import net.odbogm.exceptions.ReferentialIntegrityViolation;
 import net.odbogm.exceptions.UnknownRID;
 import net.odbogm.proxy.IObjectProxy;
-import net.odbogm.proxy.ObjectProxy;
 import net.odbogm.security.*;
 import net.odbogm.utils.DateHelper;
 import org.apache.commons.lang.RandomStringUtils;
@@ -82,7 +81,7 @@ public class SessionManagerTest {
     public void setUp() {
         System.out.println("Iniciando session manager...");
         sm = new SessionManager(TestConfig.TESTDB, TestConfig.USER, TestConfig.PASS, 1, 10)
-                .setClassLevelLog(ObjectProxy.class, Level.FINEST)
+//                .setClassLevelLog(ObjectProxy.class, Level.FINEST)
 //                .setClassLevelLog(ClassCache.class, Level.FINER)
 //                .setClassLevelLog(Transaction.class, Level.FINEST)
 //                .setClassLevelLog(SimpleCache.class, Level.FINER)
@@ -3488,8 +3487,10 @@ public class SessionManagerTest {
         
         //if option is deactivated, the call to equals or hashCode must not fire a link loading
         sm.getConfig().setEqualsAndHashCodeTriggerLoadLazyLinks(false);
+        System.out.println("\n\n\n\n\n\n");
         v.equals(v);
         v.hashCode();
+        System.out.println("\n\n\n\n\n\n");
         assertNull(v.getLooptestLinkNotLoaded());
         
         //if option is activated, the call to equals or hashCode does fire a link loading
@@ -3567,9 +3568,30 @@ public class SessionManagerTest {
      */
     @Test
     public void equalsAndHashcodeOnDeleted() throws Exception {
-        //FIXME: test fix
+        //sm.getConfig().setEqualsAndHashCodeOnDeletedThrowsException(true);
         SimpleVertex v = sm.store(new SimpleVertex());
         sm.delete(v);
+//        try {
+//            System.out.println("\n\n\n\n\n>>>>>>>>>");
+//            v.equals(v);
+//            System.out.println("<<<<<<<<<\n\n\n\n\n");
+//        } catch (Exception ex) {
+//            System.out.println("\n\n\n\nExcepción atrapada! ");
+//            ex.printStackTrace();
+//        }
+//        try {to
+//            v.equals(v);
+//            fail();
+//        } catch (Exception ex) {
+//            assertEquals(ObjectMarkedAsDeleted.class, ex.getClass());
+//        }
+//        try {
+//            v.hashCode();
+//            fail();
+//        } catch (Exception ex) {
+//            assertEquals(ObjectMarkedAsDeleted.class, ex.getClass());
+//        }
+        
         assertThrows(ObjectMarkedAsDeleted.class, () -> v.equals(v));
         assertThrows(ObjectMarkedAsDeleted.class, () -> v.hashCode());
         
@@ -3607,8 +3629,10 @@ public class SessionManagerTest {
     
     @Test
     public void getNotDirty() throws Exception {
+        //Fixme: problema
         System.out.println("Crear el objeto");
-        SVExChild v1 = sm.store(new SVExChild()); // starts dirty (by agent) because of collection usage
+        SVExChild v0 = new SVExChild();
+        SVExChild v1 = sm.store(v0); // starts dirty (by agent) because of collection usage
         System.out.println("Dirty: "+((ITransparentDirtyDetector)v1).___ogm___isDirty());
         System.out.println("");
         System.out.println("");
