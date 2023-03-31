@@ -3,6 +3,7 @@ package net.odbogm.proxy;
 import com.orientechnologies.orient.core.record.OEdge;
 import com.orientechnologies.orient.core.record.OElement;
 import com.orientechnologies.orient.core.record.OVertex;
+import java.util.Set;
 
 
 /**
@@ -36,6 +37,7 @@ public interface IObjectProxy {
     
     public void ___commit();
     public void ___reload();
+    public void ___reload2();
     public void ___rollback();
     public void ___loadLazyLinks();
     public void ___eagerLoad();
@@ -44,4 +46,6 @@ public interface IObjectProxy {
     
     public void ___setAuditLogLabel(String label);
     public String ___getAuditLogLabel();
+    void ___replicateAuditLogLabel(String label, Set seen);
+    
 }

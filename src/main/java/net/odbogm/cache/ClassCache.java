@@ -67,15 +67,17 @@ public class ClassCache {
             cached = this.cacheClass(toProcess);
             this.classCache.put(toProcess, cached);
         }
-        LOGGER.log(Level.FINER, "Class struc:");
-        LOGGER.log(Level.FINER, "Class: " + toProcess.getName());
-        LOGGER.log(Level.FINER, "Fields: " + cached.fields.size()+ " - " + cached.fields);
-        LOGGER.log(Level.FINER, "enums: " + cached.enumFields.size()+ " - " + cached.enumFields);
-        LOGGER.log(Level.FINER, "Links: " + cached.links.size()+ " - " + cached.links);
-        LOGGER.log(Level.FINER, "LinkList: " + cached.linkLists.size()+ " - " + cached.linkLists);
-        LOGGER.log(Level.FINER, "Indirect Link: " + cached.indirectLinks.size()+ " - " + cached.indirectLinks);
-        LOGGER.log(Level.FINER, "Indirect LinkList: " + cached.indirectLinkLists.size()+ " - " + cached.indirectLinkLists);
-        LOGGER.log(Level.FINER, "-------------------------------------");
+        if (Level.FINER.equals(LOGGER.getLevel())) {
+            LOGGER.log(Level.FINER, "Class struc:");
+            LOGGER.log(Level.FINER, "Class: " + toProcess.getName());
+            LOGGER.log(Level.FINER, "Fields: " + cached.fields.size()+ " - " + cached.fields);
+            LOGGER.log(Level.FINER, "enums: " + cached.enumFields.size()+ " - " + cached.enumFields);
+            LOGGER.log(Level.FINER, "Links: " + cached.links.size()+ " - " + cached.links);
+            LOGGER.log(Level.FINER, "LinkList: " + cached.linkLists.size()+ " - " + cached.linkLists);
+            LOGGER.log(Level.FINER, "Indirect Link: " + cached.indirectLinks.size()+ " - " + cached.indirectLinks);
+            LOGGER.log(Level.FINER, "Indirect LinkList: " + cached.indirectLinkLists.size()+ " - " + cached.indirectLinkLists);
+            LOGGER.log(Level.FINER, "-------------------------------------");
+        }
         return cached;
     }
 

@@ -16,7 +16,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -1648,7 +1650,7 @@ public class SessionManagerTest {
     
     @Test
     public void testAuditLogLabel() throws Exception {
-        sm.setAuditOnUser("AuditLogLabel ");
+        sm.setAuditOnUser("AuditLogLabel");
         
         SimpleVertexEx sv = sm.store(new SimpleVertexEx());
         sm.commit();
@@ -1663,12 +1665,70 @@ public class SessionManagerTest {
         
         // verificar que existan los logs en la base
         String query = "select count(*) from ODBAuditLog where label like 'AuditLog RID: "+rid+"%'";
-        System.out.println(query);
         long logs = sm.query(query, "");
-        assertEquals(4, logs); //
+        assertEquals(4, logs); // 1 update + 3 linklist_add
     }
     
-    
+    @Test
+    public void testAuditLogLabel2() throws Exception {
+        sm.setAuditOnUser("AuditLogLabel");
+        
+        SimpleVertexEx sv = sm.store(new SimpleVertexEx("main"));
+        sm.commit();
+        String rid = sm.getRID(sv);
+        System.out.println("RID: " + rid);
+        
+        String label = "AuditLog RID: " + rid;
+        sm.getCurrentTransaction().setAuditLogLabel(sv, label);
+        sv.setAlSVE(new ArrayList());
+        sv.getAlSVE().add(new SimpleVertexEx());
+        sm.commit();
+        String query = "select count(*) from ODBAuditLog where label like '%s%%'";
+        long logs = sm.query(String.format(query, label), "");
+        assertEquals(2L, logs); // 1 update + 1 linklist_add
+        
+        // inner object:
+        
+        sm.getCurrentTransaction().clearCache();
+        sv = sm.get(SimpleVertexEx.class, rid);
+        sm.getCurrentTransaction().setAuditLogLabel(sv, label);
+        SimpleVertexEx inner = sv.getAlSVE().iterator().next();
+        inner.setS("modified inner");
+        sm.commit();
+        String query2 = query + " and rid = '%s'";
+        logs = sm.query(String.format(query2, label, sm.getRID(inner)), "");
+        assertEquals(1L, logs);
+        
+        // change label:
+        
+        sv.setEagerTest(new SimpleVertexEx());
+        sv = commitClearAndGet(sv);
+        sm.getCurrentTransaction().setAuditLogLabel(sv, label);
+        sv.getEagerTest().setS("modified eager");
+        sm.commit();
+        logs = sm.query(String.format(query2, label, sm.getRID(sv.getEagerTest())), "");
+        assertEquals(1L, logs);
+        
+        SimpleVertexEx sv2 = sm.store(new SimpleVertexEx("loop"));
+        sv.setLooptest(sv2);
+        sv2.setLooptest(sv);
+        sv = commitClearAndGet(sv);
+        sm.getCurrentTransaction().setAuditLogLabel(sv, label);
+        sv.getLooptest().setS("modified loop");
+        sm.commit();
+        logs = sm.query(String.format(query2, label, sm.getRID(sv.getLooptest())), "");
+        assertEquals(2L, logs);
+        
+        label = "New label " + rid;
+        sv.setS("main modified with new label");
+        sv.getLooptest().setS("loop modified with new label");
+        sv.getAlSVE().iterator().next().setS("inner modified with new label");
+        sm.getCurrentTransaction().setAuditLogLabel(sv, label);
+        sm.commit();
+        logs = sm.query(String.format(query, label), "");
+        assertEquals(3L, logs);
+    }
+
     /*
      * Bug fixed: audit on an edge object caused a NPE.
      */
@@ -3693,6 +3753,10 @@ public class SessionManagerTest {
     
     @Test
     public void noSuperMehod() throws Exception {
+        SimpleVertex sv = sm.store(new SimpleVertex());
+        sm.commit();
+        String ridSv = sm.getRID(sv);
+        
         Class csv = SimpleVertex.class;
         
         System.out.println("//=====================================================");
@@ -3700,7 +3764,7 @@ public class SessionManagerTest {
             System.out.println(": "+declaredMethod.getName()+" : "+declaredMethod.isSynthetic()+" : "+Arrays.toString(declaredMethod.getParameters()));
         }
         System.out.println("//=====================================================");
-        SimpleVertex svSynthetic = sm.get(SimpleVertex.class,"#412:0");
+        SimpleVertex svSynthetic = sm.get(SimpleVertex.class, ridSv);
         for (Method declaredMethod : svSynthetic.getClass().getDeclaredMethods()) {
             System.out.println(": "+declaredMethod.getName()+" : "+declaredMethod.isSynthetic()+" : "+Arrays.toString(declaredMethod.getParameters()));
         }
@@ -3752,6 +3816,10 @@ public class SessionManagerTest {
     
     @Test
     public void testSynthetic() {
+        SimpleVertex sv = sm.store(new SimpleVertex());
+        sm.commit();
+        String ridSv = sm.getRID(sv);
+        
         Class csv = SimpleVertex.class;
         
         System.out.println("//=====================================================");
@@ -3759,11 +3827,162 @@ public class SessionManagerTest {
             System.out.println(": "+declaredMethod.getName()+" : "+declaredMethod.isSynthetic()+" : "+Arrays.toString(declaredMethod.getParameters()));
         }
         System.out.println("//=====================================================");
-        SimpleVertex svSynthetic = sm.get(SimpleVertex.class,"#412:0");
+        SimpleVertex svSynthetic = sm.get(SimpleVertex.class, ridSv);
         for (Method declaredMethod : svSynthetic.getClass().getDeclaredMethods()) {
             System.out.println(": "+declaredMethod.getName()+" : "+declaredMethod.isSynthetic()+" : "+Arrays.toString(declaredMethod.getParameters()));
         }
         System.out.println("//=====================================================");
     }
+
+    @Test
+    public void onlyAdd() throws Exception {
+        Foo v = new Foo();
+        SimpleVertexEx v1 = new SimpleVertexEx();
+        SimpleVertexEx v2 = new SimpleVertexEx();
+        SimpleVertexEx v3 = new SimpleVertexEx();
+        v.getLsve().addAll(List.of(v1, v2, v3));
+        v = sm.store(v);
+        v = commitClearAndGet(v);
+        String rid = sm.getRID(v);
+        
+        assertEquals(3, v.getLsve().size());
+        assertEquals(0, v.getLsveOnlyAdd().size());
+        assertEquals(0, v.getOnlyAdd().size());
+        
+        SimpleVertexEx v4 = new SimpleVertexEx();
+        v.getLsveOnlyAdd().add(v4);
+        sm.commit();
+        assertEquals(4, v.getLsve().size());
+        assertEquals(0, v.getLsveOnlyAdd().size());
+        assertEquals(0, v.getOnlyAdd().size());
+        
+        SimpleVertexEx v5 = new SimpleVertexEx();
+        v.getOnlyAdd().add(v5);
+        sm.commit();
+        assertEquals(4, v.getLsve().size());
+        assertEquals(0, v.getLsveOnlyAdd().size());
+        assertEquals(0, v.getOnlyAdd().size());
+        var c = this.sm.getTransaction().query("select out('FooNode_onlyAdd').size() as c from " + rid);
+        assertEquals(1, (int)c.next().getProperty("c"));
+        
+        sm.getTransaction().clearCache();
+        v = sm.get(Foo.class, rid);
+        assertEquals(4, v.getLsve().size());
+    }
     
+    /*
+     * Tests that internal ogm proxy methods on deleted objects do not throw
+     * exceptions.
+     */
+    @Test
+    public void ogmMethodOnDeleted() throws Exception {
+        SimpleVertex v = sm.store(new SimpleVertex());
+        sm.commit();
+        sm.delete(v);
+        assertTrue(((IObjectProxy)v).___isDeleted());
+        assertFalse(((IObjectProxy)v).___isDirty());
+        assertNull(((IObjectProxy)v).___getAuditLogLabel());
+        //real object method must throw:
+        assertThrows(ObjectMarkedAsDeleted.class, v::getS);
+    }
+
+//    @Test //fix must be implemented
+//    public void deleteReferenced() throws Exception {
+//        SimpleVertexEx aux = sm.store(new SimpleVertexEx());
+//        SimpleVertexEx sv1 = sm.store(new SimpleVertexEx());
+//        SimpleVertexEx sv2 = sm.store(new SimpleVertexEx());
+//        sv1.setLooptest(aux);
+//        sv2.setLooptest(aux);
+//        sm.commit();
+//        //aux is deleted and two indirects are deleted too, should work fine
+//        sm.delete(aux);
+//        sm.delete(sv1);
+//        sm.delete(sv2);
+//        sm.commit();
+//    }
+
+    @Test
+    public void cascadeDeleteRepeated() throws Exception {
+        SimpleVertexEx sv = sm.store(new SimpleVertexEx());
+        SimpleVertex aux = new SimpleVertex();
+        sv.alSV = new ArrayList<>();
+        sv.alSV.add(aux);
+        sv.alSV.add(aux);
+        sm.commit();
+        //cascade delete of collection with duplicated item must work
+        sm.delete(sv);
+        sm.commit();
+    }
+
+    @Test
+    public void cascadeDelete() throws Exception {
+        SimpleVertexEx sv = sm.store(new SimpleVertexEx());
+        //cascade delete collections:
+        sv.initArrayList();
+        sv.initHashMap();
+        sm.commit();
+        
+        Set<String> rids = new HashSet<>();
+        rids.add(sm.getRID(sv));
+        sv.getAlSV().forEach(v -> rids.add(sm.getRID(v)));
+        sv.getHmSV().values().forEach(v -> rids.add(sm.getRID(v)));
+        
+        sm.delete(sv);
+        sm.commit();
+        var res = sm.query("select from " + rids.toString());
+        assertFalse(res.hasNext());
+    }
+
+    @Test
+    public void linked() throws Exception {
+        sm.setAuditOnUser("test");
+        SimpleVertexEx sv = sm.store(new SimpleVertexEx());
+        sv.setLinked(new SimpleVertex());
+        sv.getLinked().setS("embedded link");
+        sv = commitClearAndGet(sv);
+        assertNull(sv.getLinkedDontLoad());
+        SimpleVertex linked = sv.getLinked();
+        assertNotNull(linked);
+        assertEquals("embedded link", linked.getS());
+        //null value:
+        sv.setLinked(null);
+        sv = commitClearAndGet(sv);
+        assertNull(sv.getLinked());
+    }
+
+    @Test
+    public void linked2() throws Exception {
+        SimpleVertexEx sv = new SimpleVertexEx();
+        sv.setLinked(new SimpleVertex());
+        sv = sm.store(sv);
+        assertTrue(sv.getLinked() instanceof IObjectProxy);
+        sv = commitClearAndGet(sv);
+        assertNotNull(sv.getLinked());
+    }
+
+    @Test
+    public void eagerLinked() throws Exception {
+        SimpleVertexEx sv = sm.store(new SimpleVertexEx());
+        sv.setLinked(new SimpleVertex());
+        sv.setLinkedEager(new SimpleVertex());
+        sv = commitClearAndGet(sv);
+        assertNotNull(sv.getLinkedEager());
+        assertNull(sv.getLinkedDontLoad());
+    }
+
+    @Test
+    public void reloadObject() throws Exception {
+        SimpleVertex sv = sm.store(new SimpleVertex());
+        assertEquals("string", sv.getS());
+        sm.commit();
+        String rid = sm.getRID(sv);
+        int version = sv.getVersion();
+        sm.getDBTx().execute("sql", "update " + rid + " set s = 'reload me'");
+        
+        assertEquals("string", sv.getS());
+        sm.getCurrentTransaction().reloadObject(sv);
+        assertEquals("reload me", sv.getS());
+        assertEquals(version+1, sv.getVersion());
+    }
+
 }

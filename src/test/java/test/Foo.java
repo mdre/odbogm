@@ -6,6 +6,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.annotations.Entity;
 import net.odbogm.annotations.Ignore;
+import net.odbogm.annotations.OnlyAdd;
 
 /**
  *
@@ -20,6 +21,12 @@ public class Foo implements InterfaceTest {
     }
     private String text;
     private List<SimpleVertex> lsve = new ArrayList<>();
+    
+    @OnlyAdd(attribute = "lsve")
+    private List<SimpleVertex> lsveOnlyAdd = new ArrayList<>();
+    @OnlyAdd
+    private List<SimpleVertex> onlyAdd = new ArrayList<>();
+    
     
     public Foo() {
     }
@@ -46,6 +53,14 @@ public class Foo implements InterfaceTest {
 
     @Override
     public void foo() {
+    }
+
+    public List<SimpleVertex> getLsveOnlyAdd() {
+        return lsveOnlyAdd;
+    }
+
+    public List<SimpleVertex> getOnlyAdd() {
+        return onlyAdd;
     }
 
 }

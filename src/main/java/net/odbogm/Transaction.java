@@ -17,6 +17,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -111,7 +112,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     Transaction(SessionManager sm) {
         this.sm = sm;
-        LOGGER.log(Level.FINER, "current thread: {0}", Thread.currentThread().getName());
+        LOGGER.log(Level.FINER, () -> "current thread: " + Thread.currentThread().getName());
         this.objectMapper = this.sm.getObjectMapper();
     }
 
@@ -121,7 +122,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     public synchronized void initInternalTx() {
         if (this.orientdbTransact == null) {
             LOGGER.log(Level.FINEST, "\nAbriendo una transacción...");
-            LOGGER.log(Level.FINEST, "\ntransacLevel: {0}  (siempre debería ser 0)",orientTransacLevel);
+            LOGGER.log(Level.FINEST, "\ntransacLevel: {0} (siempre debería ser 0)", orientTransacLevel);
             //inicializar la transacción
             orientdbTransact = this.sm.getDBTx();
             orientdbTransact.begin();
@@ -201,8 +202,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     public synchronized void setAsDirty(Object o) throws UnmanagedObject {
         if (o instanceof IObjectProxy) {
             String rid = ((IObjectProxy) o).___getRid();
-            LOGGER.log(Level.FINER, "Marcando como dirty: {0} - {1}",
-                    new Object[]{o.getClass().getSimpleName(), o.toString()});
+            LOGGER.log(Level.FINER, () -> "Marcando como dirty: " + o.getClass().getSimpleName() + " - " + o.toString());
             LOGGER.log(Level.FINEST, () -> ThreadHelper.getCurrentStackTrace());
             this.dirty.put(rid, o);
         } else {
@@ -275,6 +275,19 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     }
 
     /**
+     * Reloads vertex from database and updates the object basic attributes in place.
+     * 
+     * @param o 
+     */
+    public void reloadObject(Object o) {
+        wrap(() -> {
+            initInternalTx();
+            ((IObjectProxy)o).___reload2();
+            closeInternalTx();
+        });
+    }
+
+    /**
      * Devuelve un objeto de comunicación con la base.
      *
      * @return retorna la referencia directa al driver del la base.
@@ -298,8 +311,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * @throws OdbogmException Si ocurre alguna otra excepción de la base de datos.
      */
     public synchronized void commit() throws OdbogmException {
-        LOGGER.log(Level.FINEST, "dirties: {0}",this.dirty);
-        LOGGER.log(Level.FINEST, "news: {0}",this.newrids);
+        LOGGER.log(Level.FINEST, () -> "dirties: " + this.dirty);
+        LOGGER.log(Level.FINEST, () -> "news: " + this.newrids);
         wrap(() -> doCommit());
     }
     
@@ -333,12 +346,13 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             }
             
             // process all objects to be deleted:
+            IdentityHashMap alreadyRemoved = new IdentityHashMap<>();
             for (Map.Entry<String, Object> e : dirtyDeleted.entrySet()) {
                 String rid = e.getKey();
                 IObjectProxy o = (IObjectProxy) e.getValue();
                 if (o.___isDeleted() && o.___isValid()) {
                     LOGGER.log(Level.FINER, "Commiting delete: {0}", rid);
-                    this.internalDelete(e.getValue());
+                    this.internalDelete(e.getValue(), alreadyRemoved);
                 }
             }
             
@@ -426,10 +440,10 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     
     private synchronized void doRollback() {
         initInternalTx();
-        LOGGER.log(Level.FINER, "Rollback ------------------------");
-        LOGGER.log(Level.FINER, "Dirty objects: {0}", dirty.size());
-        LOGGER.log(Level.FINER, "Dirty deleted objects: {0}", dirtyDeleted.size());
-        LOGGER.log(Level.FINER, "New objects: {0}", this.newrids.size());
+        LOGGER.log(Level.FINER, () -> "Rollback ------------------------");
+        LOGGER.log(Level.FINER, () -> "Dirty objects: " + dirty.size());
+        LOGGER.log(Level.FINER, () -> "Dirty deleted objects: " + dirtyDeleted.size());
+        LOGGER.log(Level.FINER, () -> "New objects: " + this.newrids.size());
         
         this.orientdbTransact.rollback();
         
@@ -477,9 +491,9 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     }
     
     private  <T> T doStore(T o) {
-        LOGGER.log(Level.FINER, "*****************************************************************************");
-        LOGGER.log(Level.FINER, "STORE: {0}",o);
-        LOGGER.log(Level.FINER, "*****************************************************************************");
+        LOGGER.log(Level.FINER, () -> "*****************************************************************************");
+        LOGGER.log(Level.FINER, () -> "STORE: " + o);
+        LOGGER.log(Level.FINER, () -> "*****************************************************************************");
         
         LOGGER.log(Level.FINEST, "dirty: size: {0}",new Object[]{this.dirty.mappingCount()});
         
@@ -518,7 +532,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             ObjectStruct oStruct = this.objectMapper.objectStruct(o);
             Map<String, Object> omap = oStruct.fields;
 
-            LOGGER.log(Level.FINER, "object data: {0}", omap);
+            LOGGER.log(Level.FINER, () -> "object data: " + omap);
             OVertex v = this.orientdbTransact.newVertex(classname);
             LOGGER.log(Level.FINEST, "virtual RID pre-save: {0}",v.getIdentity().toString());
             // forzar el fijado del rid temporal
@@ -662,7 +676,8 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                             }
                             
                             // crear un link entre los dos objetos.
-                            LOGGER.log(Level.FINER, "-----> agregando el edges de {0} para {1} key: {2}", new Object[]{v.getIdentity().toString(), ioproxied.___getVertex().toString(), imk});
+                            LOGGER.log(Level.FINER, () -> String.format("-----> agregando el edge de %s para %s key: %s",
+                                    v.getIdentity().toString(), ioproxied.___getVertex().toString(), imk));
                             OEdge oe = v.addEdge(ioproxied.___getVertex(), graphRelationName);
                             // agragar la key como atributo.
                             if (Primitives.PRIMITIVE_MAP.get(imk.getClass()) != null) {
@@ -702,7 +717,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
 
         // Aplicar los controles de seguridad.
         if ((this.sm.getLoggedInUser() != null) && (proxy instanceof SObject)) {
-            LOGGER.log(Level.FINER, "SObject detectado. Aplicando seguridad de acuerdo al usuario logueado: {0}", this.sm.getLoggedInUser().getName());
+            LOGGER.log(Level.FINER, () -> "SObject detectado. Aplicando seguridad de acuerdo al usuario logueado: " + this.sm.getLoggedInUser().getName());
             ((SObject) proxy).validate(getLoggedInUserInCurrentTransaction());
         }
         closeInternalTx();
@@ -791,17 +806,17 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                     String field = entry.getKey();
 
                     f = classDef.fieldsObject.get(field);
-                    f.setAccessible(true);
-
                     LOGGER.log(Level.FINER, "procesando campo: {0}", field);
 
                     // si hay una colección y corresponde hacer la cascada.
                     if (f.isAnnotationPresent(CascadeDelete.class) || f.isAnnotationPresent(RemoveOrphan.class)) {
                         LOGGER.log(Level.FINER, "CascadeDelete|RemoveOrphan presente. Activando el objeto...");
                         // activar el campo.
-                        Collection oCol = (Collection) f.get(toRemove);
-                        if (oCol != null) {
-                            String garbage = oCol.toString();
+                        Object val = f.get(toRemove);
+                        if (val instanceof Collection) {
+                            ((Collection)val).isEmpty();
+                        } else if (val instanceof Map) {
+                            ((Map)val).isEmpty();
                         }
                     }
                 } catch (IllegalArgumentException | IllegalAccessException ex) {
@@ -866,7 +881,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                     boolean acc = f.isAccessible();
                     f.setAccessible(true);
 
-                    LOGGER.log(Level.FINER, "procesando campo: " + field);
+                    LOGGER.log(Level.FINER, () -> "procesando campo: " + field);
 
 //                    Collection oCol = (Collection) f.get(((IObjectProxy) toRemove).___getBaseObject());
                     Object oCol = f.get(toRemove);
@@ -947,7 +962,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             // invalidar el objeto
             ((IObjectProxy) toRemove).___setDeletedMark();
             
-            LOGGER.log(Level.FINER, "rid: "+ridToRemove+" removed succefully");
+            LOGGER.log(Level.FINER, () -> "rid: "+ridToRemove+" removed succefully");
         } else {
             throw new UnknownObject(this);
         }
@@ -965,11 +980,15 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * @throws ReferentialIntegrityViolation
      * @throws UnknownObject 
      */
-    private void internalDelete(Object toRemove) throws ReferentialIntegrityViolation, UnknownObject {
+    private void internalDelete(Object toRemove, IdentityHashMap alreadyRemoved) throws ReferentialIntegrityViolation, UnknownObject {
+//        if (alreadyRemoved.contains(toRemove)) return;
+        if (alreadyRemoved.containsKey(toRemove)) return;
+        
+        alreadyRemoved.put(toRemove, null);
         initInternalTx();
         
         LOGGER.log(Level.FINER, "Remove: {0}", toRemove.getClass().getName());
-
+        
         // si no hereda de IObjectProxy, el objeto no pertenece a la base y no se debe hacer nada.
         if (toRemove instanceof IObjectProxy) {
             // verificar que la integridad referencial no se viole.
@@ -1008,9 +1027,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
             ovToRemove.delete();
             //LOGGER.log(Level.FINEST, "post-remove:  --(in: " + ovToRemove.countEdges(Direction.IN) + ")-->( "+logRidToRemove+" )--(out: "+ ovToRemove.countEdges(Direction.OUT)+"  )---->   ");            
 
-            //Lista de vértices a remover
-            List<OVertex> vertexToRemove = new ArrayList<>();
-
             // procesar los links
             LOGGER.log(Level.FINEST, "procesar los links de {0}...",logRidToRemove);
             for (Map.Entry<String, Class<?>> entry : classDef.links.entrySet()) {
@@ -1028,14 +1044,14 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                         LOGGER.log(Level.FINEST, "links: cascade delete detected");
                         Object value = f.get(toRemove);
                         if (value != null) {
-                            this.internalDelete(value);
+                            this.internalDelete(value, alreadyRemoved);
                         }
                     } else if (f.isAnnotationPresent(RemoveOrphan.class)) {
                         // si se apunta a un objeto, removerlo
                         Object value = f.get(toRemove);
                         if (value != null) {
                             try {
-                                this.internalDelete(value);
+                                this.internalDelete(value, alreadyRemoved);
                             } catch (ReferentialIntegrityViolation riv) {
                                 LOGGER.log(Level.FINER, "RemoveOrphan: El objeto aún tiene vínculos.");
                                 closeInternalTx();
@@ -1079,14 +1095,14 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                                 LOGGER.log(Level.FINEST, "-----> invocar a InternaDelete desde {0}",logRidToRemove);
                                 OVertex ovSendToRemove = ((IObjectProxy) object).___getVertex();
                                 //LOGGER.log(Level.FINEST, "-----> {0} in: {1}", new Object[]{ovSendToRemove.getIdentity().toString(), ovSendToRemove.countEdges(Direction.IN)});
-                                this.internalDelete(object);
+                                this.internalDelete(object, alreadyRemoved);
                                 LOGGER.log(Level.FINEST, "<----- volviendo a InternaDelete de {0}",logRidToRemove);
                             }
 
                         } else if (oCol instanceof Map) {
                             HashMap oMapCol = (HashMap) oCol;
                             oMapCol.forEach((k, v) -> {
-                                this.internalDelete(v);
+                                this.internalDelete(v, alreadyRemoved);
                             });
 
                         } else {
@@ -1102,7 +1118,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                             List oListCol = (List) oCol;
                             for (Object object : oListCol) {
                                 try {
-                                    this.internalDelete(object);
+                                    this.internalDelete(object, alreadyRemoved);
                                 } catch (ReferentialIntegrityViolation riv) {
                                     LOGGER.log(Level.FINER, "RemoveOrphan: El objeto aún tiene vínculos.");
                                     closeInternalTx();
@@ -1115,7 +1131,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                             HashMap oMapCol = (HashMap) oCol;
                             oMapCol.forEach((k, v) -> {
                                 try {
-                                    this.internalDelete(v);
+                                    this.internalDelete(v, alreadyRemoved);
                                 } catch (ReferentialIntegrityViolation riv) {
                                     LOGGER.log(Level.FINER, "RemoveOrphan: El objeto aún tiene vínculos.");
                                     closeInternalTx();
@@ -1197,7 +1213,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     public void addToTransactionCache(String rid, Object o) {
         getTransactionCount++;
         if (this.transactionLoopCache.get(rid) == null) {
-            LOGGER.log(Level.FINER, "Forzando el agregado al TransactionLoopCache de " + rid + "  hc:" + System.identityHashCode(o));
+            LOGGER.log(Level.FINER, () -> "Forzando el agregado al TransactionLoopCache de " + rid + "  hc:" + System.identityHashCode(o));
             this.transactionLoopCache.put(rid, o);
         }
     }
@@ -1521,7 +1537,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         // por fuera del OGM
         ODatabaseSession localtx = this.orientdbTransact;
         localtx.activateOnCurrentThread();
-        flush();
 
         //OCommandSQL osql = new OCommandSQL(sql);
         //ODBOrientDynaElementIterable ret = new ODBOrientDynaElementIterable(localtx,localtx.command(osql).execute());
@@ -1539,7 +1554,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         // usar una transacción interna para que el iterable pueda seguir funcionando por fuera del OGM
         ODatabaseSession localtx = this.sm.getDBTx();
         localtx.activateOnCurrentThread();
-        flush();
 
         ODBResultSet ret = new ODBResultSet(localtx, localtx.query(sql, params));
         closeInternalTx();
@@ -1550,7 +1564,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         initInternalTx();
         ODatabaseSession localtx = this.sm.getDBTx();
         localtx.activateOnCurrentThread();
-        flush();
         ODBResultSet ret = new ODBResultSet(localtx, localtx.query(sql, params));
         closeInternalTx();
         return ret; 
@@ -1569,7 +1582,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     @Override
     public long query(String sql, String retVal) {
         initInternalTx();
-        this.flush();
         
         //OCommandSQL osql = new OCommandSQL(sql);
         OResultSet ors = this.orientdbTransact.query(sql);
@@ -1594,18 +1606,17 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     @Override
     public <T> List<T> query(Class<T> clazz) {
         initInternalTx();
-        this.flush();
 
         long init = System.currentTimeMillis();
 
         ArrayList<T> ret = new ArrayList<>();
 
         OResultSet vertices = this.orientdbTransact.query("select from ?",ClassCache.getEntityName(clazz));
-        LOGGER.log(Level.FINER, "Enlapsed ODB response: " + (System.currentTimeMillis() - init));
+        LOGGER.log(Level.FINER, () -> "Enlapsed ODB response: " + (System.currentTimeMillis() - init));
         vertices.stream().forEach(vertexOfClass->{
             ret.add(this.get(clazz, vertexOfClass.getIdentity().get().toString()));
         }); 
-        LOGGER.log(Level.FINER, "Enlapsed time query to List: " + (System.currentTimeMillis() - init));
+        LOGGER.log(Level.FINER, () -> "Enlapsed time query to List: " + (System.currentTimeMillis() - init));
         vertices.close();
         closeInternalTx();
         return ret;
@@ -1622,7 +1633,6 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     @Override
     public <T> List<T> query(Class<T> clase, String body) {
         initInternalTx();
-        this.flush();
 
         ArrayList<T> ret = new ArrayList<>();
 
@@ -1744,7 +1754,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     public synchronized void auditLog(IObjectProxy o, int at, String label, Object data) {
         if (this.isAuditing()) {
-            auditor.auditLog(o, at, label, data);
+            this.auditor.auditLog(o, at, (o.___getAuditLogLabel() != null ? o.___getAuditLogLabel() + " : " : "") + label, data);
         }
     }
 
@@ -1765,7 +1775,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      * @param o es un objeto de la base 
      * @param label es la etiqueta a anteponer en los logs
      */
-    public void setAuditLogLabel(Object o,String label) {
+    public void setAuditLogLabel(Object o, String label) {
         if (o instanceof IObjectProxy) {
             ((IObjectProxy)o).___setAuditLogLabel(label);
         } else {
@@ -1778,11 +1788,11 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
      */
     public void activateOnCurrentThread() {
         if (!orientdbTransact.isActiveOnCurrentThread()) {
-            LOGGER.log(Level.FINEST, "Activando en el Thread actual...");
-            LOGGER.log(Level.FINEST, "current thread: {0}", Thread.currentThread().getName());
+            LOGGER.log(Level.FINEST, () -> "Activando en el Thread actual...");
+            LOGGER.log(Level.FINEST, () -> "current thread: " + Thread.currentThread().getName());
             orientdbTransact.activateOnCurrentThread();
         } else {
-            LOGGER.log(Level.FINEST, "base activada previamente en el Thread actual");
+            LOGGER.log(Level.FINEST, () -> "base activada previamente en el Thread actual");
         }
     }
 

@@ -48,13 +48,12 @@ public class ArrayListEmbeddedProxy extends ArrayList implements IEmbeddedCalls 
 
     
     private synchronized void setDirty() {
-        LOGGER.log(Level.FINER, "Colección marcada como Dirty. Avisar al padre.");
-        LOGGER.log(Level.FINER, "weak:"+this.parent.get());
+        LOGGER.log(Level.FINER, () -> "Colección marcada como Dirty. Avisar al padre.");
+        LOGGER.log(Level.FINER, () -> "weak:"+this.parent.get());
         // si el padre no está marcado como garbage, notificarle el cambio de la colección.
         if (this.parent.get()!=null) {
             this.parent.get().___setDirty();
-            
-            LOGGER.log(Level.FINER, ThreadHelper.getCurrentStackTrace());
+            LOGGER.log(Level.FINER, () -> ThreadHelper.getCurrentStackTrace());
         }
     }
     

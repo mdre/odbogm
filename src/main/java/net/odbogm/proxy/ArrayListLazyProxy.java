@@ -10,6 +10,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.Set;
 import java.util.Spliterator;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
@@ -43,9 +44,11 @@ public class ArrayListLazyProxy<E> extends ArrayList<E> implements ILazyCollecti
 
     private boolean lazyLoad = true;
     private boolean lazyLoading = false;
+    private boolean onlyAdd = false;
+    private String onlyAddReferenceAttribute;
 
     private Transaction transaction;
-    private String field;
+    private String relation;
     private Class<?> fieldClass;
     private ODirection direction;
 
@@ -67,7 +70,7 @@ public class ArrayListLazyProxy<E> extends ArrayList<E> implements ILazyCollecti
         }
         this.transaction = t;
         this.parent = new WeakReference<>(parent);
-        this.field = field;
+        this.relation = field;
         this.fieldClass = c;
         this.direction = d;
         LOGGER.log(Level.FINER, () -> String.format("relatedTo: %s - field: %s - Class: %s",
@@ -84,13 +87,13 @@ public class ArrayListLazyProxy<E> extends ArrayList<E> implements ILazyCollecti
         
         // recuperar todos los elementos desde el vértice y agregarlos a la colección
         IObjectProxy theParent = this.parent.get();
-        
-        String auditLogLabel = theParent.___getAuditLogLabel();
-        
-        if (theParent != null) {
+        if (theParent != null && !onlyAdd) {
             LOGGER.log(Level.FINER, () -> String.format("relatedTo: %s - field: %s - Class: %s",
-                theParent.___getVertex().toString(), field, fieldClass.getSimpleName()));
-            Iterable<OVertex> rt = theParent.___getVertex().getVertices(this.direction, field);
+                theParent.___getVertex().toString(), relation, fieldClass.getSimpleName()));
+        
+            String auditLogLabel = theParent.___getAuditLogLabel();
+        
+            Iterable<OVertex> rt = theParent.___getVertex().getVertices(this.direction, relation);
             for (OVertex next : rt) {
                 E o = (E)transaction.get(fieldClass, next.getIdentity().toString());
                 this.add(o);
@@ -98,13 +101,39 @@ public class ArrayListLazyProxy<E> extends ArrayList<E> implements ILazyCollecti
                 this.listState.put(o, ObjectCollectionState.REMOVED);
                 
                 // replicate the AuditLogLabel to inner objects
-                if (auditLogLabel != null && o instanceof IObjectProxy) {
-                    ((IObjectProxy)o).___setAuditLogLabel(auditLogLabel);
-                }
+                ((IObjectProxy)o).___setAuditLogLabel(auditLogLabel);
             }
         }
         this.lazyLoading = false;
         this.transaction.closeInternalTx();
+    }
+    
+    
+    @Override
+    public String getRelationName() {
+        return this.relation;
+    }
+
+    
+    public void setOnlyAdd(String onlyAddReferenceAttribute) {
+        this.onlyAdd = true;
+        this.onlyAddReferenceAttribute = onlyAddReferenceAttribute;
+    }
+    
+    
+    @Override
+    public synchronized void updateAuditLogLabel(Set seen) {
+        if (!this.lazyLoad) {
+            IObjectProxy theParent = this.parent.get();
+            if (theParent != null) {
+                String auditLogLabel = theParent.___getAuditLogLabel();
+                for (Object o : this) {
+                    if (o instanceof IObjectProxy && !seen.contains(o)) {
+                        ((IObjectProxy)o).___replicateAuditLogLabel(auditLogLabel, seen);
+                    }
+                }
+            }
+        }
     }
 
     @Override
@@ -133,6 +162,25 @@ public class ArrayListLazyProxy<E> extends ArrayList<E> implements ILazyCollecti
      */
     @Override
     public synchronized void clearState() {
+        if (onlyAdd && onlyAddReferenceAttribute != null) {
+            super.clear();
+            try {
+                IObjectProxy theParent = this.parent.get();
+                if (theParent != null) {
+                    var referenceAttribute = this.transaction.getObjectMapper().getClassDef(theParent).fieldsObject.get(this.onlyAddReferenceAttribute);
+                    if (referenceAttribute != null) {
+                        var referenceAttributeList = referenceAttribute.get(theParent);
+                        if (referenceAttributeList instanceof ArrayListLazyProxy) {
+                            //rollback to reset state and force reload of items
+                            ((ArrayListLazyProxy)referenceAttributeList).rollback();
+                        }
+                    }
+                }
+            } catch (IllegalArgumentException | IllegalAccessException ex) {
+                LOGGER.log(Level.WARNING, "Error setting onlyAdd reference collection attribute to lazy load.", ex);
+            }
+        }
+        
         this.dirty = false;
 
         this.listState.clear();
@@ -154,12 +202,11 @@ public class ArrayListLazyProxy<E> extends ArrayList<E> implements ILazyCollecti
         if (this.direction == ODirection.OUT) {
             LOGGER.log(Level.FINER, "Colección marcada como Dirty. Avisar al padre.");
             this.dirty = true;
-            LOGGER.log(Level.FINER, "weak:" + this.parent.get());
+            LOGGER.log(Level.FINER, () -> "weak:" + this.parent.get());
             // si el padre no está marcado como garbage, notificarle el cambio de la colección.
             if (this.parent.get() != null) {
                 this.parent.get().___setDirty();
-
-                LOGGER.log(Level.FINER, ThreadHelper.getCurrentStackTrace());
+                LOGGER.log(Level.FINER, () -> ThreadHelper.getCurrentStackTrace());
             }
         }
     }
@@ -418,7 +465,7 @@ public class ArrayListLazyProxy<E> extends ArrayList<E> implements ILazyCollecti
             this.lazyLoad();
         }
         if (!this.lazyLoading) {
-            LOGGER.log(Level.FINER, "DIRTY: Elemento nuevo agregado: " + e.toString());
+            LOGGER.log(Level.FINER, () -> "DIRTY: Elemento nuevo agregado: " + e.toString());
             this.setDirty();
         }
         return super.add(e);

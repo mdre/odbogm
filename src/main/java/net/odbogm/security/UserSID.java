@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import net.odbogm.LogginProperties;
+import net.odbogm.annotations.DontLoadLinks;
 import net.odbogm.annotations.Entity;
 import net.odbogm.annotations.Indexed;
 import net.odbogm.annotations.Indirect;
@@ -22,24 +23,32 @@ public final class UserSID implements ISID, ISecurityCredentials {
     private String name = "";
     @Indexed(type = Indexed.IndexType.UNIQUE)
     private String uuid = "";
-    
+
     @Indirect(linkName = "GroupSID_participants")
     private List<GroupSID> groups = new ArrayList<>();
-            
+
+    /**
+     * This list is filled when hydrating the UserSid, with all security credentials
+     * of user's groups, without the need to load all entities.
+     */
+    @Indirect(linkName = "-")
+    private List<String> securityCredentials;
+
+
     public UserSID() {
         super();
     }
-    
+
     public UserSID(String name, String uuid) {
         this.name = name;
         this.uuid = uuid;
     }
-    
+
     @Override
     public final String getName() {
         return name;
     }
-    
+
     @Override
     public final void setName(String name) {
         this.name = name;
@@ -59,7 +68,7 @@ public final class UserSID implements ISID, ISecurityCredentials {
     public final String toString() {
         return "USID{" + "id=" + uuid + ", name="+this.name+"}";
     }
-    
+
     public void addGroup(GroupSID gsid) {
         // ojo con las referencias cruzadas entre UserSID y GroupSID
         if (!this.groups.contains(gsid)) {
@@ -67,20 +76,30 @@ public final class UserSID implements ISID, ISecurityCredentials {
             gsid.add(this);
         }
     }
-    
+
     public void removeGroup(GroupSID gsid) {
         // ojo con las referencias cruzadas entre UserSID y GroupSID
         if (this.groups.remove(gsid)) {
             gsid.remove(this);
         }
     }
-    
+
     /**
      * Retorna una lista con todos los UUID de los grupos a los que pertenece el usuario.
      * @return {@literal List<String::UUID>} lista de grupos a los que pertene el usuario.
      */
     @Override
+    @DontLoadLinks
     public List<String> showSecurityCredentials() {
+        if (this.securityCredentials != null) {
+            this.securityCredentials.size(); // triggers load
+            return Collections.unmodifiableList(this.securityCredentials);
+        } else {
+            return getSecurityCredentials();
+        }
+    }
+
+    protected List<String> getSecurityCredentials() {
         //uuid del UserSID actual
         List<String> sc = new ArrayList<>(List.of(uuid));
         //recuperar todos los grupos a los que pertenece el UserSID actual
@@ -91,7 +110,7 @@ public final class UserSID implements ISID, ISecurityCredentials {
         }
         return Collections.unmodifiableList(sc);
     }
-    
+
     /**
      * Retorna una lista con todos los grupos a los que pertenece el usuario.
      * @return lista de GroupSID

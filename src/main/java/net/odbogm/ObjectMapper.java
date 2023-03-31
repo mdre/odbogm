@@ -18,15 +18,19 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 import net.odbogm.annotations.Indirect;
+import net.odbogm.annotations.OnlyAdd;
 import net.odbogm.cache.ClassCache;
 import net.odbogm.cache.ClassDef;
 import net.odbogm.exceptions.CollectionNotSupported;
 import net.odbogm.proxy.ArrayListEmbeddedProxy;
+import net.odbogm.proxy.ArrayListLazyProxy;
 import net.odbogm.proxy.HashMapEmbeddedProxy;
 import net.odbogm.proxy.ILazyCollectionCalls;
 import net.odbogm.proxy.ILazyMapCalls;
 import net.odbogm.proxy.IObjectProxy;
 import net.odbogm.proxy.ObjectProxyFactory;
+import net.odbogm.proxy.SecurityCredentialsListProxy;
+import net.odbogm.security.UserSID;
 
 /**
  *
@@ -215,7 +219,25 @@ public class ObjectMapper {
             return true;
         }
     }
-    
+
+    /**
+     * Fills the basic attributes of a proxy with the values from a Vertex.
+     * 
+     * @param proxy
+     * @param v
+     * @param t
+     */
+    public void hydrateBasic(IObjectProxy proxy, OVertex v, Transaction t) {
+        ClassDef classdef = classCache.get(proxy.___getBaseClass());
+        for (var entry : classdef.fields.entrySet()) {
+            String prop = entry.getKey();
+            if (!classdef.embeddedFields.containsKey(prop)) {
+                setFieldValue(proxy, prop, v.getProperty(prop));
+            }
+        }
+        hydrateSecurityCredentials(classdef, t, proxy);
+    }
+
     /**
      * Crea y llena un objeto con los valores correspondintes obtenidos del Vértice asignado.
      *
@@ -234,7 +256,6 @@ public class ObjectMapper {
         
         Class<?> toHydrate = c;
         String entityClass = ClassCache.getEntityName(toHydrate);
-//        String vertexClass = (v.getType().getName().equals("V") ? entityClass : v.getType().getName());
         String vertexClass = (v.getSchemaType().isPresent() & v.getSchemaType().get().getName().equals("V") ? 
                                 entityClass : 
                                 v.getSchemaType().get().getName());
@@ -294,7 +315,8 @@ public class ObjectMapper {
         // process embedded collections
         // ********************************************************************************************
         hydrateEmbeddedCollections(classdef, proxy, v);
-
+        hydrateSecurityCredentials(classdef, t, proxy);
+        
         
         // ********************************************************************************************
         // procesar los enum
@@ -369,7 +391,16 @@ public class ObjectMapper {
             }
         }
     }
-    
+
+    private void hydrateSecurityCredentials(ClassDef classdef, Transaction t, IObjectProxy proxy) {
+        if (classdef.entityName.equals(UserSID.class.getSimpleName()) &&
+                t.getSessionManager().getConfig().isFastLoadSecurityCredentials()) {
+            ILazyCollectionCalls lazyCol = new SecurityCredentialsListProxy();
+            lazyCol.init(t, proxy, "securityCredentials", null, null);
+            setFieldValue(proxy, classdef.fieldsObject.get("securityCredentials"), lazyCol);
+        }
+    }
+
     /**
      * Given a vertex from the base (or edge), hydrate the enums collections of the given
      * proxy accordingly to the values of the vertex.
@@ -502,12 +533,15 @@ public class ObjectMapper {
             
             ClassDef classdef = classCache.get(c);
             Field fLink = classdef.fieldsObject.get(field);
-
+            
             String graphRelationName = classdef.entityName + "_" + field;
             // Determinar la dirección
             ODirection direction = ODirection.OUT;
 
-            if (fLink.isAnnotationPresent(Indirect.class)) {
+            OnlyAdd onlyAdd = fLink.getAnnotation(OnlyAdd.class);
+            if (onlyAdd != null && onlyAdd.attribute() != null && !onlyAdd.attribute().isBlank()) {
+                graphRelationName = classdef.entityName + "_" + onlyAdd.attribute();
+            } else if (fLink.isAnnotationPresent(Indirect.class)) {
                 // si es un indirect se debe reemplazar el nombre de la relación por 
                 // el propuesto por la anotation
                 Indirect in = fLink.getAnnotation(Indirect.class);
@@ -525,6 +559,9 @@ public class ObjectMapper {
                 // inicializar la colección
                 ((ILazyCollectionCalls) col).init(t, (IObjectProxy) o,
                         graphRelationName, listClass, direction);
+                if (onlyAdd != null && col instanceof ArrayListLazyProxy) {
+                    ((ArrayListLazyProxy)col).setOnlyAdd(onlyAdd.attribute());
+                }
 
             } else if (col instanceof Map) {
                 ParameterizedType listType = (ParameterizedType) fLink.getGenericType();

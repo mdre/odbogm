@@ -37,7 +37,7 @@ public class VertexUtils {
     public static boolean areConected(OVertex v1, OVertex v2, String edgeLabel) {
         boolean connected = false;
         if ((v1 != null)&&(v2 != null)) {
-            Iterable<OVertex> result = v1.getVertices(ODirection.BOTH.BOTH, edgeLabel==null?"E":edgeLabel);
+            Iterable<OVertex> result = v1.getVertices(ODirection.BOTH, edgeLabel==null?"E":edgeLabel);
             for (OVertex ov : result) {
                 if (ov.getIdentity().toString().equals(v2.getIdentity().toString())) {
                     connected = true;
