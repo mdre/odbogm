@@ -532,7 +532,13 @@ let exist = select from (select expand(properties)  from (select expand(classes)
 if ($exist.size()=0) {
     create property SimpleVertexEx.enumTest string;
 }
- 
+
+
+let exist = select from (select expand(properties)  from (select expand(classes)  from metadata:schema)  where name = 'SimpleVertexEx') where name = 'point';
+if ($exist.size()=0) {
+    create property SimpleVertexEx.point EMBEDDED OPoint;
+}
+
 
 let exist = select from (select expand(properties)  from (select expand(classes)  from metadata:schema)  where name = 'SimpleVertexEx') where name = 'svuuid';
 if ($exist.size()=0) {

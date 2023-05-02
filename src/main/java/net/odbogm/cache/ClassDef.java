@@ -4,6 +4,7 @@ import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.logging.Logger;
 import net.odbogm.LogginProperties;
+import net.odbogm.utils.Adapters;
 
 /**
  * Structure to support the definition of a class.
@@ -54,7 +55,12 @@ public class ClassDef {
      * Map of enum attributes.
      */
     public HashMap<String, Class<?>> enumFields = new HashMap<>();
-    
+
+    /**
+     * Map of adaptable fields and the adapter used to convert their values.
+     */
+    public HashMap<String, Adapters.Adapter> adaptables = new HashMap<>();
+
     /**
      * Map of attributes that are collections of enums (only Lists).
      */
@@ -62,10 +68,10 @@ public class ClassDef {
     
     /**
      * Map of embedded List and embedded HashMap (collections of primitives and
-     * fields annotated with @Embedded).
+     * fields annotated with @Embedded; included in `fields`).
      */
     public HashMap<String, Class<?>> embeddedFields = new HashMap<>();
-    
+
     /**
      * Map of links to other objects.
      */

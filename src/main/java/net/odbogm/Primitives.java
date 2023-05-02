@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package net.odbogm;
 
 import com.orientechnologies.orient.core.metadata.schema.OType;
@@ -19,6 +14,8 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Vector;
+import net.odbogm.utils.Adapters;
+import net.odbogm.utils.OPoint;
 
 /**
  *
@@ -41,6 +38,7 @@ public class Primitives {
     }
     public static final IdentityHashMap<Class<?>, OType> PRIMITIVE_MAP = new IdentityHashMap<>();
     public static final IdentityHashMap<Class<?>, Class<?>> LAZY_COLLECTION = new IdentityHashMap<>();
+    public static final IdentityHashMap<Class<?>, Adapters.Adapter> ADAPTABLES = new IdentityHashMap<>();
 
     static {
         PRIMITIVE_MAP.put(Boolean.class, OType.BOOLEAN);
@@ -74,8 +72,8 @@ public class Primitives {
         LAZY_COLLECTION.put(HashMap.class,HashMapLazyProxy.class);
         LAZY_COLLECTION.put(Map.class,HashMapLazyProxy.class);
         
-        
+        ADAPTABLES.put(OPoint.class, Adapters.OPOINT);
     }
 
-    
+
 }

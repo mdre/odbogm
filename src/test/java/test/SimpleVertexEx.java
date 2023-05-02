@@ -18,6 +18,7 @@ import net.odbogm.annotations.DontLoadLinks;
 import net.odbogm.annotations.Eager;
 import net.odbogm.annotations.Indirect;
 import net.odbogm.annotations.Link;
+import net.odbogm.utils.OPoint;
 
 /**
  *
@@ -35,6 +36,9 @@ public class SimpleVertexEx extends SimpleVertex {
     private SimpleVertexEx looptest;
     
     public EnumTest enumTest;
+
+    private OPoint point;
+    private OPoint schemalessPoint;
 
     @Indexed(type = Indexed.IndexType.UNIQUE)
     private String svuuid;
@@ -276,6 +280,18 @@ public class SimpleVertexEx extends SimpleVertex {
 
     public void setLinkedEager(SimpleVertex linkedEager) {
         this.linkedEager = linkedEager;
+    }
+
+    public OPoint getPoint() {
+        return point;
+    }
+
+    public void setPoint(OPoint point) {
+        this.point = point;
+    }
+
+    public OPoint getSchemalessPoint() {
+        return schemalessPoint;
     }
 
     @Override

@@ -166,6 +166,8 @@ public class ClassCache {
                             }
                         } else if (f.getType().isEnum()) {
                             cached.enumFields.put(f.getName(), f.getType());
+                        } else if (Primitives.ADAPTABLES.containsKey(f.getType())) {
+                            cached.adaptables.put(f.getName(), Primitives.ADAPTABLES.get(f.getType()));
                         } else if (Primitives.LAZY_COLLECTION.get(f.getType()) != null) {
                             // FIXME: ojo que si se tratara de una extensión de AL o HM 
                             // no lo vería como tal y lo vincularía con un link

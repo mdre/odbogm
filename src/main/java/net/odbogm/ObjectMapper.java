@@ -170,6 +170,11 @@ public class ObjectMapper {
             boolean put = putValue(oStruct.fields, f, o, null);
             if (!put) oStruct.removedProperties.add(entry.getKey());
         });
+        classmap.adaptables.entrySet().stream().forEach(entry -> {
+            Field f = classmap.fieldsObject.get(entry.getKey());
+            boolean put = putValue(oStruct.fields, f, o, entry.getValue()::toDb);
+            if (!put) oStruct.removedProperties.add(entry.getKey());
+        });
 
         // procesar todos los Enums
         classmap.enumFields.entrySet().stream().forEach(entry -> {
@@ -235,6 +240,7 @@ public class ObjectMapper {
                 setFieldValue(proxy, prop, v.getProperty(prop));
             }
         }
+        hydrateAdaptables(classdef, proxy, v);
         hydrateSecurityCredentials(classdef, t, proxy);
     }
 
@@ -303,6 +309,7 @@ public class ObjectMapper {
                 this.setFieldValue(proxy, prop, v.getProperty(prop));
             }
         }
+        hydrateAdaptables(classdef, proxy, v);
         
         //version field
         proxy.___uptadeVersion();
@@ -398,6 +405,13 @@ public class ObjectMapper {
             ILazyCollectionCalls lazyCol = new SecurityCredentialsListProxy();
             lazyCol.init(t, proxy, "securityCredentials", null, null);
             setFieldValue(proxy, classdef.fieldsObject.get("securityCredentials"), lazyCol);
+        }
+    }
+
+    private void hydrateAdaptables(ClassDef classdef, IObjectProxy proxy, OElement v) {
+        for (var entry : classdef.adaptables.entrySet()) {
+            String prop = entry.getKey();
+            this.setFieldValue(proxy, prop, entry.getValue().fromDb(v.getProperty(prop)));
         }
     }
 

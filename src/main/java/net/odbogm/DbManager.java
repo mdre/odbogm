@@ -23,7 +23,6 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import static net.odbogm.Primitives.PRIMITIVE_MAP;
 import net.odbogm.annotations.ClassIndex;
 import net.odbogm.annotations.Embedded;
 import net.odbogm.annotations.Entity;
@@ -333,7 +332,8 @@ public class DbManager {
                     embeddedList = listClass.isEnum();
                 }
                 
-                if ((PRIMITIVE_MAP.get(field.getType())!=null)
+                if ((Primitives.PRIMITIVE_MAP.containsKey(field.getType()))
+                        ||(Primitives.ADAPTABLES.containsKey(field.getType()))
                         ||(field.getType().isEnum())
                         ||(field.isAnnotationPresent(Embedded.class))
                         ||(embeddedList)) {
@@ -347,8 +347,10 @@ public class DbManager {
                         type = "embeddedlist";
                     } else if (Map.class.isAssignableFrom(field.getType())) {
                         type = "embeddedmap";
+                    } else if (Primitives.ADAPTABLES.containsKey(field.getType())) {
+                        type = Primitives.ADAPTABLES.get(field.getType()).dbType();
                     } else {
-                        type = PRIMITIVE_MAP.get(field.getType()).toString();
+                        type = Primitives.PRIMITIVE_MAP.get(field.getType()).toString();
                     }
                     String statement = "create property " + currentProp + " " + type + ";";
                     String let = "\n"

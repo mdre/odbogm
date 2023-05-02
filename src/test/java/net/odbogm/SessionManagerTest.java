@@ -4,6 +4,7 @@ import com.orientechnologies.orient.core.db.ODatabasePool;
 import com.orientechnologies.orient.core.db.ODatabaseSession;
 import com.orientechnologies.orient.core.exception.ODatabaseException;
 import com.orientechnologies.orient.core.id.ORecordId;
+import com.orientechnologies.orient.core.metadata.schema.OClass;
 import com.orientechnologies.orient.core.record.ODirection;
 import com.orientechnologies.orient.core.record.OEdge;
 import com.orientechnologies.orient.core.record.OVertex;
@@ -36,6 +37,7 @@ import net.odbogm.exceptions.UnknownRID;
 import net.odbogm.proxy.IObjectProxy;
 import net.odbogm.security.*;
 import net.odbogm.utils.DateHelper;
+import net.odbogm.utils.OPoint;
 import org.apache.commons.lang.RandomStringUtils;
 import org.easymock.EasyMock;
 import org.junit.After;
@@ -3851,6 +3853,50 @@ public class SessionManagerTest {
         sm.getCurrentTransaction().reloadObject(sv);
         assertEquals("reload me", sv.getS());
         assertEquals(version+1, sv.getVersion());
+    }
+
+    @Test
+    public void opoint() throws Exception {
+        //load correct OPoint from database
+        SimpleVertexEx sv = sm.store(new SimpleVertexEx());
+        sm.commit();
+        try (var db = sm.getDBTx()) {
+            db.execute("sql", "update ? set point = {'@class': 'OPoint', 'coordinates': [1.0, 2.0]};",
+                    new ORecordId(sv.getRid()));
+        }
+        sm.getCurrentTransaction().clearCache();
+        sv = sm.get(SimpleVertexEx.class, sv.getRid());
+        assertNotNull(sv.getPoint());
+        assertEquals(1.0, sv.getPoint().getX(), 0.0);
+        assertEquals(2.0, sv.getPoint().getY(), 0.0);
+        
+        sv.setPoint(new OPoint(3.0, 4.0));
+        sv = commitClearAndGet(sv);
+        assertNotNull(sv.getPoint());
+        assertEquals(3.0, sv.getPoint().getX(), 0.0);
+        assertEquals(4.0, sv.getPoint().getY(), 0.0);
+
+        //save correct OPoint starting as new
+        SimpleVertexEx sv2 = sm.store(new SimpleVertexEx());
+        sv2.setPoint(new OPoint(1.2, 1.3));
+        sv2 = commitClearAndGet(sv2);
+        assertNotNull(sv2.getPoint());
+        assertEquals(1.2, sv2.getPoint().getX(), 0.0);
+        assertEquals(1.3, sv2.getPoint().getY(), 0.0);
+        
+        sv2.setPoint(null);
+        sv2 = commitClearAndGet(sv2);
+        assertNull(sv2.getPoint());
+        
+        //invalid database value
+        try (var db = sm.getDBTx()) {
+            OClass oc = db.getClass("SimpleVertexEx");
+            assertNull(oc.getProperty("schemalessPoint"));
+            db.execute("sql", "update ? set schemalessPoint = 'invalid'", new ORecordId(sv2.getRid()));
+        }
+        sm.getCurrentTransaction().clearCache();
+        sv2 = sm.get(SimpleVertexEx.class, sv2.getRid());
+        assertNull(sv2.getSchemalessPoint());
     }
 
 }

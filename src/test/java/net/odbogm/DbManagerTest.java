@@ -106,5 +106,15 @@ public class DbManagerTest {
         List<String> l = dbm.generateDBSQL("test");
         l.forEach(s -> assertFalse(s.contains("version INTEGER")));
     }
-    
+
+    /*
+     * Tests that DBManager takes into account the adaptables fields.
+     */
+    @Test
+    public void dbManagerAdaptables() throws Exception {
+        List<String> l = dbm.generateDBSQL("test");
+        assertTrue(l.stream().anyMatch(
+                s -> s.contains("create property SimpleVertexEx.point EMBEDDED OPoint")));
+    }
+
 }
