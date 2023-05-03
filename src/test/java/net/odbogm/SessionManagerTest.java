@@ -17,6 +17,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import net.odbogm.agent.ITransparentDirtyDetector;
@@ -34,6 +35,7 @@ import net.odbogm.exceptions.ObjectMarkedAsDeleted;
 import net.odbogm.exceptions.OdbogmException;
 import net.odbogm.exceptions.ReferentialIntegrityViolation;
 import net.odbogm.exceptions.UnknownRID;
+import net.odbogm.proxy.ILazyCalls;
 import net.odbogm.proxy.IObjectProxy;
 import net.odbogm.security.*;
 import net.odbogm.utils.DateHelper;
@@ -3229,7 +3231,42 @@ public class SessionManagerTest {
         
         v.getOhmSVE().entrySet().iterator().next().getKey().setNota("dirty");
     }
-    
+
+    @Test
+    public void lazyCollectionsOnStore() throws Exception {
+        IndirectObject v = new IndirectObject();
+        v.setAlDirectLinked(new ArrayList<>(List.of(new IndirectObject())));
+        v.setHmDirectLinked(new HashMap<>(Map.of("key", new IndirectObject())));
+        v.setAlIndirectLinked(new ArrayList<>(List.of(new IndirectObject())));
+        v.setHmIndirectLinked(new HashMap<>(Map.of("key", new IndirectObject())));
+        v = sm.store(v);
+        assertTrue(v.getAlDirectLinked() instanceof ILazyCalls);
+        assertTrue(v.getHmDirectLinked() instanceof ILazyCalls);
+        assertFalse(v.getAlDirectLinked().isEmpty());
+        assertFalse(v.getHmDirectLinked().isEmpty());
+        //indirect collections too:
+        assertTrue(v.getAlIndirectLinked() instanceof ILazyCalls);
+        assertTrue(v.getHmIndirectLinked() instanceof ILazyCalls);
+        assertFalse(v.getAlIndirectLinked().isEmpty());
+        assertFalse(v.getHmIndirectLinked().isEmpty());
+        
+        //empty collections:
+        v = new IndirectObject();
+        v.setAlDirectLinked(new ArrayList<>());
+        v.setHmDirectLinked(new HashMap<>());
+        v.setAlIndirectLinked(new ArrayList<>());
+        v.setHmIndirectLinked(new HashMap<>());
+        v = sm.store(v);
+        assertTrue(v.getAlDirectLinked() instanceof ILazyCalls);
+        assertTrue(v.getHmDirectLinked() instanceof ILazyCalls);
+        assertTrue(v.getAlDirectLinked().isEmpty());
+        assertTrue(v.getHmDirectLinked().isEmpty());
+        assertTrue(v.getAlIndirectLinked() instanceof ILazyCalls);
+        assertTrue(v.getHmIndirectLinked() instanceof ILazyCalls);
+        assertTrue(v.getAlIndirectLinked().isEmpty());
+        assertTrue(v.getHmIndirectLinked().isEmpty());
+    }
+
     /*
      * Tests that indirect links are refreshed after commit.
      */
@@ -3266,8 +3303,11 @@ public class SessionManagerTest {
         assertFalse(((IObjectProxy)sub).___isDirty());
         assertFalse(((IObjectProxy)col1).___isDirty());
         assertFalse(((IObjectProxy)col2).___isDirty());
+        
+        //with previously persisted objects:
+        //...
     }
-    
+
     @Test
     public void saveNulls() throws Exception {
         SimpleVertexEx sv = sm.store(new SimpleVertexEx());

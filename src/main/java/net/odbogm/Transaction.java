@@ -695,7 +695,11 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                     ((ILazyMapCalls)lazyMap).initStored();
                 }
             }
-
+            
+            // convert indirect collections to lazy collections
+            this.objectMapper.indirectCollectionsToLazy(this, oClassDef, (IObjectProxy)proxy, o);
+            
+            
             // guardar el objeto en el cache. Se usa el RID como clave
             addToCache(v.getIdentity().toString(), proxy);
             

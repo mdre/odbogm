@@ -499,6 +499,22 @@ public class ObjectMapper {
     }
 
     
+    public void indirectCollectionsToLazy(Transaction t, ClassDef classdef, IObjectProxy proxy, Object realObject) {
+        for (var entry : classdef.indirectLinkLists.entrySet()) {
+            String field = entry.getKey();
+            Class<?> fc = entry.getValue();
+            Object lazyCol = collectionToLazy(proxy, field, fc, t);
+            Object fieldValue = getFieldValue(realObject, classdef.fieldsObject.get(field));
+            if (lazyCol != null && fieldValue != null) {
+                if (lazyCol instanceof List) {
+                    ((List)lazyCol).addAll((List)fieldValue);
+                } else if (lazyCol instanceof Map) {
+                    ((Map)lazyCol).putAll((Map)fieldValue);
+                }
+            }
+        }
+    }
+
     public Object collectionToLazy(Object o, String field, Transaction t) {
         LOGGER.log(Level.FINER, "convertir colection a Lazy: {0}", field);
         ClassDef classdef;
