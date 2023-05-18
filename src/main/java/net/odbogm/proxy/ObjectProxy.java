@@ -601,6 +601,13 @@ public class ObjectProxy implements IObjectProxy, MethodInterceptor {
                     this.___transaction.activateOnCurrentThread();
                     // retrieve vertex from database 
                     for (OVertex vertice : ov.getVertices(direction, graphRelationName)) {
+                        
+                        //safeguard for invalid ridbags including null as entry:
+                        if (vertice == null) {
+                            LogginProperties.logInvalidRidbag(LOGGER, ov, graphRelationName);
+                            continue;
+                        }
+                        
                         LOGGER.log(Level.FINER, "hydrate innerO: {0}", vertice.getIdentity());
 
                         if (!duplicatedLinkGuard) {

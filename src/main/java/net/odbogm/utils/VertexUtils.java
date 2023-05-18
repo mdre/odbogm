@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package net.odbogm.utils;
 
 import com.orientechnologies.orient.core.record.ODirection;
@@ -26,29 +21,7 @@ public class VertexUtils {
         LOGGER.setLevel(LogginProperties.VertexUtil);
     }
 
-    /**
-     * Check if two vertex are conected
-     *
-     * @param v1 first vertex
-     * @param v2 second vertex
-     * @param edgeLabel etiqueta del edge
-     * @return true if any conection exist
-     */
-    public static boolean areConected(OVertex v1, OVertex v2, String edgeLabel) {
-        boolean connected = false;
-        if ((v1 != null)&&(v2 != null)) {
-            Iterable<OVertex> result = v1.getVertices(ODirection.BOTH, edgeLabel==null?"E":edgeLabel);
-            for (OVertex ov : result) {
-                if (ov.getIdentity().toString().equals(v2.getIdentity().toString())) {
-                    connected = true;
-                    break;
-                }
-            }
-        }
-        return connected;
-    }
-    
-    
+
     /**
      * Check if v1 is conected to (out) v2
      *
@@ -60,9 +33,16 @@ public class VertexUtils {
     public static boolean isConectedTo(OVertex v1, OVertex v2, String edgeLabel) {
         boolean connected = false;
         LOGGER.log(Level.FINER, "Verificando edges entre {0} y {1} a través de la realción {2}", new Object[]{v1.getIdentity(), v2.getIdentity(), edgeLabel});
-        Iterable<OEdge> result = v1.getEdges(ODirection.OUT, edgeLabel==null?"E":edgeLabel);
+        Iterable<OEdge> result = v1.getEdges(ODirection.OUT, edgeLabel == null ? "E" : edgeLabel);
+        OVertex to;
         for (OEdge oe : result) {
-            if (oe.getTo().getIdentity().toString().equals(v2.getIdentity().toString())) {
+            to = oe.getTo();
+            //safeguard for invalid ridbags including null as entry:
+            if (to == null) {
+                LogginProperties.logInvalidRidbag(LOGGER, v1, edgeLabel);
+                continue;
+            }
+            if (to.getIdentity().toString().equals(v2.getIdentity().toString())) {
                 LOGGER.log(Level.FINER, "Conectados por el edge: {0}", oe.getIdentity());
                 connected = true;
                 break;
@@ -70,7 +50,7 @@ public class VertexUtils {
         }
         return connected;
     }
-    
+
     /**
      * Helper class to fill elements with properties throught a Map
      * MMAPI does has not have that funcionality as provided by Tinkerpop
@@ -84,4 +64,5 @@ public class VertexUtils {
             oe.setProperty(entry.getKey(), entry.getValue());
         });
     }
+
 }

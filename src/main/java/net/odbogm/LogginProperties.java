@@ -1,5 +1,6 @@
 package net.odbogm;
 
+import com.orientechnologies.orient.core.record.OVertex;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -67,5 +68,9 @@ public class LogginProperties {
         LogginProperties.SObject = Level.OFF;
         Logger.getLogger("net.odbogm.agent.TransparentDirtyDetectorAgent").setLevel(Level.OFF);
     }
-    
+
+    public static void logInvalidRidbag(Logger logger, OVertex ov, String ridbagName) {
+        logger.log(Level.WARNING, "Encountered null in {0} ridbag ({1}).", new Object[]{ov.getIdentity().toString(), ridbagName});
+    }
+
 }
