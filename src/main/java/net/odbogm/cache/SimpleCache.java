@@ -45,7 +45,7 @@ public class SimpleCache implements Cache {
      */
     @Override
     public void add(String key, Object value) {
-        LOGGER.log(Level.FINER, "adding: {0} {1} value: {2}", new Object[]{key, value.getClass().getSimpleName()});
+        LOGGER.log(Level.FINER, "adding: {0} value: {2}", new Object[]{key, value});
         if (key == null) {
             return;
         }
