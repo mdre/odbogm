@@ -1722,6 +1722,23 @@ public class SessionManagerTest {
         assertEquals(3L, logs);
     }
 
+    @Test
+    public void auditLogLabelLoop() throws Exception {
+        SimpleVertexEx sv1 = sm.store(new SimpleVertexEx());
+        SimpleVertexEx sv2 = sm.store(new SimpleVertexEx());
+        
+        sv1.setOhmSVE(new HashMap<>());
+        sv1.ohmSVE.put(new EdgeAttrib(), sv2);
+        sv2.setOhmSVE(new HashMap<>());
+        sv2.ohmSVE.put(new EdgeAttrib(), sv1);
+        sm.commit();
+        
+        //when loop is present, setAuditLogLabel must not throw StackOverflowError
+        sm.getCurrentTransaction().setAuditLogLabel(sv1, "loop");
+        sm.commit();
+        System.out.println("Success");
+    }
+
     /*
      * Bug fixed: audit on an edge object caused a NPE.
      */

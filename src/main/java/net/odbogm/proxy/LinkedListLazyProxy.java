@@ -103,7 +103,7 @@ public class LinkedListLazyProxy extends LinkedList implements ILazyCollectionCa
             if (theParent != null) {
                 String auditLogLabel = theParent.___getAuditLogLabel();
                 for (Object o : this) {
-                    if (o instanceof IObjectProxy) {
+                    if (o instanceof IObjectProxy && !seen.contains(o)) {
                         ((IObjectProxy)o).___replicateAuditLogLabel(auditLogLabel, seen);
                     }
                 }

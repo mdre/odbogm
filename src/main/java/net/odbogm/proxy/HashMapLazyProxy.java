@@ -135,10 +135,10 @@ public class HashMapLazyProxy extends HashMap<Object, Object> implements ILazyMa
             if (theParent != null) {
                 String auditLogLabel = theParent.___getAuditLogLabel();
                 for (Entry e : this.entrySet()) {
-                    if (e.getKey() instanceof IObjectProxy) {
+                    if (e.getKey() instanceof IObjectProxy && !seen.contains(e.getKey())) {
                         ((IObjectProxy)e.getKey()).___replicateAuditLogLabel(auditLogLabel, seen);
                     }
-                    if (e.getValue()instanceof IObjectProxy) {
+                    if (e.getValue()instanceof IObjectProxy && !seen.contains(e.getValue())) {
                         ((IObjectProxy)e.getValue()).___replicateAuditLogLabel(auditLogLabel, seen);
                     }
                 }
