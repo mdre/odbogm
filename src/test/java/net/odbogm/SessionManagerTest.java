@@ -23,11 +23,9 @@ import java.util.UUID;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
-import net.odbogm.agent.ITransparentDirtyDetector;
+import net.dirtydetector.agent.ITransparentDirtyDetector;
 import net.odbogm.annotations.Entity;
-import net.odbogm.annotations.RID;
 import net.odbogm.annotations.Sequence;
-import net.odbogm.annotations.Version;
 import net.odbogm.cache.SimpleCache;
 import net.odbogm.exceptions.ConcurrentModification;
 import net.odbogm.exceptions.IncorrectRIDField;
@@ -49,6 +47,10 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.function.ThrowingRunnable;
+import test.BadRid;
+import test.BadVersion;
+import test.DuplicatedRid;
+import test.DuplicatedVersion;
 import test.EdgeAttrib;
 import test.EnumTest;
 import test.Enums;
@@ -487,14 +489,14 @@ public class SessionManagerTest {
         System.out.println("=========== fin segundo commit ====================================");
         System.out.println("dirty count: " + sm.getDirtyCount());
         if (sm.getActivationStrategy() == SessionManager.ActivationStrategy.CLASS_INSTRUMENTATION) {
-            System.out.println("isDirty" + ((ITransparentDirtyDetector) result).___ogm___isDirty());
-            System.out.println("isDirty" + ((ITransparentDirtyDetector) result.svinner).___ogm___isDirty());
+            System.out.println("isDirty" + ((ITransparentDirtyDetector) result).___tdd___isDirty());
+            System.out.println("isDirty" + ((ITransparentDirtyDetector) result.svinner).___tdd___isDirty());
 
             System.out.println("result.svinner: " + result.getSvinner().getS());
-            System.out.println("isDirty" + ((ITransparentDirtyDetector) result).___ogm___isDirty());
+            System.out.println("isDirty" + ((ITransparentDirtyDetector) result).___tdd___isDirty());
 
             System.out.println("dirty count: " + sm.getDirtyCount());
-            System.out.println("isDirty" + ((ITransparentDirtyDetector) result).___ogm___isDirty());
+            System.out.println("isDirty" + ((ITransparentDirtyDetector) result).___tdd___isDirty());
         }
         System.out.println("      toS: " + result.getSvinner().toString());
         System.out.println("dirty count: " + sm.getDirtyCount());
@@ -2546,7 +2548,7 @@ public class SessionManagerTest {
     
     /*
      * All operations that open a new database transaction must always close it
-     * on any thrown exception.
+     * on any thrown exception. FIX
      */
     @Test
     public void finalizeTransactionsWithException() throws Exception {
@@ -2902,27 +2904,22 @@ public class SessionManagerTest {
     }
     
     /*
-     * Tests that it fails if a non String field is annotated as RID.
+     * Tests that it fails if a non String field is annotated as RID. FIX
      */
     @Test
     public void badRidField() throws Exception {
-        @Entity class BadRid {
-            @RID Integer rid;
-        }
+        
         BadRid br = new BadRid();
         var ex = assertThrows(IncorrectRIDField.class, () -> sm.store(br));
         assertEquals("A field annotated with @RID must be of type String.", ex.getMessage());
     }
     
     /*
-     * Tests that it fails if two or more fields are annotated as RID.
+     * Tests that it fails if two or more fields are annotated as RID. FIX
      */
     @Test
     public void duplicatedRidField() throws Exception {
-        @Entity class DuplicatedRid {
-            @RID String rid1;
-            @RID String rid2;
-        }
+        
         DuplicatedRid dr = new DuplicatedRid();
         var ex = assertThrows(IncorrectRIDField.class, () -> sm.store(dr));
         assertEquals("Only one field can be annotated with @RID.", ex.getMessage());
@@ -3379,7 +3376,7 @@ public class SessionManagerTest {
     }
     
     /*
-     * Tests the IncorrectSequenceField exception.
+     * Tests the IncorrectSequenceField exception. FIX
      */
     @Test
     public void incorrectSerialField() throws Exception {
@@ -3397,27 +3394,22 @@ public class SessionManagerTest {
     }
     
     /*
-     * Tests that it fails if a non integer field is annotated as Version.
+     * Tests that it fails if a non integer field is annotated as Version. FIX
      */
     @Test
     public void badVersionField() throws Exception {
-        @Entity class BadVersion {
-            @Version long version;
-        }
+        
         BadVersion bv = new BadVersion();
         var ex = assertThrows(IncorrectVersionField.class, () -> sm.store(bv));
         assertEquals("A field annotated with @Version must be of type int or Integer.", ex.getMessage());
     }
     
     /*
-     * Tests that it fails if two or more fields are annotated as Version.
+     * Tests that it fails if two or more fields are annotated as Version.  FIX
      */
     @Test
     public void duplicatedVersionField() throws Exception {
-        @Entity class DuplicatedVersion {
-            @Version int v1;
-            @Version Integer v2;
-        }
+        
         DuplicatedVersion dv = new DuplicatedVersion();
         var ex = assertThrows(IncorrectVersionField.class, () -> sm.store(dv));
         assertEquals("Only one field can be annotated with @Version.", ex.getMessage());
@@ -3693,7 +3685,7 @@ public class SessionManagerTest {
         System.out.println("Crear el objeto");
         SVExChild v0 = new SVExChild();
         SVExChild v1 = sm.store(v0); // starts dirty (by agent) because of collection usage
-        System.out.println("Dirty: "+((ITransparentDirtyDetector)v1).___ogm___isDirty());
+        System.out.println("Dirty: "+((ITransparentDirtyDetector)v1).___tdd___isDirty());
         System.out.println("");
         System.out.println("");
         System.out.println("commit....");
@@ -3701,16 +3693,16 @@ public class SessionManagerTest {
         System.out.println("Fin commit");
         System.out.println("");
         System.out.println("");
-        System.out.println("Dirty: " +((ITransparentDirtyDetector)v1).___ogm___isDirty());
+        System.out.println("Dirty: " +((ITransparentDirtyDetector)v1).___tdd___isDirty());
         System.out.println("llamar a hashCode....");
         v1.hashCode();
         assertFalse(((IObjectProxy)v1).___isDirty());
         assertFalse(sm.getCurrentTransaction().getDirtyCache().values().contains(v1));
         
         SimpleVertexEx v2 = sm.store(new SimpleVertexEx()); // set in constructor
-        System.out.println(((ITransparentDirtyDetector)v2).___ogm___isDirty());
+        System.out.println(((ITransparentDirtyDetector)v2).___tdd___isDirty());
         v2 = commitClearAndGet(v2);
-        System.out.println(((ITransparentDirtyDetector)v2).___ogm___isDirty());
+        System.out.println(((ITransparentDirtyDetector)v2).___tdd___isDirty());
         v2.hashCode();
         assertFalse(((IObjectProxy)v2).___isDirty());
         assertFalse(sm.getCurrentTransaction().getDirtyCache().values().contains(v2));

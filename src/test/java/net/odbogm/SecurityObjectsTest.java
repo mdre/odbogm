@@ -6,6 +6,7 @@ import java.lang.reflect.Field;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import net.dirtydetector.agent.ITransparentDirtyDetector;
 import net.odbogm.exceptions.CircularReferenceException;
 import net.odbogm.exceptions.UnknownRID;
 import net.odbogm.proxy.ArrayListLazyProxy;
@@ -80,18 +81,22 @@ public class SecurityObjectsTest {
         // crear los grupos y los usuarios.
         System.out.println("\n\n\n\n\n\n\n\n\n\n\n\n\n");
         System.out.println("Creando los grupos ----------------------------------");
-        
         GroupSID gna = new GroupSID("gna", "gna");
         GroupSID gr = new GroupSID("gr", "gr");
         GroupSID gw = new GroupSID("gw", "gw");
         GroupSID go = new GroupSID("go", "go"); //other
         System.out.println("CL group: " + gna.getClass().getClassLoader() + " > " + gna.getClass().getCanonicalName());
         System.out.println("\n\n\nGuardando los grupos ----------------------------------");
-
+        
+        System.out.println("1: "+(ITransparentDirtyDetector.class.isAssignableFrom(gna.getClass())));
         GroupSID sgna = this.sm.store(gna);
+        System.out.println("2");
         GroupSID sgr = this.sm.store(gr);
+        System.out.println("3");
         GroupSID sgw = this.sm.store(gw);
+        System.out.println("4");
         GroupSID sgo = this.sm.store(go);
+        System.out.println("--");
 
         // liberar las referencias
         gna = null;

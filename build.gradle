@@ -10,7 +10,7 @@ plugins {
 }
 
 //OrientDB version to use:
-ext.orientDbVersion = '3.1.5'
+ext.orientDbVersion = '3.2.32'
 
 
 // ejecutar: gradle idea 
@@ -35,8 +35,8 @@ def info() {
 compileJava {
 //    options.compilerArgs << '-Xlint:deprecation'
 //    options.compilerArgs << '-Xlint:unchecked'
-    sourceCompatibility = JavaVersion.VERSION_11
-    targetCompatibility = JavaVersion.VERSION_11
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
 }
 
 // Para hace el deploy en Sonatype
@@ -113,8 +113,8 @@ repositories {
 
 dependencies {
     //implementation "cglib:cglib:3.3.0"
-    api "com.github.mdre:EasyProxy:0.+"
-    implementation "com.github.mdre:odbogm-agent:1.1.+"
+    api "com.github.mdre:EasyProxy:1.+"
+    implementation "com.github.mdre:tdd-agent:0.+"
     
     api "com.orientechnologies:orientdb-graphdb:${orientDbVersion}"
     api "com.orientechnologies:orientdb-graphdb:${orientDbVersion}:javadoc"
@@ -131,7 +131,7 @@ dependencies {
 //task to find the path of the ogm agent automatically:
 task findAgentPath {
     configurations.runtimeClasspath.files.each {
-        if (it.getName().contains('odbogm-agent')) {
+        if (it.getName().contains('tdd-agent')) {
             project.ext.setProperty('odbogmAgentPath', it.toString())
         }
     }
@@ -140,7 +140,7 @@ task findAgentPath {
 test {
     dependsOn findAgentPath
     jvmArgs '-Djdk.attach.allowAttachSelf=true', '-DridBag.embeddedToSbtreeBonsaiThreshold=-1'
-    jvmArgs += "-javaagent:${project.odbogmAgentPath}"
+    jvmArgs += "-javaagent:${project.odbogmAgentPath}=net.odbogm.annotations.Entity"
     outputs.upToDateWhen { false }
     testLogging {
         // Make sure output from
@@ -190,7 +190,7 @@ task fatJar(type: Jar) {
     //      'Can-Retransform-Classes':true
     //        )
     //    }
-    baseName = project.name + '-all'
+    archiveBaseName = project.name + '-all'
     from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
     with jar
 }

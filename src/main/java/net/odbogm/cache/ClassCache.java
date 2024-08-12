@@ -9,7 +9,6 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import net.odbogm.LogginProperties;
-import net.odbogm.ObjectMapper;
 import net.odbogm.Primitives;
 import static net.odbogm.Primitives.PRIMITIVE_MAP;
 import net.odbogm.annotations.Eager;
@@ -54,9 +53,9 @@ public class ClassCache {
         LOGGER.log(Level.FINER, "Procesando clase: {0}", c.getName());
         
         Class<?> toProcess = c;
-        // buscar la primera clase que no sea un proxy de CGLIB
-        // para esto, el nombre de la clase no debe tener la cadena $$EnhancerByCGLIB$$
-        if (c.getName().contains("$ByteBuddy$")) {
+        // buscar la primera clase que no sea un proxy de EasyProxy
+        // para esto, el nombre de la clase no debe tener la cadena "_EasyProxy"
+        if (c.getName().contains("_EasyProxy")) {
             toProcess = c.getSuperclass();
             LOGGER.log(Level.FINER, "Clase proxy detectada! continuar con: {0}", toProcess.getName());
         }
@@ -94,7 +93,7 @@ public class ClassCache {
     }
 
     private void cacheClass(Class<?> c, ClassDef cached) {
-        if (c != Object.class) {
+        if (c != Object.class && !c.getName().startsWith("java")) {
             LOGGER.log(Level.FINER, "Clase: {0}", c.getName());
             
             // iniciamos analizando la superclass y luego seguimos con los campos de la clase 
@@ -115,7 +114,7 @@ public class ClassCache {
                     if (!(f.isAnnotationPresent(Ignore.class)
                             || Modifier.isTransient(f.getModifiers())
                             || (Modifier.isStatic(f.getModifiers()) && Modifier.isFinal(f.getModifiers())
-                            || f.getName().startsWith("___ogm___"))
+                            || f.getName().startsWith("___tdd___"))
                             )) {
                         
                         f.setAccessible(true);
@@ -259,8 +258,11 @@ public class ClassCache {
                         }
                     }
 
-                } catch (IllegalArgumentException ex) {
-                    Logger.getLogger(ObjectMapper.class.getName()).log(Level.SEVERE, null, ex);
+                } catch (IncorrectSequenceField | IncorrectVersionField ex) {
+                    
+                    LOGGER.log(Level.FINEST, " ############### ooo ###############", ex);
+                    LOGGER.log(Level.SEVERE, null, ex);
+                    LOGGER.log(Level.FINEST, " ############### ooo ###############", ex);
                 }
             }
             

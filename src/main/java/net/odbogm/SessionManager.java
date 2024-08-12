@@ -15,8 +15,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import net.odbogm.agent.ITransparentDirtyDetector;
-import net.odbogm.agent.TransparentDirtyDetectorAgent;
+import net.dirtydetector.agent.ITransparentDirtyDetector;
+import net.dirtydetector.agent.TransparentDirtyDetectorAgent;
 import net.odbogm.audit.Auditor;
 import net.odbogm.exceptions.ConcurrentModification;
 import net.odbogm.exceptions.NoUserLoggedIn;
@@ -134,6 +134,14 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
     
     public void loadAgent() {
         TransparentDirtyDetectorAgent.initialize();
+        TransparentDirtyDetectorAgent.get()
+                    .addDetector("net.odbogm.annotations.Entity")
+                    .enableDumpDebugDirectory("/tmp/1/asm")
+                    .addIgnore("org.junit")
+                    .addIgnore("org.apache")
+                    .addIgnore("com.orientechnologies")
+                
+                ;
     }
     
     /**

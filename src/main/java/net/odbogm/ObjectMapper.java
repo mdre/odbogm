@@ -117,17 +117,19 @@ public class ObjectMapper {
      * @param v If not null, sets also its corresponding property.
      */
     public void fillSequenceFields(Object o, Transaction t, OVertex v) {
-        ClassDef classdef = this.classCache.get(o.getClass());
-        if (!classdef.sequenceFields.isEmpty()) {
-            OSequenceLibrary seqLibrary = t.getCurrentGraphDb().getMetadata().getSequenceLibrary();
-            classdef.sequenceFields.entrySet().forEach(e -> {
-                Field f = classdef.fieldsObject.get(e.getKey());
-                if (this.getFieldValue(o, f) == null) {
-                    Long seqVal = seqLibrary.getSequence(e.getValue()).next();
-                    this.setFieldValue(o, f, seqVal);
-                    if (v != null) v.setProperty(e.getKey(), seqVal);
-                }
-            });
+        if (!Primitives.PRIMITIVE_MAP.containsKey(o.getClass())) {
+            ClassDef classdef = this.classCache.get(o.getClass());
+            if (!classdef.sequenceFields.isEmpty()) {
+                OSequenceLibrary seqLibrary = t.getCurrentGraphDb().getMetadata().getSequenceLibrary();
+                classdef.sequenceFields.entrySet().forEach(e -> {
+                    Field f = classdef.fieldsObject.get(e.getKey());
+                    if (this.getFieldValue(o, f) == null) {
+                        Long seqVal = seqLibrary.getSequence(e.getValue()).next();
+                        this.setFieldValue(o, f, seqVal);
+                        if (v != null) v.setProperty(e.getKey(), seqVal);
+                    }
+                });
+            }
         }
     }
     

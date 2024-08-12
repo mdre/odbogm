@@ -19,12 +19,12 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import net.dirtydetector.agent.ITransparentDirtyDetector;
 import net.odbogm.LogginProperties;
 import net.odbogm.ObjectMapper;
 import net.odbogm.ObjectStruct;
 import net.odbogm.SessionManager;
 import net.odbogm.Transaction;
-import net.odbogm.agent.ITransparentDirtyDetector;
 import net.odbogm.annotations.Audit.AuditType;
 import net.odbogm.annotations.DontLoadLinks;
 import net.odbogm.annotations.Eager;
@@ -259,10 +259,13 @@ public class ObjectProxy implements IObjectProxy, IEasyProxyInterceptor {
                 break;
                 
             
-            case "___ogm___setDirty":
+            case "___tdd___setDirty":
                 res = superMethod.invoke(target, args);
                 break;
-            case "___ogm___isDirty":
+            case "___tdd___isDirty":
+                res = superMethod.invoke(target, args);
+                break;
+            case "___tdd___clearDirty":
                 res = superMethod.invoke(target, args);
                 break;
 
@@ -325,7 +328,7 @@ public class ObjectProxy implements IObjectProxy, IEasyProxyInterceptor {
                             // si se está usando la instrumentación de clase, directamente verificar en el objeto
                             // cual es su estado.
                             LOGGER.log(Level.FINEST, "o: {0} ITrans: {1}", new Object[]{target.getClass().getName(), target instanceof ITransparentDirtyDetector});
-                            if (((ITransparentDirtyDetector) target).___ogm___isDirty()) {
+                            if (((ITransparentDirtyDetector) target).___tdd___isDirty()) {
                                 LOGGER.log(Level.FINEST, "objeto {0} marcado como dirty por ASM. Agregarlo a la lista de pendientes.", target.getClass().getName());
                                 this.___setDirty();
                             }
@@ -807,7 +810,7 @@ public class ObjectProxy implements IObjectProxy, IEasyProxyInterceptor {
         // antes de proceder.
         if (this.___transaction.getSessionManager().getActivationStrategy() == SessionManager.ActivationStrategy.CLASS_INSTRUMENTATION) {
             LOGGER.log(Level.FINER, "CLASS_INSTRUMENTATION Strategy.");
-            ((ITransparentDirtyDetector) this.___proxiedObject).___ogm___setDirty(false);
+            ((ITransparentDirtyDetector) this.___proxiedObject).___tdd___clearDirty();
         }
     }
 
@@ -997,7 +1000,7 @@ public class ObjectProxy implements IObjectProxy, IEasyProxyInterceptor {
 
                                 // si está activa la instrumentación de clases, desmarcar el objeto como dirty
                                 if (innerO instanceof ITransparentDirtyDetector) {
-                                    ((ITransparentDirtyDetector) innerO).___ogm___setDirty(false);
+                                    ((ITransparentDirtyDetector) innerO).___tdd___clearDirty();
                                 }
 
                                 OEdge oe = ov.addEdge(((IObjectProxy) innerO).___getVertex(), graphRelationName);
@@ -1076,7 +1079,7 @@ public class ObjectProxy implements IObjectProxy, IEasyProxyInterceptor {
 
                                             // si está activa la instrumentación de clases, desmarcar el objeto como dirty
                                             if (colObject instanceof ITransparentDirtyDetector) {
-                                                ((ITransparentDirtyDetector) colObject).___ogm___setDirty(false);
+                                                ((ITransparentDirtyDetector) colObject).___tdd___clearDirty();
                                             }
 
                                         }
@@ -1163,7 +1166,7 @@ public class ObjectProxy implements IObjectProxy, IEasyProxyInterceptor {
                                         linkedO = this.___transaction.store(linkedO);
                                         mapFieldValue.replace(key, linkedO);
                                         if (linkedO instanceof ITransparentDirtyDetector) {
-                                            ((ITransparentDirtyDetector) linkedO).___ogm___setDirty(false);
+                                            ((ITransparentDirtyDetector) linkedO).___tdd___clearDirty();
                                         }
                                     }
 

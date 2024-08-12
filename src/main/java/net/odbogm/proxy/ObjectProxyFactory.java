@@ -52,6 +52,8 @@ public class ObjectProxyFactory {
             // crear el proxy al que delegar las llamadas
             ObjectProxy bbi = new ObjectProxy(c,ov,transaction);
             
+            Class clazzx = new EasyProxy().getProxyClass(c, IObjectProxy.class);
+            LOGGER.log(Level.FINEST, "clazzx: "+clazzx+(clazzx!=null?clazzx.getName().toString():" NULL CLASS!!!!"));
             // crear una instancia
             po = typeCache.findOrInsert(c, IObjectProxy.class, ()->{
                     Class clazz = new EasyProxy().getProxyClass(c, IObjectProxy.class);
