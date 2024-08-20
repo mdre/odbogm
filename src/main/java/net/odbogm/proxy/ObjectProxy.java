@@ -861,7 +861,10 @@ public class ObjectProxy implements IObjectProxy, IEasyProxyInterceptor {
             // obtener un mapa actualizado del objeto contenido
             ObjectStruct oStruct = this.___transaction.getObjectMapper().objectStruct(this.___proxiedObject);
             Map<String, Object> omap = oStruct.fields;
-
+            
+            //dejar solo los campos que se hayan modificado
+            omap.keySet().retainAll(((ITransparentDirtyDetector)this.___proxiedObject).___tdd___getModifiedFields());
+            
             // bajar todo al vértice
             VertexUtils.fillElement(this.___baseElement, omap);
             

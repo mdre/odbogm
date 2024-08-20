@@ -107,7 +107,7 @@ public class ClassCache {
             
             Field[] fields = c.getDeclaredFields();
             for (Field f : fields) {
-                try {
+//                try {
                     LOGGER.log(Level.FINEST, "Analizando campo: "+f.getName());
                     //determinar si se debe o no procesar el campo.
                     //No se aceptan los transient y static final.
@@ -258,12 +258,12 @@ public class ClassCache {
                         }
                     }
 
-                } catch (IncorrectSequenceField | IncorrectVersionField ex) {
-                    
-                    LOGGER.log(Level.FINEST, " ############### ooo ###############", ex);
-                    LOGGER.log(Level.SEVERE, null, ex);
-                    LOGGER.log(Level.FINEST, " ############### ooo ###############", ex);
-                }
+//                } catch (IncorrectSequenceField | IncorrectVersionField ex) {
+//                    
+//                    LOGGER.log(Level.FINEST, " ############### ooo ###############", ex);
+//                    LOGGER.log(Level.SEVERE, null, ex);
+//                    LOGGER.log(Level.FINEST, " ############### ooo ###############", ex);
+//                }
             }
             
             LOGGER.log(Level.FINER, "Fin clase {0} <<<<<<<<<<<<<<<<<", c.getName());
