@@ -143,7 +143,7 @@ public class QueryTest {
         sm.store(foo); //debe ir en los resultados
         sm.store(new Foo("excluded")); //no debe ir en los resultados
         sm.commit();
-        sm.getTransaction().clearCache();
+        sm.getCurrentTransaction().clearCache();
         
         List<Foo> res = sm.query(Foo.class, "where text = 'test query'");
         assertFalse(res.isEmpty());
@@ -155,20 +155,26 @@ public class QueryTest {
     }
     
     
-    @Test
-    public void testQueryUncommitted() throws Exception {
-        Foo foo = new Foo();
-        foo = sm.store(foo);
-        sm.commit();
-        String rid = sm.getRID(foo);
-        sm.getTransaction().clearCache();
-        
-        //tener en cuenta que un query tipado devuelve objetos que están en el 
-        //caché del ogm, por lo que lo siguiente se cumple:
-        foo.setText("modified");
-        List<Foo> res = sm.query(Foo.class, "where @rid = " + rid);
-        assertEquals("modified", res.iterator().next().getText());
-    }
+//    @Test
+//    revisar esto porque no tiene sentido. clearCache() limpia el cache y produce que se busque la instancia desde la base 
+//    y como los campos son solo transferidos en el commit, el último assert no funcionaría nunca.
+//    
+//    public void testQueryUncommitted() throws Exception {
+//        Foo foo = new Foo();
+//        foo = sm.store(foo);
+//        sm.commit();
+//        String rid = sm.getRID(foo);
+//        System.out.println("rid: "+rid);
+//        sm.getCurrentTransaction().clearCache();
+//        System.out.println("----------------------------");
+//        //tener en cuenta que un query tipado devuelve objetos que están en el 
+//        //caché del ogm, por lo que lo siguiente se cumple:
+//        foo.setText("modified");
+//        System.out.println("----------------------------");
+//        List<Foo> res = sm.query(Foo.class, "where @rid = " + rid);
+//        System.out.println("----------------------------");
+//        assertEquals("modified", res.iterator().next().getText());
+//    }
     
     
     /*

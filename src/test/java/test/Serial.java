@@ -17,6 +17,9 @@ public class Serial {
     public Long s2;
 
 
+    public void setS1(Long l) {
+        this.s1 = l;
+    }
     public Serial() {
     }
     

@@ -12,7 +12,7 @@ plugins {
 }
 
 //OrientDB version to use:
-ext.orientDbVersion = '3.2.16'
+ext.orientDbVersion = '3.2.18'
 
 
 // ejecutar: gradle idea 

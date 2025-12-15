@@ -84,7 +84,7 @@ public class Auditor implements IAuditor {
     
     
     @Override
-    public void commit() {
+    public synchronized void commit() {
         // crear un UUDI para todo el log a comitear.
         String ovLogID = UUID.randomUUID().toString();
         ODatabaseSession odb = this.transaction.getCurrentGraphDb();
@@ -121,15 +121,20 @@ public class Auditor implements IAuditor {
         this.logdata.clear();
     }
     
-    
+    public int getLogDataSize() {
+        return this.logdata.size();
+    }
+            
     @Override
-    public void rollback() {
+    public synchronized void rollback() {
         //discard the entries that aren't reads
-        new ArrayList<>(logdata).forEach(l -> {
-            if (l.auditType != Audit.AuditType.READ) {
-                this.logdata.remove(l);
-            }
-        });
+        this.logdata.removeIf(audit -> audit.auditType != Audit.AuditType.READ);
+        
+//        new ArrayList<>(logdata).forEach(l -> {
+//            if (l.auditType != Audit.AuditType.READ) {
+//                this.logdata.remove(l);
+//            }
+//        });
     }
 }
 

@@ -75,7 +75,7 @@ public class ConcurrencyTest {
                 @Override
                 public String call() throws Exception {
                     System.out.println("running!!!!!!");
-                    Transaction t = sm.getTransaction();
+                    Transaction t = sm.getNewTransaction();
                     SimpleVertexEx vert = t.get(SimpleVertexEx.class, rid);
                     String s = vert.getSvex();
                     System.out.println(s);
@@ -110,8 +110,8 @@ public class ConcurrencyTest {
         assertNotNull(rid);
         System.out.println("RID: " + rid);
 
-        Transaction t1 = sm.getTransaction();
-        Transaction t2 = sm.getTransaction();
+        Transaction t1 = sm.getNewTransaction();
+        Transaction t2 = sm.getNewTransaction();
 
         //retrieve with t1
         SimpleVertexEx t1s1 = t1.get(SimpleVertexEx.class, rid);

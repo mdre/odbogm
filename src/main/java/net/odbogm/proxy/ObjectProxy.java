@@ -268,6 +268,9 @@ public class ObjectProxy implements IObjectProxy, IEasyProxyInterceptor {
             case "___tdd___clearDirty":
                 res = superMethod.invoke(target, args);
                 break;
+            case "___tdd___getModifiedFields":
+                res = superMethod.invoke(target, args);
+                break;
 
             default:
                 // invoke the method on the real object with the given params:
@@ -862,8 +865,13 @@ public class ObjectProxy implements IObjectProxy, IEasyProxyInterceptor {
             ObjectStruct oStruct = this.___transaction.getObjectMapper().objectStruct(this.___proxiedObject);
             Map<String, Object> omap = oStruct.fields;
             
-            //dejar solo los campos que se hayan modificado
-            omap.keySet().retainAll(((ITransparentDirtyDetector)this.___proxiedObject).___tdd___getModifiedFields());
+//            if (!this.___baseElement.getIdentity().isNew()) {
+//                //dejar solo los campos que se hayan modificado
+//                LOGGER.log(Level.FINEST, "modified fields: "+ String.join(", ",((ITransparentDirtyDetector)this.___proxiedObject).___tdd___getModifiedFields())) ;
+//                omap.keySet().retainAll(((ITransparentDirtyDetector)this.___proxiedObject).___tdd___getModifiedFields());
+//            }
+            
+            LOGGER.log(Level.FINEST, "omap: "+omap);
             
             // bajar todo al vértice
             VertexUtils.fillElement(this.___baseElement, omap);

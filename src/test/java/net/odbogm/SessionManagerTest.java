@@ -149,14 +149,17 @@ public class SessionManagerTest {
         assertEquals(expResult.i, result.i);
         
         //still not in database
+        System.out.println("\n\n\n\n\n\n");
         String rid = ((IObjectProxy) result).___getRid();
-        
-        var exist = this.sm.getTransaction().query("select count(*) from V where @rid = " + rid, "");
+        System.out.println("rid: "+rid);
+        var exist = this.sm.getNewTransaction().query("select count(*) as c from V where @rid = " + rid, "c");
         assertEquals(0, exist);
 
         this.sm.commit();
         assertEquals(0, sm.getDirtyCount());
 
+        System.out.println("/n/n/n/n/n/n");
+        
         System.out.println("Recuperar el objeto de la base");
         String rid2 = ((IObjectProxy) result).___getRid();
         expResult = commitClearAndGet(rid2);
@@ -1363,8 +1366,8 @@ public class SessionManagerTest {
         System.out.println("Transacción múltiples privadas");
         System.out.println("***************************************************************");
 
-        Transaction t1 = this.sm.getTransaction();
-        Transaction t2 = this.sm.getTransaction();
+        Transaction t1 = this.sm.getNewTransaction();
+        Transaction t2 = this.sm.getNewTransaction();
 
         SimpleVertex sv = new SimpleVertex();
         SimpleVertex expResult = sv;
@@ -1637,11 +1640,14 @@ public class SessionManagerTest {
         long logs = sm.query(query, "");
         assertEquals(1, logs); //store log
         
-        sm.getTransaction().clearCache();
+        sm.getCurrentTransaction().clearCache();
         sv = sm.get(SimpleVertexEx.class, rid);
         sv.initArrayList(); //initialize list with 3 elements
         assertEquals(3, sv.getAlSV().size());
         sm.commit();
+        
+        // verificar que el AuditLog está vació después del commit.
+        assertEquals(0, this.sm.getCurrentTransaction().getAuditor().getLogDataSize());
         
         logs = sm.query(query, "");
         assertEquals(6, logs); //store, read, update and 3 added edges logs
@@ -1664,6 +1670,9 @@ public class SessionManagerTest {
         sv.initArrayList();
         sv.getAlSV().get(0).setS("test AuditLogLabel from rid: "+rid);
         sm.commit();
+        
+        // verificar que el AuditLog está vació después del commit.
+        assertEquals(0, this.sm.getCurrentTransaction().getAuditor().getLogDataSize());
         
         // verificar que existan los logs en la base
         String query = "select count(*) from ODBAuditLog where label like 'AuditLog RID: "+rid+"%'";
@@ -1689,25 +1698,33 @@ public class SessionManagerTest {
         long logs = sm.query(String.format(query, label), "");
         assertEquals(2L, logs); // 1 update + 1 linklist_add
         
-        // inner object:
+        // verificar que el AuditLog está vació después del commit.
+        assertEquals(0, this.sm.getCurrentTransaction().getAuditor().getLogDataSize());
         
+        // inner object:
         sm.getCurrentTransaction().clearCache();
         sv = sm.get(SimpleVertexEx.class, rid);
         sm.getCurrentTransaction().setAuditLogLabel(sv, label);
         SimpleVertexEx inner = sv.getAlSVE().iterator().next();
         inner.setS("modified inner");
         sm.commit();
+        
+        // verificar que el AuditLog está vació después del commit.
+        assertEquals(0, this.sm.getCurrentTransaction().getAuditor().getLogDataSize());
+        
         String query2 = query + " and rid = '%s'";
         logs = sm.query(String.format(query2, label, sm.getRID(inner)), "");
         assertEquals(1L, logs);
         
         // change label:
-        
         sv.setEagerTest(new SimpleVertexEx());
         sv = commitClearAndGet(sv);
         sm.getCurrentTransaction().setAuditLogLabel(sv, label);
         sv.getEagerTest().setS("modified eager");
         sm.commit();
+        // verificar que el AuditLog está vació después del commit.
+        assertEquals(0, this.sm.getCurrentTransaction().getAuditor().getLogDataSize());
+        
         logs = sm.query(String.format(query2, label, sm.getRID(sv.getEagerTest())), "");
         assertEquals(1L, logs);
         
@@ -1718,6 +1735,9 @@ public class SessionManagerTest {
         sm.getCurrentTransaction().setAuditLogLabel(sv, label);
         sv.getLooptest().setS("modified loop");
         sm.commit();
+        // verificar que el AuditLog está vació después del commit.
+        assertEquals(0, this.sm.getCurrentTransaction().getAuditor().getLogDataSize());
+        
         logs = sm.query(String.format(query2, label, sm.getRID(sv.getLooptest())), "");
         assertEquals(2L, logs);
         
@@ -1727,6 +1747,9 @@ public class SessionManagerTest {
         sv.getAlSVE().iterator().next().setS("inner modified with new label");
         sm.getCurrentTransaction().setAuditLogLabel(sv, label);
         sm.commit();
+        // verificar que el AuditLog está vació después del commit.
+        assertEquals(0, this.sm.getCurrentTransaction().getAuditor().getLogDataSize());
+        
         logs = sm.query(String.format(query, label), "");
         assertEquals(3L, logs);
     }
@@ -1743,10 +1766,14 @@ public class SessionManagerTest {
         v.setOhmSVE(new HashMap<>());
         v.ohmSVE.put(new EdgeAttrib(), new SimpleVertexEx());
         sm.commit();
+        // verificar que el AuditLog está vació después del commit.
+        assertEquals(0, this.sm.getCurrentTransaction().getAuditor().getLogDataSize());
         
         EdgeAttrib edge = v.ohmSVE.keySet().iterator().next();
         edge.setNota("changed note");
         sm.commit(); //if bug fixed, this must not throw exception
+        // verificar que el AuditLog está vació después del commit.
+        assertEquals(0, this.sm.getCurrentTransaction().getAuditor().getLogDataSize());
         
         String rid = sm.getRID(edge);
         String query = String.format("select count(*) from ODBAuditLog where rid = '%s'", rid);
@@ -1776,7 +1803,9 @@ public class SessionManagerTest {
         
         sv.setS("Without changes");
         sm.commit();
-        
+        // verificar que el AuditLog está vació después del commit.
+        assertEquals(0, this.sm.getCurrentTransaction().getAuditor().getLogDataSize());
+                
         logs = sm.query(query, "");
         assertEquals(3, logs); //store, read, update
     }
@@ -1799,6 +1828,9 @@ public class SessionManagerTest {
         //if bug is fixed then this must not throw exception:
         sm.store(new SimpleVertexEx());
         sm.commit();
+        // verificar que el AuditLog está vació después del commit.
+        assertEquals(0, this.sm.getCurrentTransaction().getAuditor().getLogDataSize());
+        
     }
 
     /**
@@ -2767,23 +2799,24 @@ public class SessionManagerTest {
     @Test
     public void retryCommitDeleted() throws Exception {
         
-        SimpleVertexEx sv = new SimpleVertexEx();
+        SimpleVertexEx sv = new SimpleVertexEx("retryCommitDeleted", "rcd");
         sv = sm.store(sv);
         
-        SimpleVertexEx svToDelete = new SimpleVertexEx();
+        SimpleVertexEx svToDelete = new SimpleVertexEx("retryCommitDeleted", "rcd");
         svToDelete = sm.store(svToDelete);
         
         sm.commit();
         String rid = sm.getRID(sv);
         String uuid = sv.getUuid();
         String ridToDelete = sm.getRID(svToDelete);
+        System.out.println("ridToDelete: "+ridToDelete);
         
         //generar un store, un delete y producir una falla, todo dentro de la misma transacción.
         // 1. borrar un registro.
         sm.delete(svToDelete);
         
         // intentar agregar uno que produzca un fallo. Utilizo el unique del uuid para generar el fallo.
-        SimpleVertexEx svDup = new SimpleVertexEx();
+        SimpleVertexEx svDup = new SimpleVertexEx("retryCommitDeleted", "rcd");
         String svdupUUID = svDup.getUuid();
         svDup.setUuid(uuid);
         
@@ -2797,14 +2830,14 @@ public class SessionManagerTest {
             svDup.setUuid(svdupUUID);
         }
         //comprobar que no se borró todavía de la base
-        assertNotNull(sm.getTransaction().get(ridToDelete));
+        assertNotNull(sm.getCurrentTransaction().get(ridToDelete));
         
         //reintentar
         sm.commit();
         
-        assertThrows(UnknownRID.class, () -> sm.getTransaction().get(ridToDelete));
+        assertThrows(UnknownRID.class, () -> sm.getCurrentTransaction().get(ridToDelete));
         assertEquals(0, sm.getDirtyCount());
-        assertEquals(0, sm.getTransaction().getDirtyDeletedCount());
+        assertEquals(0, sm.getCurrentTransaction().getDirtyDeletedCount());
     }
     
     @Test
@@ -2814,10 +2847,10 @@ public class SessionManagerTest {
         sm.commit();
         String rid = sm.getRID(sv);
         
-        Transaction t1 = sm.getTransaction();
+        Transaction t1 = sm.getNewTransaction();
         SimpleVertexEx s1 = t1.get(SimpleVertexEx.class, rid);
         
-        Transaction t2 = sm.getTransaction();
+        Transaction t2 = sm.getNewTransaction();
         SimpleVertexEx s2 = t2.get(SimpleVertexEx.class, rid);
 
         t1.delete(s1);
@@ -2950,10 +2983,16 @@ public class SessionManagerTest {
         assertTrue(v.enums.contains(EnumTest.DOS));
         assertTrue(v.enums.contains(EnumTest.OTRO_MAS));
         
+        System.out.println("\n\n\n\n 1 +++++++++++++++++++++++++++++++++");
         v.enums.remove(EnumTest.OTRO_MAS);
         assertEquals(2, v.enums.size());
         assertTrue(((IObjectProxy)v).___isDirty());
+        System.out.println("dirty: "+((IObjectProxy)v).___isDirty());
+        System.out.println("modified fields: "+ ((ITransparentDirtyDetector)v).___tdd___getModifiedFields().size());
+        System.out.println("modified fields: "+ String.join(", ",((ITransparentDirtyDetector)v).___tdd___getModifiedFields()));
+        System.out.println("\n\n\n\n commit +++++++++++++++++++++++++++++++++");
         v = commitClearAndGet(rid);
+        System.out.println("\n\n\n\n fin commit +++++++++++++++++++++++++++++++++");
         assertEquals(2, v.enums.size());
         
         
@@ -3318,8 +3357,15 @@ public class SessionManagerTest {
         assertEquals(currentSequenceValue + 3, (long)serial.s2);
         
         serial = sm.store(new Serial());
-        serial.s1 = 20L;
+        System.out.println("\n\n\n\n\n\n");
+        System.out.println("s1:"+serial.s1+"  s2: "+serial.s2);
+        System.out.println("Asignar un valor al serial");
+        //serial.s1 = 20L;
+        serial.setS1(20L);
+        System.out.println("dirty objects:"+sm.getDirtyCount());
+        System.out.println("rid: "+((IObjectProxy)serial).___getRid()+" s1:"+serial.s1+"  s2: "+serial.s2);
         serial = commitClearAndGet(serial);
+        System.out.println("rid: "+((IObjectProxy)serial).___getRid()+" s1:"+serial.s1+"  s2: "+serial.s2);
         assertEquals(20L, (long)serial.s1);
         assertEquals(currentSequenceValue + 4, (long)serial.s2);
     }
@@ -3854,10 +3900,10 @@ public class SessionManagerTest {
         assertEquals(4, v.getLsve().size());
         assertEquals(0, v.getLsveOnlyAdd().size());
         assertEquals(0, v.getOnlyAdd().size());
-        var c = this.sm.getTransaction().query("select out('FooNode_onlyAdd').size() as c from " + rid);
+        var c = this.sm.getCurrentTransaction().query("select out('FooNode_onlyAdd').size() as c from " + rid);
         assertEquals(1, (int)c.next().getProperty("c"));
         
-        sm.getTransaction().clearCache();
+        sm.getCurrentTransaction().clearCache();
         v = sm.get(Foo.class, rid);
         assertEquals(4, v.getLsve().size());
     }

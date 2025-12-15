@@ -316,7 +316,7 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
         wrap(() -> doCommit());
     }
     
-    private void doCommit() {
+    private synchronized void doCommit() {
         initInternalTx();
         
         if (this.nestedTransactionLevel <= 0) {
@@ -418,6 +418,11 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
                     map(e -> (IObjectProxy)e.getValue()).
                     filter(o -> !o.___isDeleted() && o.___isValid()).
                     forEach(o -> o.___commitSuccessful());
+            
+            //remove from cache all deleted objects
+            for (String rid : dirtyDeleted.keySet()) {
+                removeFromCache(rid);
+            }
             
             this.dirtyDeleted.clear();
             this.dirty.clear();
@@ -1582,10 +1587,10 @@ public class Transaction implements IActions.IStore, IActions.IGet, IActions.IQu
     @Override
     public long query(String sql, String retVal) {
         initInternalTx();
-        
         //OCommandSQL osql = new OCommandSQL(sql);
         OResultSet ors = this.orientdbTransact.query(sql);
         OResult or = ors.next();
+        LOGGER.log(Level.FINER, "or: "+or.toJSON());
         if (retVal.isEmpty()) {
             retVal = or.getPropertyNames().iterator().next();
         }

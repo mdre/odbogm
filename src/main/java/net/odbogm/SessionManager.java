@@ -166,7 +166,7 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
     public void begin() {
         if (this.publicTransaction == null) {
             // si no hay una transacción creada, abrir una...
-            publicTransaction = getTransaction();
+            publicTransaction = getNewTransaction();
         } else {
             this.publicTransaction.begin();
         }
@@ -179,7 +179,7 @@ public class SessionManager implements IActions.IStore, IActions.IGet {
      * 
      * @return un objeto Transaction para operar.
      */    
-    public Transaction getTransaction() {
+    public Transaction getNewTransaction() {
         Transaction t = new Transaction(this);
         openTransactionsList.add(new WeakReference<>(t));
         return t;
