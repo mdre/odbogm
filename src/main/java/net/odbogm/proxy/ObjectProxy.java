@@ -860,16 +860,18 @@ public class ObjectProxy implements IObjectProxy, IEasyProxyInterceptor {
 
             // obtener la definición de la clase
             ClassDef cDef = this.___transaction.getObjectMapper().getClassDef(this.___proxiedObject);
-
+            
             // obtener un mapa actualizado del objeto contenido
             ObjectStruct oStruct = this.___transaction.getObjectMapper().objectStruct(this.___proxiedObject);
             Map<String, Object> omap = oStruct.fields;
-            
-//            if (!this.___baseElement.getIdentity().isNew()) {
-//                //dejar solo los campos que se hayan modificado
-//                LOGGER.log(Level.FINEST, "modified fields: "+ String.join(", ",((ITransparentDirtyDetector)this.___proxiedObject).___tdd___getModifiedFields())) ;
-//                omap.keySet().retainAll(((ITransparentDirtyDetector)this.___proxiedObject).___tdd___getModifiedFields());
-//            }
+            if (!this.___baseElement.getIdentity().isNew()) {
+                //dejar solo los campos que se hayan modificado
+                LOGGER.log(Level.FINEST, "modified fields: "+ String.join(", ",((ITransparentDirtyDetector)this.___proxiedObject).___tdd___getModifiedFields())) ;
+                Set<String> retainFields = ((ITransparentDirtyDetector)this.___proxiedObject).___tdd___getModifiedFields();
+                // agregar los fields que son enums dado que se tratan como campos pero no reaccionan la TDD porque no hay forma de notifiarlos
+                retainFields.addAll(cDef.enumCollectionFields.keySet());
+                omap.keySet().retainAll(retainFields);
+            }
             
             LOGGER.log(Level.FINEST, "omap: "+omap);
             
